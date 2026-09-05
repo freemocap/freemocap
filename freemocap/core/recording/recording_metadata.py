@@ -10,6 +10,7 @@ from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
 from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
+from freemocap.core.recording.recorded_model import RecordedModel
 
 
 class Descriptor(BaseModel):
@@ -100,7 +101,7 @@ class RunDescriptor(Descriptor):
     sensor_groups: dict[str, SensorGroup]
     sources: dict[str, Source]
     reference_frames: dict[str, dict[str, JsonValue]]
-    models: dict[str, JsonValue]
+    models: dict[str, RecordedModel]
     processing: dict[str, JsonValue]
     channels: tuple[Channel, ...]
     static_channels: tuple[StaticChannel, ...] = ()
@@ -108,6 +109,8 @@ class RunDescriptor(Descriptor):
 
     @model_validator(mode="after")
     def validate_references(self) -> "RunDescriptor":
+        if any(name != model.model_id for name, model in self.models.items()):
+            raise ValueError("Recorded models must be keyed by their model ID")
         fit_keys = [(fit.sensor_group, fit.source) for fit in self.scale_fits]
         if len(set(fit_keys)) != len(fit_keys):
             raise ValueError("Duplicate recording scale fit")
@@ -135,6 +138,19 @@ class RunDescriptor(Descriptor):
             *(static.channel for static in self.static_channels),
         ):
             key = channel_key(channel=channel)
+            if channel.kind in (
+                ChannelKind.MODEL_SCALE,
+                ChannelKind.SEGMENT_SCALES,
+                ChannelKind.SEGMENT_LENGTHS,
+            ) and any(
+                fit.fit is not None
+                and fit.source == channel.source
+                and fit.sensor_group == channel.sensor_group
+                for fit in self.scale_fits
+            ):
+                raise ValueError(
+                    "Fitted measurements must be derived from the stored fit, not duplicated"
+                )
             if key in keys:
                 raise ValueError(f"Duplicate channel declaration: {key}")
             keys.add(key)

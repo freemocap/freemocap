@@ -36,10 +36,8 @@ class JointAnglesProducer(ChannelProducer):
         names: list[str] = []
         values: list[float] = []
         for joint_name, angles in sorted(reconstruction.joint_angles.items()):
-            # Angle names ride the aggregator's convention; the wire flattens
-            # to <joint>.<angle> scalars so consumers can address any axis.
-            for angle_index in range(3):
-                names.append(f"{joint_name}.angle_{angle_index}")
+            for angle_index, name in enumerate(skeleton.skeleton.joints[joint_name].angle_names):
+                names.append(name)
                 value = float(angles[angle_index])
                 values.append(value if np.isfinite(value) else np.nan)
 

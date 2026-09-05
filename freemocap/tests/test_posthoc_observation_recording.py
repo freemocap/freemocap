@@ -94,11 +94,13 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
         )
         metadata = publish_posthoc_observations(
             ObservationRecordingRequest(
+                models=(),
                 reconstructions=(
                     ReconstructionRecording(
                         sensor_group="mocap",
                         reference=points.definition.reference,
                         definition=ReconstructionSourceDefinition(
+                            joint_angle_names={},
                             model_id="subject",
                             tracker="tracker",
                             scale_reference_name="size",
@@ -107,6 +109,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
                             segment_parents={"forearm": None},
                         ),
                         result=ModelRecordingReconstruction(
+                            compute_center_of_mass=False,
                             frames=(
                                 SkeletonReconstruction(
                                     model_id="subject",
@@ -193,6 +196,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
     with pytest.raises(ValueError, match="Missing recording timing columns"):
         publish_posthoc_observations(
             ObservationRecordingRequest(
+                models=(),
                 reconstructions=(),
                 camera_geometry=(),
                 recording=info,

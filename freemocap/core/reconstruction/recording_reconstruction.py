@@ -44,5 +44,6 @@ class RecordingReconstructionInput:
 
 @dataclass(frozen=True, slots=True)
 class ModelRecordingReconstruction:
+    compute_center_of_mass: bool
     frames: tuple[SkeletonReconstruction | None, ...]
     scale_fit: ModelScaleFit | None

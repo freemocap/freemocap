@@ -9,6 +9,13 @@ import pyarrow.parquet as pq
 
 from freemocap.core.recording.recording_data import DESCRIPTOR_KEY, SAMPLE_SCHEMA
 from freemocap.core.recording.recording_metadata import RecordingMetadata, StaticChannel
+from freemocap.core.recording.recording_metadata import RunDescriptor
+from freemocap.core.recording.scale_fit_channels import scale_fit_channels
+
+
+def read_static_channels(run: RunDescriptor) -> tuple[StaticChannel, ...]:
+    """Return authored static channels and views of the recorded global fit."""
+    return (*run.static_channels, *scale_fit_channels(run))
 
 
 def read_metadata(*, path: Path) -> RecordingMetadata:

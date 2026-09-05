@@ -9,8 +9,8 @@ notes deferred the schema or treated a large streaming window as a completed glo
 ## Implementation progress
 
 - The mocap task publishes observations, camera/group timing and raw 3D points into the canonical
-  Parquet store. It now also publishes LANDMARKS_3D, SEGMENT_ORIGINS and ROTATIONS_WORLD, with named
-  source layouts and explicit spatial references. Single-camera planar coordinates and fits are
+  Parquet store. It also publishes LANDMARKS_3D, SEGMENT_ORIGINS, ROTATIONS_WORLD, ROTATIONS_LOCAL,
+  JOINT_ANGLES and computed centre of mass, with explicit spatial references. Single-camera coordinates and fits are
   declared in pixels; calibrated outputs use millimetres. Missing frames remain null.
 - `RecordingReconstructionInput` carries the numerical request without repeated argument lists.
   Each `ModelRecordingReconstruction` retains frames and the complete SkellyForge `ModelScaleFit`.
@@ -18,8 +18,17 @@ notes deferred the schema or treated a large streaming window as a completed glo
   `reconstruct_skeletons_with_fits` uses fresh temporal state and does not accumulate scale evidence.
 - Per-group/source `scale_fits` stores the complete typed fit once in the run descriptor, including
   per-segment scales/lengths and the measured/voting sets. SkellyForge owns fit invariants. FreeMoCap
-  binds the fit to recording source/reference/units. Static channel views of this fit remain to be
-  connected; do not create another independent copy of these measurements.
+  binds the fit to recording source/reference/units. `read_static_channels` exposes MODEL_SCALE,
+  SEGMENT_SCALES and SEGMENT_LENGTHS as views of this fit; duplicate stored versions are rejected.
+- SkellyForge's `SkeletonPose.parent_relative_orientations` owns local-rotation computation for
+  both pipelines. Roots use world orientation. A child whose parent pose is absent has no local
+  rotation; recording writes null components. The local reference descriptor declares the parent
+  tree and root reference. Both serializers use `JointDefinition.angle_names` from the authored
+  Euler convention. Posthoc XCoM is not computed or declared as a completed output.
+- `RecordedModel` stores full authored skeleton/rest-pose/mapping/mass inputs. SkellyForge owns
+  `skeleton_snapshot.py`; SkellyTracker owns mapping snapshots and `CompositeTrackerMapping`.
+  FreeMoCap binds these definitions into a restorable bundle. Restore rebuilds domain validation
+  and caches without reading current definition files. Retained outputs protect their model inputs.
 - Scale-fit invalidation follows SCALE_FIT dependencies. Reconstruction-only restarts retain the fit;
   scale restarts remove the selected group's fit. Keep and overwrite preserve other results/groups.
 - Point and reconstruction adapters share `ChannelSeries` and `SeriesSampling` for bounded tall Arrow
@@ -38,25 +47,22 @@ notes deferred the schema or treated a large streaming window as a completed glo
 - Recording metadata, bounded Parquet validation, write locking, atomic publication, JSON mirror
   recovery, checkpoint signature comparison and scoped keep/overwrite have focused tests.
   Observation requests use typed models/factories; streaming and recording share ChannelKind.
-- Validation: **63 focused tests pass**, including a real skeleton's generated reconstruction written
-  through the canonical writer, fit reload from Parquet metadata and numerical replay with scale
-  fitting forbidden. Publication/overwrite tests cover missing frames and world quaternions.
-  Lint and mocap/calibration task imports pass. These are synthetic-data tests, not detector/video
-  acceptance. The validation environment uses editable local SkellyCam and SkellyForge.
+- Validation: **84 focused tests pass**, including human numerical replay from saved model and fit,
+  board definition/mapping restore, missing-parent rotations, added channels, static fit views,
+  keep/overwrite and shared realtime reconstruction. Definition-file reads and refitting are
+  forbidden in replay tests. Two stale scale-voting assertions were aligned with the current
+  measured sacrolumbar/cervical endpoints; fitting rules were not changed. Lint retains imports
+  required for runtime type checking. These are synthetic-data tests, not detector/video acceptance.
+  The validation environment uses editable local SkellyCam, SkellyTracker and SkellyForge.
 
 ### Next bounded chunks
 
-1. Complete reconstruction persistence: local-rotation reference semantics, joint angles and derived
-   channels; expose fitted static channel views from the single stored fit. In particular, review
-   `_local_rotations`: a missing parent currently yields a world quaternion, which cannot be labelled
-   unconditionally as parent-relative data on disk.
-2. Persist full scientific definitions/rest pose/mapping and the actual reconstruction input arrays,
-   with explicit filter policy and stage input signatures. Current source layouts describe channel
-   names/topology; they are not a scientific definition snapshot. Ingestion emits no reusable stage
-   completion checkpoints yet.
-3. Connect saved-data worker dispatch with video opening and detector construction forbidden.
+1. Persist the actual reconstruction input arrays with explicit filter policy, fitting eligibility
+   and stage input signatures. Ingestion emits no reusable stage completion checkpoints yet.
+   Integrate a reader that restores numeric input arrays together with the saved model and fit.
+2. Connect saved-data worker dispatch with video opening and detector construction forbidden.
    Validate request-driven keep/overwrite, cancellation and failure through real worker execution.
-4. Process a real recording end to end. Timestamp-based playback and the default annotated grid
+3. Process a real recording end to end. Timestamp-based playback and the default annotated grid
    output follow this acceptance milestone; optional raw grid and other exports follow their plans.
 
 Check in before the next implementation chunk. Keep capture/transport in SkellyCam, detector
@@ -326,5 +332,6 @@ Selecting an unsupported exporter fails explicitly; do not swallow an export exc
 - Long-recording writer/rewrite stays bounded in memory; filtering chunk boundaries remain correct.
 - Core processing succeeds with no export selected; later exporter failures remain export failures.
 
-First implementation deliverable: phase 1 plus phase 2, proving the disk contract and restart rules
-before converting the full processing path.
+The disk contract and planner have focused validation. The next deliverable is reconstruction
+input-array reload and checkpoint signatures, followed by saved-data worker execution. See
+"Next bounded chunks" above for the current implementation order and remaining acceptance gates.

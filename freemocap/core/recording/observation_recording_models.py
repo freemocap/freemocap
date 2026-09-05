@@ -4,6 +4,7 @@ from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
 from freemocap.core.recording.spatial_point_series import SpatialPointSeries
 from freemocap.core.recording.reconstruction_recording import ReconstructionRecording
+from freemocap.core.recording.recorded_model import RecordedModel
 from dataclasses import dataclass
 from freemocap.core.recording.sample_conventions import (
     SampleComponent,
@@ -55,6 +56,7 @@ class ObservationGroup:
 
 @dataclass(frozen=True, slots=True)
 class ObservationRecordingRequest:
+    models: tuple[RecordedModel, ...]
     reconstructions: tuple[ReconstructionRecording, ...]
     recording: RecordingInfo
     group: ObservationGroup
@@ -63,6 +65,8 @@ class ObservationRecordingRequest:
     camera_geometry: tuple[ResolvedCameraGeometry, ...]
 
     def __post_init__(self) -> None:
+        if len({model.model_id for model in self.models}) != len(self.models):
+            raise ValueError("Recorded models must be unique")
         model_ids = [item.definition.model_id for item in self.reconstructions]
         if len(set(model_ids)) != len(model_ids):
             raise ValueError("Reconstruction sources must be unique")

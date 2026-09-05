@@ -223,6 +223,7 @@ def reconstruct_skeletons_with_fits(
     )
     return {
         model_id: ModelRecordingReconstruction(
+            compute_center_of_mass=request.compute_center_of_mass,
             frames=tuple(values), scale_fit=fits[model_id]
         )
         for model_id, values in frames.items()

@@ -74,11 +74,12 @@ calibration stage or handle calibration-completion events. Its planner requires 
 only for executed multi-camera triangulation or reprojection. Single-camera planar reconstruction
 and downstream processing from saved inputs do not require calibration. Restart validation checks
 direct saved prerequisites, rather than requiring inputs of operations that will not execute.
-Observation/timing/raw-3D publication is connected, as are world landmarks, segment origins and
-world rotations. The complete recording fit is stored once and can be reloaded into the shared
-numerical reconstruction. Local rotations, joint/derived channels, static fit channel views, full
-scientific definitions, reusable checkpoint completion, automatic input signatures and saved-data
-worker dispatch remain required before GUI integration.
+Observation/timing/raw-3D publication is connected, as are landmarks, segment origins, local/world
+rotations, named joint angles and computed centre of mass. Missing-parent local rotations remain
+null. The complete fit is stored once with static channel views. Saved scientific definitions and
+fit restore the numerical reconstruction without current definition files. Actual reconstruction
+input-array reload, reusable checkpoint completion, automatic input signatures and saved-data worker
+dispatch remain required before GUI integration. Posthoc XCoM requires a separate trajectory stage.
 
 The executor opens media and constructs tracker sessions only when observations require computation.
 Reconstruction-only execution reads saved prerequisites and starts numerical processing directly.

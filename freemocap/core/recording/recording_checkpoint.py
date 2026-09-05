@@ -98,6 +98,14 @@ def publish_checkpoint(
         raise ValueError("Recording changed after stage planning")
     retained = retained_run(base=metadata.runs[plan.base_run_id], plan=plan)
     result_channels = {channel_key(channel=item): item for item in result.channels}
+    retained_model_sources = {channel.source for channel in retained.channels} | {
+        fit.source for fit in retained.scale_fits
+    }
+    for name, model in retained.models.items():
+        if name in retained_model_sources and result.models.get(name) != model:
+            raise ValueError(
+                "Result must preserve scientific models used by retained outputs"
+            )
     for fit in retained.scale_fits:
         if fit not in result.scale_fits:
             raise ValueError("Result must preserve reusable scale fits")

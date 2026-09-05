@@ -144,9 +144,7 @@ def publish_posthoc_observations(
         sources[reconstruction.definition.model_id] = (
             reconstruction.definition.to_source()
         )
-        references[reconstruction.reference.name] = reconstruction.reference.model_dump(
-            mode="json"
-        )
+        references.update(reconstruction.reference_frames())
         channels.extend(reconstruction.channels())
     run = RunDescriptor(
         scale_fits=tuple(item.to_scale_fit() for item in request.reconstructions),
@@ -159,7 +157,7 @@ def publish_posthoc_observations(
         },
         sources=sources,
         reference_frames=references,
-        models={},
+        models={model.model_id: model for model in request.models},
         processing={},
         channels=tuple(channels),
     )
@@ -245,6 +243,8 @@ def publish_posthoc_observations(
                     ProcessingStage.RECONSTRUCTION,
                 ),
             )
+        if any(item.result.compute_center_of_mass for item in request.reconstructions):
+            plan = replace(plan, execute=(*plan.execute, ProcessingStage.BIOMECHANICS))
         retained = retained_run(base=metadata.runs[0], plan=plan)
         if (
             retained.sensor_groups[request.group.name]
@@ -259,7 +259,7 @@ def publish_posthoc_observations(
             sensor_groups=retained.sensor_groups,
             sources={**retained.sources, **sources},
             reference_frames={**retained.reference_frames, **references},
-            models=retained.models,
+            models={**retained.models, **run.models},
             processing=retained.processing,
             channels=(*retained.channels, *channels),
             static_channels=retained.static_channels,

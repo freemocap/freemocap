@@ -4,7 +4,15 @@ from freemocap.core.reconstruction.recording_reconstruction import (
     RecordingReconstructionInput,
 )
 import numpy as np
+from numpy import testing as npt
 import pytest
+from dataclasses import replace
+from freemocap.core.recording.recorded_model import RecordedModel
+from freemocap.core.recording.recording_reader import (
+    read_static_channels,
+    static_samples,
+)
+from freemocap.core.types.channel_kind import ChannelKind
 from pathlib import Path
 from freemocap.core.recording.reconstruction_recording import (
     ReconstructionRecording,
@@ -110,12 +118,8 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
                     )
                 },
                 sources={bundle.model_id: publication.definition.to_source()},
-                reference_frames={
-                    publication.reference.name: publication.reference.model_dump(
-                        mode="json"
-                    )
-                },
-                models={},
+                reference_frames=publication.reference_frames(),
+                models={bundle.model_id: RecordedModel.from_bundle(bundle)},
                 processing={},
                 channels=tuple(publication.channels()),
                 scale_fits=(publication.to_scale_fit(),),
@@ -139,8 +143,36 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
                 )
             ),
         )
-    loaded = read_metadata(path=structure.data_parquet_path).runs[0].scale_fits[0]
+    loaded_run = read_metadata(path=structure.data_parquet_path).runs[0]
+    loaded = loaded_run.scale_fits[0]
+    static = {item.channel.kind: item for item in read_static_channels(loaded_run)}
+    assert set(static) == {
+        ChannelKind.MODEL_SCALE,
+        ChannelKind.SEGMENT_SCALES,
+        ChannelKind.SEGMENT_LENGTHS,
+    }
+    length_rows = static_samples(
+        channel=static[ChannelKind.SEGMENT_LENGTHS],
+        run_id=0,
+        frame_number=5,
+        timestamp_s=0.1,
+    )
+    assert length_rows.num_rows == len(bundle.skeleton.segments)
+    assert length_rows.column("value").to_pylist() == list(
+        expected.scale_fit.segment_lengths.values()
+    )
     assert loaded == publication.to_scale_fit()
+    assert (
+        loaded_run.models[bundle.model_id] == metadata.runs[0].models[bundle.model_id]
+    )
+
+    def forbid_definition_file(self: Path, *args: object, **kwargs: object) -> str:
+        raise AssertionError(
+            "Restoring a recorded model must not read definition files"
+        )
+
+    monkeypatch.setattr(Path, "read_text", forbid_definition_file)
+    restored_bundle = loaded_run.models[bundle.model_id].to_bundle()
 
     def forbid_fitting(*, window_frames: int) -> None:
         raise AssertionError("Saved-fit reconstruction must not create a scale fitter")
@@ -149,21 +181,22 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
         posthoc_reconstruction, "streaming_model_scale_source", forbid_fitting
     )
     actual = reconstruct_skeletons_with_fits(
-        request=request, fits={bundle.model_id: loaded.fit}
+        request=replace(request, bundles=(restored_bundle,)),
+        fits={bundle.model_id: loaded.fit},
     )[bundle.model_id]
     for before, after in zip(expected.frames, actual.frames, strict=True):
         assert before is not None and after is not None
         assert before.segment_lengths == after.segment_lengths
         assert before.fitted_scale_mm == after.fitted_scale_mm
         for name in before.landmarks:
-            np.testing.assert_array_equal(before.landmarks[name], after.landmarks[name])
+            npt.assert_array_equal(before.landmarks[name], after.landmarks[name])
         for name in before.segment_rotations_world:
-            np.testing.assert_array_equal(
+            npt.assert_array_equal(
                 before.segment_rotations_world[name],
                 after.segment_rotations_world[name],
             )
-            np.testing.assert_array_equal(
+            npt.assert_array_equal(
                 before.segment_rotations_local[name],
                 after.segment_rotations_local[name],
             )
-        np.testing.assert_array_equal(before.center_of_mass, after.center_of_mass)
+        npt.assert_array_equal(before.center_of_mass, after.center_of_mass)

@@ -14,7 +14,9 @@ from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 
-_DERIVED_POINT_NAMES = ("center_of_mass", "xcom")
+from freemocap.core.types.derived_point_name import DerivedPointName
+
+_DERIVED_POINT_NAMES = tuple(DerivedPointName)
 
 
 class DerivedProducer(ChannelProducer):

@@ -4,6 +4,9 @@ from enum import StrEnum
 
 
 class SampleComponent(StrEnum):
+    LENGTH = "length"
+    SCALE = "scale"
+    RADIANS = "radians"
     W = "w"
     X = "x"
     Y = "y"
@@ -13,6 +16,7 @@ class SampleComponent(StrEnum):
 
 
 class SampleUnit(StrEnum):
+    RADIANS = "rad"
     PIXELS = "px"
     DIMENSIONLESS = "1"
     SECONDS = "s"

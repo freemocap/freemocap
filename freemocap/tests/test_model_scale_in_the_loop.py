@@ -107,7 +107,7 @@ def test_only_measured_landmarks_earn_a_vote_on_the_subjects_height() -> None:
     """The mapping's constructed landmarks must not vote on how big the subject is."""
     skeleton, voting = _skeleton_and_voting_segments()
 
-    # The long limb bones, which is what actually measures a person.
+    # Limb and axial segments with measured endpoints can vote on scale.
     for name in (
         "left_upper_leg",
         "right_upper_leg",
@@ -117,12 +117,13 @@ def test_only_measured_landmarks_earn_a_vote_on_the_subjects_height() -> None:
         "right_upper_arm",
         "left_lower_arm",
         "right_lower_arm",
+        "sacrolumbar",
+        "cervical_spine",
     ):
         assert name in voting, f"{name} is measured end to end and should vote"
 
-    # The trunk is built from anatomical offsets — authored ratios of a measured span —
-    # so it restates the template rather than measuring the subject.
-    for name in ("sacrolumbar", "thoracic", "cervical_spine", "left_clavicle"):
+    # Segments requiring anatomical offsets must not vote with constructed geometry.
+    for name in ("thoracic", "left_clavicle"):
         assert name not in voting, f"{name} is constructed from ratios and must not vote"
 
     # The pelvis, thorax and skull rigid-fit over landmark sets that include constructed
@@ -173,8 +174,8 @@ def test_a_subject_at_a_desk_still_gets_correctly_sized_feet() -> None:
     )
 
 
-def test_the_seated_fit_is_driven_by_the_arms() -> None:
-    """Naming the mechanism, so a future change that breaks it fails here loudly."""
+def test_the_seated_fit_uses_visible_measured_segments() -> None:
+    """Visible arms and axial spans supply evidence; hidden limbs do not."""
     _, _ = _skeleton_and_voting_segments()
     seated = _fit(_seated_keypoints())
 
@@ -183,7 +184,9 @@ def test_the_seated_fit_is_driven_by_the_arms() -> None:
         "right_upper_arm",
         "left_lower_arm",
         "right_lower_arm",
+        "sacrolumbar",
+        "cervical_spine",
     }, (
-        "with the legs hidden and every hand keypoint absent, the only segments left "
-        f"measuring the subject should be the arms - got {sorted(seated.voting_segment_names)}"
+        "With legs and hands absent, only visible arms and axial spans may vote: "
+        f"got {sorted(seated.voting_segment_names)}"
     )

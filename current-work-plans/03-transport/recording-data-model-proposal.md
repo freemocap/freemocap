@@ -168,8 +168,8 @@ per-row stage/provenance classification, and directly mapped/weighted/anatomical
 all remain LANDMARKS_3D. Internal evidence masks may still be needed for correct fitting; they are
 not a generic public provenance column.
 
-Component metadata must declare units, including mixed-unit channels. Use SkellyForge's named joint
-angles directly rather than the current producer's synthesized joint.angle_0 names. Use actual model
+Component metadata declares units, including mixed-unit channels. Both serializers use SkellyForge's
+`JointDefinition.angle_names`, qualified by joint name in the authored convention's order. Use actual model
 names, hierarchy and conventions. Preserve wxyz orientation semantics; missing parent orientation
 cannot be replaced with world orientation under a parent-relative label.
 
@@ -199,9 +199,15 @@ dynamic versions of the same channel.
 
 Implementation status: the complete SkellyForge fit is stored once in each run's typed `scale_fits`
 records, bound to sensor group, source, reference frame and spatial units. An explicit null fit means
-no scale evidence was available. Static channel views of fitted scale/segment lengths/scales remain
-to be exposed from that record; they must be derived views, not a second authoritative measurement.
+no scale evidence was available. `read_static_channels` exposes MODEL_SCALE, SEGMENT_LENGTHS and
+SEGMENT_SCALES from that record. These are derived views, not a second authoritative measurement.
 Stage invalidation and keep/overwrite include these fit records.
+
+Per-run `models` contains typed authored scientific definitions, rest poses, tracker mappings and
+mass inputs. Restoring a bundle uses these stored values and domain constructors, not current YAML
+files. Local rotation references declare each segment's parent and the root's world reference;
+a missing parent pose produces a missing local quaternion. Joint scalar names come from the
+authored Euler convention in both realtime and recording output.
 
 Embed the numeric dataset's interpretation descriptor, including retained runs, in Parquet metadata.
 The JSON document carries the same descriptor plus mutable operational/log/export information.

@@ -96,7 +96,10 @@ def reconstruct_skeleton(
             name: segment_pose.orientation.as_array()
             for name, segment_pose in resolved_pose.segment_poses.items()
         },
-        segment_rotations_local=_local_rotations(bundle=bundle, pose=resolved_pose),
+        segment_rotations_local={
+            name: rotation.as_array()
+            for name, rotation in resolved_pose.parent_relative_orientations(parents=bundle.rest_pose.parents).items()
+        },
         segment_lengths=dict(scale_fit.segment_lengths) if scale_fit else {},
         fitted_scale_mm=scale_fit.fitted_scale if scale_fit else None,
         joint_angles=(
@@ -128,26 +131,3 @@ def reconstruct_skeleton(
         )
     return reconstruction
 
-
-def _local_rotations(
-    *, bundle: TrackedSkeletonBundle, pose
-) -> dict[str, np.ndarray]:
-    """Parent-relative quaternions, falling back to world where there is no parent pose.
-
-    A root has no parent, and a segment whose parent was skipped by partial hydration has
-    nothing to be relative TO this frame - in both cases the world orientation is the
-    honest answer, and consumers are told which by the model's parent tree.
-    """
-    local: dict[str, np.ndarray] = {}
-    for name, segment_pose in pose.segment_poses.items():
-        parent_name = bundle.rest_pose.parents[name]
-        parent_pose = (
-            pose.segment_poses.get(parent_name) if parent_name is not None else None
-        )
-        orientation = (
-            segment_pose.orientation
-            if parent_pose is None
-            else parent_pose.orientation.inverse() * segment_pose.orientation
-        )
-        local[name] = orientation.as_array()
-    return local

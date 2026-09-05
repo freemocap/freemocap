@@ -35,8 +35,9 @@ Detector changes reload the mapping; calibration hot-reloads reset the roll reso
 6. **Resolve roll:** `roll_resolver.resolve_pose(pose=...)` — underspecified segments get roll by
    convention (anchored secondary axes, parallel transport fallback, twist backfill); rigid-fit poses
    pass through.
-7. **Extract rotations:** world quats straight from segment poses; local = `conj(parent) · child`,
-   falling back to world for the root or when the parent did not hydrate this frame.
+7. **Extract rotations:** world quaternions come from segment poses. SkellyForge's
+   `SkeletonPose.parent_relative_orientations` computes local = `conj(parent) · child`.
+   Roots use world orientation; a child whose parent did not hydrate has no local rotation.
 8. **Reproject** segment origins into each camera via `origin_landmark_names(skeleton)` +
    the calibration triangulator → 2D overlay points.
 9. **Center of Mass / XCoM** (gated by `center_of_mass_enabled`): landmark world positions →

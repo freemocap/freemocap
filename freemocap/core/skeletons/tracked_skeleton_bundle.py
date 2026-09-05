@@ -24,6 +24,7 @@ import numpy as np
 from skellyforge.core.biomechanics.center_of_mass import CenterOfMassDefinitions
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
+from skellytracker.core.io.tracker_mapping import TrackerMappingSnapshot
 
 
 @runtime_checkable
@@ -45,6 +46,10 @@ class KeypointToLandmarkMapping(Protocol):
         contract here - a mapping loaded straight from a YAML satisfies this as-is, with
         no adapter whose only job would be to rename a method.
         """
+        ...
+
+    def mapping_snapshots(self) -> tuple[TrackerMappingSnapshot, ...]:
+        """The authored mapping definitions needed to reproduce this mapping."""
         ...
 
     @property

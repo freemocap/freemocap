@@ -22,6 +22,7 @@ from freemocap.core.recording.sample_conventions import SampleComponent, SampleU
 from freemocap.core.recording.spatial_point_series import SpatialReference
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.types.channel_kind import ChannelKind
+from freemocap.core.types.derived_point_name import DerivedPointName
 
 
 class ReconstructionSourceDefinition(Descriptor):
@@ -31,6 +32,7 @@ class ReconstructionSourceDefinition(Descriptor):
     landmark_names: tuple[str, ...]
     segment_origins: dict[str, str]
     segment_parents: dict[str, str | None]
+    joint_angle_names: dict[str, tuple[str, str, str]]
 
     @model_validator(mode="after")
     def validate_layout(self) -> "ReconstructionSourceDefinition":
@@ -63,6 +65,10 @@ class ReconstructionSourceDefinition(Descriptor):
                 for name, segment in bundle.skeleton.segments.items()
             },
             segment_parents=dict(bundle.rest_pose.parents),
+            joint_angle_names={
+                name: joint.angle_names
+                for name, joint in bundle.skeleton.joints.items()
+            },
         )
 
     def to_source(self) -> Source:
@@ -75,6 +81,19 @@ class ReconstructionRecording:
     reference: SpatialReference
     definition: ReconstructionSourceDefinition
     result: ModelRecordingReconstruction
+
+    @property
+    def parent_reference_name(self) -> str:
+        return f"{self.definition.model_id}:segment_parents"
+
+    def reference_frames(self) -> dict[str, dict[str, object]]:
+        return {
+            self.reference.name: self.reference.model_dump(mode="json"),
+            self.parent_reference_name: ParentRotationReference(
+                parents=self.definition.segment_parents,
+                root_reference=self.reference.name,
+            ).model_dump(mode="json"),
+        }
 
     def __post_init__(self) -> None:
         if not self.result.frames:
@@ -90,6 +109,8 @@ class ReconstructionRecording:
                 raise ValueError("Reconstruction frame belongs to another model")
             if set(frame.landmarks) - set(self.definition.landmark_names):
                 raise ValueError("Reconstruction contains undeclared landmarks")
+            if set(frame.joint_angles or {}) - set(self.definition.joint_angle_names):
+                raise ValueError("Reconstruction contains undeclared joints")
             if (
                 set(frame.segment_rotations_world) | set(frame.segment_rotations_local)
             ) - set(self.definition.segment_origins):
@@ -127,20 +148,64 @@ class ReconstructionRecording:
                     SampleComponent.Z,
                 ),
             ),
+            (
+                ChannelKind.ROTATIONS_LOCAL,
+                tuple(self.definition.segment_origins),
+                (
+                    SampleComponent.W,
+                    SampleComponent.X,
+                    SampleComponent.Y,
+                    SampleComponent.Z,
+                ),
+            ),
         ):
             yield Channel(
                 sensor_group=self.sensor_group,
                 source=self.definition.model_id,
-                reference_frame=self.reference.name,
+                reference_frame=self.parent_reference_name
+                if kind == ChannelKind.ROTATIONS_LOCAL
+                else self.reference.name,
                 kind=kind,
                 names=names,
                 components={
                     component: SampleUnit.DIMENSIONLESS
-                    if kind == ChannelKind.ROTATIONS_WORLD
+                    if kind
+                    in (ChannelKind.ROTATIONS_WORLD, ChannelKind.ROTATIONS_LOCAL)
                     else self.reference.units
                     for component in components
                 },
                 stage=ProcessingStage.RECONSTRUCTION,
+            )
+        if self.definition.joint_angle_names:
+            yield Channel(
+                sensor_group=self.sensor_group,
+                source=self.definition.model_id,
+                reference_frame=self.parent_reference_name,
+                kind=ChannelKind.JOINT_ANGLES,
+                names=tuple(
+                    name
+                    for names in self.definition.joint_angle_names.values()
+                    for name in names
+                ),
+                components={SampleComponent.RADIANS: SampleUnit.RADIANS},
+                stage=ProcessingStage.RECONSTRUCTION,
+            )
+        if self.result.compute_center_of_mass:
+            yield Channel(
+                sensor_group=self.sensor_group,
+                source=self.definition.model_id,
+                reference_frame=self.reference.name,
+                kind=ChannelKind.DERIVED_POINTS,
+                names=(DerivedPointName.CENTER_OF_MASS,),
+                components={
+                    component: self.reference.units
+                    for component in (
+                        SampleComponent.X,
+                        SampleComponent.Y,
+                        SampleComponent.Z,
+                    )
+                },
+                stage=ProcessingStage.BIOMECHANICS,
             )
 
     def series(self) -> Iterator[ChannelSeries]:
@@ -154,11 +219,33 @@ class ReconstructionRecording:
             for index, frame in enumerate(self.result.frames):
                 if frame is None:
                     continue
-                positions = (
-                    frame.segment_rotations_world
-                    if channel.kind == ChannelKind.ROTATIONS_WORLD
-                    else frame.landmarks
-                )
+                match channel.kind:
+                    case ChannelKind.ROTATIONS_WORLD:
+                        positions = frame.segment_rotations_world
+                    case ChannelKind.ROTATIONS_LOCAL:
+                        positions = frame.segment_rotations_local
+                    case ChannelKind.JOINT_ANGLES:
+                        positions = {
+                            name: np.array([value], dtype=np.float64)
+                            for joint, angles in (frame.joint_angles or {}).items()
+                            for name, value in zip(
+                                self.definition.joint_angle_names[joint],
+                                angles,
+                                strict=True,
+                            )
+                        }
+                    case ChannelKind.DERIVED_POINTS:
+                        positions = (
+                            {DerivedPointName.CENTER_OF_MASS: frame.center_of_mass}
+                            if frame.center_of_mass is not None
+                            else {}
+                        )
+                    case ChannelKind.LANDMARKS_3D | ChannelKind.SEGMENT_ORIGINS:
+                        positions = frame.landmarks
+                    case _:
+                        raise ValueError(
+                            f"Unsupported reconstruction channel: {channel.kind}"
+                        )
                 for point, name in enumerate(channel.names):
                     key = (
                         self.definition.segment_origins[name]
@@ -172,3 +259,10 @@ class ReconstructionRecording:
                             )
                         values[index, point] = positions[key]
             yield ChannelSeries(channel=channel, values=values)
+
+
+class ParentRotationReference(Descriptor):
+    """Parent-relative rotations use the source's tree; roots use the named world frame."""
+
+    parents: dict[str, str | None]
+    root_reference: str

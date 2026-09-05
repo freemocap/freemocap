@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from freemocap.core.recording.observation_recording_models import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
 import csv
+from freemocap.core.recording.recorded_model import RecordedModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
 from freemocap.core.recording.spatial_point_series import SpatialPointSeries, PointSeriesDefinition, SpatialReference
@@ -143,6 +144,7 @@ def run_posthoc_mocap_aggregator_task(
     ))
 
     publication = ObservationRecordingRequest(
+        models=(RecordedModel.from_bundle(bundle),),
         reconstructions=(ReconstructionRecording(
             sensor_group="mocap", reference=SpatialReference.for_camera_count(len(camera_ids)),
             definition=ReconstructionSourceDefinition.from_bundle(bundle),

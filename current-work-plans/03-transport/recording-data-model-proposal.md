@@ -202,6 +202,11 @@ records, bound to sensor group, source, reference frame and spatial units. An ex
 no scale evidence was available. `read_static_channels` exposes MODEL_SCALE, SEGMENT_LENGTHS and
 SEGMENT_SCALES from that record. These are derived views, not a second authoritative measurement.
 Stage invalidation and keep/overwrite include these fit records.
+Each fit also requires typed input evidence: keypoint names, numeric point/model fingerprints and
+the recording-wide fitting algorithm version. Reconstruction rejects mismatched evidence; this is
+stage reuse bookkeeping, not a per-landmark mapping-provenance taxonomy. Identity filtering, fitting
+and reconstruction completion are published atomically with validated numeric rows. Centre-of-mass
+completion is included when computed for every reconstructed model in the group.
 
 Per-run `models` contains typed authored scientific definitions, rest poses, tracker mappings and
 mass inputs. Restoring a bundle uses these stored values and domain constructors, not current YAML

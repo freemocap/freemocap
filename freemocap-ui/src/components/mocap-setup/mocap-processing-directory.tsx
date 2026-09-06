@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
 import { useMocap } from "@/hooks/useMocap";
@@ -14,6 +14,7 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
 
   const {
     mocapRecordingPath,
@@ -27,22 +28,24 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
 
   const handleSelectDirectory = async (): Promise<void> => {
     if (!isElectron || !api) return;
+    setDirectoryError(null);
     try {
       const result: string | null = await api.fileSystem.selectDirectory.mutate({
         defaultPath: mocapRecordingPath || undefined,
       });
       if (result) await setManualRecordingPath(result);
     } catch (error) {
-      console.error("Failed to select directory:", error);
+      setDirectoryError(error instanceof Error ? error.message : String(error));
     }
   };
 
   const handleOpenFolder = async (): Promise<void> => {
     if (!isElectron || !api || !mocapRecordingPath) return;
+    setDirectoryError(null);
     try {
       await api.fileSystem.openFolder.mutate({ path: mocapRecordingPath });
     } catch (error) {
-      console.error("Failed to open folder:", error);
+      setDirectoryError(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -86,17 +89,18 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
           <span className="icon icon-size-20 subcat-icon"></span>
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
-            onClick={handleSelectDirectory}
-            title="Click to select Process directory"
+            onClick={mocapRecordingPath ? handleOpenFolder : handleSelectDirectory}
+            title={mocapRecordingPath || "Select a processing directory"}
+            aria-label={mocapRecordingPath ? `Open recording folder: ${mocapRecordingPath}` : "Choose recording folder"}
             disabled={!isElectron}
             style={{ minWidth: 0, overflow: "hidden" }}
           >
             {mocapRecordingPath ? (
               <p
                 className="recording-path-preview flex-1 text md"
-                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", direction: "rtl", textAlign: "left" }}
               >
-                {mocapRecordingPath}
+                <bdi dir="ltr">{mocapRecordingPath}</bdi>
               </p>
             ) : (
               <p
@@ -108,6 +112,12 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
             )}
           </button>
           <div className="flex flex-row gap-1" style={{ flexShrink: 0 }}>
+            <IconButton
+              icon="subfolder-icon"
+              onClick={handleSelectDirectory}
+              disabled={!isElectron}
+              title="Choose a different recording folder"
+            />
             {isUsingManualPath && (
               <IconButton
                 icon="clear-icon"
@@ -141,6 +151,7 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
         <p className="text sm text-gray p-1">
           {isUsingManualPath ? "Using custom path" : "Using default recording directory"}
         </p>
+        {directoryError && <p role="alert" className="text sm text-error">{directoryError}</p>}
       </div>
     </div>
   );

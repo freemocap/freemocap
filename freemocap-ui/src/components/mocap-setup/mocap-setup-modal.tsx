@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
+import {PanelResizeHandles} from "@/components/ui-components/PanelResizeHandles";
 
 import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
+import {RecordingCalibrationOptions} from './RecordingCalibrationOptions';
 import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
 import MOCAPDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
@@ -48,6 +50,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
   >("button1");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const panel1Ref = useRef<HTMLDivElement>(null);
   const panel2Ref = useRef<HTMLDivElement>(null);
   const panel3Ref = useRef<HTMLDivElement>(null);
@@ -118,7 +121,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="mocap-settings-modal bg-primary border-1 border-black pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2">
+      <div ref={modalRef} role="dialog" aria-label="Mocap processing" aria-modal="true" className="mocap-settings-modal bg-primary border-1 border-black pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2">
+        <PanelResizeHandles panelRef={modalRef} />
         {/* Row 1 */}
         <div className="inner-container-settings gap-1 flex flex-row flex-1 br-2">
           {/* Column 1 - Buttons */}
@@ -191,6 +195,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               <CalibrationModule
                 appModeOverride={mode === "playback" ? "playback" : "streaming"}
               />
+              <RecordingCalibrationOptions />
             </div>
 
             {/* Panel 3 - Detector */}

@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {SyncedVideoPlayer} from '@/components/playback/SyncedVideoPlayer';
@@ -12,7 +12,7 @@ import {GridSettingsOverlay} from "@/components/ui-components/GridSettingsOverla
 import IconButton from "@/components/ui-components/IconButton";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
-import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
+import {RecordingPlaybackProvider} from "@/components/viewport3d/RecordingPlaybackProvider";
 import {useAppSelector} from "@/store";
 import {
     selectActiveRecordingBaseDirectory,
@@ -75,48 +75,10 @@ const PlaybackPage: React.FC = () => {
 
     const controller = usePlaybackController({
         videos: videoEntries,
-        recordingFps,
-        frameTimestamps,
-        initialFrame: ctx?.cachedCurrentFrame ?? 0,
+        recordingId: activeRecordingName,
+        recordingParentDirectory: activeRecordingBaseDirectory,
         onFrameChange,
     });
-
-    // If every video in the current source fails to play (e.g. annotated videos
-    // encoded with a codec the player doesn't support), fall back to another
-    // available/valid source (e.g. synchronized).
-    const triedFallbackSourcesRef = useRef<Set<string>>(new Set());
-    const fallbackRecordingRef = useRef<string | null>(null);
-
-    useEffect(() => {
-        if (recordingPath !== fallbackRecordingRef.current) {
-            fallbackRecordingRef.current = recordingPath ?? null;
-            triedFallbackSourcesRef.current = new Set();
-        }
-    }, [recordingPath]);
-
-    useEffect(() => {
-        if (!controller.allReady || videoEntries.length === 0) return;
-        if (controller.erroredVideos.size < videoEntries.length) return;
-        if (!availableSources || !selectedSource || !setSelectedSource) return;
-
-        triedFallbackSourcesRef.current.add(selectedSource);
-
-        const fallback = Object.entries(availableSources).find(
-            ([key, info]) =>
-                key !== selectedSource &&
-                info.available &&
-                info.valid &&
-                info.videos.length > 0 &&
-                !triedFallbackSourcesRef.current.has(key),
-        );
-
-        if (fallback) {
-            console.warn(
-                `[playback] all videos in source '${selectedSource}' failed to play — falling back to '${fallback[0]}'`,
-            );
-            setSelectedSource(fallback[0]);
-        }
-    }, [controller.allReady, controller.erroredVideos, videoEntries.length, availableSources, selectedSource, setSelectedSource]);
 
     return (
         <div className="playback-mode-main-container flex flex-col flex-1 pos-rel h-full">
@@ -186,13 +148,17 @@ const PlaybackPage: React.FC = () => {
 
                                     <Panel defaultSize={40} minSize={10}>
                                         <div className="h-full">
-                                            <FileKeypointsSourceProvider
+                                            <RecordingPlaybackProvider
                                                 recordingId={activeRecordingName}
                                                 recordingParentDirectory={activeRecordingBaseDirectory}
-                                                currentFrameRef={controller.currentFrameRef}
+                                                getMediaPosition={controller.getMediaPosition}
+                                                mediaAvailable={videoEntries.length > 0}
+                                                manifest={controller.manifest}
+                                                reloadManifest={controller.reloadManifest}
+                                                onPlaybackRun={controller.setPlaybackRun}
                                             >
                                                 <ThreeJsCanvas/>
-                                            </FileKeypointsSourceProvider>
+                                            </RecordingPlaybackProvider>
                                         </div>
                                     </Panel>
                                 </PanelGroup>
@@ -206,6 +172,8 @@ const PlaybackPage: React.FC = () => {
                             )}
                         </div>
 
+                        {controller.error && <p role="alert" className="text-error">{controller.error}</p>}
+                        {controller.isSeeking && !controller.error && <p role="status">Decoding requested frames…</p>}
                         <PlaybackControls
                             isPlaying={controller.isPlaying}
                             currentTime={controller.currentTime}
@@ -246,3 +214,4 @@ function formatBytes(bytes: number): string {
 }
 
 export default PlaybackPage;
+

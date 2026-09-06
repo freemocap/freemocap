@@ -7,6 +7,8 @@ from numpy.typing import NDArray
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
+from freemocap.core.reconstruction.recording_fit import RecordingFitInputs
+from freemocap.core.recording.recorded_model import RecordedModel
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 
@@ -22,6 +24,13 @@ class RecordingReconstructionInput:
     @property
     def frame_count(self) -> int:
         return self.keypoints_3d.shape[0]
+
+    def fit_inputs(self, bundle: TrackedSkeletonBundle) -> RecordingFitInputs:
+        return RecordingFitInputs.from_points(
+            names=self.keypoint_names,
+            values=self.keypoints_3d,
+            model=RecordedModel.from_bundle(bundle),
+        )
 
     def __post_init__(self) -> None:
         if (
@@ -44,6 +53,7 @@ class RecordingReconstructionInput:
 
 @dataclass(frozen=True, slots=True)
 class ModelRecordingReconstruction:
+    fit_inputs: RecordingFitInputs
     compute_center_of_mass: bool
     frames: tuple[SkeletonReconstruction | None, ...]
     scale_fit: ModelScaleFit | None

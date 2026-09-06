@@ -1,6 +1,8 @@
 """Recording contracts across rates, failures and retained processing results."""
 
+import json
 from pathlib import Path
+from freemocap.core.reconstruction.recording_fit import RecordingFitInputs
 from dataclasses import replace
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
@@ -9,6 +11,7 @@ from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInpu
 from filelock import Timeout
 
 import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 from freemocap.core.pipeline.posthoc.processing_request import (
@@ -20,7 +23,7 @@ from freemocap.core.pipeline.posthoc.stage_execution_plan import (
     build_execution_plan,
     retained_run,
 )
-from freemocap.core.recording.recording_data import SAMPLE_SCHEMA
+from freemocap.core.recording.recording_data import DESCRIPTOR_KEY, SAMPLE_SCHEMA
 from freemocap.core.recording.recording_checkpoint import publish_checkpoint
 from freemocap.core.recording.recording_metadata import (
     Channel,
@@ -63,6 +66,12 @@ def test_body_detection_restart_preserves_camera_geometry() -> None:
 def test_scale_fit_keep_and_overwrite_preserve_other_results(tmp_path: Path) -> None:
     metadata = metadata_fixture()
     fit = RecordingScaleFit(
+        inputs=RecordingFitInputs(
+            algorithm_version=1,
+            keypoint_names=("point",),
+            points="0" * 64,
+            model="1" * 64,
+        ),
         sensor_group="mocap",
         source="human",
         reference_frame="world",
@@ -137,8 +146,61 @@ def test_scale_fit_keep_and_overwrite_preserve_other_results(tmp_path: Path) -> 
         assert read_metadata(path=structure.data_parquet_path) == metadata
 
 
+def test_incompatible_scale_fit_fails_without_mutating_recording(tmp_path: Path) -> None:
+    metadata = metadata_fixture()
+    fit = RecordingScaleFit(
+        inputs=RecordingFitInputs(
+            algorithm_version=1,
+            keypoint_names=("point",),
+            points="0" * 64,
+            model="1" * 64,
+        ),
+        sensor_group="mocap",
+        source="human",
+        reference_frame="world",
+        units=SampleUnit.PIXELS,
+        fit=None,
+    )
+    run = metadata.runs[0].model_copy(
+        update={
+            "reference_frames": {"world": {"units": SampleUnit.PIXELS}},
+            "scale_fits": (fit,),
+        }
+    )
+    metadata = metadata.model_copy(update={"runs": {0: run}})
+    structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
+    with recording_write_lock(structure=structure):
+        publish_recording(
+            structure=structure,
+            metadata=metadata,
+            batches=[
+                sample_batch(group="mocap", count=2, fps=30.0),
+                sample_batch(group="eye", count=8, fps=120.0),
+            ],
+        )
+    table = pq.read_table(structure.data_parquet_path)
+    descriptor = json.loads(metadata.model_dump_json())
+    del descriptor["runs"]["0"]["scale_fits"][0]["inputs"]
+    schema_metadata = dict(table.schema.metadata or {})
+    schema_metadata[DESCRIPTOR_KEY] = json.dumps(descriptor).encode("utf-8")
+    pq.write_table(
+        table.replace_schema_metadata(schema_metadata), structure.data_parquet_path
+    )
+
+    saved_bytes = structure.data_parquet_path.read_bytes()
+    with pytest.raises(ValueError, match="inputs"):
+        read_metadata(path=structure.data_parquet_path)
+    assert structure.data_parquet_path.read_bytes() == saved_bytes
+
+
 def test_reconstruction_restart_preserves_scale_fit() -> None:
     fit = RecordingScaleFit(
+        inputs=RecordingFitInputs(
+            algorithm_version=1,
+            keypoint_names=("point",),
+            points="0" * 64,
+            model="1" * 64,
+        ),
         sensor_group="mocap",
         source="human",
         reference_frame="world",

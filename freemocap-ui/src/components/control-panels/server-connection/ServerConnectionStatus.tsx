@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useServerPanel } from './useServerPanel';
 import DropdownButton from '@/components/ui-components/DropdownButton';
@@ -31,7 +31,6 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
 
     const serverPid = useAppSelector(selectServerPid);
 
-    const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
     const wsState = isConnected ? STATES.CONNECTED : autoConnectWs ? STATES.CONNECTING : STATES.DISCONNECTED;
 
@@ -120,19 +119,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                         </div>
                     </div>
 
-                    {/* Advanced settings toggle */}
-                    <div className="open-advanced-settings-button-container flex flex-row flex-wrap justify-content-center pl-1 pr-1">
-                        <ButtonSm
-                            text={showAdvancedSettings ? 'Hide settings and preferences' : 'Show settings and preferences'}
-                            onClick={() => setShowAdvancedSettings((prev) => !prev)}
-                            iconClass="settings-icon"
-                            className="full-width text-center"
-                            rightSideIcon="dropdown"
-                        />
-                    </div>
-
                     {/* Detailed settings */}
-                    {showAdvancedSettings && (
                         <>
                             {/* Server Process Section (Electron only) */}
                             {isElectron && (
@@ -268,7 +255,6 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                 </div>
                             </div>
                         </>
-                    )}
                 </div>
             }
             

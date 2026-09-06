@@ -123,6 +123,7 @@ class ReconstructionRecording:
             reference_frame=self.reference.name,
             units=self.reference.units,
             fit=self.result.scale_fit,
+            inputs=self.result.fit_inputs,
         )
 
     def channels(self) -> Iterator[Channel]:

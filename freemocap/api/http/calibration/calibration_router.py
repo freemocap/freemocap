@@ -11,6 +11,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration, get_last_successful_calibration_toml_path
 from freemocap.pubsub.pubsub_topics import (
     CalibrationRecordingStateMessage,
     CalibrationRecordingStateTopic,
@@ -20,6 +21,22 @@ from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 logger = logging.getLogger(__name__)
 
 calibration_router = APIRouter(prefix="/calibration", tags=["Capture Volume Calibration"])
+
+
+class CalibrationFileOptions(BaseModel):
+    recording_path: str | None
+    most_recent_path: str | None
+
+
+@calibration_router.get("/files")
+def calibration_file_options(recording_directory: str) -> CalibrationFileOptions:
+    try:
+        local = find_recording_calibration(recording_folder=Path(recording_directory).expanduser())
+    except (NotADirectoryError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    recent = get_last_successful_calibration_toml_path()
+    return CalibrationFileOptions(recording_path=str(local) if local else None,
+                                  most_recent_path=str(recent) if recent.is_file() else None)
 
 
 # ==================== Request/Response Models ====================

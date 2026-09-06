@@ -9,7 +9,7 @@ import {
     splitParentAndName,
 } from '@/store/slices/active-recording/active-recording-slice';
 import {selectRecordingsList} from '@/store/slices/recording-status/recording-status-slice';
-import {selectPlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
+import {fetchPlaybackBundle, selectPlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
 
 export interface SourceInfo {
     available: boolean;
@@ -72,11 +72,14 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
         currentFrameRef.current = frame;
     }, []);
 
-    // Watch the Redux-cached bundle for the active recording. When it arrives,
-    // populate local state (videos, fps, timestamps, sources). The bundle is
-    // dispatched once by FileKeypointsSourceProvider — the Redux `condition`
-    // guard prevents duplicate requests.
-    const bundle = useAppSelector(selectPlaybackBundle(activeRecordingName));
+    useEffect(() => {
+        if (!activeRecordingName || activeRecordingOrigin === 'pending-capture') return;
+        setLoadedRecordingName(null);
+        setLoadedVideos([]);
+        void dispatch(fetchPlaybackBundle({recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory}));
+    }, [activeRecordingName, activeRecordingBaseDirectory, activeRecordingOrigin, dispatch]);
+
+    const bundle = useAppSelector(selectPlaybackBundle(activeRecordingName, activeRecordingBaseDirectory));
 
     useEffect(() => {
         if (!bundle || activeRecordingOrigin === 'pending-capture') return;

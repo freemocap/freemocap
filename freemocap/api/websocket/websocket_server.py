@@ -87,6 +87,7 @@ class WebsocketServer:
         self._server_framerate_calculators: dict[CameraGroupIdString, ServerFramerateCalculator] = {}
         self._display_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
         self._last_framerate_send_time: float = 0.0
+        self._camera_frame_cursors: dict[CameraGroupIdString, int] = {}
 
         # ── Standard-stream send path ────────────────────────────────────
         # One writer (the serializer owns the send lock).
@@ -373,7 +374,7 @@ class WebsocketServer:
             CameraGroupIdString, tuple[FrameNumberInt, float, bytes | bytearray | memoryview]
         ] = await asyncio.to_thread(
             self._app.camera_group_manager.get_latest_frontend_payloads,
-            if_newer_than=self._relay.last_sent_frame_number,
+            if_newer_than=self._camera_frame_cursors,
             display_image_sizes=self._display_image_sizes,
         )
         if not payloads:
@@ -381,6 +382,7 @@ class WebsocketServer:
         group_id, (frame_number, mf_timestamp, image_bytes) = max(
             payloads.items(), key=lambda item: item[1][0]
         )
+        self._camera_frame_cursors[group_id] = int(frame_number)
         self._record_framerate(
             camera_group_id=group_id,
             frame_number=frame_number,

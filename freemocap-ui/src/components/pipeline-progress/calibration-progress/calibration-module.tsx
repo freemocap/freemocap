@@ -246,7 +246,7 @@ const CalibrationModule = ({
       {shouldShowRecordAndCalibrate && (
         <ButtonSm
           iconClass="record-icon"
-          text="Record and Calibrate"
+          text="Record calibration videos"
           className="full-width"
           textClass="text-align-left"
           onClick={handleRecordAndCalibrate}
@@ -254,7 +254,7 @@ const CalibrationModule = ({
       )}
       <ButtonSm
         iconClass="importVideos-icon"
-        text="Import Calibration videos"
+        text="Import calibration videos"
         className="full-width"
         textClass="text-align-left"
         onClick={handleOpenImportVideos}
@@ -262,7 +262,7 @@ const CalibrationModule = ({
       />
       <ButtonSm
         iconClass="tomlfile-icon"
-        text="Import .toml file"
+        text="Load calibration TOML"
         className="full-width"
         textClass="text-align-left"
         onClick={handleImportToml}
@@ -553,7 +553,8 @@ const CalibrationModule = ({
         */}
         <DropdownButton
           buttonProps={{
-            text: "Calibrate",
+            text: "Set up calibration",
+            rightSideIcon: "dropdown",
             iconClass: "calibrate-icon",
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",

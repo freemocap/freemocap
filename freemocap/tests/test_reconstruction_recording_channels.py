@@ -1,6 +1,7 @@
 """Missing local rotations, named angles and derived channels retain their semantics."""
 
 import numpy as np
+from freemocap.core.reconstruction.recording_fit import RecordingFitInputs
 import pyarrow as pa
 
 from freemocap.core.reconstruction.recording_reconstruction import (
@@ -32,6 +33,12 @@ def test_partial_pose_preserves_world_orientation_and_missing_local_rotation() -
             },
         ),
         result=ModelRecordingReconstruction(
+            fit_inputs=RecordingFitInputs(
+                algorithm_version=1,
+                keypoint_names=("point",),
+                points="0" * 64,
+                model="1" * 64,
+            ),
             compute_center_of_mass=True,
             scale_fit=None,
             frames=(

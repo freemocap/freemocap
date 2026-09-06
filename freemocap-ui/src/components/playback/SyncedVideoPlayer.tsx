@@ -70,8 +70,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         setVideoRef,
         setFrameOverlayRef,
         setTimeOverlayRef,
-        handleLoadedMetadata,
-        handleVideoError,
         frameTimestampsRef,
     } = controller;
 
@@ -163,8 +161,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             setVideoRef={setVideoRef}
                             setFrameOverlayRef={setFrameOverlayRef}
                             setTimeOverlayRef={setTimeOverlayRef}
-                            handleLoadedMetadata={handleLoadedMetadata}
-                            handleVideoError={handleVideoError}
                         />
                     </div>
                 ))}

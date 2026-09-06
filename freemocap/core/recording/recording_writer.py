@@ -18,6 +18,7 @@ from freemocap.core.recording.recording_data import (
 )
 from freemocap.core.recording.recording_metadata import RecordingMetadata
 from freemocap.core.recording.recording_reader import read_metadata
+from freemocap.core.recording.shared_recording_file import replace_recording_file
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 
@@ -68,7 +69,7 @@ def publish_recording(
             validator.finish()
         with temporary.open("rb+") as completed:
             os.fsync(completed.fileno())
-        os.replace(temporary, structure.data_parquet_path)
+        replace_recording_file(source=temporary, destination=structure.data_parquet_path)
         write_metadata_mirror(path=structure.recording_info_path, metadata=metadata)
     finally:
         temporary.unlink(missing_ok=True)

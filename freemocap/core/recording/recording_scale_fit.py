@@ -4,6 +4,10 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 
 from freemocap.core.recording.sample_conventions import SampleUnit
+from freemocap.core.reconstruction.recording_fit import (
+    RecordingFitInputs,
+    FittedRecordingScale,
+)
 
 
 class RecordingScaleFit(BaseModel):
@@ -14,6 +18,10 @@ class RecordingScaleFit(BaseModel):
     reference_frame: str
     units: SampleUnit
     fit: ModelScaleFit | None
+    inputs: RecordingFitInputs
+
+    def for_reconstruction(self) -> FittedRecordingScale:
+        return FittedRecordingScale(inputs=self.inputs, fit=self.fit)
 
     @model_validator(mode="after")
     def validate_units(self) -> "RecordingScaleFit":

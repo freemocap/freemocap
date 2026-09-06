@@ -2,6 +2,7 @@
 
 import logging
 import time
+from freemocap.core.reconstruction.recording_fit import FittedRecordingScale
 
 import numpy as np
 from skellyforge.core.math.geometry.spatial_vectors import Point
@@ -14,7 +15,6 @@ from freemocap.core.skeletons.reconstruction_state import (
     build_reconstruction_states,
     streaming_model_scale_source,
 )
-from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 from freemocap.core.reconstruction.recording_reconstruction import (
     RecordingReconstructionInput,
     ModelRecordingReconstruction,
@@ -142,6 +142,9 @@ def reconstruct_skeletons_for_recording(
     request: RecordingReconstructionInput,
 ) -> dict[str, ModelRecordingReconstruction]:
     """Fit complete-recording evidence once, then reconstruct with fresh temporal state."""
+    fit_inputs = {
+        bundle.model_id: request.fit_inputs(bundle) for bundle in request.bundles
+    }
     t0 = time.perf_counter()
     states = build_reconstruction_states(
         bundles=request.bundles,
@@ -171,10 +174,13 @@ def reconstruct_skeletons_for_recording(
             )
             states[bundle.model_id].scale_source.observe_pose(pose=pose)
     fits = {
-        model_id: state.scale_source.current_fit()
-        if state.scale_source.has_model_scale
-        else None
-        for model_id, state in states.items()
+        bundle.model_id: FittedRecordingScale(
+            inputs=fit_inputs[bundle.model_id],
+            fit=states[bundle.model_id].scale_source.current_fit()
+            if states[bundle.model_id].scale_source.has_model_scale
+            else None,
+        )
+        for bundle in request.bundles
     }
     request.timing.record("fit_recording_scale", time.perf_counter() - t0)
     return reconstruct_skeletons_with_fits(request=request, fits=fits)
@@ -183,18 +189,22 @@ def reconstruct_skeletons_for_recording(
 def reconstruct_skeletons_with_fits(
     *,
     request: RecordingReconstructionInput,
-    fits: dict[str, ModelScaleFit | None],
+    fits: dict[str, FittedRecordingScale],
 ) -> dict[str, ModelRecordingReconstruction]:
     """Reconstruct from explicit recording fits, without observing new scale evidence."""
     if set(fits) != {bundle.model_id for bundle in request.bundles}:
         raise ValueError("Saved fits must match the requested model set")
     for bundle in request.bundles:
-        fit = fits[bundle.model_id]
+        if fits[bundle.model_id].inputs != request.fit_inputs(bundle):
+            raise ValueError(
+                "Saved scale fit inputs changed; rerun recording-wide fitting"
+            )
+        fit = fits[bundle.model_id].fit
         if fit is not None and set(fit.segment_scales) != set(bundle.skeleton.segments):
             raise ValueError("Saved fit segment set does not match the skeleton")
     states = build_reconstruction_states(
         bundles=request.bundles,
-        scale_source_for=lambda bundle: FrozenModelScale(fit=fits[bundle.model_id]),
+        scale_source_for=lambda bundle: FrozenModelScale(fit=fits[bundle.model_id].fit),
     )
     frames: dict[str, list[SkeletonReconstruction | None]] = {
         bundle.model_id: [] for bundle in request.bundles
@@ -223,8 +233,10 @@ def reconstruct_skeletons_with_fits(
     )
     return {
         model_id: ModelRecordingReconstruction(
+            fit_inputs=fits[model_id].inputs,
             compute_center_of_mass=request.compute_center_of_mass,
-            frames=tuple(values), scale_fit=fits[model_id]
+            frames=tuple(values),
+            scale_fit=fits[model_id].fit,
         )
         for model_id, values in frames.items()
     }

@@ -101,6 +101,7 @@ class ImageReference(Descriptor):
 
 class CameraRecordingDefinition(Descriptor):
     camera_id: str
+    video_filename: str
     timing_method: TimingMethod
     nominal_fps: float
     inferred_offset_s: float

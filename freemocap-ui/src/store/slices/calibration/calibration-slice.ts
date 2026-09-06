@@ -42,6 +42,7 @@ export interface CalibrationState {
     error: string | null;
     directoryInfo: CalibrationDirectoryInfo | null;
     loadedCalibration: LoadedCalibration | null;
+    loadRequestId: string | null;
     dismissedCalibrationPath: string | null;
     pyceresAvailable: boolean | null;
     isCheckingPyceresAvailability: boolean;
@@ -65,6 +66,7 @@ const initialState: CalibrationState = {
     error: null,
     directoryInfo: null,
     loadedCalibration: null,
+    loadRequestId: null,
     dismissedCalibrationPath: null,
     pyceresAvailable: null,
     isCheckingPyceresAvailability: false,
@@ -92,6 +94,7 @@ export const calibrationSlice = createSlice({
             }
         },
         calibrationLoadedFromBundle: (state, action: PayloadAction<LoadedCalibration | null>) => {
+            state.loadRequestId = null;
             state.loadedCalibration = action.payload;
         },
         calibrationAutoLoadDismissed: (state, action: PayloadAction<string | null>) => {
@@ -131,22 +134,37 @@ export const calibrationSlice = createSlice({
             });
 
         builder
+            .addCase(loadCalibrationToml.pending, (state, action) => {
+                state.loadRequestId = action.meta.requestId;
+            })
             .addCase(loadCalibrationToml.fulfilled, (state, action) => {
+                if (state.loadRequestId !== action.meta.requestId) return;
+                state.loadRequestId = null;
                 if (action.payload) {
                     state.loadedCalibration = action.payload;
                 }
             })
-            .addCase(loadCalibrationToml.rejected, (state) => {
+            .addCase(loadCalibrationToml.rejected, (state, action) => {
+                if (state.loadRequestId !== action.meta.requestId) return;
+                state.loadRequestId = null;
+                if (action.meta.aborted) return;
                 state.loadedCalibration = null;
             });
 
         builder
+            .addCase(loadCalibrationForRecording.pending, (state, action) => {
+                state.loadRequestId = action.meta.requestId;
+            })
             .addCase(loadCalibrationForRecording.fulfilled, (state, action) => {
+                if (state.loadRequestId !== action.meta.requestId) return;
+                state.loadRequestId = null;
                 if (action.payload) {
                     state.loadedCalibration = action.payload;
                 }
             })
             .addCase(loadCalibrationForRecording.rejected, (state, action) => {
+                if (state.loadRequestId !== action.meta.requestId) return;
+                state.loadRequestId = null;
                 console.warn('[calibration] loadCalibrationForRecording rejected:', action.payload);
             });
 

@@ -88,7 +88,8 @@ and the VMC Definition of Done. Then:
 1. **One complete posthoc recording into canonical storage** — the recording contract and stage
    planner have focused tests. The mocap path saves observations/timing/raw 3D, world landmarks,
    segment origins/local and world rotations, joint angles, centre of mass, scientific definitions
-   and the complete frozen fit. Complete input-array reload and checkpoint signatures. Prove saved-data
+   and the complete frozen fit. Raw-input reload, strict fit-input binding and atomic numerical
+   completion records have focused tests. Connect saved-input signature resolution to the planner. Prove saved-data
    reconstruction opens no video and constructs no detector. Verify keep/overwrite through worker
    execution. See [posthoc rebuild](02-pipeline/posthoc-rebuild.md) and
    [processing/playback contract](02-pipeline/processing-and-playback-integration.md).

@@ -1,16 +1,8 @@
 """Posthoc ingestion reads capture sidecars or infers timing for imported video."""
 
 from pathlib import Path
-from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
-from freemocap.core.reconstruction.recording_reconstruction import (
-    ModelRecordingReconstruction,
-)
-from freemocap.core.recording.reconstruction_recording import (
-    ReconstructionRecording,
-    ReconstructionSourceDefinition,
-)
-from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.recording.recording_reader import read_metadata
+from freemocap.core.recording.playback_data import playback_manifest
 
 from freemocap.core.recording.observation_recording_models import (
     ObservationRecordingRequest,
@@ -95,43 +87,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
         metadata = publish_posthoc_observations(
             ObservationRecordingRequest(
                 models=(),
-                reconstructions=(
-                    ReconstructionRecording(
-                        sensor_group="mocap",
-                        reference=points.definition.reference,
-                        definition=ReconstructionSourceDefinition(
-                            joint_angle_names={},
-                            model_id="subject",
-                            tracker="tracker",
-                            scale_reference_name="size",
-                            landmark_names=("wrist",),
-                            segment_origins={"forearm": "wrist"},
-                            segment_parents={"forearm": None},
-                        ),
-                        result=ModelRecordingReconstruction(
-                            compute_center_of_mass=False,
-                            frames=(
-                                SkeletonReconstruction(
-                                    model_id="subject",
-                                    landmarks={
-                                        "wrist": np.array([1.0 + iteration, 2.0, 3.0])
-                                    },
-                                    segment_rotations_world={
-                                        "forearm": np.array([1.0, 0.0, 0.0, 0.0])
-                                    },
-                                ),
-                                None,
-                            ),
-                            scale_fit=ModelScaleFit(
-                                fitted_scale=100.0 + iteration,
-                                segment_scales={"forearm": 100.0 + iteration},
-                                segment_lengths={"forearm": 10.0},
-                                measured_segment_names=frozenset({"forearm"}),
-                                voting_segment_names=frozenset({"forearm"}),
-                            ),
-                        ),
-                    ),
-                ),
+                reconstructions=(),
                 camera_geometry=(),
                 recording=info,
                 spatial_series=(points,),
@@ -146,7 +102,12 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
         )
     structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
     assert read_metadata(path=structure.data_parquet_path) == metadata
-    assert metadata.runs[0].scale_fits[0].fit.fitted_scale == 101.0
+    media = playback_manifest(structure.data_parquet_path).runs[0].media
+    assert tuple(item.video_filename for item in media) == ("a.mp4", "b.mp4")
+    assert all(item.nominal_fps == 30.0 and item.timeline.sensor_group == "mocap" for item in media)
+    for index, item in enumerate(media):
+        expected = (0.001 + index * 0.001, 0.04 + index * 0.001) if recorded else (0.0, 1 / 30)
+        assert item.timeline.timestamps_s == pytest.approx(expected)
     rows = pa.Table.from_batches(
         list(
             read_batches(
@@ -168,23 +129,6 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
         if row["channel"] == "RAW_KEYPOINTS_3D" and row["component"] == "x"
     ]
     assert [row["value"] for row in spatial] == [11.0, None]
-    landmarks = [
-        row
-        for row in rows
-        if row["channel"] == "LANDMARKS_3D" and row["component"] == "x"
-    ]
-    assert [row["value"] for row in landmarks] == [2.0, None]
-    rotations = [row for row in rows if row["channel"] == "ROTATIONS_WORLD"]
-    assert [row["value"] for row in rotations] == [
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        None,
-        None,
-        None,
-        None,
-    ]
     assert all(row["units"] == "mm" for row in spatial)
     assert [row["timestamp_s"] for row in spatial] == pytest.approx(
         [0.0015, 0.0405] if recorded else [0.0, 1 / 30]

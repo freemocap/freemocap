@@ -2216,7 +2216,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#7a52305bbe38b41dee83659c0b55854066bf653c" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#69e2b7ca976378c90d6ab3eea0e1ebc35fe4296e" }
 dependencies = [
     { name = "av", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -2246,7 +2246,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#8717d836741990e797e86a13120e72c680015143" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#5fe45aa8c44cc7ab974d7b0f675eaca6c2f56af3" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -2271,7 +2271,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#3ff1f8d291ab2d7a665353b8ca9108dcad59aa5d" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#87f521b1c005bebc853c48f057c2668b711a2536" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

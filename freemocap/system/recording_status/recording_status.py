@@ -8,6 +8,7 @@ by the playback router (list + per-recording status), the blender router
 from datetime import datetime, timezone
 from pathlib import Path
 from pydantic import BaseModel
+from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration
 
 from freemocap.system.default_paths import (
     ANNOTATED_VIDEOS_FOLDER_NAME,
@@ -145,10 +146,7 @@ def _find_blend_file(recording_folder: str|Path) -> Path | None:
 
 
 def _find_calibration_toml(recording_folder: str|Path) -> Path | None:
-    for p in recording_folder.iterdir():
-        if p.is_file() and p.suffix.lower() == ".toml" and "calibration" in p.name.lower():
-            return p
-    return None
+    return find_recording_calibration(recording_folder=Path(recording_folder))
 
 
 def _file_status(path: Path, display_name: str | None = None) -> FileStatus:

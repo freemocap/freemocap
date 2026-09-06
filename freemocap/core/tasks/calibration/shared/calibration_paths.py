@@ -23,3 +23,17 @@ def create_camera_calibration_file_name(recording_name: str) -> str:
 def get_last_successful_calibration_toml_path() -> Path:
     """Get the path for the last successful calibration TOML file."""
     return get_calibrations_folder_path() / f"{LAST_SUCCESSFUL_CAMERA_CALIBRATION_STRING}.toml"
+
+
+def find_recording_calibration(*, recording_folder: Path) -> Path | None:
+    """Prefer the recording's named artifact; require a choice if alternatives are ambiguous."""
+    if not recording_folder.is_dir():
+        raise NotADirectoryError(recording_folder)
+    named = recording_folder / create_camera_calibration_file_name(recording_folder.name)
+    if named.is_file():
+        return named
+    candidates = sorted(path for path in recording_folder.iterdir()
+                        if path.is_file() and path.suffix.lower() == ".toml" and "calibration" in path.stem.lower())
+    if len(candidates) > 1:
+        raise ValueError(f"Multiple calibration files in {recording_folder}; select a TOML explicitly")
+    return candidates[0] if candidates else None

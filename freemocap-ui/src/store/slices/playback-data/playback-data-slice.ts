@@ -62,6 +62,10 @@ const emptyEntry = (): PerRecordingPlaybackData => ({
     fetchedAt: null,
 });
 
+function playbackLocationKey(recordingId: string, parent: string | null | undefined): string {
+    return JSON.stringify([parent ?? null, recordingId]);
+}
+
 // ---------------------------------------------------------------------------
 // Thunk
 // ---------------------------------------------------------------------------
@@ -130,10 +134,10 @@ export const fetchPlaybackBundle = createAsyncThunk<
         }
     },
     {
-        condition: ({recordingId}, {getState}) => {
+        condition: ({recordingId, recordingParentDirectory}, {getState}) => {
             const state = getState();
-            const existing = state.playbackData.byRecordingId[recordingId];
-            if (existing?.bundle || existing?.isLoading) return false;
+            const existing = state.playbackData.byRecordingId[playbackLocationKey(recordingId, recordingParentDirectory)];
+            if (existing?.isLoading) return false;
             return true;
         },
     },
@@ -150,12 +154,12 @@ export const playbackDataSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(fetchPlaybackBundle.pending, (state, action) => {
-                const id = action.meta.arg.recordingId;
+                const id = playbackLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
                 const prev = state.byRecordingId[id] ?? emptyEntry();
                 state.byRecordingId[id] = {...prev, isLoading: true, error: null};
             })
             .addCase(fetchPlaybackBundle.fulfilled, (state, action) => {
-                const id = action.payload.recordingId;
+                const id = playbackLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
                 state.byRecordingId[id] = {
                     bundle: action.payload,
                     isLoading: false,
@@ -164,7 +168,7 @@ export const playbackDataSlice = createSlice({
                 };
             })
             .addCase(fetchPlaybackBundle.rejected, (state, action) => {
-                const id = action.meta.arg.recordingId;
+                const id = playbackLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
                 const prev = state.byRecordingId[id] ?? emptyEntry();
                 state.byRecordingId[id] = {
                     ...prev,
@@ -180,16 +184,16 @@ export const playbackDataSlice = createSlice({
 // Selectors
 // ---------------------------------------------------------------------------
 
-export const selectPlaybackBundle = (recordingId: string | null | undefined) =>
+export const selectPlaybackBundle = (recordingId: string | null | undefined, parent: string | null | undefined) =>
     (state: RootState): PlaybackBundle | null => {
         if (!recordingId) return null;
-        return state.playbackData.byRecordingId[recordingId]?.bundle ?? null;
+        return state.playbackData.byRecordingId[playbackLocationKey(recordingId, parent)]?.bundle ?? null;
     };
 
-export const selectPlaybackBundleIsLoading = (recordingId: string | null | undefined) =>
+export const selectPlaybackBundleIsLoading = (recordingId: string | null | undefined, parent: string | null | undefined) =>
     (state: RootState): boolean => {
         if (!recordingId) return false;
-        return state.playbackData.byRecordingId[recordingId]?.isLoading ?? false;
+        return state.playbackData.byRecordingId[playbackLocationKey(recordingId, parent)]?.isLoading ?? false;
     };
 
 export default playbackDataSlice.reducer;

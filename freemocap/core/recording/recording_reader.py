@@ -19,6 +19,11 @@ def read_static_channels(run: RunDescriptor) -> tuple[StaticChannel, ...]:
 
 
 def read_metadata(*, path: Path) -> RecordingMetadata:
+    payload = _read_metadata_payload(path=path)
+    return RecordingMetadata.model_validate_json(payload)
+
+
+def _read_metadata_payload(*, path: Path) -> bytes:
     with pq.ParquetFile(path) as parquet:
         schema = parquet.schema_arrow
         if not schema.equals(SAMPLE_SCHEMA, check_metadata=False):
@@ -26,7 +31,7 @@ def read_metadata(*, path: Path) -> RecordingMetadata:
         payload = (schema.metadata or {}).get(DESCRIPTOR_KEY)
         if payload is None:
             raise ValueError(f"Missing recording descriptor: {path}")
-        return RecordingMetadata.model_validate_json(payload)
+        return payload
 
 
 def read_batches(

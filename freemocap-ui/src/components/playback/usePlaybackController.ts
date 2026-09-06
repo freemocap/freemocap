@@ -1,471 +1,202 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
+import {mediaFrameAtRecordingTime, type MediaPosition} from '@/services/recording/playback-timing';
+import {type PlaybackManifest, type PlaybackRun, type PlaybackMedia} from '@/services/recording/playback-data';
+import {serverUrls} from '@/constants/server-urls';
 
-interface VideoEntry {
-    videoId: string;
-    filename: string;
-    streamUrl: string;
-}
-
+interface VideoEntry {videoId: string; filename: string; streamUrl: string}
 interface UsePlaybackControllerArgs {
-    videos: VideoEntry[];
-    recordingFps?: number;
-    frameTimestamps?: Record<string, number[]> | null;
-    initialFrame?: number;
+    videos: VideoEntry[]; recordingId: string | null; recordingParentDirectory: string | null | undefined;
     onFrameChange?: (frame: number) => void;
 }
 
-function formatTimecodeFromSeconds(seconds: number, fps: number): string {
-    if (fps <= 0) return '00:00:00:00';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    const f = Math.floor((seconds % 1) * fps);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}`;
-}
-
-function formatTimecode(frame: number, fps: number): string {
-    if (fps <= 0) return '00:00:00:00';
-    const totalSec = frame / fps;
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = Math.floor(totalSec % 60);
-    const f = frame % Math.round(fps);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}`;
-}
-
-function formatSeconds(frame: number, fps: number): string {
-    if (fps <= 0) return '0.000s';
-    return `${(frame / fps).toFixed(3)}s`;
-}
-
-export function usePlaybackController({
-    videos,
-    recordingFps,
-    frameTimestamps,
-    initialFrame = 0,
-    onFrameChange,
-}: UsePlaybackControllerArgs) {
-    const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
-    const frameOverlayRefs = useRef<Map<string, HTMLElement>>(new Map());
-    const timeOverlayRefs = useRef<Map<string, HTMLElement>>(new Map());
-
-    // Playback refs (rAF loop reads these, never stale)
-    const isPlayingRef = useRef(false);
+export function usePlaybackController({videos, recordingId, recordingParentDirectory, onFrameChange}: UsePlaybackControllerArgs) {
+    const [manifest, setManifest] = useState<PlaybackManifest | null>(null);
+    const [media, setMedia] = useState<PlaybackMedia[]>([]);
+    const [reload, setReload] = useState(0);
+    const [error, setError] = useState<string | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentFrame, setCurrentFrame] = useState(0);
+    const [requestedFrame, setRequestedFrame] = useState(0);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const [isLooping, setIsLooping] = useState(false);
+    const [videosReady, setVideosReady] = useState(0);
+    const [settings, setSettings] = useState<PlaybackSettings>({showOverlays: true, timestampFormat: 'seconds'});
+    const canvases = useRef(new Map<string, HTMLCanvasElement>());
+    const frameLabels = useRef(new Map<string, HTMLElement>());
+    const timeLabels = useRef(new Map<string, HTMLElement>());
+    const presentedMedia = useRef<MediaPosition | null>(null);
     const currentFrameRef = useRef(0);
-    const totalFramesRef = useRef(0);
-    const fpsRef = useRef(recordingFps || 30);
-    const playbackRateRef = useRef(1);
-    const rafRef = useRef<number | null>(null);
-    const settingsRef = useRef<PlaybackSettings>({showOverlays: true, timestampFormat: 'seconds'});
     const frameTimestampsRef = useRef<Record<string, number[]> | null>(null);
     const onFrameChangeRef = useRef(onFrameChange);
     onFrameChangeRef.current = onFrameChange;
-    const didSeekInitialRef = useRef(false);
+    const videosRef = useRef(videos);
+    videosRef.current = videos;
+    const videoKey = JSON.stringify(videos);
+    const leader = media.find(item => item.video_filename === videos[0]?.filename);
+    const timeline = leader?.timeline;
+    const totalFrames = timeline?.frame_numbers.length ?? 0;
+    const fps = leader?.nominal_fps ?? 30;
+    const times = timeline?.timestamps_s;
+    const currentTime = times?.[currentFrame] ?? 0;
+    const duration = times?.length ? times[times.length - 1] : 0;
+    const parameters = new URLSearchParams();
+    if (recordingParentDirectory) parameters.set('recording_parent_directory', recordingParentDirectory);
+    const manifestUrl = recordingId ? `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}/manifest?${parameters}` : null;
 
-    // Leader-based sync
-    const leaderIdRef = useRef<string | null>(null);
-    const FOLLOWER_DRIFT_TOLERANCE_FRAMES = 2;
-    const FOLLOWER_CHECK_INTERVAL = 15;
-    const followerCheckCounter = useRef(0);
-
-    // Throttle React state updates to ~5Hz
-    const lastReactUpdateRef = useRef(0);
-    const REACT_UPDATE_INTERVAL_MS = 200;
-
-    // Slider drag state
-    const isDraggingRef = useRef(false);
-    const wasPlayingBeforeDragRef = useRef(false);
-
-    // React state — ONLY for controls/slider
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [currentFrame, setCurrentFrame] = useState(0);
-    const [totalFrames, setTotalFrames] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [playbackRate, setPlaybackRate] = useState(1);
-    const [videosReady, setVideosReady] = useState(0);
-    const [settings, setSettings] = useState<PlaybackSettings>({
-        showOverlays: true,
-        timestampFormat: 'timecode',
-    });
-    const [isLooping, setIsLooping] = useState(false);
-    const isLoopingRef = useRef(false);
-    const [erroredVideos, setErroredVideos] = useState<Set<string>>(new Set());
-
-    const fps = recordingFps || 30;
-    const allReady = videosReady >= videos.length && videos.length > 0;
-    const currentTime = fpsRef.current > 0 ? currentFrameRef.current / fpsRef.current : 0;
-
-    // Keep refs in sync
-    useEffect(() => { settingsRef.current = settings; }, [settings]);
-    useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
-    useEffect(() => { frameTimestampsRef.current = frameTimestamps ?? null; }, [frameTimestamps]);
     useEffect(() => {
-        if (recordingFps && recordingFps > 0) fpsRef.current = recordingFps;
-    }, [recordingFps]);
-
-    // Track the previous set of video IDs+URLs so we reset state whenever the
-    // recording changes — even when the same cameras are used across recordings.
-    // The `videos` prop is a fresh array on every render (from loadedVideos.map()
-    // in PlaybackPage), so we can't use array reference equality.
-    const prevVideoIdsRef = useRef<string>('');
-
-    // Elect leader and reset per-video-set state when video IDs or stream URLs change
-    useEffect(() => {
-        const currentIds = videos.map(v => `${v.videoId}::${v.streamUrl}`).sort().join('|');
-        if (currentIds !== prevVideoIdsRef.current) {
-            prevVideoIdsRef.current = currentIds;
-            isPlayingRef.current = false;
-            setIsPlaying(false);
-            setVideosReady(0);
-            setErroredVideos(new Set());
-            setTotalFrames(0);
-            setDuration(0);
-            setCurrentFrame(0);
-            totalFramesRef.current = 0;
-            currentFrameRef.current = 0;
-            didSeekInitialRef.current = false;
-        }
-        leaderIdRef.current = videos.length > 0 ? videos[0].videoId : null;
-    }, [videos]);
-
-    // Direct DOM overlay updates
-    const updateOverlays = useCallback((frame: number) => {
-        const s = settingsRef.current;
-        const ts = frameTimestampsRef.current;
-        const padLen = Math.max(String(totalFramesRef.current).length, 1);
-        const frameText = 'F' + String(frame).padStart(padLen, '0');
-
-        let timeText: string;
-        if (ts) {
-            const firstKey = Object.keys(ts)[0];
-            const camTs = firstKey ? ts[firstKey] : null;
-            if (camTs && frame < camTs.length) {
-                const realSec = camTs[frame];
-                timeText = s.timestampFormat === 'timecode'
-                    ? formatTimecodeFromSeconds(realSec, fpsRef.current)
-                    : `${realSec.toFixed(3)}s`;
-            } else {
-                timeText = '~' + (s.timestampFormat === 'timecode'
-                    ? formatTimecode(frame, fpsRef.current)
-                    : formatSeconds(frame, fpsRef.current));
-            }
-        } else {
-            timeText = '~' + (s.timestampFormat === 'timecode'
-                ? formatTimecode(frame, fpsRef.current)
-                : formatSeconds(frame, fpsRef.current));
-        }
-
-        frameOverlayRefs.current.forEach((el) => { el.textContent = frameText; });
-        timeOverlayRefs.current.forEach((el) => { el.textContent = timeText; });
-    }, []);
-
-    // Seek all videos to a frame
-    const seekAllToFrame = useCallback((frame: number) => {
-        const clamped = Math.max(0, Math.min(frame, totalFramesRef.current - 1));
-        const targetTime = fpsRef.current > 0 ? clamped / fpsRef.current : 0;
-        videoRefs.current.forEach((el) => { el.currentTime = targetTime; });
-        currentFrameRef.current = clamped;
-        setCurrentFrame(clamped);
-        onFrameChangeRef.current?.(clamped);
-        updateOverlays(clamped);
-    }, [updateOverlays]);
-
-    // Native play/pause
-    const playAllVideos = useCallback(() => {
-        const rate = playbackRateRef.current;
-        const leaderId = leaderIdRef.current;
-        const leader = leaderId ? videoRefs.current.get(leaderId) : null;
-        if (leader) {
-            leader.playbackRate = rate;
-            leader.play().catch(() => {});
-        }
-        videoRefs.current.forEach((el, id) => {
-            if (id === leaderId) return;
-            el.playbackRate = rate;
-            el.play().catch(() => {});
-        });
-    }, []);
-
-    const pauseAllVideos = useCallback(() => {
-        videoRefs.current.forEach((el) => { el.pause(); });
-    }, []);
-
-    // rAF playback loop
-    const tick = useCallback((timestamp: DOMHighResTimeStamp) => {
-        if (!isPlayingRef.current) return;
-
-        const leaderId = leaderIdRef.current;
-        const leader = leaderId ? videoRefs.current.get(leaderId) : null;
-        if (!leader) {
-            rafRef.current = requestAnimationFrame(tick);
-            return;
-        }
-
-        const leaderTime = leader.currentTime;
-        const newFrame = leaderTime * fpsRef.current;
-
-        if (newFrame >= totalFramesRef.current) {
-            if (isLoopingRef.current) {
-                pauseAllVideos();
-                videoRefs.current.forEach((el) => { el.currentTime = 0; });
-                currentFrameRef.current = 0;
-                followerCheckCounter.current = 0;
-                updateOverlays(0);
-                setCurrentFrame(0);
-                playAllVideos();
-                rafRef.current = requestAnimationFrame(tick);
-                return;
-            }
-            pauseAllVideos();
-            isPlayingRef.current = false;
-            const endFrame = totalFramesRef.current - 1;
-            currentFrameRef.current = endFrame;
-            updateOverlays(endFrame);
-            setIsPlaying(false);
-            setCurrentFrame(endFrame);
-            return;
-        }
-
-        const intFrame = Math.floor(newFrame);
-        const prevIntFrame = Math.floor(currentFrameRef.current);
-        currentFrameRef.current = newFrame;
-
-        if (intFrame !== prevIntFrame) {
-            updateOverlays(intFrame);
-        }
-
-        if (timestamp - lastReactUpdateRef.current >= REACT_UPDATE_INTERVAL_MS) {
-            lastReactUpdateRef.current = timestamp;
-            setCurrentFrame(intFrame);
-            onFrameChangeRef.current?.(intFrame);
-        }
-
-        followerCheckCounter.current++;
-        if (followerCheckCounter.current >= FOLLOWER_CHECK_INTERVAL) {
-            followerCheckCounter.current = 0;
-            const toleranceSec = FOLLOWER_DRIFT_TOLERANCE_FRAMES / fpsRef.current;
-            const rate = playbackRateRef.current;
-            videoRefs.current.forEach((el, id) => {
-                if (id === leaderId) return;
-                if (Math.abs(el.currentTime - leaderTime) > toleranceSec) {
-                    el.currentTime = leaderTime;
+        const abort = new AbortController();
+        setManifest(null); setMedia([]); setError(null); setIsPlaying(false);
+        setVideosReady(0); setCurrentFrame(0); setRequestedFrame(0); presentedMedia.current = null;
+        if (!manifestUrl) return;
+        void (async () => {
+            try {
+                const response = await fetch(manifestUrl, {signal: abort.signal});
+                if (response.status === 404) {
+                    const url = new URL(manifestUrl);
+                    url.pathname = url.pathname.replace(/\/manifest$/, '/media');
+                    const mediaResponse = await fetch(url, {signal: abort.signal});
+                    if (!mediaResponse.ok) throw new Error(await mediaResponse.text());
+                    const result: PlaybackMedia[] = await mediaResponse.json();
+                    if (!abort.signal.aborted) setMedia(result);
+                    return;
                 }
-                if (Math.abs(el.playbackRate - rate) > 0.01) {
-                    el.playbackRate = rate;
+                if (!response.ok) throw new Error(await response.text());
+                const result: PlaybackManifest = await response.json();
+                if (abort.signal.aborted) return;
+                const selected = result.runs.find(item => item.run_id === result.selected_run_id);
+                if (!selected) throw new Error('Selected recording result is missing');
+                setManifest(result); setMedia(selected.media);
+            } catch (failure) {if (!abort.signal.aborted) setError(String(failure));}
+        })();
+        return () => abort.abort();
+    }, [manifestUrl, reload]);
+
+    useEffect(() => {
+        setIsPlaying(false); setCurrentFrame(0); setRequestedFrame(0); setVideosReady(0);
+        presentedMedia.current = null;
+        canvases.current.forEach(canvas => canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height));
+    }, [media, videoKey]);
+
+    useEffect(() => {
+        if (!media.length || !videosRef.current.length) return;
+        const abort = new AbortController();
+        setError(null);
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const loadFrames = async (): Promise<void> => {
+            const bitmaps: ImageBitmap[] = [];
+            const started = performance.now();
+            try {
+                if (!leader || !times) throw new Error('The selected video has no saved timing binding');
+                const time = times[requestedFrame];
+                if (time === undefined) throw new Error('Requested frame is outside the selected timeline');
+                const frames = videosRef.current.map(video => {
+                    const bindings = media.filter(item => item.video_filename === video.filename);
+                    if (bindings.length !== 1) throw new Error(`Expected one timing binding for ${video.filename}`);
+                    return {video, frame: mediaFrameAtRecordingTime(bindings[0], time)};
+                });
+                const results = await Promise.allSettled(frames.map(async ({video, frame}) => {
+                    if (frame === null) return null;
+                    const url = new URL(video.streamUrl);
+                    url.pathname += `/frames/${frame}`;
+                    const response = await fetch(url, {signal: abort.signal});
+                    if (!response.ok) throw new Error(await response.text());
+                    const bitmap = await createImageBitmap(await response.blob());
+                    bitmaps.push(bitmap);
+                    return bitmap;
+                }));
+                if (abort.signal.aborted) return;
+                const failure = results.find(result => result.status === 'rejected');
+                if (failure?.status === 'rejected') throw failure.reason;
+                const targets = frames.map(({video}) => {
+                    const canvas = canvases.current.get(video.videoId);
+                    if (!canvas) throw new Error(`Missing playback canvas for ${video.filename}`);
+                    const context = canvas.getContext('2d');
+                    if (!context) throw new Error('Canvas rendering is unavailable');
+                    return {canvas, context};
+                });
+                // Present only after every camera image and destination is ready.
+                frames.forEach(({video, frame}, index) => {
+                    const {canvas, context} = targets[index];
+                    const result = results[index];
+                    const bitmap = result.status === 'fulfilled' ? result.value : null;
+                    if (bitmap) {
+                        canvas.width = bitmap.width; canvas.height = bitmap.height;
+                        context.drawImage(bitmap, 0, 0);
+                    } else {context.clearRect(0, 0, canvas.width, canvas.height);}
+                    const label = frameLabels.current.get(video.videoId);
+                    if (label) label.textContent = frame === null ? 'No sample' : `F${frame}`;
+                    const timeLabel = timeLabels.current.get(video.videoId);
+                    if (timeLabel) timeLabel.textContent = `${time.toFixed(3)} s`;
+                });
+                presentedMedia.current = {filename: leader.video_filename,
+                    time_s: leader.timeline.frame_numbers[requestedFrame] / leader.nominal_fps};
+                currentFrameRef.current = requestedFrame;
+                setCurrentFrame(requestedFrame); setVideosReady(frames.length);
+                onFrameChangeRef.current?.(requestedFrame);
+                if (isPlaying) {
+                    const next = requestedFrame + 1;
+                    if (times.length === 1 || (next >= times.length && !isLooping)) {setIsPlaying(false); return;}
+                    const interval = next < times.length ? times[next] - time : 1 / leader.nominal_fps;
+                    timer = setTimeout(() => setRequestedFrame(next < times.length ? next : 0),
+                        Math.max(0, interval * 1000 / playbackRate - (performance.now() - started)));
                 }
-            });
-        }
+            } catch (failure) {
+                if (!abort.signal.aborted) {setError(String(failure)); setIsPlaying(false);}
+            } finally {bitmaps.forEach(bitmap => bitmap.close());}
+        };
+        const startTimer = setTimeout(() => void loadFrames(), isPlaying ? 0 : 80);
+        return () => {abort.abort(); clearTimeout(startTimer); if (timer !== undefined) clearTimeout(timer);};
+    }, [media, videoKey, requestedFrame, isPlaying, isLooping, playbackRate, leader, times]);
 
-        rafRef.current = requestAnimationFrame(tick);
-    }, [pauseAllVideos, playAllVideos, updateOverlays]);
-
-    const startLoop = useCallback(() => {
-        followerCheckCounter.current = 0;
-        lastReactUpdateRef.current = 0;
-        rafRef.current = requestAnimationFrame(tick);
-    }, [tick]);
-
-    const stopLoop = useCallback(() => {
-        if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    const seek = useCallback((frame: number): void => {
+        setIsPlaying(false);
+        setRequestedFrame(Math.max(0, Math.min(Math.round(frame), totalFrames - 1)));
+    }, [totalFrames]);
+    const setVideoRef = useCallback((id: string, canvas: HTMLCanvasElement | null): void => {
+        if (canvas) canvases.current.set(id, canvas); else canvases.current.delete(id);
     }, []);
-
-    useEffect(() => stopLoop, [stopLoop]);
-
-    // Metadata handler — called by video elements via onLoadedMetadata
-    const handleLoadedMetadata = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-        const el = e.currentTarget;
-        if (el.duration && el.duration !== Infinity) {
-            const d = el.duration;
-            setDuration((prev) => Math.max(prev, d));
-            const frames = Math.floor(d * fpsRef.current);
-            if (totalFramesRef.current === 0 || frames < totalFramesRef.current) {
-                totalFramesRef.current = frames;
-                setTotalFrames(frames);
-            }
-        }
-        el.pause();
-        setVideosReady((prev) => prev + 1);
+    const setFrameOverlayRef = useCallback((id: string, element: HTMLElement | null): void => {
+        if (element) frameLabels.current.set(id, element); else frameLabels.current.delete(id);
     }, []);
-
-    // Error handler — called by video elements via onError. Counts the video as
-    // "ready" (so the loading gate doesn't hang forever) and records it as failed.
-    const handleVideoError = useCallback((videoId: string) => {
-        setErroredVideos((prev) => {
-            if (prev.has(videoId)) return prev;
-            const next = new Set(prev);
-            next.add(videoId);
-            return next;
-        });
-        setVideosReady((prev) => prev + 1);
+    const setTimeOverlayRef = useCallback((id: string, element: HTMLElement | null): void => {
+        if (element) timeLabels.current.set(id, element); else timeLabels.current.delete(id);
     }, []);
-
-    // Playback commands
-    const handlePlayPause = useCallback(() => {
-        if (isPlayingRef.current) {
-            isPlayingRef.current = false;
-            stopLoop();
-            pauseAllVideos();
-            setIsPlaying(false);
-            const leaderId = leaderIdRef.current;
-            const leader = leaderId ? videoRefs.current.get(leaderId) : null;
-            if (leader) {
-                const pauseFrame = Math.floor(leader.currentTime * fpsRef.current);
-                seekAllToFrame(pauseFrame);
-            }
-        } else {
-            if (Math.floor(currentFrameRef.current) >= totalFramesRef.current - 1) {
-                seekAllToFrame(0);
-            }
-            isPlayingRef.current = true;
-            setIsPlaying(true);
-            playAllVideos();
-            startLoop();
-        }
-    }, [seekAllToFrame, startLoop, stopLoop, playAllVideos, pauseAllVideos]);
-
-    const handleSeekDrag = useCallback((frame: number) => {
-        if (!isDraggingRef.current) {
-            isDraggingRef.current = true;
-            wasPlayingBeforeDragRef.current = isPlayingRef.current;
-            if (isPlayingRef.current) {
-                isPlayingRef.current = false;
-                stopLoop();
-                pauseAllVideos();
-            }
-        }
-        const clamped = Math.max(0, Math.min(frame, totalFramesRef.current - 1));
-        currentFrameRef.current = clamped;
-        updateOverlays(clamped);
-        setCurrentFrame(clamped);
-        const targetTime = fpsRef.current > 0 ? clamped / fpsRef.current : 0;
-        videoRefs.current.forEach((el) => { el.currentTime = targetTime; });
-    }, [stopLoop, pauseAllVideos, updateOverlays]);
-
-    const handleSeekCommit = useCallback((frame: number) => {
-        const clamped = Math.max(0, Math.min(frame, totalFramesRef.current - 1));
-        seekAllToFrame(clamped);
-        if (wasPlayingBeforeDragRef.current) {
-            isPlayingRef.current = true;
-            setIsPlaying(true);
-            playAllVideos();
-            startLoop();
-        }
-        isDraggingRef.current = false;
-        wasPlayingBeforeDragRef.current = false;
-    }, [seekAllToFrame, playAllVideos, startLoop]);
-
-    const handleFrameStep = useCallback((delta: number) => {
-        if (isPlayingRef.current) { isPlayingRef.current = false; stopLoop(); pauseAllVideos(); setIsPlaying(false); }
-        seekAllToFrame(Math.floor(currentFrameRef.current) + delta);
-    }, [seekAllToFrame, stopLoop, pauseAllVideos]);
-
-    const handlePlaybackRateChange = useCallback((rate: number) => {
-        playbackRateRef.current = rate;
-        setPlaybackRate(rate);
-        videoRefs.current.forEach((el) => { el.playbackRate = rate; });
-    }, []);
-
-    const handleSeekToStart = useCallback(() => {
-        const wasPlaying = isPlayingRef.current;
-        if (wasPlaying) { isPlayingRef.current = false; stopLoop(); pauseAllVideos(); }
-        seekAllToFrame(0);
-        if (wasPlaying) { isPlayingRef.current = true; setIsPlaying(true); playAllVideos(); startLoop(); }
-    }, [seekAllToFrame, stopLoop, startLoop, playAllVideos, pauseAllVideos]);
-
-    const handleSeekToEnd = useCallback(() => {
-        if (isPlayingRef.current) { isPlayingRef.current = false; stopLoop(); pauseAllVideos(); setIsPlaying(false); }
-        seekAllToFrame(totalFramesRef.current - 1);
-    }, [seekAllToFrame, stopLoop, pauseAllVideos]);
-
-    const handleToggleLoop = useCallback(() => {
-        setIsLooping((prev) => !prev);
-    }, []);
-
-    // Seek to initialFrame once all videos are ready
+    const getMediaPosition = useCallback((): MediaPosition | null => presentedMedia.current, []);
+    const reloadManifest = useCallback((): void => setReload(value => value + 1), []);
+    const setPlaybackRun = useCallback((run: PlaybackRun): void => setMedia(run.media), []);
+    const handlePlayPause = useCallback((): void => {
+        if (currentFrame >= totalFrames - 1) setRequestedFrame(0);
+        setIsPlaying(value => !value);
+    }, [currentFrame, totalFrames]);
     useEffect(() => {
-        if (allReady && !didSeekInitialRef.current && initialFrame > 0) {
-            didSeekInitialRef.current = true;
-            seekAllToFrame(initialFrame);
-        }
-    }, [allReady, initialFrame, seekAllToFrame]);
-
-    // Keyboard shortcuts
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-            switch (e.key) {
-                case ' ': if (e.shiftKey) break; e.preventDefault(); handlePlayPause(); break;
-                case 'ArrowLeft': e.preventDefault(); handleFrameStep(e.shiftKey ? -10 : -1); break;
-                case 'ArrowRight': e.preventDefault(); handleFrameStep(e.shiftKey ? 10 : 1); break;
-                case 'Home': e.preventDefault(); handleSeekToStart(); break;
-                case 'End': e.preventDefault(); handleSeekToEnd(); break;
-                case 'l': case 'L': e.preventDefault(); handleToggleLoop(); break;
+        const onKey = (event: KeyboardEvent): void => {
+            const element = event.target;
+            if (element instanceof HTMLElement && (element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(element.tagName))) return;
+            switch (event.key) {
+                case ' ': event.preventDefault(); handlePlayPause(); break;
+                case 'ArrowLeft': event.preventDefault(); seek(currentFrame - 1); break;
+                case 'ArrowRight': event.preventDefault(); seek(currentFrame + 1); break;
+                case 'Home': event.preventDefault(); seek(0); break;
+                case 'End': event.preventDefault(); seek(totalFrames - 1); break;
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handlePlayPause, handleFrameStep, handleSeekToStart, handleSeekToEnd, handleToggleLoop]);
-
-    // Ref registration callbacks
-    const setVideoRef = useCallback((videoId: string, el: HTMLVideoElement | null) => {
-        if (el) videoRefs.current.set(videoId, el);
-        else videoRefs.current.delete(videoId);
-    }, []);
-
-    const setFrameOverlayRef = useCallback((videoId: string, el: HTMLElement | null) => {
-        if (el) frameOverlayRefs.current.set(videoId, el);
-        else frameOverlayRefs.current.delete(videoId);
-    }, []);
-
-    const setTimeOverlayRef = useCallback((videoId: string, el: HTMLElement | null) => {
-        if (el) timeOverlayRefs.current.set(videoId, el);
-        else timeOverlayRefs.current.delete(videoId);
-    }, []);
-
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [handlePlayPause, seek, currentFrame, totalFrames]);
     return {
-        // State
-        isPlaying,
-        currentFrame,
-        totalFrames,
-        duration,
-        playbackRate,
-        fps,
-        currentTime,
-        settings,
-        isLooping,
-        allReady,
-        videosReady,
-        erroredVideos,
-
-        // Setters
-        setSettings,
-
-        // Handlers
-        handlePlayPause,
-        handleSeekDrag,
-        handleSeekCommit,
-        handleFrameStep,
-        handlePlaybackRateChange,
-        handleSeekToStart,
-        handleSeekToEnd,
-        handleToggleLoop,
-        handleLoadedMetadata,
-        handleVideoError,
-
-        // Ref registration
-        setVideoRef,
-        setFrameOverlayRef,
-        setTimeOverlayRef,
-
-        // Internal refs exposed for SyncedVideoPlayer overlay rendering
-        settingsRef,
-        frameTimestampsRef,
-        fpsRef,
-        currentFrameRef,
-        totalFramesRef,
+        manifest, setPlaybackRun, reloadManifest, error, getMediaPosition,
+        isPlaying, currentFrame, totalFrames, duration, playbackRate, fps, currentTime, settings,
+        isLooping, videosReady, allReady: videosReady === videos.length && videos.length > 0,
+        erroredVideos: new Set<string>(), setSettings,
+        handlePlayPause, isSeeking: requestedFrame !== currentFrame,
+        handleSeekDrag: seek, handleSeekCommit: seek,
+        handleFrameStep: (delta: number): void => seek(currentFrame + delta),
+        handlePlaybackRateChange: setPlaybackRate,
+        handleSeekToStart: (): void => seek(0), handleSeekToEnd: (): void => seek(totalFrames - 1),
+        handleToggleLoop: (): void => setIsLooping(value => !value),
+        setVideoRef, setFrameOverlayRef, setTimeOverlayRef,
+        frameTimestampsRef, currentFrameRef,
     };
 }
 

@@ -16,8 +16,6 @@ interface ZoomableVideoTileProps {
     setVideoRef: PlaybackController['setVideoRef'];
     setFrameOverlayRef: PlaybackController['setFrameOverlayRef'];
     setTimeOverlayRef: PlaybackController['setTimeOverlayRef'];
-    handleLoadedMetadata: PlaybackController['handleLoadedMetadata'];
-    handleVideoError: PlaybackController['handleVideoError'];
 }
 
 export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
@@ -32,8 +30,6 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     setVideoRef,
     setFrameOverlayRef,
     setTimeOverlayRef,
-    handleLoadedMetadata,
-    handleVideoError,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const { zoomWrapperStyle, cursor, containerHandlers } = useZoomTransform(containerRef);
@@ -49,24 +45,10 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
             {...containerHandlers}
         >
             <div ref={containerRef} style={zoomWrapperStyle}>
-                <video
+                <canvas
                     ref={(el) => setVideoRef(videoId, el)}
-                    src={streamUrl}
-                    preload="auto"
-                    muted
-                    playsInline
                     className="w-full h-full block"
                     style={{ objectFit: 'contain' }}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onError={(e) => {
-                        const v = e.currentTarget as HTMLVideoElement;
-                        const err = v.error;
-                        console.error(
-                            `[playback] video error for ${videoId}: ` +
-                            `code=${err?.code} message="${err?.message ?? 'unknown'}" src=${v.src}`
-                        );
-                        handleVideoError(videoId);
-                    }}
                 />
             </div>
 

@@ -184,9 +184,17 @@ export const api = t.router({
             }),
 
         openFolder: t.procedure
-            .input(z.object({ path: z.string() }))
+            .input(z.object({ path: z.string().min(1) }))
             .mutation(async ({ input }) => {
-                const errorMessage = await shell.openPath(input.path);
+                if (!path.isAbsolute(input.path)) {
+                    throw new Error(`Folder path must be absolute: ${input.path}`);
+                }
+                const folderPath = path.normalize(input.path);
+                const folder = await fs.promises.stat(folderPath);
+                if (!folder.isDirectory()) {
+                    throw new Error(`Not a folder: ${folderPath}`);
+                }
+                const errorMessage = await shell.openPath(folderPath);
                 if (errorMessage) {
                     throw new Error(errorMessage);
                 }

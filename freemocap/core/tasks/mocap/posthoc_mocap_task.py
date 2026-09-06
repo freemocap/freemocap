@@ -43,7 +43,7 @@ from freemocap.core.skeletons.standard_human_skeleton import (
     STANDARD_HUMAN_MODEL_ID,
     build_standard_human_bundle,
 )
-from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
+from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration, get_last_successful_calibration_toml_path
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
 from freemocap.core.recording.posthoc_observation_recording import publish_posthoc_observations
@@ -98,13 +98,15 @@ def run_posthoc_mocap_aggregator_task(
             )
         logger.info(f"Using user-specified calibration TOML: {calibration_toml_path}")
     else:
-        calibration_toml_path = get_last_successful_calibration_toml_path()
+        calibration_toml_path = find_recording_calibration(recording_folder=recording_folder)
+        if calibration_toml_path is None:
+            calibration_toml_path = get_last_successful_calibration_toml_path()
         if not calibration_toml_path.exists():
             raise RuntimeError(
-                "No calibration file found — cannot run mocap without calibration. "
-                "Run a calibration pipeline first."
+                "Multicamera triangulation requires calibration geometry. "
+                "Select a calibration TOML or run the separate calibration task first."
             )
-        logger.info(f"No calibration path specified; using most-recent calibration: {calibration_toml_path}")
+        logger.info(f"Using resolved calibration: {calibration_toml_path}")
 
     # ---- Copy calibration file into recording folder ----
     if calibration_toml_path is not None:

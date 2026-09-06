@@ -17,6 +17,18 @@ Annotation consumes original images and selected saved observations through the 
 The default video output is an annotated synchronized grid; per-camera annotated videos are not
 default outputs. The raw grid is optional. Annotation is independent of detector execution.
 
+Video seeking must decode incrementally. SkellyCam owns the sequential decoder used by both
+posthoc VideoHelper and the playback frame endpoint. Forward requests decode intervening frames;
+backward requests reopen and decode forward from frame zero. Do not use random frame-index seeks
+or browser currentTime jumps. Playback resolves camera-local frame indices from recording time,
+decodes all requested images, and presents the camera set together. Cache and throughput work must
+preserve this invariant. The canvas player and frame routes need real-app visual acceptance.
+
+The mocap setup panel discovers recording-local calibration, offers the last-successful artifact,
+and can launch the existing calibration task on the selected recording's videos. That task must
+finish and publish its TOML before mocap uses the geometry. An explicit calibration selection takes
+precedence over discovery. A missing artifact matters only when an executed operation requires it.
+
 ## Recording video output
 
 Default: `<recording_id>.run-<run_id>.freemocap.mp4`, an annotated synchronized grid.
@@ -77,9 +89,12 @@ direct saved prerequisites, rather than requiring inputs of operations that will
 Observation/timing/raw-3D publication is connected, as are landmarks, segment origins, local/world
 rotations, named joint angles and computed centre of mass. Missing-parent local rotations remain
 null. The complete fit is stored once with static channel views. Saved scientific definitions and
-fit restore the numerical reconstruction without current definition files. Actual reconstruction
-input-array reload, reusable checkpoint completion, automatic input signatures and saved-data worker
-dispatch remain required before GUI integration. Posthoc XCoM requires a separate trajectory stage.
+fit restore the numerical reconstruction without current definition files. Raw-input reload preserves
+the saved frame/timestamp grid and rejects fits whose named numeric inputs or model changed.
+Publication binds numerical completion records to those inputs, timing and options, including explicit
+identity filtering. Saved-input signature resolution for planner validation, non-identity filtering
+eligibility and saved-data worker dispatch remain required before GUI integration.
+Posthoc XCoM requires a separate trajectory stage.
 
 The executor opens media and constructs tracker sessions only when observations require computation.
 Reconstruction-only execution reads saved prerequisites and starts numerical processing directly.
@@ -117,6 +132,15 @@ the committed result during processing. Refresh on success; preserve the recordi
 it remains within the new result. Surface optional export failures separately from processing status.
 
 ## Playback interaction
+
+Implementation: the existing viewport uses the canonical manifest/window API, shared live model
+definitions and recorded landmarks/origins/rotations/lengths/centre of mass. Result and sensor-group
+selection, bounded reads, revision checks, missing values and data-only playback are connected.
+Windows publication uses shared-delete reads and ReplaceFileW so an open playback snapshot does
+not prevent atomic overwrite. Five playback Python tests cover HTTP/read/replacement contracts;
+two TypeScript tests cover timestamp sampling and missing numeric values.
+The main video controller still uses synchronized media frame positions. Full recording-time
+controls and explicit media/group offset binding remain to be completed before mixed-media acceptance.
 
 The primary cursor is recording time. Each group resolves its own sample and displays its own frame
 number. Stepping advances to the next/previous sample in a selected group. Media selection preserves

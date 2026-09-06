@@ -1,6 +1,6 @@
 """
-Playback router: serves pre-recorded video files over HTTP for browser-native
-<video> playback. Supports range requests for efficient seeking.
+Playback router: serves recording descriptors, numeric windows and sequentially decoded
+video frames. Original media files remain available through the streaming endpoint.
 
 Endpoints are keyed on {recording_id} (the recording folder name). The full
 recording path is resolved as {BASE_RECORDINGS_DIRECTORY}/{recording_id},
@@ -20,7 +20,15 @@ from typing import Any, Optional
 
 import tomllib
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+import atexit
+from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReaders
+from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, camera_timing_path
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
+from freemocap.core.recording.playback_data import (
+    PlaybackManifest, PlaybackWindow, PlaybackWindowRequest, StalePlaybackRevision,
+    playback_manifest, playback_window, PlaybackMedia, PlaybackTimeline,
+)
 from pydantic import BaseModel
 
 from freemocap.system.recording_status.recording_status import (
@@ -43,6 +51,48 @@ _VIEWER_HTML = Path(__file__).parent.parent.parent.parent / "core" / "viz" / "pa
 logger = logging.getLogger(__name__)
 
 playback_router = APIRouter(prefix="/playback", tags=["Playback"])
+video_readers = SequentialVideoReaders(capacity=8, cache_bytes=256 * 1024 * 1024)
+atexit.register(video_readers.close)
+
+
+@playback_router.get("/{recording_id}/media")
+def read_unprocessed_media(
+    recording_id: str, recording_parent_directory: str | None = None,
+) -> tuple[PlaybackMedia, ...]:
+    folder = _resolve_recording_path(recording_id, recording_parent_directory)
+    media: list[PlaybackMedia] = []
+    for path in _discover_videos(_find_video_folder(folder)).values():
+        video = VideoHelper.from_video_path(path)
+        try:
+            timing = resolve_camera_timing(
+                path=camera_timing_path(recording_folder=folder, camera_id=video.metadata.camera_id),
+                frame_count=video.metadata.frame_count, fps=video.metadata.fps, offset_s=0.0,
+            )
+            media.append(PlaybackMedia(
+                video_filename=path.name, nominal_fps=video.metadata.fps,
+                timeline=PlaybackTimeline(sensor_group="cameras", source=video.metadata.camera_id,
+                    frame_numbers=tuple(range(video.metadata.frame_count)), timestamps_s=timing.timestamps_s),
+            ))
+        finally:
+            video.close()
+    return tuple(media)
+
+
+@playback_router.get("/{recording_id}/videos/{video_id}/frames/{frame_number}")
+def read_video_frame(
+    recording_id: str, video_id: str, frame_number: int,
+    source: str | None = None, recording_parent_directory: str | None = None,
+) -> Response:
+    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
+    folder = _resolve_video_source_folder(recording_path, source) if source else _find_video_folder(recording_path)
+    path = _discover_videos(folder).get(video_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
+    try:
+        jpeg = video_readers.read_jpeg(path=path, frame_number=frame_number)
+    except (ValueError, IndexError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return Response(content=jpeg, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 TIMESTAMP_EXTENSIONS = {".csv"}
@@ -129,7 +179,7 @@ def _resolve_recording_path(
     recording_path = (parent / recording_id).resolve()
 
     # Path traversal guard
-    if not str(recording_path).startswith(str(parent)):
+    if recording_path.parent != parent:
         raise HTTPException(status_code=400, detail="Invalid recording_id")
 
     if not recording_path.is_dir():
@@ -138,6 +188,30 @@ def _resolve_recording_path(
             detail=f"Recording directory not found: {recording_path}",
         )
     return recording_path
+
+
+@playback_router.get("/{recording_id}/manifest")
+def get_playback_manifest(recording_id: str, recording_parent_directory: str | None = None) -> PlaybackManifest:
+    folder = _resolve_recording_path(recording_id, recording_parent_directory)
+    structure = RecordingStructure(base_directory=folder.parent, recording_name=folder.name)
+    if not structure.data_parquet_path.is_file():
+        raise HTTPException(status_code=404, detail="Process this recording to create playback data")
+    return playback_manifest(structure.data_parquet_path)
+
+
+@playback_router.post("/{recording_id}/window")
+def get_playback_window(recording_id: str, request: PlaybackWindowRequest,
+    recording_parent_directory: str | None = None) -> PlaybackWindow:
+    folder = _resolve_recording_path(recording_id, recording_parent_directory)
+    structure = RecordingStructure(base_directory=folder.parent, recording_name=folder.name)
+    try:
+        return playback_window(path=structure.data_parquet_path, request=request)
+    except StalePlaybackRevision as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except (KeyError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Recording data is unavailable") from error
 
 
 def _discover_videos(folder: Path) -> dict[str, Path]:
@@ -681,7 +755,7 @@ def stream_video(
 
 @playback_router.get(
     "/{recording_id}/parquet",
-    summary="Serve the recording's freemocap_data_by_frame.parquet",
+    summary="Serve the recording's canonical Parquet",
 )
 def get_recording_parquet(
     recording_id: str,
@@ -701,32 +775,12 @@ def get_recording_parquet(
 
 
 def _find_recording_parquet(recording_path: Path) -> Path | None:
-    """Locate a recording's parquet across canonical + legacy layouts.
-
-    Tries, in order:
-      1. {recording}/{name}_data.parquet          (canonical)
-      2. {recording}/output_data/freemocap_data_by_frame.parquet  (legacy)
-      3. any *.parquet under the recording folder (fallback; warns)
-    """
+    """Resolve only the recording's explicitly named canonical dataset."""
     name = recording_path.name
     canonical = recording_path / f"{name}_data.parquet"
     if canonical.is_file():
         logger.info(f"Found canonical parquet: {canonical}")
         return canonical
-
-    legacy = recording_path / "output_data" / "freemocap_data_by_frame.parquet"
-    if legacy.is_file():
-        logger.info(f"Found legacy parquet: {legacy}")
-        return legacy
-
-    matches = [p for p in recording_path.rglob("*.parquet") if p.is_file()]
-    if matches:
-        found = matches[0]
-        logger.warning(
-            f"Parquet not at canonical/legacy location; using fallback match: {found} "
-            f"(searched under {recording_path}; {len(matches)} .parquet files found)"
-        )
-        return found
 
     return None
 

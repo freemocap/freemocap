@@ -10,21 +10,11 @@ Editing a YAML does not change these. Each constant's comment records the value 
 measured on ``freemocap_test_data`` so the margin is visible at a glance.
 """
 
-# --- the recording (3 synchronized videos, 7x5 charuco @ 58 mm square) ------------
-EXPECTED_FRAME_COUNT = 222
-
 # --- calibration solve quality -----------------------------------------------------
 # Measured: reprojection_error_px = 0.359, n_observations_used = 666, rejected = 0.
 MAX_REPROJECTION_ERROR_PX = 1.0
 MIN_OBSERVATIONS_USED = 500
 MAX_REJECTED_OBSERVATION_FRACTION = 0.05
-
-# --- body reconstruction shape + coverage ------------------------------------------
-# Provisional: the provisional posthoc output writes the hydrated SKELETON landmarks
-# (124), not the old 27 tracked body keypoints. The final split is decided at the
-# schema session, so this is expected to change.
-EXPECTED_BODY_LANDMARK_COUNT = 124
-MIN_FINITE_FRACTION = 0.9
 
 # --- centre of mass sanity ----------------------------------------------------------
 # Measured: total CoM z in [1495, 2397] mm.

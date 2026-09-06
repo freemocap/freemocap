@@ -5,6 +5,9 @@ from dataclasses import replace
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from freemocap.core.recording.channel_series import SeriesSampling
 from pathlib import Path
+from freemocap.core.recording.reconstruction_checkpoints import (
+    reconstruction_checkpoints,
+)
 
 import pyarrow as pa
 from skellycam.core.timestamps.recording_timing_reader import (
@@ -50,7 +53,9 @@ from freemocap.core.recording.recording_metadata import (
     SensorGroup,
     Source,
 )
-from freemocap.core.recording.recording_reader import read_metadata
+from freemocap.core.recording.recording_reader import (
+    read_metadata,
+)
 from freemocap.core.recording.recording_writer import (
     publish_recording,
     recording_write_lock,
@@ -65,7 +70,7 @@ def publish_posthoc_observations(
 
     Input videos are already synchronized; an absent timing sidecar uses video frame zero
     as time zero. Per-camera recorded offsets are preserved. Other runs/groups survive.
-    Completion checkpoints are deferred until input-signature construction is integrated.
+    Numerical completion records are published atomically with their validated output rows.
     """
     frame_numbers = request.group.frame_numbers
     channels: list[Channel] = []
@@ -89,6 +94,7 @@ def publish_posthoc_observations(
         )
         camera_definition = CameraRecordingDefinition(
             camera_id=camera,
+            video_filename=video.file_path.name,
             timing_method=timeline.method,
             nominal_fps=video.fps,
             inferred_offset_s=0.0,
@@ -147,6 +153,9 @@ def publish_posthoc_observations(
         references.update(reconstruction.reference_frames())
         channels.extend(reconstruction.channels())
     run = RunDescriptor(
+        checkpoints=reconstruction_checkpoints(
+            request=request, timestamps_s=synchronized
+        ),
         scale_fits=tuple(item.to_scale_fit() for item in request.reconstructions),
         camera_geometry={request.group.name: request.camera_geometry},
         sensor_groups={
@@ -216,7 +225,9 @@ def publish_posthoc_observations(
             )
             publish_recording(structure=structure, metadata=metadata, batches=batches())
             return metadata
-        metadata = read_metadata(path=structure.data_parquet_path)
+        metadata = read_metadata(
+            path=structure.data_parquet_path
+        )
         plan = build_execution_plan(
             inputs={
                 request.group.name: CameraExecutionInputs(
@@ -239,6 +250,7 @@ def publish_posthoc_observations(
                 plan,
                 execute=(
                     *plan.execute,
+                    ProcessingStage.FILTERING,
                     ProcessingStage.SCALE_FIT,
                     ProcessingStage.RECONSTRUCTION,
                 ),
@@ -263,7 +275,7 @@ def publish_posthoc_observations(
             processing=retained.processing,
             channels=(*retained.channels, *channels),
             static_channels=retained.static_channels,
-            checkpoints=retained.checkpoints,
+            checkpoints=(*retained.checkpoints, *run.checkpoints),
         )
         return publish_checkpoint(
             structure=structure,

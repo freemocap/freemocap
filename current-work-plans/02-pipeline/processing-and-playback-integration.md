@@ -221,3 +221,6 @@ AUTO decoder lifetime correction: VideoGroupHelper factories return open, group-
 
 
 Calibration progress presents three stacked stages: Collect observations, Calibrate cameras, and Save results. Observation validation/input conversion and solver execution share the Calibrate cameras bar. Completed bars remain full; internal preparation does not represent a separate saved processing stage. Follow-up: review redundant observation-container rebuilding in the calibration task.
+
+
+Playback refresh checkpoint: terminal aggregate pipeline progress triggers one recording-bundle refresh (including failures, which may leave completed diagnostic annotations). Playback applies replacement bundles for the same recording while preserving source selection and frame position. Bundle replacement disposes recording video caches; video HTTP responses require cache revalidation. This observes application pipeline outcomes, not arbitrary external filesystem edits. General folder watching remains unimplemented. Real-app test: keep Annotated open at a chosen frame, run mocap or calibration, and confirm published annotations appear without a page reload.

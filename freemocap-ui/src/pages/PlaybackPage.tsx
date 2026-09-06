@@ -1,3 +1,4 @@
+import ButtonSm from "@/components/ui-components/ButtonSm";
 import {choosePlaybackBudget, DEFAULT_PLAYBACK_BYTES} from '@/services/recording/playback-budget';
 import {fetchPlaybackBundle, selectPlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
 import React, {useCallback, useEffect, useState} from 'react';
@@ -58,12 +59,14 @@ const PlaybackPage: React.FC = () => {
     const selectedSource = ctx?.selectedSource ?? null;
     const setSelectedSource = ctx?.setSelectedSource;
 
-    const handleOpenFolder = useCallback(async () => {
-        if (!recordingPath) return;
+    const [folderError, setFolderError] = useState<string | null>(null);
+    const handleOpenFolder = useCallback(async (): Promise<void> => {
+        setFolderError(null);
         try {
-            await api?.fileSystem.openFolder.mutate({path: recordingPath});
+            if (!recordingPath || !api) throw new Error("Opening folders requires a selected recording in the desktop app");
+            await api.fileSystem.openFolder.mutate({path: recordingPath});
         } catch (err) {
-            console.error('Failed to open recording folder:', err);
+            setFolderError(err instanceof Error ? err.message : String(err));
         }
     }, [recordingPath, api]);
 
@@ -111,14 +114,16 @@ const PlaybackPage: React.FC = () => {
                 <ErrorBoundary>
                     <div className="flex flex-col pos-rel flex-1 min-h-0">
                         <div className="playback-mode-top-mid-bar flex flex-row items-center gap-1 flex-wrap  p-2">
-                            {/* <IconButton
-                                title={t('openFolder')}
-                                icon="load-icon"
-                                onClick={handleOpenFolder}
-                            /> */}
-                            <p className="text md text-nowrap m-0">
-                                {recordingName}
-                            </p>
+                            <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                                <p className="text md m-0 truncate" title={recordingPath ?? undefined}>{recordingName}</p>
+                                {recordingPath && <span className="recording-path-preview recording-path-tail text sm" title={recordingPath}>
+                                    <bdi dir="ltr">{recordingPath}</bdi>
+                                </span>}
+                            </div>
+                            <ButtonSm iconClass="subfolder-icon" buttonType="secondary"
+                                text="Open recording folder" disabled={!recordingPath || !api}
+                                title={recordingPath ?? 'Select a recording'}
+                                onClick={() => void handleOpenFolder()}/>
 
 
                             <div className="flex-1"/>
@@ -140,6 +145,7 @@ const PlaybackPage: React.FC = () => {
                             )}
                         </div>
 
+                        {folderError && <p role="alert" className="text-error">{folderError}</p>}
                         <div className="playback-mode-below-main p-1 flex flex-col flex-1 min-h-0">
                             {settings.show3dView ? (
                                 <PanelGroup

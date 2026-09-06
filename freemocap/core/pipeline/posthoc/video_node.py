@@ -4,11 +4,16 @@ VideoNode: reads frames from a video file, runs a tracker, publishes observation
 Generic video processing node parameterized by TrackerConfig — the same node
 handles charuco detection, RTMPose skeleton detection, or any future tracker type.
 
-Optionally saves annotated video output. If an existing annotated video is found
-in the annotated_videos/ folder, new annotations are drawn on top of those frames
-(allowing layering of e.g. charuco + skeleton annotations). Otherwise, annotations
-are drawn on the source video frames.
+Annotations use raw frames by default, or an explicitly selected annotated input.
 """
+from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator, KeypointAnnotatorConfig, StageKeypointAnnotator
+from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_annotator import CharucoAnnotator, CharucoAnnotatorConfig
+from freemocap.core.pipeline.posthoc.annotation_style import build_skeleton_stage_schema
+from freemocap.core.tracking.tracker_definitions import MEDIAPIPE_WHOLEBODY_DEFINITION, RTMPOSE_WHOLEBODY_DEFINITION
+
+from skellycam.core.recorders.videos.pyav_video_writer import PyavVideoWriter
+from freemocap.core.pipeline.posthoc.annotation_input import AnnotationInput
+
 import csv
 import logging
 import multiprocessing
@@ -78,28 +83,20 @@ def _is_mediapipe_config(tracker_config: TrackerConfig) -> bool:
     return False
 
 
-def _build_annotator(tracker_config: TrackerConfig):
-    """Build an Annotator for the given TrackerConfig."""
-    from skellytracker.core.annotation.keypoint_annotator import (
-        KeypointAnnotator,
-        KeypointAnnotatorConfig,
-    )
-    from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_observation_annotator import (
-        CharucoObservationAnnotator,
-        _CharucoObservationAnnotatorConfig,
-    )
-
-    if _is_charuco_config(tracker_config):
-        board_def = _extract_board_def(tracker_config)
-        return CharucoObservationAnnotator.create(
-            _CharucoObservationAnnotatorConfig(board_def=board_def)
-        )
-
-    from freemocap.core.pipeline.posthoc.annotation_style import build_skeleton_stage_schema
-    from freemocap.core.tracking.tracker_definitions import (
-        MEDIAPIPE_WHOLEBODY_DEFINITION,
-        RTMPOSE_WHOLEBODY_DEFINITION,
-    )
+def _build_annotator(tracker_config: TrackerConfig) -> KeypointAnnotator:
+    """Compose configured stage annotations on the supplied image."""
+    stage_annotators: dict[str, StageKeypointAnnotator] = {}
+    pending_stages = list(tracker_config.stages)
+    while pending_stages:
+        stage = pending_stages.pop()
+        pending_stages.extend(stage.children)
+        for detector in stage.keypoint_detectors:
+            if isinstance(detector, CharucoDetectorConfig):
+                if stage.name in stage_annotators:
+                    raise ValueError(f"Multiple Charuco annotation definitions for stage {stage.name}")
+                stage_annotators[stage.name] = CharucoAnnotator(
+                    config=CharucoAnnotatorConfig(), board_def=detector.board,
+                )
 
     tracker_definition = (
         MEDIAPIPE_WHOLEBODY_DEFINITION
@@ -107,13 +104,12 @@ def _build_annotator(tracker_config: TrackerConfig):
         else RTMPOSE_WHOLEBODY_DEFINITION
     )
     return KeypointAnnotator(
-        config=KeypointAnnotatorConfig(
-            stage_schemas={
-                "body": build_skeleton_stage_schema(
-                    tracker_definition.connections, tracker_definition.tracked_points
-                )
-            }
-        )
+        config=KeypointAnnotatorConfig(stage_schemas={
+            "body": build_skeleton_stage_schema(
+                tracker_definition.connections, tracker_definition.tracked_points,
+            ),
+        }),
+        stage_annotators=stage_annotators,
     )
 
 
@@ -136,6 +132,7 @@ class VideoNode(SourceNode):
         recording_path: Path,
         pipeline_type: PosthocPipelineType,
         save_annotated_video: bool = True,
+        annotation_input: AnnotationInput = AnnotationInput.RAW,
         pipeline_id: PipelineIdString | None = None,
     ) -> "VideoNode":
         _progress_queue: multiprocessing.queues.Queue = multiprocessing.Queue()
@@ -157,6 +154,7 @@ class VideoNode(SourceNode):
                 video_progress_pub=_progress_queue,
                 recording_path=recording_path,
                 save_annotated_video=save_annotated_video,
+                annotation_input=annotation_input,
                 pipeline_id=pipeline_id,
                 pipeline_type=pipeline_type,
             ),
@@ -170,32 +168,6 @@ class VideoNode(SourceNode):
         )
 
     @staticmethod
-    def _resolve_annotated_video_paths(
-        *,
-        recording_path: Path,
-        video_path: Path,
-    ) -> tuple[Path, Path | None]:
-        annotated_dir = recording_path / ANNOTATED_VIDEOS_FOLDER_NAME
-        annotated_dir.mkdir(parents=True, exist_ok=True)
-
-        output_path = annotated_dir / f"{video_path.stem}_annotated{video_path.suffix}"
-
-        existing_base_path: Path | None = None
-        if output_path.exists():
-            existing_base_path = output_path.with_suffix(
-                f".prev{output_path.suffix}"
-            )
-            if existing_base_path.exists():
-                existing_base_path.unlink()
-            output_path.rename(existing_base_path)
-            logger.info(
-                f"Found existing annotated video for {video_path.stem}, "
-                f"will layer new annotations on top"
-            )
-
-        return output_path, existing_base_path
-
-    @staticmethod
     def _run(
         *,
         camera_id: CameraIdString,
@@ -207,6 +179,7 @@ class VideoNode(SourceNode):
         shutdown_self_flag: Synchronized,
         recording_path: Path,
         save_annotated_video: bool,
+        annotation_input: AnnotationInput,
         pipeline_id: PipelineIdString,
         pipeline_type: PosthocPipelineType,
     ) -> None:
@@ -251,48 +224,31 @@ class VideoNode(SourceNode):
         ))
 
         annotator = None
-        video_writer: cv2.VideoWriter | None = None
+        video_writer: PyavVideoWriter | None = None
         base_reader: cv2.VideoCapture | None = None
-        prev_annotated_path: Path | None = None
+        temporary_output: Path | None = None
 
         frame_number: int = 0
         _error_occurred = False
         try:
             if save_annotated_video:
                 annotator = _build_annotator(detector_config)
-                annotated_output_path, prev_annotated_path = VideoNode._resolve_annotated_video_paths(
-                    recording_path=recording_path,
-                    video_path=video_path,
-                )
-
-                if prev_annotated_path is not None:
-                    base_reader = cv2.VideoCapture(str(prev_annotated_path), cv2.CAP_FFMPEG)
+                annotated_dir = recording_path / ANNOTATED_VIDEOS_FOLDER_NAME
+                annotated_dir.mkdir(parents=True, exist_ok=True)
+                annotated_output_path = annotated_dir / f"{video_path.stem}_annotated{video_path.suffix}"
+                temporary_output = annotated_dir / f".{video_path.stem}.{pipeline_id}.partial{video_path.suffix}"
+                if annotation_input == AnnotationInput.ANNOTATED:
+                    if not annotated_output_path.is_file():
+                        raise FileNotFoundError(f"Annotated input does not exist: {annotated_output_path}")
+                    base_reader = cv2.VideoCapture(str(annotated_output_path), cv2.CAP_FFMPEG)
                     if not base_reader.isOpened():
-                        logger.warning(
-                            f"Failed to open previous annotated video for {video_path.stem} — "
-                            f"will annotate from source frames instead"
-                        )
-                        base_reader = None
-
+                        raise RuntimeError(f"Cannot open annotated input: {annotated_output_path}")
+                    if int(base_reader.get(cv2.CAP_PROP_FRAME_COUNT)) != frame_count:
+                        raise ValueError("Annotated input frame count does not match raw video")
                 fps = video_reader.get(cv2.CAP_PROP_FPS)
                 width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                video_writer = cv2.VideoWriter(
-                    str(annotated_output_path), cv2.VideoWriter_fourcc(*"avc1"), fps, (width, height)
-                )
-                if not video_writer.isOpened():
-                    video_writer.release()
-                    logger.warning(
-                        f"H.264 ('avc1') encoder unavailable for {video_path.stem} — "
-                        f"falling back to 'mp4v'"
-                    )
-                    video_writer = cv2.VideoWriter(
-                        str(annotated_output_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
-                    )
-                if not video_writer.isOpened():
-                    raise RuntimeError(
-                        f"Failed to create video writer for: {annotated_output_path}"
-                    )
+                video_writer = PyavVideoWriter(path=str(temporary_output), fps=fps, width=width, height=height)
 
             logger.info(
                 f"VideoNode started for {video_path.stem}"
@@ -326,15 +282,8 @@ class VideoNode(SourceNode):
                         if base_reader is not None:
                             base_ok, base_frame = base_reader.read()
                             if not base_ok or base_frame is None:
-                                logger.warning(
-                                    f"Previous annotated video ran out of frames at frame {frame_number} "
-                                    f"for {video_path.stem} — falling back to source frames"
-                                )
-                                base_reader.release()
-                                base_reader = None
-                                annotation_base = image
-                            else:
-                                annotation_base = base_frame
+                                raise RuntimeError(f"Annotated input ends before frame {frame_number}: {video_path.name}")
+                            annotation_base = base_frame
                         else:
                             annotation_base = image
 
@@ -354,6 +303,19 @@ class VideoNode(SourceNode):
                         recording_path=str(recording_path),
                     ))
                     pbar.update(1)
+
+            if shutdown_self_flag.value or not ipc.should_continue:
+                _error_occurred = True
+            elif frame_number != frame_count:
+                raise RuntimeError(f"Video ended after {frame_number} frames; expected {frame_count}: {video_path}")
+            else:
+                if video_writer is not None:
+                    video_writer.release()
+                    video_writer = None
+                    if base_reader is not None:
+                        base_reader.release()
+                        base_reader = None
+                    temporary_output.replace(annotated_output_path)
 
             logger.info(
                 f"VideoNode for {video_path.stem} finished reading "
@@ -393,8 +355,8 @@ class VideoNode(SourceNode):
                 video_writer.release()
             if base_reader is not None:
                 base_reader.release()
-            if prev_annotated_path is not None and prev_annotated_path.exists():
-                prev_annotated_path.unlink()
+            if temporary_output is not None and temporary_output.exists():
+                temporary_output.unlink()
             logger.debug(f"VideoNode for {video_path.stem} exiting")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:

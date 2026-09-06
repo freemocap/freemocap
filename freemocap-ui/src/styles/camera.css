@@ -694,3 +694,11 @@
 --color-warning-soft: #ffcc80;
 
 */
+.recording-path-tail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}

@@ -759,6 +759,7 @@ def stream_video(
         path=str(video_path),
         media_type=media_type,
         filename=video_path.name,
+        headers={"Cache-Control": "no-cache"},
     )
 
 

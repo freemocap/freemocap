@@ -88,30 +88,28 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
         <div className="set-mocap-directory flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="icon icon-size-20 subcat-icon"></span>
           <button
-            className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
+            className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1 min-w-0 overflow-hidden"
             onClick={mocapRecordingPath ? handleOpenFolder : handleSelectDirectory}
             title={mocapRecordingPath || "Select a processing directory"}
             aria-label={mocapRecordingPath ? `Open recording folder: ${mocapRecordingPath}` : "Choose recording folder"}
             disabled={!isElectron}
-            style={{ minWidth: 0, overflow: "hidden" }}
+
           >
             {mocapRecordingPath ? (
               <p
-                className="recording-path-preview flex-1 text md"
-                style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", direction: "rtl", textAlign: "left" }}
+                className="recording-path-preview recording-path-tail flex-1 text md"
               >
                 <bdi dir="ltr">{mocapRecordingPath}</bdi>
               </p>
             ) : (
               <p
-                className="text-gray flex-1 text md"
-                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                className="text-gray flex-1 text md truncate"
               >
                 Select a folder where the mocap process will be saved.
               </p>
             )}
           </button>
-          <div className="flex flex-row gap-1" style={{ flexShrink: 0 }}>
+          <div className="flex flex-row gap-1 flex-shrink-0">
             <IconButton
               icon="subfolder-icon"
               onClick={handleSelectDirectory}

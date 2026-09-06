@@ -9,6 +9,8 @@ The pipeline is parameterized by:
 The pipeline self-terminates when processing is complete. All processes exit
 naturally when their work is done.
 """
+from freemocap.core.pipeline.posthoc.annotation_input import AnnotationInput
+
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -87,6 +89,7 @@ class PosthocPipeline(PipelineABC):
         worker_registry: WorkerRegistry,
         global_kill_flag: Synchronized,
         save_annotated_video: bool = True,
+        annotation_input: AnnotationInput = AnnotationInput.RAW,
     ) -> "PosthocPipeline":
         """
         Create a posthoc pipeline.
@@ -99,8 +102,7 @@ class PosthocPipeline(PipelineABC):
             worker_registry: For creating managed processes.
             global_kill_flag: Shared app-wide kill flag.
             save_annotated_video: Write annotated video output during detection.
-                If an annotated video already exists, new annotations are layered
-                on top of the existing one.
+                Annotation input is selected independently by annotation_input.
         """
         recording_path = Path(recording_info.full_recording_path)
 
@@ -130,6 +132,7 @@ class PosthocPipeline(PipelineABC):
                     pubsub=pubsub,
                     recording_path=recording_path,
                     save_annotated_video=save_annotated_video,
+                    annotation_input=annotation_input,
                     pipeline_id=pipeline_id,
                     pipeline_type=pipeline_type,
                 )

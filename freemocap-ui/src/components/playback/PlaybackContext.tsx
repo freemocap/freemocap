@@ -45,12 +45,13 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
     const activeRecordingBaseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
 
     const [loadedVideos, setLoadedVideos] = useState<LoadedVideo[]>([]);
-    const [loadedRecordingName, setLoadedRecordingName] = useState<string | null>(null);
     const [recordingFps, setRecordingFps] = useState<number | undefined>(undefined);
     const [frameTimestamps, setFrameTimestamps] = useState<Record<string, number[]> | null>(null);
     const [availableSources, setAvailableSources] = useState<Record<string, SourceInfo> | null>(null);
     const [selectedSource, setSelectedSource] = useState<string | null>(null);
     const currentFrameRef = useRef<number>(0);
+    const appliedBundle = useRef<unknown>(null);
+    const appliedLocation = useRef<string | null>(null);
 
     const onRecordingLoaded = useCallback((
         videos: LoadedVideo[],
@@ -60,7 +61,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
         preferred?: string,
     ) => {
         setLoadedVideos(videos);
-        setLoadedRecordingName(path);
         setRecordingFps(fps);
         setFrameTimestamps(null);
         setAvailableSources(sources ?? null);
@@ -74,7 +74,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
 
     useEffect(() => {
         if (!activeRecordingName || activeRecordingOrigin === 'pending-capture') return;
-        setLoadedRecordingName(null);
         setLoadedVideos([]);
         void dispatch(fetchPlaybackBundle({recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory}));
     }, [activeRecordingName, activeRecordingBaseDirectory, activeRecordingOrigin, dispatch]);
@@ -83,7 +82,11 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
 
     useEffect(() => {
         if (!bundle || activeRecordingOrigin === 'pending-capture') return;
-        if (bundle.recordingId === loadedRecordingName) return;
+        if (bundle === appliedBundle.current) return;
+        const location = JSON.stringify([activeRecordingBaseDirectory, activeRecordingName]);
+        const sameRecording = location === appliedLocation.current;
+        appliedBundle.current = bundle;
+        appliedLocation.current = location;
 
         const sources: Record<string, SourceInfo> = {};
         for (const [key, source] of Object.entries(bundle.videos.sources)) {
@@ -94,17 +97,17 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
                 videos: source.videos,
             };
         }
-        const preferred = bundle.videos.preferredSource;
+        const preferred = sameRecording && selectedSource && sources[selectedSource]?.valid
+            ? selectedSource : bundle.videos.preferredSource;
         const preferredVids = sources[preferred]?.videos ?? [];
 
         setLoadedVideos(preferredVids);
-        setLoadedRecordingName(bundle.recordingId);
         setRecordingFps(bundle.recordingFps ?? undefined);
         setFrameTimestamps(bundle.timestamps?.timestamps ?? null);
         setAvailableSources(sources);
         setSelectedSource(preferred);
-        currentFrameRef.current = 0;
-    }, [bundle, loadedRecordingName, activeRecordingOrigin]);
+        if (!sameRecording) currentFrameRef.current = 0;
+    }, [bundle, activeRecordingOrigin, activeRecordingName, activeRecordingBaseDirectory, selectedSource]);
 
     // When selectedSource changes, swap loadedVideos to the new source's pre-fetched list.
     useEffect(() => {
@@ -113,7 +116,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
         if (!source?.videos.length) return;
         setLoadedVideos(source.videos);
         setFrameTimestamps(null);
-        currentFrameRef.current = 0;
     }, [selectedSource, availableSources]);
 
     // Bootstrap: if no active recording on mount, auto-pick the most recent from cache.

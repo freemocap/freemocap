@@ -193,7 +193,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         {/* Preset dropdown */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Preset</span>
+          <span className="text sm">Preset</span>
           <NameDropdownSelector
             key={displayedPreset}
             options={PRESET_OPTIONS}
@@ -203,13 +203,13 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
           />
         </div>
 
-        {displayedPreset === BoardPreset.AUTO && <p className="text-sm">
+        {displayedPreset === BoardPreset.AUTO && <p className="text sm">
           Detects the board layout only: 5×3 first, then 7×5.
           Measure your board and enter its square length below; AUTO cannot determine physical size.
         </p>}
         {/* X Square Size */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">X Square Size</span>
+          <span className="text sm">X Square Size</span>
           <ValueSelector
             value={board.squares_x}
             min={2}
@@ -227,7 +227,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         {/* Y Square Size */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Y Square Size</span>
+          <span className="text sm">Y Square Size</span>
           <ValueSelector
             value={board.squares_y}
             min={2}
@@ -247,7 +247,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         {/* Square length */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Square length</span>
+          <span className="text sm">Square length</span>
           <ValueSelector
             value={board.square_length_mm}
             min={1}
@@ -267,7 +267,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
         {/* Method dropdown (only shown when there's a choice to make) */}
         {solverOptions.length > 1 ? (
           <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-            <span className="text-sm">Method</span>
+            <span className="text sm">Method</span>
             <NameDropdownSelector
               key={config.solverMethod}
               options={solverOptions}
@@ -278,8 +278,8 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
           </div>
         ) : (
           <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-            <span className="text-sm">Method</span>
-            <span className="text-sm">{solverMethodToLabel[config.solverMethod]}</span>
+            <span className="text sm">Method</span>
+            <span className="text sm">{solverMethodToLabel[config.solverMethod]}</span>
           </div>
         )}
       </div>

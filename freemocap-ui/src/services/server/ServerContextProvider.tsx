@@ -1,3 +1,5 @@
+import {fetchPlaybackBundle} from "@/store/slices/playback-data/playback-data-slice";
+import {splitParentAndName} from "@/store/slices/active-recording/active-recording-slice";
 // ServerContextProvider.tsx
 //
 // Thin consumer of TransportService. TransportService owns the WebSocket, the
@@ -465,6 +467,15 @@ function handleProgress(message: ProgressMessage, dedupeRef: { current: Record<s
         recordingPath: message.recording_path,
     }));
     if (!message.pipeline_id.includes(':')) {
+        if ((message.phase === PipelinePhase.COMPLETE || message.phase === PipelinePhase.FAILED) && message.recording_path) {
+            const recording = splitParentAndName(message.recording_path);
+            if (recording) {
+                void store.dispatch(fetchPlaybackBundle({
+                    recordingId: recording.recordingName,
+                    recordingParentDirectory: recording.baseDirectory,
+                }));
+            }
+        }
         if (pipelineType === PipelineType.MOCAP) {
             store.dispatch({
                 type: 'mocap/posthocProgressReceived',

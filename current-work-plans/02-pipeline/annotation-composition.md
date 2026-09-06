@@ -73,3 +73,36 @@ Dependency handoff: user commits/pushes SkellyTracker and updates FreeMoCap's Gi
 Then replace FreeMoCap's exclusive Charuco factory branch with configured stage composition.
 No FreeMoCap annotation behavior has changed yet. Explicit input choice and output retention remain
 subsequent work; existing-video layering has not been removed or changed.
+
+
+### FreeMoCap composition integration
+
+Verified the installed SkellyTracker compositor API. VideoNode now always uses the stage compositor and registers specialized Charuco drawing by the configured stage name, traversing nested configurations. It no longer selects a Charuco-only observation annotator for the entire tracker. An integration pixel test passes for sibling and nested body/board observations, a non-default board stage name, preservation of input pixels, and no mutation of the source image. Existing-video input selection and retention behavior are unchanged; those remain the next chunk. Test the actual mixed detector workflow before treating disk annotation QA as complete.
+
+
+### Encoding and input checkpoint
+
+VideoNode uses the installed SkellyCam PyavVideoWriter (libx264, CRF 18). AnnotationInput defaults to RAW; ANNOTATED is an explicit pipeline-construction option. Existing output does not implicitly select layering. Missing, unreadable, or frame-count-mismatched annotated input fails. Output is encoded separately and replaces the destination after successful decoding and encoder flush; selected input is closed before replacement. Cancelled runs do not publish partial output. Real encoded-video tests verify H.264, preserved frame count, raw regeneration despite existing annotations, explicit layering, and stage composition. UI/API configuration and keep-output destination selection remain to be wired; the application currently defaults to raw regeneration.
+
+### Mocap board detection checkpoint
+
+Target: a default-on board checkbox above the human detector settings, with AUTO layout selection
+and the user's physical square length. Board absence is normal for mocap. Body detection processes
+every frame. AUTO search skips 1, 2, 3, ... frames after successive misses, capped at 30 skipped
+frames. The first valid board establishes one definition for all cameras in the recording.
+
+Implemented in the local SkellyTracker checkout: CharucoBoardSelector.search_frame accepts an
+ordered multiframe and lazily consumes camera images only when search is due. Selection locks
+immediately; subsequent calls return the selected definition without further searching. Nine
+selector tests pass, covering increasing/capped skips, non-consumption of skipped images,
+first-match locking, actual board detection, and invalid frame order.
+
+This is a dependency primitive, not application integration. User commits/pushes SkellyTracker
+and updates FreeMoCap's Git dependency before consumer integration/testing. No editable install
+or environment substitution is part of this handoff.
+
+Remaining integration: coordinate recording-wide selection alongside camera workers; wire the
+checkbox and board settings through the request; prevent board-only cached observations from
+bypassing body detection; publish/reconstruct both selected model bundles instead of assuming
+one human model; verify composed annotations and no-board recordings in the real app. Do not
+resolve AUTO independently per camera or run the calibration task implicitly.

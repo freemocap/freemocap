@@ -1,3 +1,4 @@
+import ButtonSm from "@/components/ui-components/ButtonSm";
 import {CalibrateRecordingButton} from '@/components/control-panels/calibration-actions/CalibrateRecordingButton';
 import {useEffect, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store';
@@ -52,7 +53,8 @@ export function RecordingCalibrationOptions(): React.ReactElement {
         <span className="text sm" title={options?.recording_path ?? undefined}>
             {options?.recording_path ? 'Calibration found in this recording' : 'No calibration selected from this folder'}
         </span>
-        <button disabled={busy || !options?.most_recent_path} onClick={() => void useMostRecent()}>Use most recent calibration</button>
+        <ButtonSm iconClass="tomlfile-icon" text="Use most recent calibration" className="full-width"
+            disabled={busy || !options?.most_recent_path} onClick={() => void useMostRecent()}/>
         <CalibrateRecordingButton recordingPath={directory}/>
         <span className="text sm">Runs the calibration task separately. Videos must contain the configured calibration board.</span>
         {error && <p role="alert" className="text-error">{error}</p>}

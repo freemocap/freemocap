@@ -1,3 +1,4 @@
+import {CalibrationBoardMode} from "@/store/slices/calibration/calibration-types";
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
@@ -174,7 +175,9 @@ const CalibrationModule = ({
   }, [loadedCalibration?.path]);
 
   const charucoTags = [
-    `${config.charucoBoard.squares_x}x${config.charucoBoard.squares_y}`,
+    config.boardMode === CalibrationBoardMode.AUTO
+      ? "AUTO"
+      : `${config.charucoBoard.squares_x}x${config.charucoBoard.squares_y}`,
     `${config.charucoBoard.square_length_mm}mm`,
     config.solverMethod === "anipose" ? "Anipose" : "Pyceres",
   ];

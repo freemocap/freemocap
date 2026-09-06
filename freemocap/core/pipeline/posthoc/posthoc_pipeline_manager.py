@@ -8,6 +8,7 @@ them for cancellation/shutdown purposes.
 
 Dead pipelines are cleaned up lazily whenever the manager is accessed.
 """
+import uuid
 import functools
 import logging
 import multiprocessing
@@ -19,13 +20,14 @@ from multiprocessing.sharedctypes import Synchronized
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
+from freemocap.core.pipeline.posthoc.calibration_pipeline import CalibrationPipeline
+from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
-from freemocap.core.tasks.calibration.posthoc_calibration_task import run_posthoc_calibration_task
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
@@ -46,7 +48,7 @@ class PosthocPipelineManager(PipelineManagerABC):
     global_kill_flag: Synchronized
     worker_registry: WorkerRegistry
     lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
-    pipelines: dict[PipelineIdString, PosthocPipeline] = field(default_factory=dict)
+    pipelines: dict[PipelineIdString, PosthocPipeline | CalibrationPipeline] = field(default_factory=dict)
     # Synthetic terminal messages for pipelines stopped manually (via stop_pipeline/
     # stop_all_pipelines), which never emit their own terminal COMPLETE/FAILED message
     # since they're killed rather than left to finish. Drained by get_progress_updates().
@@ -111,40 +113,20 @@ class PosthocPipelineManager(PipelineManagerABC):
     # ------------------------------------------------------------------
 
     def create_calibration_pipeline(
-        self,
-        *,
-        recording_info: RecordingInfo,
+        self, *, recording_info: RecordingInfo,
         calibration_config: PosthocCalibrationPipelineConfig,
-    ) -> PosthocPipeline:
-        calibration_aggregation_task_fn = functools.partial(
-            run_posthoc_calibration_task,
-            task_config=calibration_config,
-        )
-        pipeline = PosthocPipeline.create(
-            recording_info=recording_info,
-            detector_config=calibration_config.detector_config,
-            aggregation_task_fn=calibration_aggregation_task_fn,
-            pipeline_type=PosthocPipelineType.CALIBRATION,
+    ) -> CalibrationPipeline:
+        pipeline_id = str(uuid.uuid4())[:6]
+        pipeline = CalibrationPipeline(
+            id=pipeline_id, recording_info=recording_info, config=calibration_config,
+            ipc=PipelineIPC.create(global_kill_flag=self.global_kill_flag,
+                heartbeat_timestamp=self.worker_registry.heartbeat_timestamp, pipeline_id=pipeline_id),
             worker_registry=self.worker_registry,
-            global_kill_flag=self.global_kill_flag,
         )
-        pipeline.queued_progress_message = PipelineProgressMessage(
-            pipeline_id=pipeline.id,
-            pipeline_type=str(PosthocPipelineType.CALIBRATION),
-            phase="queued",
-            progress_fraction=0.0,
-            detail="Pipeline queued, starting workers...",
-            recording_name=recording_info.recording_name,
-            recording_path=str(recording_info.full_recording_path),
-        )
-        pipeline.start()
         with self.lock:
             self._evict_dead()
             self.pipelines[pipeline.id] = pipeline
-        logger.info(
-            f"Created posthoc calibration pipeline [{pipeline.id}] "
-            f"for '{recording_info.recording_name}'"
-        )
+            pipeline.start()
         return pipeline
 
     def create_mocap_pipeline(
@@ -168,6 +150,7 @@ class PosthocPipelineManager(PipelineManagerABC):
             task_config=mocap_config,
         )
         pipeline = PosthocPipeline.create(
+            pipeline_id=str(uuid.uuid4())[:6],
             recording_info=recording_info,
             detector_config=mocap_config.tracker_config,
             aggregation_task_fn=mocap_task_fn,
@@ -199,7 +182,7 @@ class PosthocPipelineManager(PipelineManagerABC):
     # Lifecycle
     # ------------------------------------------------------------------
 
-    def _stopped_by_user_message(self, pipeline: PosthocPipeline) -> AggregatorNodeProgressMessage:
+    def _stopped_by_user_message(self, pipeline: PosthocPipeline | CalibrationPipeline) -> AggregatorNodeProgressMessage:
         return AggregatorNodeProgressMessage(
             pipeline_id=pipeline.id,
             pipeline_type=str(pipeline.pipeline_type),

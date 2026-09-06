@@ -3,6 +3,8 @@ import { useAppDispatch } from "@/store/hooks";
 import { activeRecordingSet, splitParentAndName } from "@/store/slices/active-recording/active-recording-slice";
 import { useElectronIPC } from "@/services";
 import {
+  CALIBRATION_STAGES,
+  PipelineType,
   PipelineGroup,
   PipelinePhase,
   PipelineProgress,
@@ -34,7 +36,7 @@ function SubProgressBar({
   const isComplete = pipeline.phase === PipelinePhase.COMPLETE;
   const isTerminal = isComplete || isFailed;
   const isIndeterminate =
-    isAggregator && !isTerminal && pipeline.phase !== PipelinePhase.SETTING_UP;
+    isAggregator && !isTerminal && pipeline.phase !== PipelinePhase.SETTING_UP && pipeline.phase !== PipelinePhase.COLLECTING && pipeline.phase !== PipelinePhase.QUEUED;
 
   const rightText =
     isTerminal && pipeline.completedAt
@@ -247,7 +249,22 @@ export default function PipelineGroupCard({
 
       {group.aggregator && (
         <div className="flex flex-col gap-2 p-2 br-2 bg-darkgray ">
-          <SubProgressBar
+          {group.pipelineType === PipelineType.CALIBRATION &&
+            (group.aggregator.calibrationStage || group.isComplete) ? (
+            CALIBRATION_STAGES.map((stage, index) => {
+              const aggregator = group.aggregator!;
+              const activeIndex = CALIBRATION_STAGES.indexOf(aggregator.calibrationStage!);
+              const completed = group.isComplete || index < activeIndex;
+              const active = !completed && index === activeIndex;
+              return <SubProgressBar key={stage} label={PHASE_LABELS[stage]} isAggregator={true}
+                pipeline={{...aggregator,
+                  phase: completed ? PipelinePhase.COMPLETE : active ? aggregator.phase : PipelinePhase.QUEUED,
+                  progress: completed ? 100 : active ? aggregator.progress : 0,
+                  detail: active ? aggregator.detail : '',
+                  completedAt: undefined,
+                }}/>
+            })
+          ) : <SubProgressBar
             pipeline={group.aggregator}
             isAggregator={true}
             label={
@@ -259,7 +276,7 @@ export default function PipelineGroupCard({
                     ? `Aggregating ${group.videoNodes.length} camera${group.videoNodes.length !== 1 ? "s" : ""}`
                     : PHASE_LABELS[group.aggregator.phase]
             }
-          />
+          />}
         </div>
       )}
     </div>

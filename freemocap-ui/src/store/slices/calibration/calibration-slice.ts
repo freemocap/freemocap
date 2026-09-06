@@ -1,3 +1,4 @@
+import {CalibrationBoardMode} from "./calibration-types";
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
@@ -49,6 +50,7 @@ export interface CalibrationState {
 }
 
 const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
+    boardMode: CalibrationBoardMode.AUTO,
     charucoBoard: { squares_x: 5, squares_y: 3, square_length_mm: 54 },
     minSharedViewsPerCamera: 200,
     autoStopOnMinViewCount: true,
@@ -59,7 +61,7 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
 const _persistedCalibrationConfig = loadFromStorage<CalibrationConfig | null>('calibration.config', null);
 
 const initialState: CalibrationState = {
-    config: _persistedCalibrationConfig ?? { ...DEFAULT_CALIBRATION_CONFIG },
+    config: { ...DEFAULT_CALIBRATION_CONFIG, ..._persistedCalibrationConfig },
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,

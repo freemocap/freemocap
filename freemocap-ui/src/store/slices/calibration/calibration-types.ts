@@ -1,3 +1,5 @@
+export enum CalibrationBoardMode { AUTO = "auto", EXPLICIT = "explicit" }
+
 export type CalibrationSolverMethod = 'anipose' | 'pyceres';
 
 export interface CharucoBoardConfig {
@@ -7,6 +9,7 @@ export interface CharucoBoardConfig {
 }
 
 export interface CalibrationConfig {
+    boardMode: CalibrationBoardMode;
     charucoBoard: CharucoBoardConfig;
     minSharedViewsPerCamera: number;
     autoStopOnMinViewCount: boolean;

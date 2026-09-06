@@ -15,6 +15,9 @@ export const PipelinePhase = {
     QUEUED: 'queued',
     SETTING_UP: 'setting_up',
     PROCESSING_VIDEOS: 'processing_videos',
+    COLLECTING: 'collecting_camera_output',
+    SOLVING: 'running_solver',
+    SAVING: 'saving_calibration',
     AGGREGATING: 'aggregating',
     FINALIZING: 'finalizing',
     COMPLETE: 'complete',
@@ -37,11 +40,18 @@ export const PHASE_LABELS: Record<PipelinePhase, string> = {
     [PipelinePhase.QUEUED]: 'Queued',
     [PipelinePhase.SETTING_UP]: 'Setting Up',
     [PipelinePhase.PROCESSING_VIDEOS]: 'Processing Videos',
+    [PipelinePhase.COLLECTING]: 'Collect observations',
+    [PipelinePhase.SOLVING]: 'Calibrate cameras',
+    [PipelinePhase.SAVING]: 'Save results',
     [PipelinePhase.AGGREGATING]: 'Aggregating',
     [PipelinePhase.FINALIZING]: 'Finalizing',
     [PipelinePhase.COMPLETE]: 'Complete',
     [PipelinePhase.FAILED]: 'Failed',
 };
+
+export const CALIBRATION_STAGES: readonly PipelinePhase[] = [
+    PipelinePhase.COLLECTING, PipelinePhase.SOLVING, PipelinePhase.SAVING,
+];
 
 export interface PipelineProgress {
     pipelineId: string;
@@ -51,6 +61,7 @@ export interface PipelineProgress {
     detail: string;
     recordingName: string;
     recordingPath: string;
+    calibrationStage?: PipelinePhase;
     completedAt?: number; // timestamp when completed/failed
 }
 
@@ -107,6 +118,9 @@ export const pipelinesSlice = createSlice({
             });
             state.activePipelines[incoming.pipelineId] = {
                 ...incoming,
+                calibrationStage: incoming.pipelineType === PipelineType.CALIBRATION
+                    ? CALIBRATION_STAGES.includes(incoming.phase) ? incoming.phase : existing?.calibrationStage
+                    : undefined,
                 completedAt: isTerminal ? Date.now() : undefined,
             };
             if (baseIsNew) {

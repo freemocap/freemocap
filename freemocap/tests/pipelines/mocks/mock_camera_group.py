@@ -72,8 +72,7 @@ class MockCameraGroup(CameraGroup):
         paths = sorted(str(p) for p in Path(synchronized_videos_dir).glob("*.mp4"))
         if not paths:
             raise FileNotFoundError(f"No .mp4 videos found in {synchronized_videos_dir}")
-        # close_videos=False: we need the VideoHelpers to stay open for frame reads.
-        video_group = VideoGroupHelper.from_video_paths(paths, close_videos=False)
+        video_group = VideoGroupHelper.from_video_paths(video_paths=paths)
         configs = build_camera_configs_from_videos(video_group)
         timebase_mapping = TimebaseMapping()
         shm = CameraGroupSharedMemory.create(

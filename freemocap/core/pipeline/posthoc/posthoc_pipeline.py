@@ -10,7 +10,6 @@ The pipeline self-terminates when processing is complete. All processes exit
 naturally when their work is done.
 """
 import logging
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from multiprocessing.sharedctypes import Synchronized
@@ -80,6 +79,7 @@ class PosthocPipeline(PipelineABC):
     def create(
         cls,
         *,
+        pipeline_id: PipelineIdString,
         recording_info: RecordingInfo,
         detector_config: TrackerConfig,
         aggregation_task_fn: PosthocAggregationNodeTaskFn,
@@ -108,44 +108,45 @@ class PosthocPipeline(PipelineABC):
             recording_path=str(recording_path),
         )
 
-        pipeline_id: PipelineIdString = str(uuid.uuid4())[:6]
 
-        ipc = PipelineIPC.create(
-            global_kill_flag=global_kill_flag,
-            heartbeat_timestamp=worker_registry.heartbeat_timestamp,
-            pipeline_id=pipeline_id,
-        )
-        pubsub = PubSubTopicManager.create(
-            global_kill_flag=global_kill_flag,
-        )
+        try:
+            ipc = PipelineIPC.create(
+                global_kill_flag=global_kill_flag,
+                heartbeat_timestamp=worker_registry.heartbeat_timestamp,
+                pipeline_id=pipeline_id,
+            )
+            pubsub = PubSubTopicManager.create(
+                global_kill_flag=global_kill_flag,
+            )
 
-        video_nodes: dict[CameraIdString, VideoNode] = {}
-        for camera_id, video_helper in video_group.videos.items():
-            video_nodes[camera_id] = VideoNode.create(
-                camera_id=camera_id,
-                video_path=video_helper.video_path,
-                detector_config=detector_config,
+            video_nodes: dict[CameraIdString, VideoNode] = {}
+            for camera_id, video_helper in video_group.videos.items():
+                video_nodes[camera_id] = VideoNode.create(
+                    camera_id=camera_id,
+                    video_path=video_helper.video_path,
+                    detector_config=detector_config,
+                    worker_registry=worker_registry,
+                    ipc=ipc,
+                    pubsub=pubsub,
+                    recording_path=recording_path,
+                    save_annotated_video=save_annotated_video,
+                    pipeline_id=pipeline_id,
+                    pipeline_type=pipeline_type,
+                )
+
+            aggregation_node = PosthocAggregationNode.create(
+                aggregation_task_fn=aggregation_task_fn,
+                video_metadata=video_group.video_metadata_by_id,
+                pipeline_id=pipeline_id,
+                pipeline_type=pipeline_type,
+                recording_info=recording_info,
                 worker_registry=worker_registry,
                 ipc=ipc,
                 pubsub=pubsub,
-                recording_path=recording_path,
-                save_annotated_video=save_annotated_video,
-                pipeline_id=pipeline_id,
-                pipeline_type=pipeline_type,
             )
 
-        aggregation_node = PosthocAggregationNode.create(
-            aggregation_task_fn=aggregation_task_fn,
-            video_metadata=video_group.video_metadata_by_id,
-            pipeline_id=pipeline_id,
-            pipeline_type=pipeline_type,
-            recording_info=recording_info,
-            worker_registry=worker_registry,
-            ipc=ipc,
-            pubsub=pubsub,
-        )
-
-        video_group.close()
+        finally:
+            video_group.close()
 
         return cls(
             id=pipeline_id,

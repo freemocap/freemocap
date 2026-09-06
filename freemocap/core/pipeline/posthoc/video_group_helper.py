@@ -319,6 +319,7 @@ class VideoGroupHelper(BaseModel):
         extra="forbid",
         frozen=True
     )
+    # The group owns open readers; callers must close the group after use.
     videos: dict[CameraIdString, VideoHelper]
     video_metadata_by_id: dict[CameraIdString, VideoMetadata]
     # True if camera_id keys came from the recording manifest (authoritative).
@@ -349,7 +350,7 @@ class VideoGroupHelper(BaseModel):
         return self
 
     @classmethod
-    def from_video_paths(cls, video_paths: list[str | Path], close_videos: bool = True) -> "VideoGroupHelper":
+    def from_video_paths(cls, video_paths: list[str | Path]) -> "VideoGroupHelper":
         """Create VideoGroupHelper from a list of video file paths.
 
         Camera IDs and indices are extracted via ParsedVideoFilename.from_path(),
@@ -372,18 +373,21 @@ class VideoGroupHelper(BaseModel):
         pairs = sorted(zip(parsed_list, paths), key=lambda x: x[0].camera_index)
 
         videos: dict[CameraIdString, VideoHelper] = {}
-        for pv, path in pairs:
-            videos[pv.camera_id] = VideoHelper.from_video_path(path)
+        try:
+            for pv, path in pairs:
+                videos[pv.camera_id] = VideoHelper.from_video_path(path)
 
-        instance = cls(
-            videos=videos,
-            video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
-            keyed_from_manifest=False,
-            filename_reindex_applied=reindex_applied,
-        )
-        if close_videos:
-            instance.close()
-        return instance
+            instance = cls(
+                videos=videos,
+                video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
+                keyed_from_manifest=False,
+                filename_reindex_applied=reindex_applied,
+            )
+            return instance
+        except Exception:
+            for video in videos.values():
+                video.close()
+            raise
 
     @classmethod
     def from_manifest_videos(
@@ -391,31 +395,33 @@ class VideoGroupHelper(BaseModel):
         *,
         manifest_videos: dict[str, str],
         videos_dir: Path,
-        close_videos: bool = True,
     ) -> "VideoGroupHelper":
         """Build from an authoritative camera_id → relative-filename mapping."""
         resolved_paths = [(videos_dir / filename).resolve(strict=True) for filename in manifest_videos.values()]
         if len(set(resolved_paths)) != len(resolved_paths):
             raise ValueError("Multiple source IDs reference the same video file")
         videos: dict[CameraIdString, VideoHelper] = {}
-        for camera_id, filename in manifest_videos.items():
-            video_path = videos_dir / filename
-            if not video_path.exists():
-                raise FileNotFoundError(
-                    f"Manifest references video '{filename}' for camera '{camera_id}' "
-                    f"but the file does not exist at {video_path}"
-                )
-            videos[camera_id] = VideoHelper.from_video_path(video_path)
+        try:
+            for camera_id, filename in manifest_videos.items():
+                video_path = videos_dir / filename
+                if not video_path.exists():
+                    raise FileNotFoundError(
+                        f"Manifest references video '{filename}' for camera '{camera_id}' "
+                        f"but the file does not exist at {video_path}"
+                    )
+                videos[camera_id] = VideoHelper.from_video_path(video_path)
 
-        instance = cls(
-            videos=videos,
-            video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
-            keyed_from_manifest=True,
-            filename_reindex_applied=False,
-        )
-        if close_videos:
-            instance.close()
-        return instance
+            instance = cls(
+                videos=videos,
+                video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
+                keyed_from_manifest=True,
+                filename_reindex_applied=False,
+            )
+            return instance
+        except Exception:
+            for video in videos.values():
+                video.close()
+            raise
 
     @classmethod
     def from_video_folder_path(cls, video_folder_path: Path) -> "VideoGroupHelper":

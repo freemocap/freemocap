@@ -23,6 +23,7 @@ class VideoNodePhase(_StrValueEnum):
 
 class AggregatorPhase(_StrValueEnum):
     """Phases emitted by the posthoc aggregation node itself."""
+    SETTING_UP = "setting_up"
     COLLECTING_CAMERA_OUTPUT = "collecting_camera_output"
     COMPLETE = "complete"
     FAILED = "failed"

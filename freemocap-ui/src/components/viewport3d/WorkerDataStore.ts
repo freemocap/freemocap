@@ -8,7 +8,7 @@
  * (schemas, calibration, visibility) React state is used, driven by this store.
  */
 
-import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
+import { CalibrationBoardMode, type CalibrationConfig, type LoadedCalibration } from "@/store/slices/calibration/calibration-types";
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
@@ -47,6 +47,7 @@ function makeChannel<T>(initial: T, options?: { replayOnSubscribe?: boolean }) {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
+    boardMode: CalibrationBoardMode.AUTO,
     charucoBoard: { squares_x: 5, squares_y: 3, square_length_mm: 54 },
     minSharedViewsPerCamera: 200,
     autoStopOnMinViewCount: true,

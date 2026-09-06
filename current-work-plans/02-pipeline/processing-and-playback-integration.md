@@ -200,11 +200,24 @@ SkellyTracker provides `CharucoBoardSelector`: inspect each supplied image for 5
 blank images continue the search. The first valid match (six non-collinear Charuco corners) locks
 one standard board definition. No subsequent images or alternative boards are inspected after
 selection. Exhausting the images without a match raises an explicit detection error. Physical
-square size comes from the standard board definition. Six focused generated-image/behavior tests
+square size must come from the user-entered measurement; it is not detectable from images. Six focused generated-image/behavior tests
 pass, including perspective, blank frames, priority, locked selection, and early iterator termination.
 
-Next dependency handoff: user commits/pushes SkellyTracker and updates FreeMoCap's Git dependency.
-Then wire AUTO into calibration setup: select once for the complete recording before constructing
-board-dependent detector outputs and solver geometry. Perform video inspection incrementally in
-managed, cancellable task execution; do not scan videos in the HTTP handler or select independently
-in camera workers. Keep explicit 5x3, 7x5 and custom settings. App AUTO is not yet implemented.
+FreeMoCap uses the Git-installed selector. CalibrationPipeline runs preparation in a managed,
+cancellable thread, reading raw video frames incrementally in multiframe order until the first
+match. It then builds the existing PosthocPipeline using one explicit board configuration for all
+camera detectors and the solver, preserving the task ID through preparation and processing.
+Explicit board mode bypasses selection. Selection failures use the normal terminal progress path.
+
+The calibration settings offer AUTO, 5x3, 7x5 and Custom. AUTO is the default and detects layout only. The square-length field remains editable in every
+mode; AUTO preserves the user-entered measurement for all detectors and solver geometry. Seven focused backend tests
+and TypeScript checking pass. Real-app acceptance: select AUTO on the existing board recording,
+launch calibration, confirm the selected board in logs and successful calibration; confirm explicit
+selection still works and a recording with no board fails visibly. Cancel during selection to verify
+that camera processing does not start. No realtime calibration implementation is added.
+
+
+AUTO decoder lifetime correction: VideoGroupHelper factories return open, group-owned readers; callers close them after use. Construction failures close readers already opened. Calibration preparation and PosthocPipeline construction release the group in finally blocks. Real encoded-video regression coverage exercises both manifest and filename loading, starting with a blank frame and then a board frame. Ten focused calibration, identity, and terminal-status tests pass. Retry AUTO calibration in the app.
+
+
+Calibration progress presents three stacked stages: Collect observations, Calibrate cameras, and Save results. Observation validation/input conversion and solver execution share the Calibrate cameras bar. Completed bars remain full; internal preparation does not represent a separate saved processing stage. Follow-up: review redundant observation-container rebuilding in the calibration task.

@@ -1,3 +1,4 @@
+import {CalibrationBoardMode} from "@/store/slices/calibration/calibration-types";
 import React, {
   useCallback,
   useEffect,
@@ -14,19 +15,19 @@ import { CalibrationSolverMethod } from "@/store/slices/calibration";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import charucoSettingsImage from "@/assets/images/charuco_settings.webp";
 
-type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
+enum BoardPreset { AUTO = "AUTO", LETTER = "5 x 3", TEST = "7 x 5", CUSTOM = "Custom" }
 
 interface BoardPresetDims {
   squares_x: number;
   squares_y: number;
 }
 
-const BOARD_PRESETS: Record<Exclude<BoardPreset, "Custom">, BoardPresetDims> = {
+const BOARD_PRESETS: Record<BoardPreset.LETTER | BoardPreset.TEST, BoardPresetDims> = {
   "5 x 3": { squares_x: 5, squares_y: 3 },
   "7 x 5": { squares_x: 7, squares_y: 5 },
 };
 
-const PRESET_OPTIONS: BoardPreset[] = ["5 x 3", "7 x 5", "Custom"];
+const PRESET_OPTIONS: BoardPreset[] = Object.values(BoardPreset);
 
 const PRESET_OPTIONS_SOLVER = ["Anipose legacy", "Accurate"];
 
@@ -84,6 +85,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   }, [handleClose]);
 
   const currentPreset = useMemo<BoardPreset>(() => {
+    if (config.boardMode === CalibrationBoardMode.AUTO) return BoardPreset.AUTO;
     for (const [preset, dims] of Object.entries(BOARD_PRESETS)) {
       if (
         dims.squares_x === board.squares_x &&
@@ -92,8 +94,8 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
         return preset as BoardPreset;
       }
     }
-    return "Custom";
-  }, [board.squares_x, board.squares_y]);
+    return BoardPreset.CUSTOM;
+  }, [board.squares_x, board.squares_y, config.boardMode]);
 
   const [forcedCustom, setForcedCustom] = useState(false);
   const [showTooltip, setShowTooltip] = useState(() => {
@@ -116,17 +118,23 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
     });
   }, []);
 
-  const displayedPreset: BoardPreset = forcedCustom ? "Custom" : currentPreset;
+  const displayedPreset: BoardPreset = forcedCustom ? BoardPreset.CUSTOM : currentPreset;
 
   const handlePresetChange = useCallback(
     (value: string) => {
       const preset = value as BoardPreset;
-      if (preset === "Custom") {
+      if (preset === BoardPreset.CUSTOM) {
+        updateCalibrationConfig({boardMode: CalibrationBoardMode.EXPLICIT});
         setForcedCustom(true);
         return;
       }
       setForcedCustom(false);
+      if (preset === BoardPreset.AUTO) {
+        updateCalibrationConfig({boardMode: CalibrationBoardMode.AUTO});
+        return;
+      }
       updateCalibrationConfig({
+        boardMode: CalibrationBoardMode.EXPLICIT,
         charucoBoard: { ...board, ...BOARD_PRESETS[preset] },
       });
     },
@@ -195,6 +203,10 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
           />
         </div>
 
+        {displayedPreset === BoardPreset.AUTO && <p className="text-sm">
+          Detects the board layout only: 5×3 first, then 7×5.
+          Measure your board and enter its square length below; AUTO cannot determine physical size.
+        </p>}
         {/* X Square Size */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">X Square Size</span>

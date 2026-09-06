@@ -1,3 +1,4 @@
+from freemocap.core.pipeline.posthoc.calibration_pipeline import CalibrationPipeline
 """
 Top-level FreemocapApplication: owns the camera group manager, the realtime and
 posthoc pipeline managers, and the worker registry, and orchestrates recording and
@@ -119,7 +120,7 @@ class FreemocapApplication:
             self,
             recording_info: RecordingInfo,
             calibration_config: PosthocCalibrationPipelineConfig,
-    ) -> PosthocPipeline:
+    ) -> CalibrationPipeline:
         pipeline = self.posthoc_pipeline_manager.create_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=calibration_config,

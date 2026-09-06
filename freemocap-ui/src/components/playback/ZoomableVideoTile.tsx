@@ -11,7 +11,6 @@ interface ZoomableVideoTileProps {
     hasError: boolean;
     setVideoRef: PlaybackController['setVideoRef'];
     setFrameOverlayRef: PlaybackController['setFrameOverlayRef'];
-    setTimeOverlayRef: PlaybackController['setTimeOverlayRef'];
 }
 
 export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
@@ -22,7 +21,6 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     hasError,
     setVideoRef,
     setFrameOverlayRef,
-    setTimeOverlayRef,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const { zoomWrapperStyle, cursor, containerHandlers } = useZoomTransform(containerRef);
@@ -57,44 +55,28 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
 
             {showOverlays && (
                 <>
-                    <canvas width={140} height={24}
+                    <canvas width={210} height={18}
                         ref={(el) => setFrameOverlayRef(videoId, el)}
-                        className="pos-abs top-6 right-6 z-10 text-center"
+                        className="pos-abs top-6 right-6 z-10"
                         style={{
-                            backgroundColor: 'rgba(0, 0, 0, 0.88)',
-                            color: '#00ff88',
-                            padding: '4px 10px', borderRadius: '4px',
-                            fontSize: '14px', fontWeight: 700,
-                            fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace',
-                            letterSpacing: '0.5px', lineHeight: 1,
-                            border: '1px solid rgba(0, 255, 136, 0.3)',
-                            textShadow: '0 0 6px rgba(0, 255, 136, 0.4)',
-                            minWidth: 60,
+                            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                            borderRadius: '3px',
                             userSelect: 'none', pointerEvents: 'none',
                         }}
                     />
 
-                    <div className="pos-abs bottom-6 left-6 z-10" style={{
+                    <div title={filename} className="pos-abs bottom-6 left-6 z-10" style={{
+                        maxWidth: 'calc(100% - 12px)', boxSizing: 'border-box',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         backgroundColor: 'rgba(0, 0, 0, 0.75)',
                         color: '#ccc', padding: '2px 8px', borderRadius: '3px',
                         fontSize: '11px',
                         fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                        userSelect: 'none', pointerEvents: 'none',
+                        userSelect: 'none',
                     }}>
                         {filename}
                     </div>
 
-                    <canvas width={180} height={24}
-                        ref={(el) => setTimeOverlayRef(videoId, el)}
-                        className="pos-abs bottom-6 right-6 z-10"
-                        style={{
-                            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                            color: '#aaa', padding: '2px 6px', borderRadius: '3px',
-                            fontSize: '10px',
-                            fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                            userSelect: 'none',
-                        }}
-                    />
                 </>
             )}
         </div>

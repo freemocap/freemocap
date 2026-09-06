@@ -177,44 +177,8 @@ function applyFilters(entries: LogRecord[], selectedLevels: string[], searchText
 // Collapsed summary view
 // ---------------------------------------------------------------------------
 
-const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: ReturnType<typeof useServer>["getLogStore"]; selectedLevels: string[] }) => {
-    const { t } = useTranslation();
-    const [lastEntry, setLastEntry] = useState<LogRecord | null>(null);
-    const [logActive, setLogActive] = useState(false);
-    const [currentVersion, setCurrentVersion] = useState(-1);
-    const activityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const lastVersionRef = useRef(-1);
-
-    // Polling: only tracks version bumps — does not own the activity timer
-    useEffect(() => {
-        const poll = () => {
-            const snap = getLogStore().getSnapshot();
-            if (snap.version !== lastVersionRef.current) {
-                lastVersionRef.current = snap.version;
-                setCurrentVersion(snap.version);
-            }
-            const entries = snap.entries;
-            const visible = selectedLevels.length > 0
-                ? entries.filter(e => selectedLevels.includes(e.levelname.toLowerCase()))
-                : entries;
-            setLastEntry(visible.length > 0 ? visible[visible.length - 1] : null);
-        };
-        poll();
-        const id = setInterval(poll, LOG_POLL_INTERVAL_MS);
-        return () => clearInterval(id);
-    }, [getLogStore, selectedLevels]);
-
-    // Activity timer: owned by this effect, only re-fires when version actually changes
-    useEffect(() => {
-        if (currentVersion === -1) return;
-        setLogActive(true);
-        if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
-        activityTimerRef.current = setTimeout(() => setLogActive(false), 1500);
-        return () => {
-            if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
-        };
-    }, [currentVersion]);
-
+const LogCollapsedView = ({lastEntry}: {lastEntry: LogRecord | null}) => {
+    const {t} = useTranslation();
     if (!lastEntry) return (
         <div className="log-collapsed-summary flex items-center h-full gap-1">
             <p className="text bg text-gray">{t("serverLogs")}</p>
@@ -227,7 +191,6 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
     return (
         <div className="log-collapsed-summary text-disabled flex items-center h-full gap-1 overflow-hidden">
             <p className="text bg text-gray">{t("serverLogs")}</p>
-            <span className={clsx("log-activity-dot", logActive && "active")} />
             <span className={clsx("log-level-badge", level)}>{lastEntry.levelname}</span>
             <span className="log-timestamp">{lastEntry.asctime}</span>
             <span className="log-message-text text-nowrap overflow-hidden" style={{ textOverflow: "ellipsis" }}>
@@ -242,6 +205,8 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
 // ---------------------------------------------------------------------------
 
 interface LogTerminalFullProps {
+    isCollapsed: boolean;
+    onExpand: () => void;
     selectedLevels: string[];
     setSelectedLevels: React.Dispatch<React.SetStateAction<string[]>>;
     searchText: string;
@@ -253,6 +218,7 @@ interface LogTerminalFullProps {
 }
 
 const LogTerminalFull = ({
+    isCollapsed, onExpand,
     selectedLevels,
     setSelectedLevels,
     searchText,
@@ -307,7 +273,7 @@ const LogTerminalFull = ({
         });
         observer.observe(container);
         return () => observer.disconnect();
-    }, []);
+    }, [isCollapsed]);
 
     useEffect(() => {
         if (!isPaused && shouldAutoScroll.current && scrollContainerRef.current) {
@@ -382,8 +348,10 @@ const LogTerminalFull = ({
     return (
         <div className="log-terminal">
             {/* Toolbar */}
-            <div className="log-toolbar flex items-center gap-1 flex-wrap">
-                <div className="ml-1 log-toolbar-inner flex items-center gap-1 flex-wrap">
+            <div className="log-toolbar flex items-center gap-1">
+                {isCollapsed ? <div style={{flex: 1, minWidth: 0, overflow: 'hidden'}}>
+                    <LogCollapsedView lastEntry={filteredLogs.at(-1) ?? null}/>
+                </div> : <div className="ml-1 log-toolbar-inner flex items-center gap-1 flex-wrap">
                     <p className="text bg text-gray">{t('serverLogs')}</p>
                     {snapshot.hasErrors && (
                         <span className="icon warning-icon icon-size-20" title={t("errorsDetected")} />
@@ -404,10 +372,10 @@ const LogTerminalFull = ({
                             );
                         })}
                     </div>
-                </div>
+                </div>}
 
                 {/* Action buttons */}
-                <div className="log-actions flex gap-1">
+                <div className="log-actions flex gap-1" style={{flexShrink: 0}}>
                     <ButtonSm
                         text={copyFeedback ? "" : ""}
                         iconClass={copyFeedback ? "copied-icon" : "copy-icon"}
@@ -415,7 +383,7 @@ const LogTerminalFull = ({
                         onClick={handleCopyToClipboard}
                         tooltip={true}
                         tooltipText={copyFeedback ? "Copied!" : "Copy to clipboard"}
-                        tooltipPosition="pos-bottom"
+                        tooltipPosition="pos-top"
                     />
                     <ButtonSm
                         text=""
@@ -424,26 +392,26 @@ const LogTerminalFull = ({
                         onClick={handleSaveToDisk}
                         tooltip={true}
                         tooltipText="Save"
-                        tooltipPosition="pos-bottom"
+                        tooltipPosition="pos-top"
                     />
                     <ButtonSm
                         text=""
                         iconClass="scrolldown-icon"
                         textColor="text-gray"
-                        onClick={scrollToBottom}
+                        onClick={() => {if (isCollapsed) onExpand(); shouldAutoScroll.current = true; scrollToBottom();}}
                         tooltip={true}
                         tooltipText="Scroll to bottom"
-                        tooltipPosition="pos-bottom"
+                        tooltipPosition="pos-top"
                     />
                     <ButtonSm
                         text=""
                         iconClass="search-icon"
                         textColor={showSearch ? "text-white" : "text-gray"}
                         buttonType={showSearch ? "activated" : ""}
-                        onClick={() => setShowSearch(!showSearch)}
+                        onClick={() => {if (isCollapsed) onExpand(); setShowSearch(isCollapsed || !showSearch);}}
                         tooltip={true}
                         tooltipText="Search"
-                        tooltipPosition="pos-bottom"
+                        tooltipPosition="pos-top"
                     />
                     <ButtonSm
                         text=""
@@ -452,7 +420,7 @@ const LogTerminalFull = ({
                         onClick={() => setIsPaused(prev => !prev)}
                         tooltip={true}
                         tooltipText={isPaused ? "Resume" : "Pause"}
-                        tooltipPosition="pos-bottom"
+                        tooltipPosition="pos-top"
                     />
                     <ButtonSm
                         text=""
@@ -461,13 +429,13 @@ const LogTerminalFull = ({
                         onClick={handleClear}
                         tooltip={true}
                         tooltipText="Clear"
-                        tooltipPosition="pos-bottom"
+                        tooltipPosition="pos-top"
                     />
                 </div>
             </div>
 
             {/* Search bar */}
-            {showSearch && (
+            {!isCollapsed && showSearch && (
                 <div className="log-search-bar p-1">
                     <div className="input-with-string w-full">
                         <input
@@ -482,7 +450,7 @@ const LogTerminalFull = ({
             )}
 
             {/* Virtualized log list */}
-            <div ref={scrollContainerRef} onScroll={handleScroll} className="log-scroll-area">
+            {!isCollapsed && <div ref={scrollContainerRef} onScroll={handleScroll} className="log-scroll-area">
                 {filteredLogs.length === 0 ? (
                     <div className="log-empty-state">
                         {isPaused ? t("loggingPaused") : t("noLogsToDisplay")}
@@ -504,23 +472,20 @@ const LogTerminalFull = ({
                         </div>
                     </div>
                 )}
-            </div>
+            </div>}
         </div>
     );
 };
 
-export const LogTerminal = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
+export const LogTerminal = ({ isCollapsed = false, onExpand }: { isCollapsed?: boolean; onExpand: () => void }) => {
     const { getLogStore } = useServer();
     const [selectedLevels, setSelectedLevels] = useState<string[]>(LOG_LEVELS.map(l => l.toLowerCase()));
     const [searchText, setSearchText] = useState("");
     const [showSearch, setShowSearch] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
 
-    if (isCollapsed) return (
-        <LogCollapsedView getLogStore={getLogStore} selectedLevels={selectedLevels} />
-    );
     return (
-        <LogTerminalFull
+        <LogTerminalFull isCollapsed={isCollapsed} onExpand={onExpand}
             selectedLevels={selectedLevels} setSelectedLevels={setSelectedLevels}
             searchText={searchText} setSearchText={setSearchText}
             showSearch={showSearch} setShowSearch={setShowSearch}

@@ -1,3 +1,4 @@
+import {fetchPlaybackBundle, selectPlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
 import React, {useCallback, useEffect, useState} from 'react';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
@@ -13,7 +14,7 @@ import IconButton from "@/components/ui-components/IconButton";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {RecordingPlaybackProvider} from "@/components/viewport3d/RecordingPlaybackProvider";
-import {useAppSelector} from "@/store";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
     selectActiveRecordingBaseDirectory,
     selectActiveRecordingFullPath,
@@ -73,7 +74,13 @@ const PlaybackPage: React.FC = () => {
         streamUrl: v.streamUrl,
     }));
 
+    const dispatch = useAppDispatch();
+    const bundle = useAppSelector(selectPlaybackBundle(activeRecordingName, activeRecordingBaseDirectory));
+    const reloadManifest = useCallback((): void => {
+        if (activeRecordingName) void dispatch(fetchPlaybackBundle({recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory}));
+    }, [dispatch, activeRecordingName, activeRecordingBaseDirectory]);
     const controller = usePlaybackController({
+        bundle, reloadManifest,
         videos: videoEntries,
         recordingId: activeRecordingName,
         recordingParentDirectory: activeRecordingBaseDirectory,

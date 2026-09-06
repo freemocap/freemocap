@@ -1,20 +1,22 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
 import {ClientVideoGroup, releaseGroupFrames, type GroupFrames} from '@/services/recording/client-video-group';
+import {PlaybackLabel} from '@/services/recording/playback-label';
 import {FrameLookahead} from '@/services/recording/frame-lookahead';
 import {type PlaybackManifest, type PlaybackRun, type PlaybackMedia} from '@/services/recording/playback-data';
-import {serverUrls} from '@/constants/server-urls';
+import type {PlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
 
 interface VideoEntry {videoId: string; filename: string; streamUrl: string}
 interface UsePlaybackControllerArgs {
     videos: VideoEntry[]; recordingId: string | null; recordingParentDirectory: string | null | undefined;
+    bundle: Pick<PlaybackBundle, 'manifest' | 'media'> | null;
+    reloadManifest: () => void;
     onFrameChange?: (frame: number) => void;
 }
 
-export function usePlaybackController({videos, recordingId, recordingParentDirectory, onFrameChange}: UsePlaybackControllerArgs) {
+export function usePlaybackController({videos, recordingId, recordingParentDirectory, bundle, reloadManifest, onFrameChange}: UsePlaybackControllerArgs) {
     const [manifest, setManifest] = useState<PlaybackManifest | null>(null);
     const [media, setMedia] = useState<PlaybackMedia[]>([]);
-    const [reload, setReload] = useState(0);
     const [decoderGroup, setDecoderGroup] = useState<ClientVideoGroup | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -25,8 +27,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const [videosReady, setVideosReady] = useState(0);
     const [settings, setSettings] = useState<PlaybackSettings>({showOverlays: true, timestampFormat: 'seconds'});
     const canvases = useRef(new Map<string, HTMLCanvasElement>());
-    const frameLabels = useRef(new Map<string, HTMLCanvasElement>());
-    const timeLabels = useRef(new Map<string, HTMLCanvasElement>());
+    const frameLabels = useRef(new Map<string, PlaybackLabel>());
     const settingsRef = useRef(settings);
     settingsRef.current = settings;
     const requestedFrameRef = useRef(0);
@@ -45,41 +46,20 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const times = timeline?.timestamps_s;
     const currentTime = times?.[currentFrame] ?? 0;
     const duration = times?.length ? times[times.length - 1] : 0;
-    const parameters = new URLSearchParams();
-    if (recordingParentDirectory) parameters.set('recording_parent_directory', recordingParentDirectory);
-    const manifestUrl = recordingId ? `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}/manifest?${parameters}` : null;
-
     useEffect(() => {
-        const abort = new AbortController();
         setManifest(null); setMedia([]); setError(null); setIsPlaying(false);
-        setVideosReady(0); setCurrentFrame(0); setRequestedFrame(0); requestedFrameRef.current = 0; currentFrameRef.current = 0; presentedTime.current = null;
-        if (!manifestUrl) return;
-        const start = setTimeout(() => void (async () => {
-            try {
-                const response = await fetch(manifestUrl, {signal: abort.signal});
-                if (!response.ok) throw new Error(await response.text());
-                const result: PlaybackManifest | null = await response.json();
-                if (result === null) {
-                    const url = new URL(manifestUrl);
-                    url.pathname = url.pathname.replace(/\/manifest$/, '/media');
-                    const mediaResponse = await fetch(url, {signal: abort.signal});
-                    if (!mediaResponse.ok) throw new Error(await mediaResponse.text());
-                    const result: PlaybackMedia[] = await mediaResponse.json();
-                    if (!abort.signal.aborted) setMedia(result);
-                    return;
-                }
-                if (abort.signal.aborted) return;
-                const selected = result.runs.find(item => item.run_id === result.selected_run_id);
-                if (!selected) throw new Error('Selected recording result is missing');
-                setManifest(result); setMedia(selected.media);
-            } catch (failure) {if (!abort.signal.aborted) setError(String(failure));}
-        })(), 0);
-        return () => {clearTimeout(start); abort.abort();};
-    }, [manifestUrl, reload]);
+        setVideosReady(0); setCurrentFrame(0); setRequestedFrame(0);
+        requestedFrameRef.current = 0; currentFrameRef.current = 0; presentedTime.current = null;
+    }, [recordingId, recordingParentDirectory]);
 
     useEffect(() => {
-        setIsPlaying(false); setCurrentFrame(0); setRequestedFrame(0); setVideosReady(0);
-        requestedFrameRef.current = 0; currentFrameRef.current = 0;
+        if (!bundle) return;
+        setManifest(bundle.manifest); setMedia(bundle.media);
+    }, [bundle]);
+
+    useEffect(() => {
+        if (isPlaying) requestedFrameRef.current = currentFrameRef.current;
+        setIsPlaying(false); setRequestedFrame(requestedFrameRef.current); setVideosReady(0);
         presentedTime.current = null;
         canvases.current.forEach(canvas => canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height));
     }, [media, videoKey]);
@@ -91,7 +71,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         setDecoderGroup(group);
         void group.ready.catch(failure => {if (active) setError(String(failure));});
         return () => {active = false; group.close();};
-    }, [videoKey, reload]);
+    }, [videoKey]);
 
     useEffect(() => {
         if (!decoderGroup || !leader || !times) return;
@@ -114,27 +94,18 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
                 if (!context) throw new Error('Canvas rendering is unavailable');
                 return {video, canvas, context};
             });
+            const seconds = Math.floor(time);
+            const timecode = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60,
+                Math.floor((time - seconds) * fps)].map(value => String(value).padStart(2, '0')).join(':');
+            const timestamp = settingsRef.current.timestampFormat === 'timecode' ? timecode : `${time.toFixed(3)} s`;
+            const labelText = `F${String(frameNumber).padStart(String(totalFrames).length, '0')}  |  ${timestamp}`;
             targets.forEach(({video, canvas, context}, index) => {
                 const bitmap = frames[index].bitmap;
                 if (canvas.width !== bitmap.width) canvas.width = bitmap.width;
                 if (canvas.height !== bitmap.height) canvas.height = bitmap.height;
                 context.drawImage(bitmap, 0, 0);
 
-                const drawLabel = (label: HTMLCanvasElement | undefined, text: string): void => {
-                    if (!label) return;
-                    const labelContext = label.getContext('2d');
-                    if (!labelContext) throw new Error('Label rendering is unavailable');
-                    labelContext.clearRect(0, 0, label.width, label.height);
-                    labelContext.font = 'bold 14px monospace';
-                    labelContext.fillStyle = '#00ff88';
-                    labelContext.textAlign = 'right';
-                    labelContext.fillText(text, label.width - 4, 18);
-                };
-                drawLabel(frameLabels.current.get(video.videoId), `F${String(frameNumber).padStart(String(totalFrames).length, '0')}`);
-                const seconds = Math.floor(time);
-                const timecode = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60,
-                    Math.floor((time - seconds) * fps)].map(value => String(value).padStart(2, '0')).join(':');
-                drawLabel(timeLabels.current.get(video.videoId), settingsRef.current.timestampFormat === 'timecode' ? timecode : `${time.toFixed(3)} s`);
+                frameLabels.current.get(video.videoId)?.draw(labelText);
             });
             presentedTime.current = time;
             currentFrameRef.current = frameNumber;
@@ -204,13 +175,9 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         if (canvas) canvases.current.set(id, canvas); else canvases.current.delete(id);
     }, []);
     const setFrameOverlayRef = useCallback((id: string, element: HTMLCanvasElement | null): void => {
-        if (element) frameLabels.current.set(id, element); else frameLabels.current.delete(id);
-    }, []);
-    const setTimeOverlayRef = useCallback((id: string, element: HTMLCanvasElement | null): void => {
-        if (element) timeLabels.current.set(id, element); else timeLabels.current.delete(id);
+        if (element) frameLabels.current.set(id, new PlaybackLabel(element)); else frameLabels.current.delete(id);
     }, []);
     const getRecordingTime = useCallback((): number | null => presentedTime.current, []);
-    const reloadManifest = useCallback((): void => setReload(value => value + 1), []);
     const setPlaybackRun = useCallback((run: PlaybackRun): void => setMedia(run.media), []);
     const handlePlayPause = useCallback((): void => {
         if (isPlaying) {requestedFrameRef.current = currentFrameRef.current; setRequestedFrame(currentFrameRef.current);}
@@ -244,7 +211,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         handlePlaybackRateChange: setPlaybackRate,
         handleSeekToStart: (): void => seek(0), handleSeekToEnd: (): void => seek(totalFrames - 1),
         handleToggleLoop: (): void => setIsLooping(value => !value),
-        setVideoRef, setFrameOverlayRef, setTimeOverlayRef,
+        setVideoRef, setFrameOverlayRef,
         frameTimestampsRef, currentFrameRef,
     };
 }

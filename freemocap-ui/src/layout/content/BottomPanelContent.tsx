@@ -4,7 +4,7 @@ import {LogTerminal} from "@/components/log-terminal";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import FramerateViewerPanel from "@/components/framerate-viewer/FrameRateViewer";
 
-export default function BottomPanelContent({isCollapsed}: { isCollapsed: boolean }) {
+export default function BottomPanelContent({isCollapsed, onExpand}: { isCollapsed: boolean; onExpand: () => void }) {
     const location = useLocation();
     const isPlayback = location.pathname.startsWith('/playback');
 
@@ -12,7 +12,7 @@ export default function BottomPanelContent({isCollapsed}: { isCollapsed: boolean
         <div className="bottom-info-container br-2 flex h-full">
             {isPlayback ? (
                 <div className="server-logs-container text-nowrap bg-middark bg-darkgray p-1 br-1 w-full h-full">
-                    <LogTerminal isCollapsed={isCollapsed} />
+                    <LogTerminal isCollapsed={isCollapsed} onExpand={onExpand} />
                 </div>
             ) : (
                 <PanelGroup className="console-area p-0" direction="horizontal" style={{direction: "ltr"}}>
@@ -21,7 +21,7 @@ export default function BottomPanelContent({isCollapsed}: { isCollapsed: boolean
                     </Panel>
                     <PanelResizeHandle className="info-panel-divider resizable-component" />
                     <Panel className="server-logs-container text-nowrap bg-middark bg-darkgray p-1 br-1" defaultSize={70} minSize={20}>
-                        <LogTerminal isCollapsed={isCollapsed} />
+                        <LogTerminal isCollapsed={isCollapsed} onExpand={onExpand} />
                     </Panel>
                 </PanelGroup>
             )}

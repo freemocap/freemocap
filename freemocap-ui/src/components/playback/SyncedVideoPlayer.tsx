@@ -40,7 +40,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         erroredVideos,
         setVideoRef,
         setFrameOverlayRef,
-        setTimeOverlayRef,
     } = controller;
 
     const videoIds = useMemo(() => videos.map(v => v.videoId), [videos]);
@@ -100,7 +99,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             hasError={erroredVideos.has(video.videoId)}
                             setVideoRef={setVideoRef}
                             setFrameOverlayRef={setFrameOverlayRef}
-                            setTimeOverlayRef={setTimeOverlayRef}
                         />
                     </div>
                 ))}

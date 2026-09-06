@@ -287,3 +287,54 @@ Remaining: startup/reload flashing, request coalescing across sidebar/bundle/med
 bundle validation invoking VideoGroupHelper's filename camera-ID parser for annotated videos.
 Resolve that coupling in media identity cleanup without adding another filename parser. Measure
 expected video byte-range requests separately from duplicate metadata requests.
+
+### Playback transport cleanup
+
+The server JPEG frame route and its playback reader cache are removed, along with the unused
+client timestamp-to-video-frame lookup. Both video sources use ClientVideoGroup and the same
+worker, ordinal cache, lookahead, and presentation loop; source selection changes file URLs only.
+Electron verifies play and seek after switching to annotated media. Direct FastAPI checks verify
+byte-range serving for both sources and absence of the frame route. TypeScript passes. Pytest is
+not installed in the current environment; no dependency changes were made. The reported real
+annotated-video problem remains unconfirmed: no frontend server-frame fallback was found.
+
+### Overlay cleanup and deferred work
+
+Combined green frame/time label occupies the upper-right. Static filename stays bottom-left,
+constrained with ellipsis and full text on hover. PlaybackLabel retains its drawing context;
+formatting occurs once per synchronized frame group. Static filenames remain React-owned.
+TypeScript passes. No global overlay manager is introduced.
+
+Deferred: review shared image-annotation drawing for realtime/playback/export independently of
+viewport labels. Audit streaming's retained prior observation and latest-frame scheduling before
+reusing any lifecycle code for exact-frame playback. Also review paused visibility/format changes,
+high-DPI label rendering, and coarse React timeline updates. Resume media identity work now;
+startup discovery duplication and real annotated-file failures belong to that investigation.
+
+### Recording-open request consolidation proposal
+
+The 15:16 user log contains one bundle, one manifest, one media request, four recording-list
+requests, and repeated 206 video-byte requests. Extend the existing bundle to include playback
+manifest/media bindings and share it across consumers. Deduplicate recording-list/open requests
+and explicitly invalidate on recording changes. Do not merely hide repeated backend probes behind
+one endpoint. Video byte transport is a separate concern: measure ranges, transferred bytes and
+cache hits before choosing larger reads or a persistent bounded encoded-media cache. Source
+switching currently destroys decoder caches and opening scans all decoded frames; both contribute
+to repeated I/O. GraphQL is not needed for this bounded recording-open contract.
+
+Source switching preserves the requested ordinal and pauses presentation while opening the selected
+files. Selecting a different recording still resets the timeline. Retaining both source caches
+under one shared memory budget remains follow-up work.
+
+### Recording-open metadata integration
+
+RecordingBundle now includes manifest and media bindings. PlaybackPage consumes the location-keyed
+Redux bundle shared with PlaybackContext; the controller makes no metadata HTTP requests. Source
+switching retains the frame and reuses these bindings. AppContent owns initial recording-list load;
+RecordingBrowser does not refetch on mount. Concurrent list dispatches are guarded; explicit refresh
+and import refresh remain. Backend validation against the user's calibration recording returns all
+eight raw/annotated bindings. Application and harness TypeScript checks pass.
+
+Backend probing is not yet consolidated: the bundle composes existing discovery and media loaders.
+The SkellyCam identity-free metadata contract remains the next step for removing repeated probes.
+Compressed-video range reads, whole-video validation and source-cache retention remain separate.

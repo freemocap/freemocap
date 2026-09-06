@@ -14,11 +14,14 @@ import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import { SettingsModal } from "@/components/ui-components/SettingsModal";
 import { TutorialProvider, TourController } from "@/components/tutorial";
 
+const WELCOME_SESSION_KEY = 'freemocap.welcomeShown';
+
 export const AppContent = function () {
     const { i18n } = useTranslation();
     const dispatch = useAppDispatch();
     const direction = getLocaleDirection(i18n.language);
-    const [welcomeOpen, setWelcomeOpen] = React.useState(true);
+    const [welcomeOpen, setWelcomeOpen] = React.useState(() => sessionStorage.getItem(WELCOME_SESSION_KEY) === null);
+    React.useEffect(() => {sessionStorage.setItem(WELCOME_SESSION_KEY, 'true');}, []);
     const [settingsOpen, setSettingsOpen] = React.useState(false);
 
     // The native menu's "Settings…" fires this event (see useMenuActions).

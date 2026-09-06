@@ -4,6 +4,15 @@ Planning estimate and recommended implementation order, 2026-09-05.
 Companion contracts: [posthoc rebuild](posthoc-rebuild.md) and
 [processing and playback](processing-and-playback-integration.md).
 
+## Current checkpoint — 2026-09-06
+
+Posthoc completes in the app. User confirms smooth synchronized-video playback and working seeking.
+Client playback replaces the server JPEG endpoint, which is deleted. Annotated playback uses the
+same decoder but the user's real-file issue remains unresolved. Current work resumes at
+[media identity and camera matching](media-identity-and-camera-matching.md), then returns to the
+API-to-output posthoc architecture review and recording data-model cleanup. Earlier dated test
+handoffs below are historical checkpoints, not the current next action.
+
 ## Where we are
 
 Code review entry point: `freemocap/core/recording/recording_guide.md`. Recording code uses
@@ -44,7 +53,7 @@ the complete workflow has not yet passed visual acceptance in the running app.
 
 Completed-job playback navigation preserves the recording's parent directory. Playback prefers
 original synchronized videos. The video controller supplies the exact presented recording
-timestamp to the numeric player, and each camera resolves its own native frame at that time.
+timestamp to the numeric player, and every camera presents the same shared frame ordinal.
 
 User run-through:
 

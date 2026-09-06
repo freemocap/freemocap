@@ -197,9 +197,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
     [dispatch],
   );
 
-  useEffect(() => {
-    void fetchRecordings();
-  }, [fetchRecordings]);
 
   const filteredSorted = useMemo(() => {
     let result = recordings;

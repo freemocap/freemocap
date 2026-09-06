@@ -65,5 +65,6 @@ export const fetchAllRecordings = createAsyncThunk<
         }
         const recordings: RecordingListEntry[] = await response.json();
         return { recordings, fetchedAt: Date.now() };
-    }
+    },
+    {condition: (_, {getState}) => !getState().recordingStatus.recordingsIsLoading}
 );

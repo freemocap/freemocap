@@ -1,3 +1,4 @@
+import type {PlaybackManifest, PlaybackMedia} from '@/services/recording/playback-data';
 import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
@@ -9,6 +10,8 @@ import type {LoadedCalibration} from '@/store/slices/calibration/calibration-sli
 // ---------------------------------------------------------------------------
 
 export interface PlaybackBundle {
+    manifest: PlaybackManifest | null;
+    media: PlaybackMedia[];
     recordingId: string;
     recordingFps: number | null;
     totalFrames: number | null;
@@ -109,6 +112,8 @@ export const fetchPlaybackBundle = createAsyncThunk<
 
             return {
                 recordingId: data.recording_id,
+                manifest: data.manifest,
+                media: data.media,
                 recordingFps: data.recording_fps ?? null,
                 totalFrames: data.total_frames ?? null,
                 durationSeconds: data.duration_seconds ?? null,

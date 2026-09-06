@@ -1,5 +1,6 @@
+import type {PlaybackBundle} from '../../src/store/slices/playback-data/playback-data-slice';
 /** Integration harness exercising the application's actual controller against test HTTP media. */
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {createRoot} from 'react-dom/client';
 import {usePlaybackController} from '../../src/components/playback/usePlaybackController';
 import {PlaybackControls} from '../../src/components/playback/PlaybackControls';
@@ -13,7 +14,13 @@ function Harness(): React.JSX.Element {
         const filename = `camera${index}${annotated ? '_annotated' : ''}.mp4`;
         return {filename, videoId: filename, streamUrl: `${location.origin}/test-media/${filename}`};
     });
-    const controller = usePlaybackController({videos, recordingId: 'test', recordingParentDirectory: null});
+    const [bundle, setBundle] = useState<PlaybackBundle | null>(null);
+    useEffect(() => {void fetch('/freemocap/playback/test/bundle').then(response => {
+        if (!response.ok) throw new Error('Bundle failed');
+        return response.json();
+    }).then(setBundle);}, []);
+    const controller = usePlaybackController({videos, recordingId: 'test', recordingParentDirectory: null,
+        bundle, reloadManifest: () => {throw new Error('Unexpected reload');}});
     return <>
         <output id="error">{controller.error}</output>
         <output id="ready">{String(controller.allReady)}</output>

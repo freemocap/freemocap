@@ -1,6 +1,6 @@
 """
-Playback router: serves recording descriptors, numeric windows and sequentially decoded
-video frames. Original media files remain available through the streaming endpoint.
+Playback router: serves recording descriptors, numeric windows and video file bytes.
+Video decoding and frame caching belong to the playback client.
 
 Endpoints are keyed on {recording_id} (the recording folder name). The full
 recording path is resolved as {BASE_RECORDINGS_DIRECTORY}/{recording_id},
@@ -21,9 +21,7 @@ from typing import Any, Optional
 
 import tomllib
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse, Response
-import atexit
-from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReaders
+from fastapi.responses import FileResponse
 from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, camera_timing_path
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
 from freemocap.core.recording.playback_queries import (
@@ -52,8 +50,6 @@ _VIEWER_HTML = Path(__file__).parent.parent.parent.parent / "core" / "viz" / "pa
 logger = logging.getLogger(__name__)
 
 playback_router = APIRouter(prefix="/playback", tags=["Playback"])
-video_readers = SequentialVideoReaders(capacity=8, cache_bytes=256 * 1024 * 1024)
-atexit.register(video_readers.close)
 
 
 @playback_router.get("/{recording_id}/media")
@@ -89,10 +85,10 @@ def _include_annotated_media(*, folder: Path, media: tuple[PlaybackMedia, ...]) 
             continue
         video = VideoHelper.from_video_path(annotated)
         try:
-            if original.timeline.frame_numbers[-1] >= video.metadata.frame_count:
+            if len(original.timeline.frame_numbers) != video.metadata.frame_count:
                 raise ValueError(
-                    f"Annotated video '{annotated.name}' is incomplete: "
-                    f"{video.metadata.frame_count} frames cannot cover its source timeline."
+                    f"Annotated video '{annotated.name}' does not match its source: "
+                    f"{video.metadata.frame_count} frames versus {len(original.timeline.frame_numbers)} source frames."
                 )
             result.append(PlaybackMedia(
                 video_filename=annotated.name, nominal_fps=original.nominal_fps,
@@ -102,22 +98,6 @@ def _include_annotated_media(*, folder: Path, media: tuple[PlaybackMedia, ...]) 
             video.close()
     return tuple(result)
 
-
-@playback_router.get("/{recording_id}/videos/{video_id}/frames/{frame_number}")
-def read_video_frame(
-    recording_id: str, video_id: str, frame_number: int,
-    source: str | None = None, recording_parent_directory: str | None = None,
-) -> Response:
-    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
-    folder = _resolve_video_source_folder(recording_path, source) if source else _find_video_folder(recording_path)
-    path = _discover_videos(folder).get(video_id)
-    if path is None:
-        raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
-    try:
-        jpeg = video_readers.read_jpeg(path=path, frame_number=frame_number)
-    except (ValueError, IndexError) as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
-    return Response(content=jpeg, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 TIMESTAMP_EXTENSIONS = {".csv"}
@@ -174,6 +154,8 @@ class RecordingStatusSummary(BaseModel):
 class RecordingBundle(BaseModel):
     """All playback metadata for a recording in a single response."""
     recording_id: str
+    manifest: PlaybackManifest | None
+    media: tuple[PlaybackMedia, ...]
     recording_fps: Optional[float] = None
     total_frames: Optional[int] = None
     duration_seconds: Optional[float] = None
@@ -300,14 +282,7 @@ def _validate_video_source(
     recording_id: str,
     recording_parent_directory: str | None = None,
 ) -> VideoSourceInfo:
-    """Validate a video source folder using VideoGroupHelper.
-
-    Returns VideoSourceInfo with:
-      - available: folder exists and contains video files
-      - valid: VideoGroupHelper constructed successfully (all videos readable,
-        all have same frame count)
-      - videos: list of VideoInfo for the folder (empty if unavailable)
-    """
+    """Check video readability and frame counts without assigning camera identities."""
     folder_name = (
         ANNOTATED_VIDEOS_FOLDER_NAME if source_name == "annotated"
         else SYNCHRONIZED_VIDEOS_FOLDER_NAME
@@ -324,20 +299,18 @@ def _validate_video_source(
     if not video_paths:
         return VideoSourceInfo(available=False, valid=False, video_count=0)
 
-    # Validate frame-count consistency via VideoGroupHelper (imported lazily
-    # because it pulls in cv2 + numpy).
-    valid = False
-    try:
-        from freemocap.core.pipeline.posthoc.video_group_helper import (
-            VideoGroupHelper,
-        )
-        VideoGroupHelper.from_video_folder_path(folder)
-        valid = True
-    except Exception:
-        logger.warning(
-            f"VideoGroupHelper validation failed for {folder}",
-            exc_info=True,
-        )
+    frame_counts: dict[str, int] = {}
+    for path in video_paths:
+        try:
+            video = VideoHelper.from_video_path(video_path=path, cache_size_mb=0)
+            try:
+                frame_counts[path.name] = video.metadata.frame_count
+            finally:
+                video.close()
+        except (ValueError, RuntimeError, OSError) as error:
+            raise HTTPException(status_code=422, detail=f"Cannot inspect video '{path.name}': {error}") from error
+    if len(set(frame_counts.values())) != 1:
+        raise HTTPException(status_code=422, detail={"message": "Video frame counts differ", "files": frame_counts})
 
     parent_directory_suffix = (
         f"&recording_parent_directory={recording_parent_directory}"
@@ -359,7 +332,7 @@ def _validate_video_source(
 
     return VideoSourceInfo(
         available=True,
-        valid=valid,
+        valid=True,
         video_count=len(videos),
         videos=videos,
     )
@@ -1181,7 +1154,13 @@ def get_recording_bundle(
         stages_total=len(status.stages),
     )
 
+    manifest = get_playback_manifest(recording_id=recording_id, recording_parent_directory=recording_parent_directory)
+    media = read_unprocessed_media(recording_id=recording_id, recording_parent_directory=recording_parent_directory) if manifest is None else next(
+        run.media for run in manifest.runs if run.run_id == manifest.selected_run_id
+    )
     return RecordingBundle(
+        manifest=manifest,
+        media=media,
         recording_id=recording_id,
         recording_fps=stats.get("fps"),
         total_frames=stats.get("total_frames"),

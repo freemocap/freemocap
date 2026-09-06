@@ -122,7 +122,7 @@ export const BasePanelLayout = ({
           onCollapse={handleBottomPanelCollapse}
           onExpand={handleBottomPanelExpand}
         >
-          <BottomPanelContent isCollapsed={isBottomCollapsed} />
+          <BottomPanelContent isCollapsed={isBottomCollapsed} onExpand={() => bottomPanelRef.current?.expand()} />
         </Panel>
       </PanelGroup>
     </div>

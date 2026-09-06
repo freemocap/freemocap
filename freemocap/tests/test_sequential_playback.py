@@ -1,4 +1,4 @@
-"""Playback HTTP and posthoc reading share deterministic sequential video decoding."""
+"""Playback serves media bytes; posthoc readers provide deterministic frame access."""
 
 from pathlib import Path
 from shutil import copyfile
@@ -6,10 +6,10 @@ from shutil import copyfile
 import cv2
 import numpy as np
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from freemocap.api.http.playback.playback_router import playback_router, video_readers, preferred_video_source, VideoSourceInfo, PlaybackVideoSource
+from freemocap.api.http.playback.playback_router import playback_router, _validate_video_source, preferred_video_source, VideoSourceInfo, PlaybackVideoSource
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
 
 
@@ -61,24 +61,34 @@ def test_posthoc_backward_read_after_cache_eviction(video_path: Path) -> None:
         helper.close()
 
 
-def test_raw_media_and_sequential_frame_routes(video_path: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("source", ["synchronized", "annotated"])
+def test_playback_serves_video_bytes(video_path: Path, tmp_path: Path, source: str) -> None:
+    if source == "annotated":
+        folder = video_path.parent.parent / "annotated_videos"
+        folder.mkdir()
+        copyfile(src=video_path, dst=folder / video_path.name)
     app = FastAPI()
     app.include_router(playback_router)
-    query = {"recording_parent_directory": str(tmp_path)}
-    original_paths = set(tmp_path.rglob("*"))
-    try:
-        with TestClient(app) as client:
-            media = client.get("/playback/recording/media", params=query)
-            assert media.status_code == 200, media.text
-            binding = media.json()[0]
-            assert binding["video_filename"] == video_path.name
-            assert set(tmp_path.rglob("*")) == original_paths
-            assert binding["timeline"]["timestamps_s"] == pytest.approx([frame / 30 for frame in range(12)])
-            for frame in (10, 2, 11):
-                response = client.get(f"/playback/recording/videos/camera/frames/{frame}", params=query)
-                assert response.status_code == 200, response.text
-                image = cv2.imdecode(np.frombuffer(response.content, dtype=np.uint8), cv2.IMREAD_COLOR)
-                assert float(image.mean()) == pytest.approx(frame * 20, abs=2)
-            assert client.get("/playback/recording/videos/camera/frames/12", params=query).status_code == 422
-    finally:
-        video_readers.close()
+    query = {"recording_parent_directory": str(tmp_path), "source": source}
+    with TestClient(app) as client:
+        response = client.get("/playback/recording/videos/camera", params=query, headers={"Range": "bytes=0-127"})
+        assert response.status_code == 206, response.text
+        assert response.content == video_path.read_bytes()[:128]
+        assert client.get("/playback/recording/videos/camera/frames/0", params=query).status_code == 404
+
+
+def test_media_inspection_does_not_infer_camera_identity(video_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def reject_identity(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Media inspection must not infer camera identity")
+
+    monkeypatch.setattr("freemocap.core.pipeline.posthoc.video_group_helper.ParsedVideoFilename.from_path", reject_identity)
+    folder = video_path.parent.parent / "annotated_videos"
+    folder.mkdir()
+    for name in ("a date 2026-09-06_annotated.avi", "arbitrary subject.avi"):
+        copyfile(src=video_path, dst=folder / name)
+    result = _validate_video_source(recording_path=video_path.parent.parent, source_name="annotated", recording_id="recording")
+    assert result.valid
+    assert result.video_count == 2
+    (folder / "broken.avi").write_bytes(b"invalid video")
+    with pytest.raises(HTTPException, match="broken.avi"):
+        _validate_video_source(recording_path=video_path.parent.parent, source_name="annotated", recording_id="recording")

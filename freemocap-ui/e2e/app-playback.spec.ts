@@ -22,8 +22,7 @@ test('app controller uses buffered video bytes for play, seek and source switchi
                 const url = request.url ?? '';
                 if (!url.startsWith('/test-media/') && !url.startsWith('/freemocap/')) return next();
                 requests.push(url);
-                if (url.includes('/manifest')) {response.setHeader('Content-Type', 'application/json'); response.end('null'); return;}
-                if (url.includes('/media')) {response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify(media)); return;}
+                if (url.includes('/bundle')) {response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({manifest: null, media})); return;}
                 if (url.startsWith('/test-media/')) {
                     const range = /bytes=(\d+)-(\d*)/.exec(request.headers.range ?? '');
                     const start = range ? Number(range[1]) : 0;
@@ -78,9 +77,16 @@ test('app controller uses buffered video bytes for play, seek and source switchi
             await expect(page.locator('#playing')).toHaveText('false', {timeout: 20_000});
             await assertOrdinal(47);
             expect(requests.filter(url => url.startsWith('/test-media/')).length).toBe(readsBeforePlayback);
-            await page.locator('#source').click(); await assertOrdinal(0);
+            await page.locator('#source').click(); await assertOrdinal(47);
+            await expect(slider).toHaveValue('47');
             await page.locator('#forward').click(); await assertOrdinal(30);
+            await page.locator('#back').click(); await assertOrdinal(2);
+            await page.locator('#play').click();
+            await expect(page.locator('#playing')).toHaveText('false', {timeout: 20_000});
+            await assertOrdinal(47);
+            expect(requests.some(url => url.includes('_annotated.mp4'))).toBe(true);
             expect(requests.some(url => url.includes('/frames/'))).toBe(false);
+            expect(requests.filter(url => url.startsWith('/freemocap/'))).toEqual(['/freemocap/playback/test/bundle']);
         } finally {await app.close();}
     } finally {await server.close();}
 });

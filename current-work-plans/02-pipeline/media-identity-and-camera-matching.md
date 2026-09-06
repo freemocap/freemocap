@@ -152,7 +152,7 @@ First complete the [client playback design](client-playback-design.md) review an
 client decoding/caching, deterministic frame selection, and consolidated sidebar requests take
 precedence. The following identity and processing work resumes after that playback boundary is sound.
 
-1. **Contain current loading failures.** Reproduce four-camera playback in the app; prevent duplicate
+1. **Contain current loading failures.** Reproduce the reported multi-video playback in the app; prevent duplicate
    keys from losing media; decouple media inspection from synchronized processing validation. Capture
    exact UI failures before prescribing fixes. Make expected media-only playback a normal capability.
 2. **SkellyCam media contract.** Own probing, source/media metadata, timing resolution and derived
@@ -193,3 +193,38 @@ substitutions, site-packages changes, or agent Git mutations.
 Confirm the minimal metadata extension and source scope; approve manual-first assignment UX and
 initial Charuco search scope. Then define API payloads against existing models and a representative
 evaluation dataset. Geometric acceptance thresholds and any unattended matching remain deferred.
+
+## Resume checkpoint — 2026-09-06
+
+Client playback is integrated; user confirms synchronized playback and seeking. The server JPEG
+route is deleted. Next audit bundle/media discovery and annotated-source resolution, including
+filename-derived duplicate identities and repeated probes. Capture the real annotated-file failure
+before prescribing a fix. Then agree the minimal SkellyCam media contract and migrate callers.
+Camera permutation search remains planned, not implemented or authorized for implementation.
+
+### First discovery cleanup
+
+Playback source validation no longer constructs VideoGroupHelper or assigns camera IDs/indices.
+It uses existing VideoHelper metadata, closes each reader, checks equal counts without comparing
+FPS, and reports unreadable files/count mismatches explicitly. Annotated/source count validation
+now rejects extra frames as well as missing frames. Direct temporary-video verification passes
+with filename parsing patched to fail: arbitrary annotated filenames load; corrupt input returns
+an explicit 422. A pytest regression is added, but pytest is unavailable in the installed environment.
+
+This is caller cleanup, not the final media contract. VideoHelper still opens a sequential reader
+just to inspect metadata; repeated bundle/media probes and filename-based source/timing association
+remain. Next: design the minimal identity-free SkellyCam probe contract and explicit derived-media
+relationships, then migrate these callers. No dependency-source changes were made.
+
+### SkellyCam probe handoff
+
+SkellyCam now defines VideoFileMetadata and probe_video_files in
+skellycam/core/recorders/videos/video_file_metadata.py. The batch probes distinct resolved paths
+once, closes captures, and carries no camera ID or index. Reported FPS/frame count are file
+properties, not synchronization evidence or a substitute for exact decoded-count validation.
+A real 48-frame H264 fixture passes in SkellyCam's own environment. FreeMoCap has not imported this
+new API yet: user commit/push and Git dependency integration must precede that migration.
+
+The 15:28 log has one bundle request and no ERROR/WARNING/FAILED entries, but 22 recording-list
+requests across the session. Investigate refresh triggers before declaring request consolidation
+complete. Video byte-range requests remain a separate optimization.

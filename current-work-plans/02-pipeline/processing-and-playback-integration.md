@@ -17,12 +17,11 @@ Annotation consumes original images and selected saved observations through the 
 The default video output is an annotated synchronized grid; per-camera annotated videos are not
 default outputs. The raw grid is optional. Annotation is independent of detector execution.
 
-Video seeking must decode incrementally. SkellyCam owns the sequential decoder used by both
-posthoc VideoHelper and the playback frame endpoint. Forward requests decode intervening frames;
-backward requests reopen and decode forward from frame zero. Do not use random frame-index seeks
-or browser currentTime jumps. Playback resolves camera-local frame indices from recording time,
-decodes all requested images, and presents the camera set together. Cache and throughput work must
-preserve this invariant. The canvas player and frame routes need real-app visual acceptance.
+Video seeking must decode incrementally. SkellyCam owns sequential decoding for posthoc processing.
+Playback owns client workers, compressed-byte and decoded-frame caches, and bounded lookahead.
+Both raw and annotated files use the same client decoder. The server frame endpoint is removed.
+A synchronized video group has equal frame counts and one shared ordinal; FPS estimates are not
+compared. Backward cache misses restart sequential decoding. See the client playback plan for QA.
 
 The mocap setup panel discovers recording-local calibration, offers the last-successful artifact,
 and can launch the existing calibration task on the selected recording's videos. That task must

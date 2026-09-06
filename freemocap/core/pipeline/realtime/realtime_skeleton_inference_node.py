@@ -55,7 +55,6 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
 from skellytracker.core.tracker.tracker import Tracker
 from skellytracker.core.tracker.tracker_state import TrackerState  # noqa: TC002
-from skellytracker.core.sessions.onnx_session import OnnxSession
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -93,6 +92,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             pubsub: PubSubTopicManager,
     ) -> "RealtimeSkeletonInferenceNode":
         shutdown_self_flag, worker = cls._create_worker(
+            owner_shutdown_flag=ipc.pipeline_shutdown_flag,
+            worker_mode=worker_registry.worker_mode,
             target=cls._run,
             name=f"CameraGroup-{camera_group_id}-SkeletonInferenceNode",
             worker_registry=worker_registry,
@@ -148,8 +149,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 f"RealtimeSkeletonInferenceNode [{camera_group_id}] could not "
                 f"construct tracker/session; exiting."
             )
-            ipc.kill_everything()
-            return
+            raise RuntimeError("Unable to construct realtime tracker/session")
 
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = (
@@ -256,8 +256,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                             f"RealtimeSkeletonInferenceNode [{camera_group_id}] exceeded max "
                             f"session restarts — giving up."
                         )
-                        ipc.kill_everything()
-                        return
+                        raise RuntimeError("Realtime tracker recovery exhausted")
                     tracker.close()
                     gc.collect()
                     tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
@@ -266,8 +265,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                             f"RealtimeSkeletonInferenceNode [{camera_group_id}] failed to rebuild "
                             f"tracker after MemoryError — giving up."
                         )
-                        ipc.kill_everything()
-                        return
+                        raise RuntimeError("Realtime tracker recovery exhausted")
                     tracker_states = {}
                     session_restart_count += 1
                     logger.info(
@@ -314,7 +312,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 f"Exception in RealtimeSkeletonInferenceNode [{camera_group_id}]: {e}",
                 exc_info=True,
             )
-            ipc.kill_everything()
+            ipc.shutdown_pipeline()
             raise
         finally:
             if tracker is not None:

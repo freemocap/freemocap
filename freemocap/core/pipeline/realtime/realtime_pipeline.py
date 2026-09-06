@@ -19,7 +19,6 @@ from queue import Empty
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
@@ -93,6 +92,17 @@ class RealtimePipeline:
         return self.camera_group.id
 
     @property
+    def failure(self) -> str | None:
+        nodes = [*self.camera_nodes.values(), self.aggregation_node]
+        if self.skeleton_inference_node is not None:
+            nodes.append(self.skeleton_inference_node)
+        if self.charuco_recorder_node is not None:
+            nodes.append(self.charuco_recorder_node)
+        failures = [f"{node.worker.name} exited with code {node.worker.failure_exitcode}"
+                    for node in nodes if node.worker.failure_exitcode is not None]
+        return "; ".join(failures) if failures else None
+
+    @property
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.camera_nodes.keys())
 
@@ -124,13 +134,6 @@ class RealtimePipeline:
             global_kill_flag=global_kill_flag,
         )
 
-        camera_registry = worker_registry
-        if pipeline_config.camera_node_config.worker_mode == WorkerMode.THREAD:
-            camera_registry = WorkerRegistry(
-                global_kill_flag=global_kill_flag,
-                worker_mode=WorkerMode.THREAD,
-            )
-
         # Use the realtime subset if provided, otherwise all cameras in the group.
         # The camera group is always started with all selected cameras so their
         # shared memory exists; we just choose which ones feed the pipeline nodes.
@@ -143,7 +146,7 @@ class RealtimePipeline:
         camera_nodes = {
             camera_id: CameraNode.create(
                 camera_id=camera_id,
-                worker_registry=camera_registry,
+                worker_registry=worker_registry,
                 camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
@@ -261,17 +264,19 @@ class RealtimePipeline:
 
     def shutdown(self) -> None:
         logger.debug(f"Shutting down RealtimePipeline [{self.id}]")
-        self.ipc.shutdown_pipeline()
+
 
         # Mark all workers as intentionally terminated BEFORE they die
         # so the WorkerRegistry child monitor doesn't trigger a cascade kill
         for node in self.camera_nodes.values():
-            node.worker._intentionally_terminated = True
-        self.aggregation_node.worker._intentionally_terminated = True
+            node.worker.mark_stopping()
+        self.aggregation_node.worker.mark_stopping()
         if self.skeleton_inference_node is not None:
-            self.skeleton_inference_node.worker._intentionally_terminated = True
+            self.skeleton_inference_node.worker.mark_stopping()
         if self.charuco_recorder_node is not None:
-            self.charuco_recorder_node.worker._intentionally_terminated = True
+            self.charuco_recorder_node.worker.mark_stopping()
+
+        self.ipc.shutdown_pipeline()
 
         # Shut down worker threads BEFORE closing pubsub queues.
         # On Windows, closing a multiprocessing.Queue while a thread is

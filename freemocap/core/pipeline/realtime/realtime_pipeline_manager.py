@@ -158,6 +158,14 @@ class RealtimePipelineManager(PipelineManagerABC):
             for pipeline in self.pipelines.values():
                 pipeline.camera_group.pause_unpause()
 
+    def stop_pipeline(self, *, pipeline_id: PipelineIdString) -> bool:
+        with self.lock:
+            pipeline = self.pipelines.pop(pipeline_id, None)
+        if pipeline is None:
+            return False
+        pipeline.shutdown()
+        return True
+
     def shutdown(self) -> None:
         with self.lock:
             for pipeline in self.pipelines.values():

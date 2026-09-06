@@ -63,8 +63,3 @@ class PipelineIPC:
     def shutdown_pipeline(self) -> None:
         """Signal this pipeline to stop. Does NOT touch the global kill flag."""
         self.pipeline_shutdown_flag.value = True
-
-    def kill_everything(self) -> None:
-        """Nuclear option: stop this pipeline AND signal global shutdown."""
-        self.pipeline_shutdown_flag.value = True
-        self.global_kill_flag.value = True

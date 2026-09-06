@@ -73,7 +73,7 @@ class ServerUrls {
 
             // Realtime pipeline endpoints
             realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,
-            realtimeClose: `${baseUrl}/freemocap/realtime/all/close`,
+            realtimeClose: `${baseUrl}/freemocap/mocap/realtime/pipelines`,
             resetSkeletonFitter: `${baseUrl}/freemocap/realtime/reset-skeleton-fitter`,
 
             // Calibration endpoints
@@ -93,8 +93,6 @@ class ServerUrls {
                 `${baseUrl}/freemocap/mocap/recording/synchronize/${encodeURIComponent(jobId)}`,
 
             // Posthoc pipeline control
-            stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,
-            stopAllPipelines: `${baseUrl}/freemocap/posthoc/pipeline`,
 
             // Telemetry
             trackTelemetry: `${baseUrl}/freemocap/telemetry/track`,

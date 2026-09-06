@@ -59,6 +59,8 @@ class SyncJob(BaseNode):
         result_queue: multiprocessing.queues.Queue = multiprocessing.Queue()
 
         shutdown_self_flag, worker = cls._create_worker(
+            owner_shutdown_flag=ipc.pipeline_shutdown_flag,
+            worker_mode=worker_registry.worker_mode,
             target=cls._run,
             name=f"SyncJob-{job_id}",
             worker_registry=worker_registry,
@@ -129,6 +131,13 @@ class SyncJob(BaseNode):
                 messages.append(self.progress_subscription.get_nowait())
             except Empty:
                 break
+        if self.worker.failure_exitcode is not None:
+            self._finished = True
+            self._error = f"Synchronization worker exited with code {self.worker.failure_exitcode}"
+            messages.append(SyncJobProgressMessage(
+                pipeline_id=self.id, pipeline_type="sync", phase=str(SyncStage.FAILED),
+                progress_fraction=0.0, detail=self._error,
+            ))
         return messages
 
     def poll_result(self) -> None:

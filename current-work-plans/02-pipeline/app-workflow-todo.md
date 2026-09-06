@@ -254,3 +254,8 @@ own JSON serialization; a regression verifies projection, Parquet round-trip, sc
 Scale-fit and model wrappers remain the next separate review chunks. Saved camera descriptors use
 the CameraModel structure; no compatibility adapter is supplied for the removed wrapper.
 
+
+Lifecycle cleanup: see [pipeline lifecycle scopes](pipeline-lifecycle-scopes.md). Cancellation is
+scoped by task/mode. Worker failures stop the owning pipeline; global shutdown remains explicit.
+50 focused tests and frontend type checking pass. Real-app concurrent pipeline acceptance is pending.
+

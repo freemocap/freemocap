@@ -10,7 +10,6 @@ The pipeline self-terminates when processing is complete. All processes exit
 naturally when their work is done.
 """
 import logging
-import multiprocessing
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,6 +31,8 @@ from freemocap.core.pipeline.posthoc.video_node import VideoNode
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage
+from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase
 
 logger = logging.getLogger(__name__)
 
@@ -180,13 +181,15 @@ class PosthocPipeline(PipelineABC):
     def shutdown(self) -> None:
         """Force-shutdown the pipeline (for cleanup or cancellation)."""
         logger.debug(f"Shutting down PosthocPipeline [{self.id}]")
+        for node in [*self.video_nodes.values(), self.aggregation_node]:
+            node.worker.mark_stopping()
         self.ipc.shutdown_pipeline()
-        self.pubsub.close()
         for node in self.video_nodes.values():
             if node.is_alive:
                 node.shutdown()
         if self.aggregation_node.is_alive:
             self.aggregation_node.shutdown()
+        self.pubsub.close()
         logger.debug(f"PosthocPipeline [{self.id}] shut down")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:
@@ -206,6 +209,17 @@ class PosthocPipeline(PipelineABC):
         for message in fresh:
             self._latest_progress_by_id[message.pipeline_id] = message
 
+        failures = [node.worker for node in [*self.video_nodes.values(), self.aggregation_node]
+                    if node.worker.failure_exitcode is not None]
+        if failures:
+            self.ipc.shutdown_pipeline()
+            self._latest_progress_by_id[self.id] = AggregatorNodeProgressMessage(
+                pipeline_id=self.id, pipeline_type=str(self.pipeline_type),
+                phase=AggregatorPhase.FAILED, progress_fraction=0.0,
+                detail="; ".join(f"{worker.name} exited with code {worker.failure_exitcode}" for worker in failures),
+                recording_name=self.recording_info.recording_name,
+                recording_path=str(self.recording_info.full_recording_path),
+            )
         return list(self._latest_progress_by_id.values())
 
     def drain_and_get_messages(self) -> list[PipelineProgressMessage]:

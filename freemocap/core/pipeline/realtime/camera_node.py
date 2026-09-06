@@ -123,6 +123,8 @@ class CameraNode(SourceNode):
             log_pipeline_times: bool = False,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
+            owner_shutdown_flag=ipc.pipeline_shutdown_flag,
+            worker_mode=config.worker_mode,
             target=cls._run,
             name=f"RealtimeCameraNode-{camera_id}",
             worker_registry=worker_registry,
@@ -386,7 +388,7 @@ class CameraNode(SourceNode):
 
         except Exception as e:
             logger.exception(f"Exception in RealtimeCameraNode [{camera_id}]: {e}")
-            ipc.kill_everything()
+            ipc.shutdown_pipeline()
             raise
         finally:
             if charuco_tracker is not None:

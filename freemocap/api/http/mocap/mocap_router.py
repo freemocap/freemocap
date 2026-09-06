@@ -1,3 +1,4 @@
+from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 import logging
 import shutil
 import tempfile
@@ -412,3 +413,31 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
     except Exception as e:
         logger.exception(f"Error processing mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@mocap_router.delete("/posthoc/pipelines/{pipeline_id}")
+def cancel_posthoc_pipeline(pipeline_id: str) -> None:
+    if not get_freemocap_app().posthoc_pipeline_manager.stop_pipeline(
+        pipeline_id=pipeline_id, pipeline_type=PosthocPipelineType.MOCAP,
+    ):
+        raise HTTPException(status_code=404, detail="Pipeline not found in mocap/posthoc")
+
+
+@mocap_router.delete("/posthoc/pipelines")
+def cancel_posthoc_pipelines() -> None:
+    get_freemocap_app().posthoc_pipeline_manager.stop_all_pipelines(pipeline_type=PosthocPipelineType.MOCAP)
+
+@mocap_router.delete("/realtime/pipelines/{pipeline_id}")
+def cancel_realtime_pipeline(pipeline_id: str) -> None:
+    if not get_freemocap_app().realtime_pipeline_manager.stop_pipeline(pipeline_id=pipeline_id):
+        raise HTTPException(status_code=404, detail="Pipeline not found in mocap/realtime")
+
+
+@mocap_router.delete("/realtime/pipelines")
+def cancel_realtime_pipelines() -> None:
+    get_freemocap_app().realtime_pipeline_manager.shutdown()
+
+
+@mocap_router.delete("/synchronization/jobs/{job_id}")
+def cancel_synchronization_job(job_id: str) -> None:
+    if not get_freemocap_app().sync_job_manager.stop_job(job_id=job_id):
+        raise HTTPException(status_code=404, detail="Synchronization job not found")

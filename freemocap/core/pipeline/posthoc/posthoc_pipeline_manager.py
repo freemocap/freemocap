@@ -199,24 +199,24 @@ class PosthocPipelineManager(PipelineManagerABC):
             recording_path=str(pipeline.recording_info.full_recording_path),
         )
 
-    def stop_pipeline(self, pipeline_id: PipelineIdString) -> bool:
+    def stop_pipeline(self, *, pipeline_id: PipelineIdString, pipeline_type: PosthocPipelineType) -> bool:
         """Shutdown a single pipeline by ID. Returns True if found, False if not."""
         with self.lock:
-            pipeline = self.pipelines.pop(pipeline_id, None)
-            if pipeline is not None:
-                self.pending_stop_messages.append(self._stopped_by_user_message(pipeline))
-        if pipeline is None:
-            logger.warning(f"stop_pipeline: pipeline [{pipeline_id}] not found")
-            return False
+            pipeline = self.pipelines.get(pipeline_id)
+            if pipeline is None or pipeline.pipeline_type != pipeline_type:
+                return False
+            self.pipelines.pop(pipeline_id)
+            self.pending_stop_messages.append(self._stopped_by_user_message(pipeline))
         pipeline.shutdown()
         logger.info(f"Stopped posthoc pipeline [{pipeline_id}]")
         return True
 
-    def stop_all_pipelines(self) -> None:
+    def stop_all_pipelines(self, *, pipeline_type: PosthocPipelineType) -> None:
         """Shutdown all active posthoc pipelines."""
         with self.lock:
-            pipelines = list(self.pipelines.values())
-            self.pipelines.clear()
+            pipelines = [pipeline for pipeline in self.pipelines.values() if pipeline.pipeline_type == pipeline_type]
+            for pipeline in pipelines:
+                self.pipelines.pop(pipeline.id)
             self.pending_stop_messages.extend(
                 self._stopped_by_user_message(pipeline) for pipeline in pipelines
             )

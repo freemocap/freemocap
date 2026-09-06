@@ -1,3 +1,4 @@
+from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 import importlib.util
 import json
 import logging
@@ -284,3 +285,15 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
     except Exception as e:
         logger.exception(f"Error calibrating recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@calibration_router.delete("/posthoc/pipelines/{pipeline_id}")
+def cancel_posthoc_pipeline(pipeline_id: str) -> None:
+    if not get_freemocap_app().posthoc_pipeline_manager.stop_pipeline(
+        pipeline_id=pipeline_id, pipeline_type=PosthocPipelineType.CALIBRATION,
+    ):
+        raise HTTPException(status_code=404, detail="Pipeline not found in calibration/posthoc")
+
+
+@calibration_router.delete("/posthoc/pipelines")
+def cancel_posthoc_pipelines() -> None:
+    get_freemocap_app().posthoc_pipeline_manager.stop_all_pipelines(pipeline_type=PosthocPipelineType.CALIBRATION)

@@ -137,12 +137,6 @@ class FreemocapApplication:
         )
         return pipeline
 
-    def stop_posthoc_pipeline(self, pipeline_id: str) -> bool:
-        return self.posthoc_pipeline_manager.stop_pipeline(pipeline_id)
-
-    def stop_all_posthoc_pipelines(self) -> None:
-        self.posthoc_pipeline_manager.stop_all_pipelines()
-
     # ------------------------------------------------------------------
     # Video synchronization jobs
     # ------------------------------------------------------------------
@@ -188,6 +182,7 @@ class FreemocapApplication:
                     "camera_group_id": pipeline.camera_group_id,
                     "camera_ids": list(pipeline.camera_ids),
                     "alive": pipeline.alive,
+                    "error": pipeline.failure,
                 }
                 for pipeline in self.realtime_pipeline_manager.pipelines.values()
             ],
@@ -197,7 +192,7 @@ class FreemocapApplication:
     # Lifecycle
     # ------------------------------------------------------------------
 
-    def close_pipelines(self) -> None:
+    def shutdown_all_processing(self) -> None:
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
         self.sync_job_manager.shutdown()
@@ -207,9 +202,7 @@ class FreemocapApplication:
 
     def close(self) -> None:
         self.global_kill_flag.value = True
-        self.realtime_pipeline_manager.shutdown()
-        self.posthoc_pipeline_manager.shutdown()
-        self.sync_job_manager.shutdown()
+        self.shutdown_all_processing()
 
 
 FREEMOCAP_APP: FreemocapApplication | None = None

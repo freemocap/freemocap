@@ -99,24 +99,6 @@ async def pipeline_apply_endpoint(
         )
 
 
-@realtime_router.delete(
-    "/all/close",
-    summary="Disconnect/shutdown all processing pipelines",
-)
-async def pipeline_close_endpoint() -> None:
-    logger.api("Received `pipeline/close` DELETE request")
-    try:
-        get_freemocap_app().close_pipelines()
-        logger.api("`pipeline/close` DELETE request handled successfully")
-    except Exception as e:
-        logger.error(f"Error when processing `pipeline/close` request: {type(e).__name__} - {e}")
-        logger.exception(e)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error when processing `pipeline/close` request: {type(e).__name__} - {e}",
-        )
-
-
 @realtime_router.post(
     "/reset-skeleton-fitter",
     status_code=status.HTTP_204_NO_CONTENT,

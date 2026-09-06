@@ -58,6 +58,8 @@ class CharucoRecorderNode(SourceNode):
         recording_state_sub = pubsub.get_subscription(CalibrationRecordingStateTopic)
 
         shutdown_self_flag, worker = cls._create_worker(
+            owner_shutdown_flag=ipc.pipeline_shutdown_flag,
+            worker_mode=worker_registry.worker_mode,
             target=cls._run,
             name="CharucoRecorderNode",
             worker_registry=worker_registry,

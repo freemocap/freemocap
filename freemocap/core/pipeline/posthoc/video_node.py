@@ -140,6 +140,8 @@ class VideoNode(SourceNode):
     ) -> "VideoNode":
         _progress_queue: multiprocessing.queues.Queue = multiprocessing.Queue()
         shutdown_self_flag, worker = cls._create_worker(
+            owner_shutdown_flag=ipc.pipeline_shutdown_flag,
+            worker_mode=worker_registry.worker_mode,
             target=cls._run,
             name=f"VideoNode-{video_path.stem}",
             worker_registry=worker_registry,

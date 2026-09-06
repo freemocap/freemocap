@@ -84,9 +84,6 @@ from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import (
     RealtimePointGate,
     GateResult,
 )
-from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import (
-    RealtimeFilterConfig,
-)
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import (
     RealtimeKeypointFilter,
 )
@@ -352,6 +349,8 @@ class RealtimeAggregatorNode(AggregatorNode):
         skeleton_fitter_reset_sub: TopicSubscriptionQueue,
     ) -> "RealtimeAggregatorNode":
         shutdown_self_flag, worker = cls._create_worker(
+            owner_shutdown_flag=ipc.pipeline_shutdown_flag,
+            worker_mode=worker_registry.worker_mode,
             target=cls._run,
             name=f"CameraGroup-{camera_group_id}-AggregationNode",
             worker_registry=worker_registry,
@@ -1009,7 +1008,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 f"Exception in RealtimeAggregationNode [{camera_group_id}]: {e}",
                 exc_info=True,
             )
-            ipc.kill_everything()
+            ipc.shutdown_pipeline()
             raise
         finally:
             if timing_reporter_stop is not None:

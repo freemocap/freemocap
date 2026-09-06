@@ -38,6 +38,7 @@ export default function PipelineProgressSnackbar() {
     const groups = useAppSelector(selectGroupedPipelinesAll);
     const activeCount = useAppSelector(selectActiveBasePipelineCount);
     const open = useAppSelector(selectSnackbarVisible);
+    const cancellationError = useAppSelector(state => state.pipelines.cancellationError);
     const dismissedIds = useAppSelector(selectDismissedBasePipelineIds);
     const [collapsed, setCollapsed] = React.useState(false);
 
@@ -224,7 +225,7 @@ export default function PipelineProgressSnackbar() {
                             onMouseDown={e => e.stopPropagation()}
                             onClick={() => dispatch(stopAllPipelines())}
                             tooltip={true}
-                            tooltipText="Stop all pipelines"
+                            tooltipText="Stop all posthoc jobs"
                             tooltipPosition="pos-bottom"
                         />
                     )}
@@ -244,6 +245,7 @@ export default function PipelineProgressSnackbar() {
 
                 {!collapsed && (
                     <div className="overflow-y flex-1 min-h-0 inner-content">
+                        {cancellationError && <p role="alert" className="text-error">{cancellationError}</p>}
                         {visibleGroups.length === 0 ? (
                             <div className="flex justify-center py-4">
                                 <p className="text sm text-gray">No active pipelines</p>

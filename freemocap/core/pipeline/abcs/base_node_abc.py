@@ -14,7 +14,7 @@ in its main loop.
 
 Error escalation policy (enforced by subclasses, not the base):
   - Posthoc nodes: on exception, call `ipc.shutdown_pipeline()` (pipeline-local)
-  - Realtime nodes: on exception, call `ipc.kill_everything()` (app-level)
+  - Realtime nodes: on exception, signal their pipeline shutdown flag and raise
 """
 import logging
 import multiprocessing
@@ -24,7 +24,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
-from skellycam.core.ipc.process_management.managed_worker import ManagedWorker
+from skellycam.core.ipc.process_management.managed_worker import ManagedWorker, WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
 logger = logging.getLogger(__name__)
@@ -75,8 +75,8 @@ class BaseNode:
         exit cleanly), then delegates to ManagedWorker.terminate_gracefully()
         for escalating force.
         """
+        self.worker.mark_stopping()
         self.shutdown_self_flag.value = True
-        self.worker._intentionally_terminated = True
         if self.worker.is_alive():
             logger.debug(f"Shutting down {type(self).__name__} worker '{self.worker.name}'")
             self.worker.terminate_gracefully()
@@ -86,6 +86,8 @@ class BaseNode:
     @staticmethod
     def _create_worker(
         *,
+        owner_shutdown_flag: Synchronized,
+        worker_mode: WorkerMode,
         target: Callable[..., None],
         name: str,
         worker_registry: WorkerRegistry,
@@ -111,6 +113,8 @@ class BaseNode:
         shutdown_self_flag: Synchronized = multiprocessing.Value('b', False)
         kwargs["shutdown_self_flag"] = shutdown_self_flag
         worker = worker_registry.create_worker(
+            shutdown_flag=owner_shutdown_flag,
+            worker_mode=worker_mode,
             target=target,
             name=name,
             log_queue=log_queue,

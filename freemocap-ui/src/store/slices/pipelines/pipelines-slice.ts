@@ -57,6 +57,7 @@ export interface PipelineProgress {
 // ==================== State ====================
 
 interface PipelinesState {
+    cancellationError: string | null;
     activePipelines: Record<string, PipelineProgress>;
     dismissedBasePipelineIds: string[];
     showCompleted: boolean;
@@ -65,6 +66,7 @@ interface PipelinesState {
 }
 
 const initialState: PipelinesState = {
+    cancellationError: null,
     activePipelines: {},
     dismissedBasePipelineIds: [],
     showCompleted: false,
@@ -80,15 +82,6 @@ function forceBasePipelineFailed(state: PipelinesState, baseId: string, detail: 
         const colonIdx = id.indexOf(':');
         const thisBase = colonIdx !== -1 ? id.slice(0, colonIdx) : id;
         if (thisBase === baseId && p.phase !== PipelinePhase.COMPLETE && p.phase !== PipelinePhase.FAILED) {
-            state.activePipelines[id] = {...p, phase: PipelinePhase.FAILED, detail, completedAt: now};
-        }
-    }
-}
-
-function forceAllActiveFailed(state: PipelinesState, detail: string) {
-    const now = Date.now();
-    for (const [id, p] of Object.entries(state.activePipelines)) {
-        if (p.phase !== PipelinePhase.COMPLETE && p.phase !== PipelinePhase.FAILED) {
             state.activePipelines[id] = {...p, phase: PipelinePhase.FAILED, detail, completedAt: now};
         }
     }
@@ -142,23 +135,20 @@ export const pipelinesSlice = createSlice({
         },
     },
     extraReducers: (builder) => {
-        // Regardless of whether the server stop succeeded or failed, the user
-        // asked to stop — force the UI to a terminal FAILED state so it never
-        // gets stuck in an active/running limbo.
         builder
+            .addCase(stopPipeline.pending, (state) => {
+                state.cancellationError = null;
+            })
             .addCase(stopPipeline.fulfilled, (state, action) => {
                 forceBasePipelineFailed(state, action.payload, 'Stopped by user');
             })
             .addCase(stopPipeline.rejected, (state, action) => {
-                const baseId = (action.payload ?? action.meta.arg) as string;
-                forceBasePipelineFailed(state, baseId, 'Stop failed — marked stopped');
+                state.cancellationError = action.error.message ?? 'Pipeline cancellation failed';
             })
-            .addCase(stopAllPipelines.fulfilled, (state) => {
-                forceAllActiveFailed(state, 'Stopped by user');
+            .addCase(stopAllPipelines.rejected, (state, action) => {
+                state.cancellationError = action.error.message ?? 'Some pipelines could not be cancelled';
             })
-            .addCase(stopAllPipelines.rejected, (state) => {
-                forceAllActiveFailed(state, 'Stop failed — marked stopped');
-            });
+            ;
     },
 });
 

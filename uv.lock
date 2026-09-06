@@ -2216,7 +2216,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#6a4fad0f23a4a594924e457585e437811db808a1" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#09c30966c97944053d10186bbc20b0b154ac21b2" }
 dependencies = [
     { name = "av", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

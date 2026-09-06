@@ -9,12 +9,14 @@ test('app controller uses buffered video bytes for play, seek and source switchi
     test.setTimeout(120_000);
     const bytes = await readFile('e2e/fixtures/numbered-bframes.mp4');
     const requests: string[] = [];
+    let rangeRequests = 0;
     const media = [false, true].flatMap(annotated => Array.from({length: 2}, (_, index) => ({
         video_filename: `camera${index}${annotated ? '_annotated' : ''}.mp4`, nominal_fps: 30,
         timeline: {sensor_group: 'cameras', source: `camera${index}`, frame_numbers: Array.from({length: 48}, (_, n) => n),
             timestamps_s: Array.from({length: 48}, (_, n) => n / 30 + index * 0.002)},
     })));
     const server = await createServer({configFile: false, root: resolve('prototypes/app-playback'),
+        optimizeDeps: {include: ['mediabunny']},
         resolve: {alias: {'@': resolve('src')}},
         server: {host: '127.0.0.1', port: 0, fs: {allow: [process.cwd()]}},
         plugins: [{name: 'test-recording-api', configureServer(server) {
@@ -22,8 +24,12 @@ test('app controller uses buffered video bytes for play, seek and source switchi
                 const url = request.url ?? '';
                 if (!url.startsWith('/test-media/') && !url.startsWith('/freemocap/')) return next();
                 requests.push(url);
-                if (url.includes('/bundle')) {response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({manifest: null, media})); return;}
+                if (url.includes('/bundle')) {response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({manifest: null, media, videos: {sources: {
+                    all: {videos: media.map(item => ({filename: item.video_filename, videoId: item.video_filename,
+                        sizeBytes: bytes.length, streamUrl: `${server.resolvedUrls!.local[0]}test-media/${item.video_filename}`}))}
+                }}})); return;}
                 if (url.startsWith('/test-media/')) {
+                    if (request.headers.range) rangeRequests++;
                     const range = /bytes=(\d+)-(\d*)/.exec(request.headers.range ?? '');
                     const start = range ? Number(range[1]) : 0;
                     const end = range?.[2] ? Math.min(Number(range[2]), bytes.length - 1) : bytes.length - 1;
@@ -84,8 +90,18 @@ test('app controller uses buffered video bytes for play, seek and source switchi
             await page.locator('#play').click();
             await expect(page.locator('#playing')).toHaveText('false', {timeout: 20_000});
             await assertOrdinal(47);
+            const readsBeforeSwitch = requests.filter(url => url.startsWith('/test-media/')).length;
+            await page.locator('#source').click();
+            await expect(page.locator('#ready')).toHaveText('true');
+            await assertOrdinal(47);
+            await page.locator('#source').click();
+            await expect(page.locator('#ready')).toHaveText('true');
+            await assertOrdinal(47);
+            expect(requests.filter(url => url.startsWith('/test-media/')).length).toBe(readsBeforeSwitch);
             expect(requests.some(url => url.includes('_annotated.mp4'))).toBe(true);
             expect(requests.some(url => url.includes('/frames/'))).toBe(false);
+            expect(rangeRequests).toBe(0);
+            expect(requests.filter(url => url.startsWith('/test-media/'))).toHaveLength(4);
             expect(requests.filter(url => url.startsWith('/freemocap/'))).toEqual(['/freemocap/playback/test/bundle']);
         } finally {await app.close();}
     } finally {await server.close();}

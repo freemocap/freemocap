@@ -338,3 +338,61 @@ eight raw/annotated bindings. Application and harness TypeScript checks pass.
 Backend probing is not yet consolidated: the bundle composes existing discovery and media loaders.
 The SkellyCam identity-free metadata contract remains the next step for removing repeated probes.
 Compressed-video range reads, whole-video validation and source-cache retention remain separate.
+
+### Recording-owned source caches
+
+RecordingVideoCache retains lazily opened source groups across raw/annotated switches. Worker
+cache allocations total at most 32 MiB decoded images and 64 MiB compressed bytes across the
+recording media inventory; allocations are fixed per video, not a dynamic shared LRU. The active
+presentation queue retains its separate 256 MiB estimate cap. Native codec/compositor overhead
+is additional. Inactive groups do not prefetch; pending work drains on source change. Recording
+replacement, bundle refresh and unmount close all groups. First-time source opening still scans
+frames, and eviction may require more video-byte reads. No promise of zero requests for arbitrary
+recording sizes or uncached ordinals is implied.
+
+Electron acceptance checks repeated source switching at frame 47 and asserts no added video HTTP
+reads after both fixture sources are cached. Application/harness TypeScript checks pass. Next user
+check: seek within a real recording, switch to annotated and back repeatedly, confirm the frame
+stays fixed and the second switch avoids full reopening. Backend probe migration and recording-list
+refresh investigation remain separate work.
+
+### Memory-aware playback budget
+
+Electron exposes total/available memory through a lightweight memoryInfo IPC query. Playback
+selects 1 GiB with at least 16 GiB total and 4 GiB available; otherwise 512 MiB. Browser-only
+playback uses 512 MiB. Half is allocated to compressed bytes, one quarter to decoded caches,
+and one quarter to active lookahead, shared across the recording inventory. Native decoder/GPU
+and other application allocations remain outside these cache estimates. Limits do not reserve
+memory up front. First loads and evicted data still require I/O.
+
+Future Settings work: expose higher user-configurable budgets and allocation diagnostics; retain
+bounded eviction and exact frame semantics for recordings larger than RAM. This supersedes the
+fixed 32/64/256 MiB allocations documented in earlier checkpoints. Restart Electron to load the
+memoryInfo IPC route before testing this checkpoint.
+
+### Alternate-source byte prefetch checkpoint
+
+Files fitting their per-video compressed allocation use one complete download and retained File
+storage. In-flight downloads are shared between prefetch and active loading; workers decode from
+BlobSource. Paused, ready playback prefetches alternate files sequentially without decoding images.
+Starting playback stops scheduling further prefetch work; an in-flight download may finish.
+Recording cache disposal aborts downloads and releases retained files. Content length and actual
+size must match the bundle inventory. Larger files retain bounded UrlSource range reading; this
+checkpoint does not eliminate their range requests. All frame selection remains sequential.
+
+First switching can still incur the exact-count scan and sequential decode. Real-app acceptance:
+allow idle prefetch, switch Raw/Annotated at a fixed frame, confirm repeat switches cause no
+redownload for files that fit; verify active playback stays smooth. Large-file range optimization,
+background decode scheduling and dynamic allocation remain deferred. After acceptance, return to
+SkellyCam probe integration and media/camera identity; do not treat playback polish as prerequisite
+for every subsequent architecture cleanup.
+
+### User acceptance and deferred Charuco annotation issue
+
+User accepts playback for this checkpoint; resume media/camera identity work. Annotated videos
+show blue "undetected corners" text that appears inconsistent with visible board detections and
+the selected 5x3 board (reported list roughly 0–25). This is an unverified observation, not a
+confirmed detector failure. Later trace annotation inputs, board definition/ID domain, and
+frame association; compare saved detections with the rendered missing-ID list. Do not infer a
+correct corner count from "5x3" until its square/corner convention is established. No annotation
+or calibration behavior changed in this checkpoint.

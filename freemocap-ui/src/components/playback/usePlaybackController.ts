@@ -1,22 +1,24 @@
+import {RecordingVideoCache} from '@/services/recording/recording-video-cache';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
-import {ClientVideoGroup, releaseGroupFrames, type GroupFrames} from '@/services/recording/client-video-group';
+import {ClientVideoGroup, releaseGroupFrames, type GroupFrames, type VideoEntry} from '@/services/recording/client-video-group';
 import {PlaybackLabel} from '@/services/recording/playback-label';
 import {FrameLookahead} from '@/services/recording/frame-lookahead';
 import {type PlaybackManifest, type PlaybackRun, type PlaybackMedia} from '@/services/recording/playback-data';
 import type {PlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
 
-interface VideoEntry {videoId: string; filename: string; streamUrl: string}
 interface UsePlaybackControllerArgs {
     videos: VideoEntry[]; recordingId: string | null; recordingParentDirectory: string | null | undefined;
-    bundle: Pick<PlaybackBundle, 'manifest' | 'media'> | null;
+    bundle: Pick<PlaybackBundle, 'manifest' | 'media' | 'videos'> | null;
     reloadManifest: () => void;
+    cacheBudgetBytes: number | null;
     onFrameChange?: (frame: number) => void;
 }
 
-export function usePlaybackController({videos, recordingId, recordingParentDirectory, bundle, reloadManifest, onFrameChange}: UsePlaybackControllerArgs) {
+export function usePlaybackController({videos, recordingId, recordingParentDirectory, bundle, reloadManifest, cacheBudgetBytes, onFrameChange}: UsePlaybackControllerArgs) {
     const [manifest, setManifest] = useState<PlaybackManifest | null>(null);
     const [media, setMedia] = useState<PlaybackMedia[]>([]);
+    const recordingCache = useRef<RecordingVideoCache | null>(null);
     const [decoderGroup, setDecoderGroup] = useState<ClientVideoGroup | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -65,13 +67,28 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     }, [media, videoKey]);
 
     useEffect(() => {
-        if (!videosRef.current.length) {setDecoderGroup(null); return;}
-        const group = new ClientVideoGroup(videosRef.current);
+        const cache = bundle?.media.length && cacheBudgetBytes ? new RecordingVideoCache(bundle.media.length, cacheBudgetBytes) : null;
+        recordingCache.current = cache;
+        return () => {cache?.close(); recordingCache.current = null;};
+    }, [bundle, recordingId, recordingParentDirectory, cacheBudgetBytes]);
+
+    useEffect(() => {
+        if (!videosRef.current.length || !recordingCache.current) {setDecoderGroup(null); return;}
+        const group = recordingCache.current.getGroup(videosRef.current);
         let active = true;
         setDecoderGroup(group);
         void group.ready.catch(failure => {if (active) setError(String(failure));});
-        return () => {active = false; group.close();};
-    }, [videoKey]);
+        return () => {active = false;};
+    }, [videoKey, bundle, recordingId, recordingParentDirectory, cacheBudgetBytes]);
+
+    useEffect(() => {
+        const cache = recordingCache.current;
+        if (!cache || !bundle || isPlaying || !videosReady) return;
+        let active = true;
+        const allVideos = Object.values(bundle.videos.sources).flatMap(source => source.videos);
+        void cache.prefetch(allVideos, () => active).catch(failure => {if (active) setError(String(failure));});
+        return () => {active = false;};
+    }, [bundle, isPlaying, videosReady]);
 
     useEffect(() => {
         if (!decoderGroup || !leader || !times) return;
@@ -125,7 +142,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
                 setError(null);
                 if (!isPlaying) {present(first, true); setVideosReady(first.length); return;}
                 const groupBytes = first.reduce((sum, frame) => sum + frame.bitmap.width * frame.bitmap.height * 4, 0);
-                const capacity = Math.min(Math.ceil(fps * 0.5), Math.floor(256 * 1024 * 1024 / groupBytes) - 2);
+                const capacity = Math.min(Math.ceil(fps * 0.5), Math.floor((cacheBudgetBytes! / 4) / groupBytes) - 2);
                 if (capacity < 1) throw new Error('Video group exceeds the playback buffer memory budget');
                 buffer = new FrameLookahead({start: start + 1, end: totalFrames, capacity,
                     load: ordinal => decoderGroup.read(ordinal), release: releaseGroupFrames});
@@ -165,7 +182,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
             active = false; clearTimeout(timer);
             if (buffer) void buffer.close().catch(fail);
         };
-    }, [decoderGroup, media, requestedFrame, isPlaying, isLooping, playbackRate, leader, times, totalFrames, fps]);
+    }, [decoderGroup, media, requestedFrame, isPlaying, isLooping, playbackRate, leader, times, totalFrames, fps, cacheBudgetBytes]);
     const seek = useCallback((frame: number): void => {
         setIsPlaying(false);
         requestedFrameRef.current = Math.max(0, Math.min(Math.round(frame), totalFrames - 1));

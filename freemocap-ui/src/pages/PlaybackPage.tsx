@@ -1,3 +1,4 @@
+import {choosePlaybackBudget, DEFAULT_PLAYBACK_BYTES} from '@/services/recording/playback-budget';
 import {fetchPlaybackBundle, selectPlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
 import React, {useCallback, useEffect, useState} from 'react';
 import {Footer} from '@/components/ui-components/Footer';
@@ -25,6 +26,16 @@ const PlaybackPage: React.FC = () => {
     const {t} = useTranslation();
     const {api} = useElectronIPC();
     const ctx = usePlaybackContext();
+    const [cacheBudgetBytes, setCacheBudgetBytes] = useState<number | null>(null);
+    const [memoryError, setMemoryError] = useState<Error | null>(null);
+    useEffect(() => {
+        let active = true;
+        if (!api) {setCacheBudgetBytes(DEFAULT_PLAYBACK_BYTES); return;}
+        void api.memoryInfo.query().then(memory => {
+            if (active) setCacheBudgetBytes(choosePlaybackBudget(memory));
+        }).catch(error => {if (active) setMemoryError(error instanceof Error ? error : new Error(String(error)));});
+        return () => {active = false;};
+    }, [api]);
     const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
     const activeRecordingName = useAppSelector(selectActiveRecordingName);
     const activeRecordingBaseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
@@ -72,6 +83,7 @@ const PlaybackPage: React.FC = () => {
         videoId: v.videoId,
         filename: v.filename,
         streamUrl: v.streamUrl,
+        sizeBytes: v.sizeBytes,
     }));
 
     const dispatch = useAppDispatch();
@@ -80,13 +92,14 @@ const PlaybackPage: React.FC = () => {
         if (activeRecordingName) void dispatch(fetchPlaybackBundle({recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory}));
     }, [dispatch, activeRecordingName, activeRecordingBaseDirectory]);
     const controller = usePlaybackController({
-        bundle, reloadManifest,
+        bundle, reloadManifest, cacheBudgetBytes,
         videos: videoEntries,
         recordingId: activeRecordingName,
         recordingParentDirectory: activeRecordingBaseDirectory,
         onFrameChange,
     });
 
+    if (memoryError) throw memoryError;
     return (
         <div className="playback-mode-main-container flex flex-col flex-1 pos-rel h-full">
             <GridSettingsOverlay

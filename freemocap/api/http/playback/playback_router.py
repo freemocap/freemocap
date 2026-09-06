@@ -22,6 +22,7 @@ from typing import Any, Optional
 import tomllib
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
+from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata, probe_video_files
 from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, camera_timing_path
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
 from freemocap.core.recording.playback_queries import (
@@ -83,19 +84,16 @@ def _include_annotated_media(*, folder: Path, media: tuple[PlaybackMedia, ...]) 
         annotated = folder / ANNOTATED_VIDEOS_FOLDER_NAME / f"{filename.stem}_annotated{filename.suffix}"
         if not annotated.is_file():
             continue
-        video = VideoHelper.from_video_path(annotated)
-        try:
-            if len(original.timeline.frame_numbers) != video.metadata.frame_count:
-                raise ValueError(
-                    f"Annotated video '{annotated.name}' does not match its source: "
-                    f"{video.metadata.frame_count} frames versus {len(original.timeline.frame_numbers)} source frames."
-                )
-            result.append(PlaybackMedia(
-                video_filename=annotated.name, nominal_fps=original.nominal_fps,
-                timeline=original.timeline,
-            ))
-        finally:
-            video.close()
+        video = VideoFileMetadata.from_path(path=annotated)
+        if len(original.timeline.frame_numbers) != video.reported_frame_count:
+            raise ValueError(
+                f"Annotated video '{annotated.name}' does not match its source: "
+                f"{video.reported_frame_count} frames versus {len(original.timeline.frame_numbers)} source frames."
+            )
+        result.append(PlaybackMedia(
+            video_filename=annotated.name, nominal_fps=original.nominal_fps,
+            timeline=original.timeline,
+        ))
     return tuple(result)
 
 
@@ -299,16 +297,11 @@ def _validate_video_source(
     if not video_paths:
         return VideoSourceInfo(available=False, valid=False, video_count=0)
 
-    frame_counts: dict[str, int] = {}
-    for path in video_paths:
-        try:
-            video = VideoHelper.from_video_path(video_path=path, cache_size_mb=0)
-            try:
-                frame_counts[path.name] = video.metadata.frame_count
-            finally:
-                video.close()
-        except (ValueError, RuntimeError, OSError) as error:
-            raise HTTPException(status_code=422, detail=f"Cannot inspect video '{path.name}': {error}") from error
+    try:
+        metadata = probe_video_files(paths=video_paths)
+    except (ValueError, RuntimeError, OSError) as error:
+        raise HTTPException(status_code=422, detail=f"Cannot inspect video source '{folder}': {error}") from error
+    frame_counts = {path.name: video.reported_frame_count for path, video in metadata.items()}
     if len(set(frame_counts.values())) != 1:
         raise HTTPException(status_code=422, detail={"message": "Video frame counts differ", "files": frame_counts})
 

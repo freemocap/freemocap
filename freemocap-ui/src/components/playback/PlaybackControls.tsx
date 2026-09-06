@@ -295,7 +295,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                                 onClick={() => onSourceChange(src)}
                                 style={{textTransform: "capitalize", fontSize: "0.7rem"}}
                             >
-                                {src}
+                                {src === "synchronized" ? "Raw" : "Annotated"}
                             </button>
                         ))}
                     </div>

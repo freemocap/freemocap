@@ -1,3 +1,4 @@
+import os from 'node:os';
 import {initTRPC} from '@trpc/server';
 import {z} from 'zod';
 import superjson from 'superjson';
@@ -139,6 +140,7 @@ async function restartServerIfOwned(): Promise<boolean> {
 
 // Create the main API router
 export const api = t.router({
+    memoryInfo: t.procedure.query(() => ({totalBytes: os.totalmem(), availableBytes: os.freemem()})),
     // Python Server Management
     pythonServer: t.router({
         start: t.procedure

@@ -9,18 +9,18 @@ import {serverUrls} from '../../src/constants/server-urls';
 
 serverUrls.setHost(location.hostname); serverUrls.setPort(Number(location.port));
 function Harness(): React.JSX.Element {
+    const [bundle, setBundle] = useState<PlaybackBundle | null>(null);
     const [annotated, setAnnotated] = useState(false);
     const videos = Array.from({length: 2}, (_, index) => {
         const filename = `camera${index}${annotated ? '_annotated' : ''}.mp4`;
-        return {filename, videoId: filename, streamUrl: `${location.origin}/test-media/${filename}`};
+        return {filename, sizeBytes: bundle ? Object.values(bundle.videos.sources).flatMap(source => source.videos).find(video => video.filename === filename)!.sizeBytes : 0, videoId: filename, streamUrl: `${location.origin}/test-media/${filename}`};
     });
-    const [bundle, setBundle] = useState<PlaybackBundle | null>(null);
     useEffect(() => {void fetch('/freemocap/playback/test/bundle').then(response => {
         if (!response.ok) throw new Error('Bundle failed');
         return response.json();
     }).then(setBundle);}, []);
     const controller = usePlaybackController({videos, recordingId: 'test', recordingParentDirectory: null,
-        bundle, reloadManifest: () => {throw new Error('Unexpected reload');}});
+        bundle, cacheBudgetBytes: 512 * 1024 ** 2, reloadManifest: () => {throw new Error('Unexpected reload');}});
     return <>
         <output id="error">{controller.error}</output>
         <output id="ready">{String(controller.allReady)}</output>

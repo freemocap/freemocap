@@ -2,7 +2,8 @@ import {DecoderCommand, DecoderReply, type DecoderRequest, type DecoderResponse}
 import {validateVideoGroup} from './synchronized-video-group';
 
 export type GroupFrames = Extract<DecoderResponse, {kind: DecoderReply.Frame}>[];
-export interface VideoEntry {videoId: string; filename: string; streamUrl: string}
+export interface VideoCacheBudget {decodedBytes: number; encodedBytes: number}
+export interface VideoEntry {videoId: string; filename: string; streamUrl: string; sizeBytes: number}
 export function releaseGroupFrames(frames: GroupFrames): void {frames.forEach(frame => frame.bitmap.close());}
 
 class DecoderClient {
@@ -34,17 +35,18 @@ export class ClientVideoGroup {
     private tail: Promise<void> = Promise.resolve();
     private closed = false;
     readonly ready: Promise<number>;
-    constructor(readonly videos: readonly VideoEntry[]) {
+    constructor(readonly videos: readonly VideoEntry[], private readonly budget: VideoCacheBudget, private readonly loadFile: (video: VideoEntry) => Promise<File | null>) {
         this.clients = videos.map(() => new DecoderClient());
         this.ready = this.open();
     }
     private async open(): Promise<number> {
         try {
             const grids = await Promise.all(this.clients.map(async (client, index) => {
-                const response = await client.request({kind: DecoderCommand.OpenUrl,
+                const file = await this.loadFile(this.videos[index]);
+                const response = await client.request(file ? {kind: DecoderCommand.Open, file, budgetBytes: this.budget.decodedBytes} : {kind: DecoderCommand.OpenUrl,
                     url: this.videos[index].streamUrl,
-                    budgetBytes: Math.floor(32 * 1024 * 1024 / this.clients.length),
-                    encodedBudgetBytes: Math.floor(64 * 1024 * 1024 / this.clients.length)});
+                    budgetBytes: this.budget.decodedBytes,
+                    encodedBudgetBytes: this.budget.encodedBytes});
                 if (response.kind !== DecoderReply.Ready) throw new Error('Expected video metadata');
                 return {name: this.videos[index].filename, frameCount: response.frameCount};
             }));

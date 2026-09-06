@@ -228,3 +228,13 @@ new API yet: user commit/push and Git dependency integration must precede that m
 The 15:28 log has one bundle request and no ERROR/WARNING/FAILED entries, but 22 recording-list
 requests across the session. Investigate refresh triggers before declaring request consolidation
 complete. Video byte-range requests remain a separate optimization.
+
+### Probe integration resumed
+
+Confirmed the Git-installed SkellyCam exposes VideoFileMetadata/probe_video_files. Playback
+source validation now uses that batch API, and annotation length inspection uses its metadata
+model directly. These paths no longer construct posthoc VideoHelper/sequential readers for
+metadata. Remaining: one request-scoped inventory across bundle consumers, raw timing's camera-ID
+association, filename-stem collisions, and explicit derived-media relationships. The Charuco
+missing-corners text issue is deferred in the client playback plan; playback acceptance is complete
+for this tasklet. Camera permutation search remains a separately reviewed future implementation.

@@ -188,15 +188,16 @@ export const stopCalibrationRecording = createAsyncThunk<
 
 export const calibrateRecording = createAsyncThunk<
     { success: boolean; message?: string; results?: unknown; pipeline_id?: string },
-    void,
+    {recordingPath: string},
     { state: RootState; rejectValue: string }
 >(
     'calibration/calibrateRecording',
-    async (_, { getState, rejectWithValue, dispatch }) => {
+    async ({recordingPath}, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
             const calibrationTaskConfig = state.calibration.config;
-            const calibrationRecordingDirectory = selectCalibrationRecordingPath(state);
+            const calibrationRecordingDirectory = recordingPath;
+            if (!recordingPath.trim()) throw new Error("Select a recording to calibrate");
 
 
             console.log('🔧 Calibrating recording:', {

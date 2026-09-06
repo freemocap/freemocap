@@ -1,3 +1,6 @@
+import {CalibrateRecordingButton} from '@/components/control-panels/calibration-actions/CalibrateRecordingButton';
+import {useAppSelector} from '@/store';
+import {selectActiveRecordingFullPath} from '@/store/slices/active-recording/active-recording-slice';
 import React, {useCallback, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
@@ -11,6 +14,15 @@ import {RecordingInfoPanel as ProcessMocapPanel} from "@/components/control-pane
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
+
+function CalibrationPanel(): React.ReactElement {
+    const location = useLocation();
+    const recordingPath = useAppSelector(selectActiveRecordingFullPath);
+    return <>
+        {location.pathname === '/playback' && <CalibrateRecordingButton recordingPath={recordingPath}/>}
+        <CalibrationModule/>
+    </>;
+}
 
 const SECTION_ORDER = [
     'recordings',
@@ -29,7 +41,7 @@ const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings', 'process_mocap'
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     cameras: CameraConfigTreeView,
-    calibration: CalibrationModule,
+    calibration: CalibrationPanel,
     process_mocap: ProcessMocapPanel,
     recording_path: RecordingPathPanel,
     recording_control: RecordingControlPanel,

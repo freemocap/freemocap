@@ -238,3 +238,43 @@ metadata. Remaining: one request-scoped inventory across bundle consumers, raw t
 association, filename-stem collisions, and explicit derived-media relationships. The Charuco
 missing-corners text issue is deferred in the client playback plan; playback acceptance is complete
 for this tasklet. Camera permutation search remains a separately reviewed future implementation.
+
+### Mocap/posthoc shared probing chunk
+
+The parent initiative is explicitly mocap/posthoc. Calibration/posthoc remains a separate existing
+task; calibration/realtime is deferred. VideoHelper.from_video_path now delegates property probing
+to the Git-installed SkellyCam VideoFileMetadata instead of duplicating OpenCV capture/probing.
+Its processing-range metadata and camera-ID properties remain for the next boundary review; this
+change does not claim to resolve identity. Sequential decoding remains in SkellyCam. Fixture
+metadata and forward/backward frame reads pass. No dependency changes are required for this chunk.
+
+Next: separate file properties from source assignment in VideoHelper/VideoGroupHelper, tracing
+actual callers before changing the models. Resolve explicit group keys versus filename-derived
+camera properties without introducing another geometry wrapper or permanent inventory schema.
+
+### Source assignment guard checkpoint
+
+Calibration CameraModel indices now follow the supplied source metadata order instead of reparsing
+each filename. VideoMetadata.camera_index is removed. Filename discovery rejects duplicate source
+IDs and ambiguous indices before opening readers, rather than reindexing and silently overwriting
+entries. Explicit mappings reject the same resolved file assigned to multiple sources.
+
+This is containment, not the final arbitrary-import resolver: filename-derived camera_id/timing
+lookup still exists, and automatic unknown-source discovery/manual assignment remains to implement.
+Do not call this identity cleanup complete. Existing canonical recordings should remain processable;
+ambiguous inputs now fail explicitly and require source mapping. Check a normal calibration followed
+by mocap processing and verify all cameras remain represented. No permutation search is implemented.
+
+### Reaffirmed roadmap: calibration assignment by reprojection fitness
+
+The user reaffirmed this planned capability after the source-assignment guard checkpoint. It must
+not be dropped in favor of manual matching alone. Evaluate candidate video-source to fixed-camera-
+geometry assignments using shared observations and reprojection fitness, with coverage and ambiguity
+checks as specified in "Proposed geometric search" above. Reuse existing triangulation/projection;
+do not solve or adjust calibration geometry inside the matching job. Filename/device IDs are hints,
+not required truth. Manual assignment remains available when evidence cannot distinguish candidates.
+
+Sequence: explicit source identities and bindings, then agree search inputs/scoring/acceptance and
+review examples, then implement a cancellable search with diagnostic results. This is entirely new
+search code, not an existing feature. The present reminder confirms roadmap priority, not permission
+to bypass the agreed design review or silently accept the lowest-error permutation.

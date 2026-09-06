@@ -46,14 +46,14 @@ def run_anipose_calibration(
     cameras: list[CameraModel] = [
         CameraModel(
             id=camera_id,
-            index=video_meta.camera_index,
+            index=camera_index,
             image_size=(video_meta.width, video_meta.height),
             intrinsics=CameraIntrinsics.from_image_size(
                 width=video_meta.width, height=video_meta.height
             ),
             extrinsics=CameraExtrinsics.identity(),
         )
-        for camera_id, video_meta in video_metadata.items()
+        for camera_index, (camera_id, video_meta) in enumerate(video_metadata.items())
     ]
 
     logger.info(

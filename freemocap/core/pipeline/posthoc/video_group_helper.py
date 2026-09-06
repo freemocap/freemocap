@@ -8,13 +8,13 @@ import logging
 from collections import OrderedDict
 from pathlib import Path
 
-import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename, VIDEO_EXTENSIONS
 from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReader
-from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
+from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata
+from skellycam.core.types.type_overloads import CameraIdString
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +63,6 @@ class VideoMetadata(BaseModel):
     @property
     def camera_id(self) -> CameraIdString:
         return self.parsed_filename.camera_id
-    @property
-    def camera_index(self) -> CameraIndexInt:
-        return self.parsed_filename.camera_index
 
 
 
@@ -145,36 +142,15 @@ class VideoHelper(BaseModel):
             video_path: Path to the video file
             cache_size_mb: Maximum cache size in megabytes
         """
-        if not video_path.exists():
-            raise FileNotFoundError(f"Video file not found: {video_path}")
-
-        # Open video capture
-        video_reader = cv2.VideoCapture(str(video_path))
-        if not video_reader.isOpened():
-            raise RuntimeError(f"Failed to open video file: {video_path}")
-
-        # Extract metadata
-        width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = video_reader.get(cv2.CAP_PROP_FPS)
-        frame_count = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
-        fourcc_code = int(video_reader.get(cv2.CAP_PROP_FOURCC))
-        video_reader.release()
-
-        # Convert fourcc to string
-        fourcc = "".join([chr((fourcc_code >> 8 * i) & 0xFF) for i in range(4)])
-
-        # Calculate duration
-        duration_seconds = frame_count / fps if fps > 0 else 0.0
-
+        properties = VideoFileMetadata.from_path(path=video_path)
         metadata = VideoMetadata(
-            file_path = video_path,
-            width=width,
-            height=height,
-            fps=fps,
-            frame_count=frame_count,
-            fourcc=fourcc,
-            duration_seconds=duration_seconds
+            file_path=properties.file_path,
+            width=properties.width,
+            height=properties.height,
+            fps=properties.reported_fps,
+            frame_count=properties.reported_frame_count,
+            fourcc=properties.fourcc,
+            duration_seconds=properties.reported_frame_count / properties.reported_fps,
         )
 
         # Create cache
@@ -378,28 +354,19 @@ class VideoGroupHelper(BaseModel):
 
         Camera IDs and indices are extracted via ParsedVideoFilename.from_path(),
         which tries the canonical SkellyCam format first then falls back to
-        heuristic extraction (cam-prefix, trailing-int, alphabetical ordering).
+        heuristic extraction. Conflicting IDs or indices require explicit assignment.
         """
         paths = sorted(Path(p) for p in video_paths)
         parsed_list = [ParsedVideoFilename.from_path(p) for p in paths]
 
-        # Detect collisions or unknown indices (-1 sentinel) and re-assign
-        indices = [pv.camera_index for pv in parsed_list]
-        reindex_applied = -1 in indices or len(set(indices)) < len(indices)
-        if reindex_applied:
-            filename_index_list = ", ".join(
-                f"{path.name} (idx={pv.camera_index}, id={pv.camera_id})"
-                for pv, path in zip(parsed_list, paths)
-            )
-            logger.warning(
-                f"Camera indices are ambiguous or colliding ({indices}); "
-                f"re-assigning by alphabetical filename order. "
-                f"This usually means the folder contains videos from more than one recording "
-                f"(stale/leftover files). Files: {filename_index_list}. "
-                f"Verify the camera_id → video mapping is correct."
-            )
-            for i, pv in enumerate(parsed_list):
-                pv.camera_index = i
+        ids = [parsed.camera_id for parsed in parsed_list]
+        if len(set(ids)) != len(ids):
+            assignments = ", ".join(f"{path.name} -> {parsed.camera_id}" for path, parsed in zip(paths, parsed_list))
+            raise ValueError(f"Ambiguous video source IDs: {assignments}. Supply an explicit source-to-video mapping.")
+        indices = [parsed.camera_index for parsed in parsed_list]
+        if -1 in indices or len(set(indices)) != len(indices):
+            raise ValueError("Ambiguous video source ordering. Supply an explicit source-to-video mapping.")
+        reindex_applied = False
 
         # Sort by camera_index and build VideoHelper map keyed by camera_id
         pairs = sorted(zip(parsed_list, paths), key=lambda x: x[0].camera_index)
@@ -427,6 +394,9 @@ class VideoGroupHelper(BaseModel):
         close_videos: bool = True,
     ) -> "VideoGroupHelper":
         """Build from an authoritative camera_id → relative-filename mapping."""
+        resolved_paths = [(videos_dir / filename).resolve(strict=True) for filename in manifest_videos.values()]
+        if len(set(resolved_paths)) != len(resolved_paths):
+            raise ValueError("Multiple source IDs reference the same video file")
         videos: dict[CameraIdString, VideoHelper] = {}
         for camera_id, filename in manifest_videos.items():
             video_path = videos_dir / filename

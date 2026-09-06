@@ -1,4 +1,7 @@
-# Posthoc pipeline rebuild
+# Mocap/posthoc pipeline rebuild
+
+Scope: mocap task in posthoc mode. Calibration/posthoc is a separate existing task;
+calibration/realtime is deferred. Shared primitives do not merge task ownership.
 
 Status: implementation in progress, 2026-09-05.
 Target contract: [recording data model](../03-transport/recording-data-model-proposal.md).

@@ -1,7 +1,8 @@
+import {CalibrateRecordingButton} from '@/components/control-panels/calibration-actions/CalibrateRecordingButton';
 import {useEffect, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store';
 import {serverUrls} from '@/constants/server-urls';
-import {calibrateRecording, loadCalibrationToml} from '@/store/slices/calibration';
+import {loadCalibrationToml} from '@/store/slices/calibration';
 import {calibrationTomlPathCleared, selectMocapRecordingPath} from '@/store/slices/mocap/mocap-slice';
 
 interface CalibrationFileOptions {recording_path: string | null; most_recent_path: string | null}
@@ -9,7 +10,6 @@ interface CalibrationFileOptions {recording_path: string | null; most_recent_pat
 export function RecordingCalibrationOptions(): React.ReactElement {
     const dispatch = useAppDispatch();
     const directory = useAppSelector(selectMocapRecordingPath);
-    const calibrationRunning = useAppSelector(state => state.calibration.isLoading || state.calibration.isRecording);
     const [options, setOptions] = useState<CalibrationFileOptions | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -48,18 +48,12 @@ export function RecordingCalibrationOptions(): React.ReactElement {
         } catch (failure) {setError(String(failure));}
         finally {setBusy(false);}
     };
-    const calibrateFolder = async (): Promise<void> => {
-        setBusy(true); setError(null);
-        try {await dispatch(calibrateRecording()).unwrap();}
-        catch (failure) {setError(String(failure));}
-        finally {setBusy(false);}
-    };
     return <div className="flex flex-col gap-1 p-1">
         <span className="text sm" title={options?.recording_path ?? undefined}>
             {options?.recording_path ? 'Calibration found in this recording' : 'No calibration selected from this folder'}
         </span>
         <button disabled={busy || !options?.most_recent_path} onClick={() => void useMostRecent()}>Use most recent calibration</button>
-        <button disabled={busy || calibrationRunning || !directory} onClick={() => void calibrateFolder()}>Calibrate videos in selected folder</button>
+        <CalibrateRecordingButton recordingPath={directory}/>
         <span className="text sm">Runs the calibration task separately. Videos must contain the configured calibration board.</span>
         {error && <p role="alert" className="text-error">{error}</p>}
     </div>;

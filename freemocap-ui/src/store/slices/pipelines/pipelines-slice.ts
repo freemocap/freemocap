@@ -93,6 +93,9 @@ export const pipelinesSlice = createSlice({
     reducers: {
         pipelineProgressUpdated: (state, action: PayloadAction<PipelineProgress>) => {
             const incoming = action.payload;
+            const existing = state.activePipelines[incoming.pipelineId];
+            if (existing && (existing.phase === PipelinePhase.COMPLETE || existing.phase === PipelinePhase.FAILED)
+                && incoming.phase !== PipelinePhase.COMPLETE && incoming.phase !== PipelinePhase.FAILED) return;
             const isTerminal = incoming.phase === PipelinePhase.COMPLETE || incoming.phase === PipelinePhase.FAILED;
             // Derive base pipeline ID (everything before the first colon)
             const colonIdx = incoming.pipelineId.indexOf(':');
@@ -250,7 +253,7 @@ const selectAllGroupsUnfiltered = createSelector(
 
             group.isFailed = allMembers.some((p) => p.phase === PipelinePhase.FAILED);
             group.isComplete = !!group.aggregator && group.aggregator.phase === PipelinePhase.COMPLETE;
-            group.isActive = allMembers.some((p) => !isTerminalPhase(p));
+            group.isActive = !group.isFailed && !group.isComplete && allMembers.some((p) => !isTerminalPhase(p));
             group.recordingName = group.aggregator?.recordingName || group.videoNodes[0]?.recordingName || '';
             group.recordingPath = group.aggregator?.recordingPath || group.videoNodes[0]?.recordingPath || '';
             group.pipelineType = group.aggregator?.pipelineType ?? group.videoNodes[0]?.pipelineType ?? null;

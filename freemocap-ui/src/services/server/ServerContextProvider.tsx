@@ -473,7 +473,7 @@ function handleProgress(message: ProgressMessage, dedupeRef: { current: Record<s
         } else {
             store.dispatch({
                 type: 'calibration/calibrationPipelineProgressReceived',
-                payload: {phase: message.phase},
+                payload: {phase: message.phase, detail: message.detail},
             });
             if (message.phase === 'complete' && message.recording_name) {
                 const recordingPath: string = message.recording_path ?? '';

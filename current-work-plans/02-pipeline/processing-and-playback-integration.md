@@ -161,3 +161,50 @@ committed result changes, including overwriting the same run_id.
    missing samples correctly. Tests must include irregular timestamps and nonzero media offsets.
 7. Additional exports consume the canonical reader. The .freemocap.mp4 embeds the selected data and
    metadata without resampling higher-rate sensor data to the grid video's FPS.
+
+
+## Active recording calibration checkpoint — 2026-09-06
+
+Playback's calibration panel exposes **Calibrate active recording**. Mocap setup exposes the same
+shared action for its selected processing directory. The calibration thunk requires the target path
+explicitly; both actions submit existing videos to the separate calibration task without importing
+or copying them. The configured calibration board applies. The action is disabled while calibration
+is queued or running, and launch failures are displayed.
+
+TypeScript checking passes. Real-app acceptance remains: select a recording containing the configured
+board, launch from the playback calibration panel, verify the target directory in pipeline progress
+and the resulting calibration TOML; repeat from mocap setup with its selected directory. Confirm no
+import dialog or new recording copy appears, and failures remain visible in calibration progress.
+
+
+## Calibration failure reporting checkpoint — 2026-09-06
+
+Calibration failure detail reaches the calibration panel. A failed child or terminal aggregator
+makes the task inactive even when other child snapshots are unfinished. Terminal node state rejects
+late nonterminal updates. The posthoc manager retains the latest 100 terminal task outcomes in memory
+for repeated delivery after worker cleanup, including clients reconnecting during this app session.
+
+Validation: TypeScript checking and two backend tests (failure replay after eviction and bounded
+history) pass. Real-app check: run with deliberately mismatched board settings, confirm the failure
+text appears and the calibration button unlocks; then select the correct board and retry.
+
+Annotation follow-up: the supplied log explicitly reports layering annotations over existing
+annotated videos. Existing overlays therefore cannot be used as proof of current detector output.
+Remove that layering when correcting calibration annotation generation; render from original images.
+The observed 7x5 configuration versus the user's 5x3 board must be corrected before calibration QA.
+
+
+## AUTO calibration board selection — first-match checkpoint
+
+SkellyTracker provides `CharucoBoardSelector`: inspect each supplied image for 5x3, then 7x5;
+blank images continue the search. The first valid match (six non-collinear Charuco corners) locks
+one standard board definition. No subsequent images or alternative boards are inspected after
+selection. Exhausting the images without a match raises an explicit detection error. Physical
+square size comes from the standard board definition. Six focused generated-image/behavior tests
+pass, including perspective, blank frames, priority, locked selection, and early iterator termination.
+
+Next dependency handoff: user commits/pushes SkellyTracker and updates FreeMoCap's Git dependency.
+Then wire AUTO into calibration setup: select once for the complete recording before constructing
+board-dependent detector outputs and solver geometry. Perform video inspection incrementally in
+managed, cancellable task execution; do not scan videos in the HTTP handler or select independently
+in camera workers. Keep explicit 5x3, 7x5 and custom settings. App AUTO is not yet implemented.

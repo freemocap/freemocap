@@ -1,5 +1,8 @@
 # Current Work Plans
 
+Current posthoc review entry point: [posthoc architecture review](02-pipeline/posthoc-architecture-review.md).
+This separates agreed boundaries from provisional layout/API decisions before further implementation.
+
 > **STATUS — the realtime pipeline runs the rebuilt core end to end.** The standard human is the
 > VRM-aligned re-authoring: **61 segments / 124 landmarks / 52 face blendshapes / 60 joints /
 > 5 chains**, authored as **body-height proportions** (`H = 1.0`) in the Blender convention

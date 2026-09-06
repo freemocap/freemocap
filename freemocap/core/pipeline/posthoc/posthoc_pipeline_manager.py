@@ -22,7 +22,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
-from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
+from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.calibration.posthoc_calibration_task import run_posthoc_calibration_task
@@ -56,6 +56,16 @@ class PosthocPipelineManager(PipelineManagerABC):
     # Lazy cleanup
     # ------------------------------------------------------------------
 
+    terminal_progress: dict[str, PipelineProgressMessage] = field(default_factory=dict)
+
+    def _retain_terminal_progress(self, messages: list[PipelineProgressMessage]) -> None:
+        """Keep the latest 100 task outcomes available to every connected client."""
+        for message in messages:
+            if ":" not in message.pipeline_id and message.phase in (AggregatorPhase.COMPLETE, AggregatorPhase.FAILED):
+                self.terminal_progress[message.pipeline_id] = message
+        while len(self.terminal_progress) > 100:
+            del self.terminal_progress[next(iter(self.terminal_progress))]
+
     def _evict_dead(self) -> list[PipelineProgressMessage]:
         """Remove pipelines whose processes have all exited. Caller must hold self.lock.
 
@@ -81,6 +91,7 @@ class PosthocPipelineManager(PipelineManagerABC):
                 f"Evicted completed PosthocPipeline [{pid}] "
                 f"for '{pipeline.recording_info.recording_name}'"
             )
+        self._retain_terminal_progress(final_messages)
         return final_messages
 
     def evict_completed(self) -> list[PipelineProgressMessage]:
@@ -239,11 +250,9 @@ class PosthocPipelineManager(PipelineManagerABC):
 
     def get_progress_updates(self) -> list[PipelineProgressMessage]:
         with self.lock:
-            stop_messages, self.pending_stop_messages = self.pending_stop_messages, []
-
-        progress_messages: list[PipelineProgressMessage] = list(stop_messages)
-
-        for pipeline in self.pipelines.values():
-            progress_messages.extend(pipeline.get_progress_messages())
-
-        return progress_messages
+            self._retain_terminal_progress(self.pending_stop_messages)
+            self.pending_stop_messages.clear()
+            progress_messages = list(self.terminal_progress.values())
+            for pipeline in self.pipelines.values():
+                progress_messages.extend(pipeline.get_progress_messages())
+            return progress_messages

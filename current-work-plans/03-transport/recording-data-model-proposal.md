@@ -1,5 +1,9 @@
 # Recording data model
 
+Review note, 2026-09-06: the scientific direction remains the starting point; the directory tree,
+descriptor placement and processing metadata boundaries below are under renewed review. See
+[posthoc architecture review](../02-pipeline/posthoc-architecture-review.md) before implementation.
+
 Status: agreed implementation direction, 2026-09-05. Concrete implementation choices below are
 specified for the posthoc rebuild; exporter container mechanics remain a later phase.
 See [posthoc rebuild](../02-pipeline/posthoc-rebuild.md).

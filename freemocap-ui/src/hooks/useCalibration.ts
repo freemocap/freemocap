@@ -106,8 +106,9 @@ export function useCalibration() {
     }, [dispatch]);
 
     const calibrate = useCallback(() => {
-        dispatch(calibrateRecording());
-    }, [dispatch]);
+        if (!calibrationRecordingPath) throw new Error("Select a recording to calibrate");
+        dispatch(calibrateRecording({recordingPath: calibrationRecordingPath}));
+    }, [dispatch, calibrationRecordingPath]);
 
     const clearError = useCallback(() => {
         dispatch(calibrationErrorCleared());

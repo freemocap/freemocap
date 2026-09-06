@@ -88,7 +88,8 @@ export const calibrationSlice = createSlice({
         calibrationDirectoryInfoUpdated: (state, action: PayloadAction<CalibrationDirectoryInfo>) => {
             state.directoryInfo = action.payload;
         },
-        calibrationPipelineProgressReceived: (state, action: PayloadAction<{phase: string}>) => {
+        calibrationPipelineProgressReceived: (state, action: PayloadAction<{phase: string; detail: string}>) => {
+            if (action.payload.phase === 'failed') state.error = action.payload.detail;
             if (action.payload.phase === 'complete' || action.payload.phase === 'failed') {
                 state.isLoading = false;
             }

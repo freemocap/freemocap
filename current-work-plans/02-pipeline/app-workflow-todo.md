@@ -247,3 +247,10 @@ filtering are included in these ranges.
 Recommended priority is A first, then B and C. This deliberately brings a narrow fresh-processing
 app workflow forward from the broader backend-first acceptance sequence. It does not call advanced
 reprocessing or the agreed default MP4 output complete before their acceptance gates pass.
+
+Camera ownership cleanup: removed ResolvedCameraGeometry and its recording-only basis default.
+Recording descriptors and execution inputs accept the calibration CameraModel directly. Camera classes
+own JSON serialization; a regression verifies projection, Parquet round-trip, schema and equality.
+Scale-fit and model wrappers remain the next separate review chunks. Saved camera descriptors use
+the CameraModel structure; no compatibility adapter is supplied for the removed wrapper.
+

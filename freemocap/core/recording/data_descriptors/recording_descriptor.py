@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.types.channel_kind import ChannelKind
-from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 
@@ -95,7 +95,7 @@ def channel_key(*, channel: Channel) -> tuple[str, str, str | None, str]:
 
 class RunDescriptor(Descriptor):
     scale_fits: tuple[RecordingScaleFit, ...] = ()
-    camera_geometry: dict[str, tuple[ResolvedCameraGeometry, ...]] = Field(
+    camera_geometry: dict[str, tuple[CameraModel, ...]] = Field(
         default_factory=dict
     )
     sensor_groups: dict[str, SensorGroup]
@@ -130,7 +130,7 @@ class RunDescriptor(Descriptor):
         if not set(self.camera_geometry).issubset(self.sensor_groups):
             raise ValueError("Unknown camera geometry sensor group")
         for cameras in self.camera_geometry.values():
-            if len({camera.camera_id for camera in cameras}) != len(cameras):
+            if len({camera.id for camera in cameras}) != len(cameras):
                 raise ValueError("Duplicate resolved camera geometry")
         keys: set[tuple[str, str, str | None, str]] = set()
         for channel in (

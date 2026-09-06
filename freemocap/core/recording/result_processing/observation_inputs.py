@@ -1,7 +1,7 @@
 """Typed construction inputs and descriptor factories for observation recordings."""
 
 from freemocap.core.types.channel_kind import ChannelKind
-from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
@@ -62,7 +62,7 @@ class ObservationRecordingRequest:
     group: ObservationGroup
     tracker: TrackerRecordingDefinition
     spatial_series: tuple[SpatialPointSeries, ...]
-    camera_geometry: tuple[ResolvedCameraGeometry, ...]
+    camera_geometry: tuple[CameraModel, ...]
 
     def __post_init__(self) -> None:
         if len({model.model_id for model in self.models}) != len(self.models):

@@ -12,7 +12,6 @@ recording/
     data_descriptors/
         recording_descriptor.py
         model_definition.py
-        camera_geometry.py
         scale_fit.py
         sample_conventions.py
     sample_encoding/
@@ -61,3 +60,6 @@ writes only the canonical Parquet; it does not write measurements into recording
 
 The current column layout and serialized descriptors are preserved. Review the descriptor and
 encoding contracts before designing additional output formats.
+
+Camera geometry uses `CameraModel` from `core/tasks/calibration/shared/camera_model.py` directly.
+The camera classes own array serialization and validation. Recording adds no camera model or basis label.

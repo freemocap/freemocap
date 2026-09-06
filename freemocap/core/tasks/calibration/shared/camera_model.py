@@ -1,9 +1,10 @@
 import numpy as np
+from typing import Annotated
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.utilities.toml_mixin import TomlMixin
 from numpy._typing import NDArray
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator, field_serializer, WithJsonSchema
 from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 
 
@@ -17,8 +18,35 @@ class CameraModel(BaseModel, TomlMixin):
     image_size: tuple[int, int]  # (width, height)
     intrinsics: CameraIntrinsics
     extrinsics: CameraExtrinsics
-    world_position: NDArray[np.float64] = np.zeros(3, dtype=np.float64)
-    world_orientation: NDArray[np.float64] = np.eye(3, dtype=np.float64)
+    world_position: Annotated[NDArray[np.float64], WithJsonSchema({"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3})] = np.zeros(3, dtype=np.float64)
+    world_orientation: Annotated[NDArray[np.float64], WithJsonSchema({"type": "array", "items": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "minItems": 3, "maxItems": 3})] = np.eye(3, dtype=np.float64)
+
+    @field_validator("world_position", mode="before")
+    @classmethod
+    def validate_world_position(cls, value: NDArray[np.float64] | list[float]) -> NDArray[np.float64]:
+        array = np.asarray(value, dtype=np.float64)
+        if array.shape != (3,) or not np.isfinite(array).all():
+            raise ValueError("Camera world position requires three finite coordinates")
+        return array
+
+    @field_validator("world_orientation", mode="before")
+    @classmethod
+    def validate_world_orientation(cls, value: NDArray[np.float64] | list[list[float]]) -> NDArray[np.float64]:
+        array = np.asarray(value, dtype=np.float64)
+        if array.shape != (3, 3) or not np.isfinite(array).all():
+            raise ValueError("Camera world orientation requires a finite 3x3 matrix")
+        return array
+
+    @field_serializer("world_position", when_used="json")
+    def serialize_world_position(self, value: NDArray[np.float64]) -> list[float]:
+        return value.tolist()
+
+    @field_serializer("world_orientation", when_used="json")
+    def serialize_world_orientation(self, value: NDArray[np.float64]) -> list[list[float]]:
+        return value.tolist()
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, CameraModel) and self.model_dump(mode="json") == other.model_dump(mode="json")
 
     @property
     def projection_matrix(self) -> NDArray[np.float64]:

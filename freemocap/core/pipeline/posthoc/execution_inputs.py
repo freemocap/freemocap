@@ -3,13 +3,13 @@
 from dataclasses import dataclass
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
-from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 
 
 @dataclass(frozen=True, slots=True)
 class CameraExecutionInputs:
     camera_ids: tuple[str, ...]
-    geometry: tuple[ResolvedCameraGeometry, ...]
+    geometry: tuple[CameraModel, ...]
 
     def validate_for(self, stages: tuple[ProcessingStage, ...]) -> None:
         if len(set(self.camera_ids)) != len(self.camera_ids):
@@ -23,7 +23,7 @@ class CameraExecutionInputs:
             return
         if not self.camera_ids:
             raise ValueError("Reprojection requires target cameras")
-        resolved_ids = tuple(camera.camera_id for camera in self.geometry)
+        resolved_ids = tuple(camera.id for camera in self.geometry)
         if len(set(resolved_ids)) != len(resolved_ids):
             raise ValueError("Camera geometry contains duplicate camera IDs")
         if not set(self.camera_ids).issubset(resolved_ids):

@@ -1,7 +1,8 @@
 import numpy as np
+from typing import Annotated
 from freemocap.utilities.toml_mixin import TomlMixin
 from numpy._typing import NDArray
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, field_serializer, WithJsonSchema
 
 
 class CameraExtrinsics(BaseModel, TomlMixin):
@@ -9,23 +10,27 @@ class CameraExtrinsics(BaseModel, TomlMixin):
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
-    quaternion_wxyz: NDArray[np.float64]
-    translation: NDArray[np.float64]
+    quaternion_wxyz: Annotated[NDArray[np.float64], WithJsonSchema({"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4})]
+    translation: Annotated[NDArray[np.float64], WithJsonSchema({"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3})]
+
+    @field_serializer("quaternion_wxyz", "translation", when_used="json")
+    def serialize_vector(self, value: NDArray[np.float64]) -> list[float]:
+        return value.tolist()
 
     @field_validator("quaternion_wxyz", mode="before")
     @classmethod
     def validate_quaternion(cls, v: NDArray[np.float64] | list) -> NDArray[np.float64]:
         arr = np.asarray(v, dtype=np.float64).ravel()
-        if arr.shape != (4,):
-            raise ValueError(f"Quaternion must have shape (4,), got {arr.shape}")
+        if arr.shape != (4,) or not np.isfinite(arr).all():
+            raise ValueError(f"Quaternion must contain four finite values, got {arr}")
         return arr
 
     @field_validator("translation", mode="before")
     @classmethod
     def validate_translation(cls, v: NDArray[np.float64] | list) -> NDArray[np.float64]:
         arr = np.asarray(v, dtype=np.float64).ravel()
-        if arr.shape != (3,):
-            raise ValueError(f"Translation must have shape (3,), got {arr.shape}")
+        if arr.shape != (3,) or not np.isfinite(arr).all():
+            raise ValueError(f"Translation must contain three finite values, got {arr}")
         return arr
 
     @property

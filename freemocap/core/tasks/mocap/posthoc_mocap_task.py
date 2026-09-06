@@ -11,7 +11,7 @@ from __future__ import annotations
 from freemocap.core.recording.result_processing.observation_inputs import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import logging
 import shutil
@@ -139,7 +139,7 @@ def run_posthoc_mocap_aggregator_task(
             definition=ReconstructionSourceDefinition.from_bundle(bundle),
             result=reconstructions[bundle.model_id],
         ),),
-        camera_geometry=tuple(ResolvedCameraGeometry.from_camera(calibration.get_camera(camera)) for camera in camera_ids) if calibration is not None else (),
+        camera_geometry=tuple(calibration.get_camera(camera) for camera in camera_ids) if calibration is not None else (),
         recording=recording_info,
         spatial_series=(SpatialPointSeries(
             definition=PointSeriesDefinition(sensor_group="mocap", source=task_config.detector_type,

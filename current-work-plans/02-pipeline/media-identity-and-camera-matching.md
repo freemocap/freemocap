@@ -3,6 +3,13 @@
 Status: design proposal, 2026-09-06. Review before implementation, especially the new
 camera-assignment search. This document does not authorize implementing that search.
 
+Current scope clarification: mocap accepts synchronized video groups with identical frame counts.
+One shared ordinal selects every video; unequal counts fail. Per-file FPS estimates are not compared
+and cannot reject a group. Synchronization is assumed upstream. Broad mixed-rate
+ingestion and unresolved temporal alignment discussed below are future design considerations,
+not permission to loosen current mocap preflight or playback. See the current contract in
+[client playback design](client-playback-design.md).
+
 ## Objective
 
 Open recordings and external videos without assuming a filename convention, capture system,

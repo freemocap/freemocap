@@ -226,7 +226,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               }
               tooltipPosition="pos-bottom-right"
               disabled={isPipelineLoading}
-              className={`icon-size-25 ${isConnected ? "active" : ""}`}
+              className={`icon-size-25 ${isConnected ? "active" : "connection-idle-outline"}`}
             />
           </div>
 

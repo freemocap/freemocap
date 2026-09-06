@@ -173,13 +173,13 @@ const PlaybackPage: React.FC = () => {
                         </div>
 
                         {controller.error && <p role="alert" className="text-error">{controller.error}</p>}
-                        {controller.isSeeking && !controller.error && <p role="status">Decoding requested frames…</p>}
                         <PlaybackControls
                             isPlaying={controller.isPlaying}
                             currentTime={controller.currentTime}
                             duration={controller.duration}
                             playbackRate={controller.playbackRate}
                             currentFrame={controller.currentFrame}
+                            seekFrame={controller.seekFrame}
                             totalFrames={controller.totalFrames}
                             fps={controller.fps}
                             recordingFps={recordingFps}

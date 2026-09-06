@@ -78,7 +78,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                 iconClass: overallStatus.iconClass,
                 rightSideIcon: 'dropdown',
                 textColor: 'text-gray',
-                className: 'connection-status-button-opener full-width',
+                className: `connection-status-button-opener full-width${isConnected ? '' : ' connection-idle-outline'}`,
             }}
             dropdownClassName="connection-status-dropdown bg-dark"
             dropdownItems={

@@ -7,10 +7,10 @@ export function useFfmpeg() {
     const ffmpeg = useAppSelector(selectFfmpeg);
 
     useEffect(() => {
-        if (ffmpeg.found === null && !ffmpeg.isDetecting) {
+        if (ffmpeg.found === null && !ffmpeg.isDetecting && !ffmpeg.error) {
             void dispatch(detectFfmpeg());
         }
-    }, [dispatch, ffmpeg.found, ffmpeg.isDetecting]);
+    }, [dispatch, ffmpeg.found, ffmpeg.isDetecting, ffmpeg.error]);
 
     return {
         found: ffmpeg.found,

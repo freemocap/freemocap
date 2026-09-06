@@ -939,3 +939,8 @@
 
 
 }
+
+.connection-idle-outline {
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
+}

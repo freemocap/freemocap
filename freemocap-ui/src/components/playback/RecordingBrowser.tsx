@@ -191,10 +191,10 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
       try {
         await dispatch(fetchAllRecordings()).unwrap();
       } catch (e) {
-        setError(e instanceof Error ? e.message : t("failedToFetch"));
+        setError(String(e));
       }
     },
-    [dispatch, t],
+    [dispatch],
   );
 
   useEffect(() => {

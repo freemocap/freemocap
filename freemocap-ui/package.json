@@ -13,6 +13,9 @@
   },
   "type": "module",
   "scripts": {
+    "prototype:media": "esbuild tools/media-prototype.ts --bundle --platform=node --format=esm --packages=external --outfile=node_modules/.cache/media-prototype/launcher.mjs && node node_modules/.cache/media-prototype/launcher.mjs",
+    "test:media": "playwright test e2e/media-decoder.spec.ts --reporter=line",
+    "test:playback": "playwright test e2e/app-playback.spec.ts --reporter=line",
     "dev": "cross-env NODE_ENV=development vite",
     "build": "tsc && vite build && electron-builder",
     "build:dev": "tsc && vite build && electron-builder --config.mac.hardenedRuntime=false --config.mac.notarize=false",
@@ -40,6 +43,7 @@
     "i18next-browser-languagedetector": "^8.2.1",
     "jpeg-js": "^0.4.4",
     "js-yaml": "^4.1.1",
+    "mediabunny": "1.55.7",
     "react-grid-layout": "^2.2.2",
     "react-i18next": "^16.5.4",
     "react-redux": "^9.1.2",

@@ -32,5 +32,8 @@ export const detectFfmpeg = createAsyncThunk<
         } catch (e) {
             return rejectWithValue(e instanceof Error ? e.message : 'Unknown error');
         }
+    },
+    {
+        condition: (_, {getState}) => !getState().ffmpeg.isDetecting,
     }
 );

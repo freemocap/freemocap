@@ -8,10 +8,6 @@ interface ZoomableVideoTileProps {
     streamUrl: string;
     filename: string;
     showOverlays: boolean;
-    timestampFormat: 'timecode' | 'seconds';
-    initialFrameText: string;
-    initialTimeText: string;
-    timestampsAreReal: boolean;
     hasError: boolean;
     setVideoRef: PlaybackController['setVideoRef'];
     setFrameOverlayRef: PlaybackController['setFrameOverlayRef'];
@@ -23,9 +19,6 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     streamUrl,
     filename,
     showOverlays,
-    initialFrameText,
-    initialTimeText,
-    timestampsAreReal,
     hasError,
     setVideoRef,
     setFrameOverlayRef,
@@ -64,8 +57,8 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
 
             {showOverlays && (
                 <>
-                    <div
-                        ref={(el: HTMLElement | null) => setFrameOverlayRef(videoId, el)}
+                    <canvas width={140} height={24}
+                        ref={(el) => setFrameOverlayRef(videoId, el)}
                         className="pos-abs top-6 right-6 z-10 text-center"
                         style={{
                             backgroundColor: 'rgba(0, 0, 0, 0.88)',
@@ -79,9 +72,7 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                             minWidth: 60,
                             userSelect: 'none', pointerEvents: 'none',
                         }}
-                    >
-                        {initialFrameText}
-                    </div>
+                    />
 
                     <div className="pos-abs bottom-6 left-6 z-10" style={{
                         backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -93,9 +84,8 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                         {filename}
                     </div>
 
-                    <div
-                        ref={(el: HTMLElement | null) => setTimeOverlayRef(videoId, el)}
-                        title={timestampsAreReal ? t("timestampFromRecording") : t("estimatedFromFrameNumber")}
+                    <canvas width={180} height={24}
+                        ref={(el) => setTimeOverlayRef(videoId, el)}
                         className="pos-abs bottom-6 right-6 z-10"
                         style={{
                             backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -104,9 +94,7 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                             fontFamily: '"JetBrains Mono", "Fira Code", monospace',
                             userSelect: 'none',
                         }}
-                    >
-                        {initialTimeText}
-                    </div>
+                    />
                 </>
             )}
         </div>

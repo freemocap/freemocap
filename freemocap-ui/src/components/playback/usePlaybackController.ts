@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
-import {mediaFrameAtRecordingTime} from '@/services/recording/playback-timing';
+import {ClientVideoGroup, releaseGroupFrames, type GroupFrames} from '@/services/recording/client-video-group';
+import {FrameLookahead} from '@/services/recording/frame-lookahead';
 import {type PlaybackManifest, type PlaybackRun, type PlaybackMedia} from '@/services/recording/playback-data';
 import {serverUrls} from '@/constants/server-urls';
 
@@ -14,6 +15,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const [manifest, setManifest] = useState<PlaybackManifest | null>(null);
     const [media, setMedia] = useState<PlaybackMedia[]>([]);
     const [reload, setReload] = useState(0);
+    const [decoderGroup, setDecoderGroup] = useState<ClientVideoGroup | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentFrame, setCurrentFrame] = useState(0);
@@ -23,8 +25,11 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const [videosReady, setVideosReady] = useState(0);
     const [settings, setSettings] = useState<PlaybackSettings>({showOverlays: true, timestampFormat: 'seconds'});
     const canvases = useRef(new Map<string, HTMLCanvasElement>());
-    const frameLabels = useRef(new Map<string, HTMLElement>());
-    const timeLabels = useRef(new Map<string, HTMLElement>());
+    const frameLabels = useRef(new Map<string, HTMLCanvasElement>());
+    const timeLabels = useRef(new Map<string, HTMLCanvasElement>());
+    const settingsRef = useRef(settings);
+    settingsRef.current = settings;
+    const requestedFrameRef = useRef(0);
     const presentedTime = useRef<number | null>(null);
     const currentFrameRef = useRef(0);
     const frameTimestampsRef = useRef<Record<string, number[]> | null>(null);
@@ -47,12 +52,14 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     useEffect(() => {
         const abort = new AbortController();
         setManifest(null); setMedia([]); setError(null); setIsPlaying(false);
-        setVideosReady(0); setCurrentFrame(0); setRequestedFrame(0); presentedTime.current = null;
+        setVideosReady(0); setCurrentFrame(0); setRequestedFrame(0); requestedFrameRef.current = 0; currentFrameRef.current = 0; presentedTime.current = null;
         if (!manifestUrl) return;
-        void (async () => {
+        const start = setTimeout(() => void (async () => {
             try {
                 const response = await fetch(manifestUrl, {signal: abort.signal});
-                if (response.status === 404) {
+                if (!response.ok) throw new Error(await response.text());
+                const result: PlaybackManifest | null = await response.json();
+                if (result === null) {
                     const url = new URL(manifestUrl);
                     url.pathname = url.pathname.replace(/\/manifest$/, '/media');
                     const mediaResponse = await fetch(url, {signal: abort.signal});
@@ -61,136 +68,179 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
                     if (!abort.signal.aborted) setMedia(result);
                     return;
                 }
-                if (!response.ok) throw new Error(await response.text());
-                const result: PlaybackManifest = await response.json();
                 if (abort.signal.aborted) return;
                 const selected = result.runs.find(item => item.run_id === result.selected_run_id);
                 if (!selected) throw new Error('Selected recording result is missing');
                 setManifest(result); setMedia(selected.media);
             } catch (failure) {if (!abort.signal.aborted) setError(String(failure));}
-        })();
-        return () => abort.abort();
+        })(), 0);
+        return () => {clearTimeout(start); abort.abort();};
     }, [manifestUrl, reload]);
 
     useEffect(() => {
         setIsPlaying(false); setCurrentFrame(0); setRequestedFrame(0); setVideosReady(0);
+        requestedFrameRef.current = 0; currentFrameRef.current = 0;
         presentedTime.current = null;
         canvases.current.forEach(canvas => canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height));
     }, [media, videoKey]);
 
     useEffect(() => {
-        if (!media.length || !videosRef.current.length) return;
-        const abort = new AbortController();
-        setError(null);
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        const loadFrames = async (): Promise<void> => {
-            const bitmaps: ImageBitmap[] = [];
-            const started = performance.now();
-            try {
-                if (!leader || !times) throw new Error('The selected video has no saved timing binding');
-                const time = times[requestedFrame];
-                if (time === undefined) throw new Error('Requested frame is outside the selected timeline');
-                const frames = videosRef.current.map(video => {
-                    const bindings = media.filter(item => item.video_filename === video.filename);
-                    if (bindings.length !== 1) throw new Error(`Expected one timing binding for ${video.filename}`);
-                    return {video, frame: mediaFrameAtRecordingTime(bindings[0], time)};
-                });
-                const results = await Promise.allSettled(frames.map(async ({video, frame}) => {
-                    if (frame === null) return null;
-                    const url = new URL(video.streamUrl);
-                    url.pathname += `/frames/${frame}`;
-                    const response = await fetch(url, {signal: abort.signal});
-                    if (!response.ok) throw new Error(await response.text());
-                    const bitmap = await createImageBitmap(await response.blob());
-                    bitmaps.push(bitmap);
-                    return bitmap;
-                }));
-                if (abort.signal.aborted) return;
-                const failure = results.find(result => result.status === 'rejected');
-                if (failure?.status === 'rejected') throw failure.reason;
-                const targets = frames.map(({video}) => {
-                    const canvas = canvases.current.get(video.videoId);
-                    if (!canvas) throw new Error(`Missing playback canvas for ${video.filename}`);
-                    const context = canvas.getContext('2d');
-                    if (!context) throw new Error('Canvas rendering is unavailable');
-                    return {canvas, context};
-                });
-                // Present only after every camera image and destination is ready.
-                frames.forEach(({video, frame}, index) => {
-                    const {canvas, context} = targets[index];
-                    const result = results[index];
-                    const bitmap = result.status === 'fulfilled' ? result.value : null;
-                    if (bitmap) {
-                        canvas.width = bitmap.width; canvas.height = bitmap.height;
-                        context.drawImage(bitmap, 0, 0);
-                    } else {context.clearRect(0, 0, canvas.width, canvas.height);}
-                    const label = frameLabels.current.get(video.videoId);
-                    if (label) label.textContent = frame === null ? 'No sample' : `F${frame}`;
-                    const timeLabel = timeLabels.current.get(video.videoId);
-                    if (timeLabel) timeLabel.textContent = `${time.toFixed(3)} s`;
-                });
-                presentedTime.current = time;
-                currentFrameRef.current = requestedFrame;
-                setCurrentFrame(requestedFrame); setVideosReady(frames.length);
-                onFrameChangeRef.current?.(requestedFrame);
-                if (isPlaying) {
-                    const next = requestedFrame + 1;
-                    if (times.length === 1 || (next >= times.length && !isLooping)) {setIsPlaying(false); return;}
-                    const interval = next < times.length ? times[next] - time : 1 / leader.nominal_fps;
-                    timer = setTimeout(() => setRequestedFrame(next < times.length ? next : 0),
-                        Math.max(0, interval * 1000 / playbackRate - (performance.now() - started)));
-                }
-            } catch (failure) {
-                if (!abort.signal.aborted) {setError(String(failure)); setIsPlaying(false);}
-            } finally {bitmaps.forEach(bitmap => bitmap.close());}
-        };
-        const startTimer = setTimeout(() => void loadFrames(), isPlaying ? 0 : 80);
-        return () => {abort.abort(); clearTimeout(startTimer); if (timer !== undefined) clearTimeout(timer);};
-    }, [media, videoKey, requestedFrame, isPlaying, isLooping, playbackRate, leader, times]);
+        if (!videosRef.current.length) {setDecoderGroup(null); return;}
+        const group = new ClientVideoGroup(videosRef.current);
+        let active = true;
+        setDecoderGroup(group);
+        void group.ready.catch(failure => {if (active) setError(String(failure));});
+        return () => {active = false; group.close();};
+    }, [videoKey, reload]);
 
+    useEffect(() => {
+        if (!decoderGroup || !leader || !times) return;
+        let active = true;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let buffer: FrameLookahead<GroupFrames> | null = null;
+        let lastUiUpdate = 0;
+        const fail = (failure: unknown): void => {
+            if (!active) return;
+            setError(String(failure)); setIsPlaying(false);
+        };
+        const present = (frames: GroupFrames, forceUi: boolean): void => {
+            const frameNumber = frames[0].ordinal;
+            const time = times[frameNumber];
+            if (time === undefined) throw new Error('Frame is outside the recording timeline');
+            const targets = decoderGroup.videos.map(video => {
+                const canvas = canvases.current.get(video.videoId);
+                if (!canvas) throw new Error(`Missing playback canvas for ${video.filename}`);
+                const context = canvas.getContext('2d');
+                if (!context) throw new Error('Canvas rendering is unavailable');
+                return {video, canvas, context};
+            });
+            targets.forEach(({video, canvas, context}, index) => {
+                const bitmap = frames[index].bitmap;
+                if (canvas.width !== bitmap.width) canvas.width = bitmap.width;
+                if (canvas.height !== bitmap.height) canvas.height = bitmap.height;
+                context.drawImage(bitmap, 0, 0);
+
+                const drawLabel = (label: HTMLCanvasElement | undefined, text: string): void => {
+                    if (!label) return;
+                    const labelContext = label.getContext('2d');
+                    if (!labelContext) throw new Error('Label rendering is unavailable');
+                    labelContext.clearRect(0, 0, label.width, label.height);
+                    labelContext.font = 'bold 14px monospace';
+                    labelContext.fillStyle = '#00ff88';
+                    labelContext.textAlign = 'right';
+                    labelContext.fillText(text, label.width - 4, 18);
+                };
+                drawLabel(frameLabels.current.get(video.videoId), `F${String(frameNumber).padStart(String(totalFrames).length, '0')}`);
+                const seconds = Math.floor(time);
+                const timecode = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60,
+                    Math.floor((time - seconds) * fps)].map(value => String(value).padStart(2, '0')).join(':');
+                drawLabel(timeLabels.current.get(video.videoId), settingsRef.current.timestampFormat === 'timecode' ? timecode : `${time.toFixed(3)} s`);
+            });
+            presentedTime.current = time;
+            currentFrameRef.current = frameNumber;
+            onFrameChangeRef.current?.(frameNumber);
+            if (forceUi || performance.now() - lastUiUpdate >= 100) {
+                setCurrentFrame(frameNumber); lastUiUpdate = performance.now();
+            }
+        };
+        const run = async (): Promise<void> => {
+            const count = await decoderGroup.ready;
+            if (!active) return;
+            if (count !== totalFrames) throw new Error(`Video has ${count} frames but its recording timeline has ${totalFrames}`);
+            const start = isPlaying ? currentFrameRef.current : requestedFrame;
+            const first = await decoderGroup.read(start);
+            try {
+                if (!active) return;
+                setError(null);
+                if (!isPlaying) {present(first, true); setVideosReady(first.length); return;}
+                const groupBytes = first.reduce((sum, frame) => sum + frame.bitmap.width * frame.bitmap.height * 4, 0);
+                const capacity = Math.min(Math.ceil(fps * 0.5), Math.floor(256 * 1024 * 1024 / groupBytes) - 2);
+                if (capacity < 1) throw new Error('Video group exceeds the playback buffer memory budget');
+                buffer = new FrameLookahead({start: start + 1, end: totalFrames, capacity,
+                    load: ordinal => decoderGroup.read(ordinal), release: releaseGroupFrames});
+                await buffer.fill();
+                if (!active) return;
+                present(first, true); setVideosReady(first.length);
+                const interval = 1000 / (fps * playbackRate);
+                let deadline = performance.now() + interval;
+                let stalled = false;
+                const tick = (): void => {
+                    if (!active || !buffer) return;
+                    try {
+                        const now = performance.now();
+                        if (now >= deadline) {
+                            const frames = buffer.take();
+                            if (frames) {
+                                try {present(frames, frames[0].ordinal === totalFrames - 1);} finally {releaseGroupFrames(frames);}
+                                deadline = stalled || now - deadline > interval ? now + interval : deadline + interval;
+                                stalled = false;
+                                void buffer.fill().catch(fail);
+                            } else if (buffer.finished) {
+                                if (isLooping) {
+                                    buffer = new FrameLookahead({start: 0, end: totalFrames, capacity,
+                                        load: ordinal => decoderGroup.read(ordinal), release: releaseGroupFrames});
+                                    void buffer.fill().catch(fail); stalled = true;
+                                } else {requestedFrameRef.current = currentFrameRef.current; setRequestedFrame(currentFrameRef.current); setIsPlaying(false); return;}
+                            } else {stalled = true;}
+                        }
+                        timer = setTimeout(tick, stalled ? interval : Math.max(1, deadline - performance.now()));
+                    } catch (failure) {fail(failure);}
+                };
+                timer = setTimeout(tick, interval);
+            } finally {releaseGroupFrames(first);}
+        };
+        timer = setTimeout(() => void run().catch(fail), isPlaying ? 0 : 80);
+        return () => {
+            active = false; clearTimeout(timer);
+            if (buffer) void buffer.close().catch(fail);
+        };
+    }, [decoderGroup, media, requestedFrame, isPlaying, isLooping, playbackRate, leader, times, totalFrames, fps]);
     const seek = useCallback((frame: number): void => {
         setIsPlaying(false);
-        setRequestedFrame(Math.max(0, Math.min(Math.round(frame), totalFrames - 1)));
+        requestedFrameRef.current = Math.max(0, Math.min(Math.round(frame), totalFrames - 1));
+        setRequestedFrame(requestedFrameRef.current);
     }, [totalFrames]);
     const setVideoRef = useCallback((id: string, canvas: HTMLCanvasElement | null): void => {
         if (canvas) canvases.current.set(id, canvas); else canvases.current.delete(id);
     }, []);
-    const setFrameOverlayRef = useCallback((id: string, element: HTMLElement | null): void => {
+    const setFrameOverlayRef = useCallback((id: string, element: HTMLCanvasElement | null): void => {
         if (element) frameLabels.current.set(id, element); else frameLabels.current.delete(id);
     }, []);
-    const setTimeOverlayRef = useCallback((id: string, element: HTMLElement | null): void => {
+    const setTimeOverlayRef = useCallback((id: string, element: HTMLCanvasElement | null): void => {
         if (element) timeLabels.current.set(id, element); else timeLabels.current.delete(id);
     }, []);
     const getRecordingTime = useCallback((): number | null => presentedTime.current, []);
     const reloadManifest = useCallback((): void => setReload(value => value + 1), []);
     const setPlaybackRun = useCallback((run: PlaybackRun): void => setMedia(run.media), []);
     const handlePlayPause = useCallback((): void => {
-        if (currentFrame >= totalFrames - 1) setRequestedFrame(0);
+        if (isPlaying) {requestedFrameRef.current = currentFrameRef.current; setRequestedFrame(currentFrameRef.current);}
+        else if (currentFrameRef.current >= totalFrames - 1) {currentFrameRef.current = 0; requestedFrameRef.current = 0; setRequestedFrame(0);}
         setIsPlaying(value => !value);
-    }, [currentFrame, totalFrames]);
+    }, [isPlaying, totalFrames]);
     useEffect(() => {
         const onKey = (event: KeyboardEvent): void => {
             const element = event.target;
             if (element instanceof HTMLElement && (element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(element.tagName))) return;
             switch (event.key) {
                 case ' ': event.preventDefault(); handlePlayPause(); break;
-                case 'ArrowLeft': event.preventDefault(); seek(currentFrame - 1); break;
-                case 'ArrowRight': event.preventDefault(); seek(currentFrame + 1); break;
+                case 'ArrowLeft': event.preventDefault(); seek((isPlaying ? currentFrameRef.current : requestedFrameRef.current) - 1); break;
+                case 'ArrowRight': event.preventDefault(); seek((isPlaying ? currentFrameRef.current : requestedFrameRef.current) + 1); break;
                 case 'Home': event.preventDefault(); seek(0); break;
                 case 'End': event.preventDefault(); seek(totalFrames - 1); break;
             }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [handlePlayPause, seek, currentFrame, totalFrames]);
+    }, [handlePlayPause, seek, isPlaying, totalFrames]);
     return {
         manifest, setPlaybackRun, reloadManifest, error, getRecordingTime,
+        seekFrame: isPlaying ? currentFrame : requestedFrame,
         isPlaying, currentFrame, totalFrames, duration, playbackRate, fps, currentTime, settings,
         isLooping, videosReady, allReady: videosReady === videos.length && videos.length > 0,
         erroredVideos: new Set<string>(), setSettings,
         handlePlayPause, isSeeking: requestedFrame !== currentFrame,
         handleSeekDrag: seek, handleSeekCommit: seek,
-        handleFrameStep: (delta: number): void => seek(currentFrame + delta),
+        handleFrameStep: (delta: number): void => seek((isPlaying ? currentFrameRef.current : requestedFrameRef.current) + delta),
         handlePlaybackRateChange: setPlaybackRate,
         handleSeekToStart: (): void => seek(0), handleSeekToEnd: (): void => seek(totalFrames - 1),
         handleToggleLoop: (): void => setIsLooping(value => !value),

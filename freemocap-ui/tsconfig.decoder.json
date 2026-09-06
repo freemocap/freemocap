@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/vite-env.d.ts", "prototypes/**/*.ts", "prototypes/**/*.tsx", "tools/media-*.ts", "tools/verify-playback-build.ts", "e2e/media-decoder.spec.ts", "e2e/app-playback.spec.ts"],
+  "references": []
+}

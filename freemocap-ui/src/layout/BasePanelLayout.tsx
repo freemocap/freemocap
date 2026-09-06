@@ -5,7 +5,6 @@ import {
   PanelGroup,
   PanelResizeHandle,
 } from "react-resizable-panels";
-import { useLocation } from "react-router-dom";
 import { SidePanelContent } from "@/layout/content/SidePanelContent";
 import BottomPanelContent from "@/layout/content/BottomPanelContent";
 import { useMenuActions } from "@/hooks/useMenuActions";
@@ -13,12 +12,6 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { RecordingCompleteDialog } from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 import { OperationErrorBanner } from "@/components/common/OperationErrorBanner";
 import { MainNavTabs } from "@/components/ui-components/MainNavTabs";
-import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
-import PromptTooltip from "@/components/ui-components/PromptTooltip";
-import { useServer } from "@/services/server/ServerContextProvider";
-import { useAppSelector } from "@/store";
-import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
-import { useTutorial } from "@/components/tutorial";
 
 export const BasePanelLayout = ({
   children,
@@ -31,13 +24,6 @@ export const BasePanelLayout = ({
   const bottomPanelRef = useRef<ImperativePanelHandle>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isBottomCollapsed, setIsBottomCollapsed] = useState(true);
-
-  const { isConnected, isFailed, connectedCameraIds } = useServer();
-  const location = useLocation();
-  const isCamerasLoading = useAppSelector(selectIsLoading);
-  // While a guided tour runs, hide the ad-hoc onboarding tooltips so the tour's
-  // own bubble is the only thing pointing at a shared target (e.g. camera:connect-camera).
-  const { isTourActive } = useTutorial();
 
   useEffect(() => {
     bottomPanelRef.current?.collapse();
@@ -72,41 +58,6 @@ export const BasePanelLayout = ({
       className="main-app-container flex flex-col"
       style={{ height: "100vh" }}
     >
-      <FloatingOnboarding
-        target='[data-onboarding="connection:server-connection"]'
-        className="z-110i"
-      >
-        <PromptTooltip
-          className={isFailed ? "" : "loading"}
-          show={!isConnected && !isTourActive}
-          title={isFailed ? "Service Unavailable" : "Connecting..."}
-          text={isFailed
-            ? "Make sure you have the service running"
-            : "Websocket connecting, app functions will be available once connection is made"}
-          position="pos-bottom"
-          variant={isFailed ? "warning" : "default"}
-          onClose={() => {}}
-        />
-      </FloatingOnboarding>
-
-<FloatingOnboarding target='[data-onboarding="camera:connect-camera"]'>
-  <PromptTooltip
-    show={
-      isConnected &&                 // <-- wait for successful connection
-      !isFailed &&                   // <-- optional extra safety
-      location.pathname === "/streaming" &&
-      connectedCameraIds.length === 0 &&
-      !isCamerasLoading &&
-      !isTourActive                  // <-- tour owns the stage while it runs
-    }
-    title="Connect Cameras"
-    text="Make sure you have at least one camera plugged in, then hit Connect to start streaming."
-    position="pos-right"
-    variant="boarding"
-    onClose={() => {}}
-  />
-</FloatingOnboarding>
-
       <PanelGroup className="app-container flex-1" direction="vertical">
         {/* Top section (horizontal panels) */}
         <Panel className="app-container-inner" defaultSize={87} minSize={20}>

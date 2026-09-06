@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><title>Media decoder checkpoint</title></head>
+<body style="font:16px system-ui;background:#171717;color:#eee;max-width:1100px;margin:30px auto">
+<h1>Media decoder checkpoint</h1>
+<p>Select synchronized local videos with identical frame counts. Frame numbers are zero-based.
+Opening scans every video to validate its decoded frame count. Workers share a 32 MiB estimated image-cache budget.
+An uncached backward read restarts from the beginning. Every pane displays the same requested frame together.</p>
+<input id="file" type="file" accept="video/*" multiple>
+<input id="ordinal" type="number" min="0" step="1" value="0" aria-label="Frame number">
+<button id="read" disabled>Read frame</button>
+<button id="play" disabled>Play buffered</button>
+<button id="pause" disabled>Pause</button>
+<p id="status" role="status" style="min-height:3em">Choose a video.</p>
+<div id="frames" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"></div>
+<script type="module" src="./main.ts"></script></body></html>

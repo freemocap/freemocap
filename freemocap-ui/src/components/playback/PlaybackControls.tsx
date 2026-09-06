@@ -4,10 +4,8 @@ import SegmentedControl from "@/components/ui-components/SegmentedControl";
 import type { PlaybackSettings } from "./SyncedVideoPlayer";
 import { useTranslation } from "react-i18next";
 import IconButton from "@/components/ui-components/IconButton";
-import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
-import { useDismissibleTooltip } from "@/hooks/useDismissibleTooltip";
 
 interface PlaybackControlsProps {
     isPlaying: boolean;
@@ -15,6 +13,7 @@ interface PlaybackControlsProps {
     duration: number;
     playbackRate: number;
     currentFrame: number;
+    seekFrame: number;
     totalFrames: number;
     fps: number;
     recordingFps?: number;
@@ -57,6 +56,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     duration,
     playbackRate,
     currentFrame,
+    seekFrame,
     totalFrames,
     fps,
     recordingFps,
@@ -86,9 +86,6 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     const speedButtonRef = useRef<HTMLButtonElement>(null);
     const speedPopupRef = useRef<HTMLDivElement>(null);
 
-    const [syncInfoOpen, openSyncInfo, dismissSyncInfo] = useDismissibleTooltip(
-        "freemocap:tooltip:syncInfo",
-    );
 
     const updateSetting = <K extends keyof PlaybackSettings>(key: K, value: PlaybackSettings[K]) => {
         onSettingsChange({ ...settings, [key]: value });
@@ -157,15 +154,14 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                         min={0}
                         max={Math.max(totalFrames - 1, 1)}
                         step={1}
-                        value={currentFrame}
+                        value={seekFrame}
                         style={
                             {
-                                "--progress-percent": `${totalFrames > 1 ? (currentFrame / (totalFrames - 1)) * 100 : 0}%`,
+                                "--progress-percent": `${totalFrames > 1 ? (seekFrame / (totalFrames - 1)) * 100 : 0}%`,
                             } as React.CSSProperties
                         }
                         onChange={(e) => onSeekDrag(Number(e.target.value))}
-                        onMouseUp={(e) => onSeekCommit(Number(e.currentTarget.value))}
-                        onTouchEnd={(e) => onSeekCommit(Number(e.currentTarget.value))}
+                        onPointerUp={(e) => onSeekCommit(Number(e.currentTarget.value))}
                     />
 
                     <div className="playback-timeline-frame-counter pos-abs z-2 text-white gap-3 flex flex-row items-center">
@@ -307,25 +303,6 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
                 {/* Info & Settings Group */}
                 <div className="playback-controls-group-info-settings flex items-center gap-1 flow-row p-1 bg-middark br-2">
-                    <div className="flex pos-rel items-center onclick-tooltip-wrapper">
-                        <PromptTooltip
-                            show={syncInfoOpen}
-                            title="Recording Playback Timing Issue"
-                            text={t("syncInfoTitle")}
-                            position="pos-top"
-                            variant="warning"
-                            onClose={dismissSyncInfo}
-                        />
-                        <IconButton
-                            icon="warning-icon"
-                            onClick={() => (syncInfoOpen ? dismissSyncInfo() : openSyncInfo())}
-                            title={t("syncInfo")}
-                            className={clsx("icon-size-25", syncInfoOpen && "activated")}
-                            tooltip={true}
-                            tooltipText={t("syncInfo")}
-                            tooltipPosition="pos-top"
-                        />
-                    </div>
 
                     <div className="playback-settings-button-opener flex pos-rel items-center onclick-tooltip-wrapper">
                         <IconButton

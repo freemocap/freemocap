@@ -232,11 +232,11 @@ def _resolve_recording_path(
 
 
 @playback_router.get("/{recording_id}/manifest")
-def get_playback_manifest(recording_id: str, recording_parent_directory: str | None = None) -> PlaybackManifest:
+def get_playback_manifest(recording_id: str, recording_parent_directory: str | None = None) -> PlaybackManifest | None:
     folder = _resolve_recording_path(recording_id, recording_parent_directory)
     structure = RecordingStructure(base_directory=folder.parent, recording_name=folder.name)
     if not structure.data_parquet_path.is_file():
-        raise HTTPException(status_code=404, detail="Process this recording to create playback data")
+        return None
     try:
         manifest = playback_manifest(structure.data_parquet_path)
         return manifest.model_copy(update={"runs": tuple(

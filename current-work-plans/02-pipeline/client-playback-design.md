@@ -1,9 +1,156 @@
 # Client playback design
 
-Status: proposal for review, 2026-09-06. Precedes media identity cleanup and posthoc refactoring.
-No decoder replacement or dependency installation is authorized by this document alone.
+Status: normal-app integration ready for Windows user testing, 2026-09-06. Precedes media identity cleanup and posthoc refactoring.
+Implementation approved in checkpoints. Dependency/source changes still require the agreed workflow.
+
+## Current mocap contract — synchronized video groups
+
+A group contains any positive number of videos with exactly equal decoded frame counts.
+Synchronization is an upstream prerequisite. Frame N in every video is assumed to describe
+the same instant. Unequal frame counts fail group loading; per-file FPS estimates are never compared.
+No trimming, nearest-time selection,
+independent camera playback, or per-video drift correction is permitted. One requested ordinal is
+presented only after every video supplies that ordinal. Mixed-rate sensor work is outside this pass.
+
+Checkpoint 4 implements this contract in the standalone prototype. Opening scans decoded outputs
+to validate frame counts and derives FPS from their presentation span. This is deliberately costly
+prototype validation, not the final fast metadata path. One/two/five input regression tests exercise
+all panes; group validation tests require nonempty input and equal frame counts.
+The validator takes frame counts only. One selected rate estimate paces the
+entire group; it does not determine frame correspondence. The image-cache estimate is shared
+across the group. Native decoder and compositor overhead are additional resource costs.
+
+## Checkpoint 1 — discovery and visual stability
+
+Implemented: remove per-frame decoding text; detach recording-list refresh from translation function
+identity; guard concurrent FFmpeg detection at dispatch and stop automatic retries after failure.
+TypeScript checking passes. Client decoding and request batching beyond these guards are not yet
+implemented; per-frame JPEG requests still exist until the decoder checkpoint.
+
+App test: reopen Playback, play and scrub raw/annotated media, and confirm the decoding text and its
+layout jump are gone. Filter/sort the recording list and verify these actions do not reload the list.
+Navigate away and back: a fresh list request is expected. Explicit refresh must still work. Inspect
+the Network panel for concurrent FFmpeg detection duplicates. Report any sustained list-request loop.
+After this check-in, proceed to a client decoder prototype with frame-identity tests and runtime codec
+validation before integrating it into normal playback.
 
 ## Findings
+
+### Checkpoint 6 — normal Playback integration
+
+Normal Playback uses URL-backed decode workers, sequential ordinal reads, client image caching,
+and a bounded half-second lookahead target. Every pane presents the same ordinal together. A
+starved group holds its current images. Ordinary playback makes no per-frame JPEG requests;
+HTTP byte-range reads supply compressed media to bounded client caches. The API exposes range
+response headers for the browser reader. The blanket timing-drift warning is removed.
+
+Validation: the actual React controller passes an Electron integration test covering HTTP media,
+forward/backward reads, playback completion, and source replacement. It checks shared ordinals,
+absence of frame HTTP requests, and reuse of downloaded fixture bytes. Application and harness
+TypeScript checks pass; the isolated production renderer and worker build passes. The frame-count
+validator test passes. Real-recording sustained performance still requires app acceptance.
+
+User test: restart backend and frontend normally, open Playback, select a synchronized recording,
+play/pause, seek forward and backward, resume, and switch raw/annotated sources where available.
+Check that panes stay together and the layout remains stable. Opening currently scans all decoded
+frames to validate exact counts, so startup can be slow. Buffer capacity depends on image size and
+video count; this checkpoint does not guarantee real-time throughput. Unsupported codecs fail
+explicitly. Audio synchronization and broader stress/codec/platform tests remain follow-up work.
+
+After this acceptance checkpoint, return to media identity/camera matching. Sidebar status and
+contents redesign remains deferred; broader request coalescing remains a separate follow-up.
+
+### Checkpoint 5 — buffered group presentation
+
+Validation: all six tests pass in Windows Electron: 1/2/5-video exact access and buffered
+pause/resume/completion, mismatched group rejection, bounded refill, and closing during an in-flight
+decode. Both application and prototype TypeScript checks pass. Real-recording smoothness and
+sustained decode throughput still require the user's prototype run; no performance claim is implied
+by the small synthetic fixture.
+
+The standalone prototype includes Play buffered and Pause. It preloads roughly half a second,
+replenishes a bounded queue while presenting, and advances one shared ordinal at the common FPS.
+The presentation queue has a 256 MiB RGBA estimate cap, reserving space for a displayed group and
+one load in flight; the existing worker caches retain a separate shared 32 MiB estimate. Decoder,
+canvas, compositor and compressed-data overhead are additional. Large groups receive a shorter
+lookahead; groups unable to fit the minimum buffer fail explicitly instead of dropping videos.
+
+Only complete frame groups are displayed. A shortage holds the current group and rebases the
+clock on recovery. Pause stops presentation and drains outstanding work before enabling manual
+reads. File replacement invalidates outstanding work and releases transferred images. The shared
+timer is independent of animation-frame delivery, including in the hidden Electron test window.
+Canvas dimensions are retained during playback instead of resetting the drawing surface each frame.
+
+Test with `npm run prototype:media`: select synchronized files, click Play buffered, pause, read a
+different ordinal and play again. Expect one preload interval, stable layout, and synchronized panes.
+Report sustained buffering separately from brief startup delay. This remains a prototype; main
+Playback and its HTTP transport are not changed by this checkpoint.
+
+### Checkpoint 3 — MP4 worker in Electron
+
+Mediabunny is pinned to 1.55.7 in package.json/package-lock.json through npm. Its installed package
+adds two type packages; no native codec addon or Python dependency/source was changed.
+
+`media-decoder.worker.ts` opens File/Blob media using Mediabunny, iterates samples from the start,
+and keeps a per-file 32 MiB estimated image cache. Cache hits preserve decoder position; uncached
+backward reads restart the sequential iterator. Responses transfer a separate ImageBitmap, and
+consumers close it after drawing. Errors release decoder resources and require reopening the file.
+The standalone prototype permits one outstanding frame request; production cancellation, shared
+clock, decode-ahead and multi-camera memory budgeting remain to be implemented.
+
+Windows validation: installed Electron passed the portable H.264 fixture with 48 frames, including
+28 B-frames, using ordinal-encoded image content and a sequential PyAV reference. Tested reads:
+0, 30, 29, 30, 0, 47, including cache hits and eviction/restart. The same checks passed against
+camera 2ea4 in the reported calibration recording using temporary PyAV pixel references. This checks
+selected ordinals, not every frame or every possible container edit. App and prototype TypeScript
+checks pass. Packaged installer and multi-camera performance testing are still pending.
+
+From `freemocap-ui`:
+
+```sh
+npm run test:media
+npm run prototype:media
+```
+
+The second command opens a separate Electron window, with no backend required. Choose a raw or
+annotated video, then read frames 0, 30, 29, 30, 0, 47 (for videos with at least 48 frames).
+Check that repeated frame numbers show the same image; `cacheHit` should be true for recent frames.
+For larger frames, reading frame 0 after frame 30 should increment `restarts` if it was evicted.
+The statistics and explicit read-status text are prototype diagnostics, not the production playback
+UX. Close the window to stop the isolated server. Original videos are read-only.
+
+The same npm test/launch commands are intended for Linux/macOS after normal npm installation.
+Report codec errors and test output; do not treat Windows or Edge success as cross-platform proof.
+The included fixture has its typed Python generator and sequential reference beside it, so running
+the tests does not require Python or fixture regeneration. Unsupported codecs produce an explicit
+error; this checkpoint does not introduce proxies or per-frame HTTP fallbacks.
+
+Next: validate this checkpoint with the user, then add worker cancellation/backpressure, bounded
+decode-ahead, a shared recording clock and four-camera tests before replacing app playback.
+
+### Checkpoint 2 — isolated browser experiment
+
+Implemented `decoder-prototype.ts` and a per-media `decoded-frame-cache.ts` in UI recording services.
+The experiment encodes 24 synthetic VP8 frames, decodes sequentially, checks image content and output
+timestamps, exercises reverse cache hits and eviction, then repeats decoding from the beginning.
+The cache owns ImageBitmap resources and closes evicted images; its RGBA estimate excludes runtime
+overhead. This small experiment is deliberately not a production streaming decoder.
+
+Validation: TypeScript passes; `e2e/decoder-prototype.spec.ts` passes in installed headless Edge.
+Reproduce from `freemocap-ui` with `node node_modules/@playwright/test/cli.js test
+e2e/decoder-prototype.spec.ts --reporter=line` (one command). No app interaction or recording is needed.
+No dependencies were installed. This does not establish packaged Electron codec support, MP4/B-frame
+correctness, worker backpressure, sustained multi-camera performance or global cache fairness.
+
+Next gate: select and integrate a demuxer through the agreed dependency workflow, test actual captured
+codecs and B-frame fixtures against sequential reference decoding, and move the decoder into a worker.
+Mediabunny and MP4Box.js were reviewed as candidates at checkpoint 2. Prefer evaluating
+Mediabunny's sequential sample iterator for broader container coverage; do not use timestamp-seeking
+sample APIs as a substitute for exact ordinal traversal. Cache hits must not advance or reset the
+decoder. Player integration and removal of per-frame HTTP remain pending those tests.
+
+Sources: [Mediabunny media sinks](https://mediabunny.dev/guide/media-sinks),
+[MP4Box.js](https://github.com/gpac/mp4box.js/blob/main/README.md).
 
 - `usePlaybackController.ts` fetches one JPEG per camera per presented frame. SkellyCam's
   `SequentialVideoReaders` caches JPEGs on the server; a cache hit still requires HTTP and browser
@@ -43,10 +190,9 @@ start-of-stream decoding for uncached backward access. Indexed restart is a late
 accepted only when it reproduces the baseline sequence, including B-frame/open-GOP cases. A generic
 timestamp seek or an arbitrary I-frame is not sufficient proof. Do not flush/reset on every frame.
 
-Exact frame selection cannot repair cameras that captured at different times, unknown offsets,
-dropped frames, or clock drift. Align sources using recording timestamps and a documented selection
-policy. The initial policy should preserve the existing latest-sample-at-or-before-time convention,
-with explicit no-sample intervals outside coverage; equal frame numbers are not required across rates.
+Exact frame selection cannot repair incorrect acquisition synchronization. Mocap input synchronization
+is assumed; select the same ordinal in every source. Do not infer a different per-camera frame from
+capture timestamps. Retain timestamps as metadata and for association with recorded numerical data.
 
 ## Proposed client architecture
 
@@ -62,7 +208,7 @@ with explicit no-sample intervals outside coverage; equal frame numbers are not 
    protected playhead window plus an LRU region for recently visited frames. Cache identity includes
    media revision, track, ordinal and relevant transform. Never hold decoder resources indefinitely;
    benchmark direct VideoFrame retention versus independently owned image resources for the cache.
-5. A single recording clock selects frames from all sources. Present a complete set together;
+5. A single group clock advances the shared ordinal at the common FPS. Present a complete set together;
    if required frames are missing, hold the last complete set and pause/rebase the playback clock.
    Decode workers may run independently; presentation must not drift independently per camera.
 6. Scrubbing returns cached frames immediately, otherwise queues a cancellable sequential decode.
@@ -78,6 +224,14 @@ server JPEG requests. Retain original media and communicate actual unsupported/c
 Choose the compatibility approach after inspecting real capture codecs and packaged runtime support.
 
 ## Sidebar and request budget
+
+The sidebar status/content dropdown redesign is deferred until the posthoc pipeline and recording
+data model are settled. Limit current changes to request behavior and playback stability; do not
+redesign the status taxonomy, contents tree or their presentation in this pass.
+
+Audit correction: the recording-list reducer already seeds the per-recording status cache, so
+expanding a row with batch-provided status does not inherently issue a second request. Preserve
+that behavior. Location-aware cache keys remain a separate follow-up.
 
 - One list request per recording root on initial access; deduplicate concurrent consumers. Cache list
   and row details together. For large directories, paginate summaries and batch missing details.
@@ -96,16 +250,16 @@ Choose the compatibility approach after inspecting real capture codecs and packa
 First capture browser errors and request traces for the reported recording. Then build a small
 client decoder prototype before replacing the controller. No unverified smoothness guarantee.
 
-Use videos with encoded visible frame ordinals and known offsets, including B-frames, variable rate,
-long GOPs, different camera rates, rotation and trimmed media. Compare sequential playback, forward
+Use videos with encoded visible frame ordinals, including B-frames, long GOPs and rotation.
+Reject mismatched counts; synchronization has already occurred. Compare sequential playback, forward
 seeks, cached reverse seeks and uncached restarts to the reference decoded sequence. Compare frame
 identity rather than demanding bit-identical GPU/CPU color conversion. Test rapid scrubbing, stale
 callbacks, memory eviction, corrupt media and one deliberately slow decoder. Verify all panes and
 numerical overlays refer to the same selected recording time after stalls.
 
-Measure real four-camera sustained playback and memory after repeated seek cycles. A 30/120 FPS
-fixture must preserve independent timelines; monitor refresh need not display every 120 FPS sample,
-but exact stepping must access every sample. Do not skip compressed dependencies to catch up.
+Measure sustained playback at several group sizes and memory after repeated seek cycles. Monitor
+refresh need not display every source sample, but exact stepping must access every shared ordinal.
+Do not skip compressed dependencies to catch up. No code path assumes four inputs.
 
 Replace the generic drift warning only after these checks pass. Show specific timing provenance or
 unresolved alignment where applicable; exact playback does not certify acquisition synchronization.
@@ -121,3 +275,15 @@ The playback description must use explicit media references so identity cleanup 
 key-chunk requirements after configuration, configuration support checks, and explicit frame-resource
 release. It does not guarantee support for every codec. These requirements inform the prototype;
 they do not establish that a demuxer, frame index or synchronization mapping is correct.
+
+### App QA follow-up: seeking and label ownership
+
+User confirmed smooth real-recording playback. Timeline controls retain requested position through
+pointer release; frame steps accumulate against the requested ordinal. Frame/time labels use
+fixed-size canvases with one renderer. The Electron harness exercises the actual timeline control
+and checks decoded image ordinals. Media-only recordings return a null manifest normally.
+
+Remaining: startup/reload flashing, request coalescing across sidebar/bundle/media discovery, and
+bundle validation invoking VideoGroupHelper's filename camera-ID parser for annotated videos.
+Resolve that coupling in media identity cleanup without adding another filename parser. Measure
+expected video byte-range requests separately from duplicate metadata requests.

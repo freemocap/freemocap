@@ -25,32 +25,6 @@ interface SyncedVideoPlayerProps {
     controller: PlaybackController;
 }
 
-function formatTimecodeFromSeconds(seconds: number, fps: number): string {
-    if (fps <= 0) return '00:00:00:00';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    const f = Math.floor((seconds % 1) * fps);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}`;
-}
-
-function formatTimecode(frame: number, fps: number): string {
-    if (fps <= 0) return '00:00:00:00';
-    const totalSec = frame / fps;
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = Math.floor(totalSec % 60);
-    const f = frame % Math.round(fps);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}`;
-}
-
-function formatSeconds(frame: number, fps: number): string {
-    if (fps <= 0) return '0.000s';
-    return `${(frame / fps).toFixed(3)}s`;
-}
-
 export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     videos,
     manualColumns,
@@ -60,9 +34,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     const {t} = useTranslation();
 
     const {
-        currentFrame,
-        totalFrames,
-        fps,
         settings,
         allReady,
         videosReady,
@@ -70,7 +41,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         setVideoRef,
         setFrameOverlayRef,
         setTimeOverlayRef,
-        frameTimestampsRef,
     } = controller;
 
     const videoIds = useMemo(() => videos.map(v => v.videoId), [videos]);
@@ -101,32 +71,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         );
     }
 
-    const framePadLen = Math.max(String(totalFrames).length, 1);
-    const initialFrameText = 'F' + String(currentFrame).padStart(framePadLen, '0');
-
-    let initialTimeText: string;
-    let timestampsAreReal = false;
-    const frameTimestamps = frameTimestampsRef.current;
-    if (frameTimestamps) {
-        const firstKey = Object.keys(frameTimestamps)[0];
-        const camTs = firstKey ? frameTimestamps[firstKey] : null;
-        if (camTs && currentFrame < camTs.length) {
-            const realSec = camTs[currentFrame];
-            initialTimeText = settings.timestampFormat === 'timecode'
-                ? formatTimecodeFromSeconds(realSec, fps)
-                : `${realSec.toFixed(3)}s`;
-            timestampsAreReal = true;
-        } else {
-            initialTimeText = '~' + (settings.timestampFormat === 'timecode'
-                ? formatTimecode(currentFrame, fps)
-                : formatSeconds(currentFrame, fps));
-        }
-    } else {
-        initialTimeText = '~' + (settings.timestampFormat === 'timecode'
-            ? formatTimecode(currentFrame, fps)
-            : formatSeconds(currentFrame, fps));
-    }
-
     return (
         <div
             ref={containerRef}
@@ -153,10 +97,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             streamUrl={video.streamUrl}
                             filename={video.filename}
                             showOverlays={settings.showOverlays}
-                            timestampFormat={settings.timestampFormat}
-                            initialFrameText={initialFrameText}
-                            initialTimeText={initialTimeText}
-                            timestampsAreReal={timestampsAreReal}
                             hasError={erroredVideos.has(video.videoId)}
                             setVideoRef={setVideoRef}
                             setFrameOverlayRef={setFrameOverlayRef}

@@ -6,6 +6,34 @@ Companion contracts: [posthoc rebuild](posthoc-rebuild.md) and
 
 ## Where we are
 
+### Real-world test handoff — 2026-09-05
+
+The basic fresh-recording workflow is ready for user acceptance testing. Current preflight:
+60 Python recording/storage/playback/calibration/decoder tests, six TypeScript playback tests,
+frontend type checking and changed Python file lint checks pass. This is automated readiness;
+the complete workflow has not yet passed visual acceptance in the running app.
+
+Completed-job playback navigation preserves the recording's parent directory. Playback prefers
+original synchronized videos. The video controller supplies the exact presented recording
+timestamp to the numeric player, and each camera resolves its own native frame at that time.
+
+User run-through:
+
+1. Restart the backend and UI so both load the current code.
+2. Make a fresh 10–20 second multicamera recording with visible movement and brief pauses.
+3. Open mocap processing. Verify the selected folder and calibration. Check automatic local
+   calibration loading when present, or select the most recent appropriate calibration. If a
+   calibration must be computed, complete the separate calibration task before starting mocap.
+4. Process the recording, then open playback from the completed job. Confirm the correct folder,
+   original videos and reconstructed 3D appear.
+5. Play, pause, step forward/backward, scrub near the end, return near the start and revisit frames.
+   Confirm camera images and 3D remain aligned. An uncached backward request may take time because
+   decoding proceeds incrementally from the beginning; revisited cached frames should be faster.
+6. Restart the app and reopen the same recording. Its saved result should load without rerunning
+   detection. Record the first failing action, recording directory and backend/UI error if it fails.
+
+Advanced stage reprocessing controls and the `.freemocap.mp4` export remain subsequent milestones.
+
 Capture has user-confirmed camera operation. Posthoc has shared numerical reconstruction,
 canonical publication, saved-input reload, fit-input validation and numerical completion records.
 The focused suite has 91 passing tests. This does not establish real-app end-to-end acceptance.
@@ -28,8 +56,8 @@ overwrite with an open Windows playback snapshot. These do not establish visual 
 The local `freemocap_test_data` descriptor inspected during validation lacks required fit-input
 evidence. The completed recording path was requested from the user for real-output playback testing.
 
-Media-backed 3D playback resolves the actual leader video's media time through an explicit saved
-filename/FPS/camera-timeline binding, then samples the selected group's data by recording time.
+Media-backed 3D playback uses the exact recording timestamp of the presented leader frame,
+then samples the selected group's data by recording time through its saved timeline.
 Camera timestamps remain SkellyCam's recorded or inferred values. The main controller steps the
 leader video's native timeline and resolves each follower's frame independently at recording time.
 SkellyCam sequentially decodes every intervening frame; backward seeks reopen and decode from the

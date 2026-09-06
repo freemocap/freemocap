@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
-import {mediaFrameAtRecordingTime, type MediaPosition} from '@/services/recording/playback-timing';
+import {mediaFrameAtRecordingTime} from '@/services/recording/playback-timing';
 import {type PlaybackManifest, type PlaybackRun, type PlaybackMedia} from '@/services/recording/playback-data';
 import {serverUrls} from '@/constants/server-urls';
 
@@ -25,7 +25,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const canvases = useRef(new Map<string, HTMLCanvasElement>());
     const frameLabels = useRef(new Map<string, HTMLElement>());
     const timeLabels = useRef(new Map<string, HTMLElement>());
-    const presentedMedia = useRef<MediaPosition | null>(null);
+    const presentedTime = useRef<number | null>(null);
     const currentFrameRef = useRef(0);
     const frameTimestampsRef = useRef<Record<string, number[]> | null>(null);
     const onFrameChangeRef = useRef(onFrameChange);
@@ -47,7 +47,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     useEffect(() => {
         const abort = new AbortController();
         setManifest(null); setMedia([]); setError(null); setIsPlaying(false);
-        setVideosReady(0); setCurrentFrame(0); setRequestedFrame(0); presentedMedia.current = null;
+        setVideosReady(0); setCurrentFrame(0); setRequestedFrame(0); presentedTime.current = null;
         if (!manifestUrl) return;
         void (async () => {
             try {
@@ -74,7 +74,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
 
     useEffect(() => {
         setIsPlaying(false); setCurrentFrame(0); setRequestedFrame(0); setVideosReady(0);
-        presentedMedia.current = null;
+        presentedTime.current = null;
         canvases.current.forEach(canvas => canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height));
     }, [media, videoKey]);
 
@@ -129,8 +129,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
                     const timeLabel = timeLabels.current.get(video.videoId);
                     if (timeLabel) timeLabel.textContent = `${time.toFixed(3)} s`;
                 });
-                presentedMedia.current = {filename: leader.video_filename,
-                    time_s: leader.timeline.frame_numbers[requestedFrame] / leader.nominal_fps};
+                presentedTime.current = time;
                 currentFrameRef.current = requestedFrame;
                 setCurrentFrame(requestedFrame); setVideosReady(frames.length);
                 onFrameChangeRef.current?.(requestedFrame);
@@ -162,7 +161,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const setTimeOverlayRef = useCallback((id: string, element: HTMLElement | null): void => {
         if (element) timeLabels.current.set(id, element); else timeLabels.current.delete(id);
     }, []);
-    const getMediaPosition = useCallback((): MediaPosition | null => presentedMedia.current, []);
+    const getRecordingTime = useCallback((): number | null => presentedTime.current, []);
     const reloadManifest = useCallback((): void => setReload(value => value + 1), []);
     const setPlaybackRun = useCallback((run: PlaybackRun): void => setMedia(run.media), []);
     const handlePlayPause = useCallback((): void => {
@@ -185,7 +184,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         return () => window.removeEventListener('keydown', onKey);
     }, [handlePlayPause, seek, currentFrame, totalFrames]);
     return {
-        manifest, setPlaybackRun, reloadManifest, error, getMediaPosition,
+        manifest, setPlaybackRun, reloadManifest, error, getRecordingTime,
         isPlaying, currentFrame, totalFrames, duration, playbackRate, fps, currentTime, settings,
         isLooping, videosReady, allReady: videosReady === videos.length && videos.length > 0,
         erroredVideos: new Set<string>(), setSettings,

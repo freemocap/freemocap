@@ -8,8 +8,16 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from freemocap.api.http.playback.playback_router import playback_router, video_readers
+from freemocap.api.http.playback.playback_router import playback_router, video_readers, preferred_video_source, VideoSourceInfo, PlaybackVideoSource
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
+
+
+@pytest.mark.parametrize("synchronized_available, expected", [(True, PlaybackVideoSource.SYNCHRONIZED), (False, PlaybackVideoSource.ANNOTATED)])
+def test_playback_prefers_original_videos(synchronized_available: bool, expected: PlaybackVideoSource) -> None:
+    assert preferred_video_source(
+        synchronized=VideoSourceInfo(available=synchronized_available, valid=synchronized_available, video_count=int(synchronized_available)),
+        annotated=VideoSourceInfo(available=True, valid=True, video_count=1),
+    ) == expected
 
 
 @pytest.fixture

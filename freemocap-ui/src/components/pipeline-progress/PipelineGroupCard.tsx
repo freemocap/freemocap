@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/store/hooks";
-import { activeRecordingSet } from "@/store/slices/active-recording/active-recording-slice";
+import { activeRecordingSet, splitParentAndName } from "@/store/slices/active-recording/active-recording-slice";
 import { useElectronIPC } from "@/services";
 import {
   PipelineGroup,
@@ -129,9 +129,13 @@ export default function PipelineGroupCard({
 
   const handleLoadPlayback = () => {
     if (!group.recordingName) return;
+    if (!fullPath) throw new Error('Completed pipeline has no recording directory');
+    const location = splitParentAndName(fullPath);
+    if (!location) throw new Error('Completed pipeline has no recording directory');
     dispatch(
       activeRecordingSet({
-        recordingName: group.recordingName,
+        recordingName: location.recordingName,
+        baseDirectory: location.baseDirectory,
         origin: "browsed",
       }),
     );

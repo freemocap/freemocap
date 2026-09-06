@@ -4,13 +4,12 @@ import {KeypointsSourceProvider, type KeypointsSource, type KeypointsFrame, type
 import type {ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame} from '@/services/server/transport/frame-types';
 import {channelFrame, recordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackWindow, type PlaybackRun} from '@/services/recording/playback-data';
-import {recordingTimeForMedia, type MediaPosition} from '@/services/recording/playback-timing';
 
 interface PlaybackState {models: ModelDefinition[]; frames: ResolvedModelFrame[]; points: KeypointsFrame | null}
 
-export function RecordingPlaybackProvider({recordingId, recordingParentDirectory, getMediaPosition, mediaAvailable, manifest, reloadManifest, onPlaybackRun, children}: {
+export function RecordingPlaybackProvider({recordingId, recordingParentDirectory, getRecordingTime, mediaAvailable, manifest, reloadManifest, onPlaybackRun, children}: {
     recordingId: string | null; recordingParentDirectory: string | null | undefined;
-    getMediaPosition: () => MediaPosition | null; mediaAvailable: boolean; children: ReactNode;
+    getRecordingTime: () => number | null; mediaAvailable: boolean; children: ReactNode;
     manifest: PlaybackManifest | null; reloadManifest: () => void; onPlaybackRun: (run: PlaybackRun) => void;
 }): React.ReactElement {
     const [runId, setRunId] = useState<number | null>(null);
@@ -75,14 +74,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
             if (disposed || failed) return;
             let time: number | null = dataTimeRef.current;
             if (mediaAvailable) {
-                const position = getMediaPosition();
-                try {
-                    time = position ? recordingTimeForMedia(run.media, position) : null;
-                } catch (failure) {
-                    failed = true;
-                    setError(failure instanceof Error ? failure.message : String(failure));
-                    return;
-                }
+                time = getRecordingTime();
             }
             if (time === null) {
                 state.current.frames = []; state.current.points = null;
@@ -123,7 +115,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         };
         raf = requestAnimationFrame(tick);
         return () => { disposed = true; pending?.abort(); cancelAnimationFrame(raf); };
-    }, [run, manifest, baseUrl, query, group, getMediaPosition, clock, mediaAvailable]);
+    }, [run, manifest, baseUrl, query, group, getRecordingTime, clock, mediaAvailable]);
 
     useEffect(() => {
         if (!clock || mediaAvailable) return;

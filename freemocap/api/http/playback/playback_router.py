@@ -14,6 +14,7 @@ Endpoints:
   GET  /playback/{recording_id}/videos/{video_id}/timestamps — timestamps for one video
 """
 import csv
+from enum import StrEnum
 import logging
 from pathlib import Path
 from typing import Any, Optional
@@ -119,6 +120,22 @@ class VideoSourceInfo(BaseModel):
 class VideoSourcesResponse(BaseModel):
     preferred_source: str
     sources: dict[str, VideoSourceInfo]
+
+
+class PlaybackVideoSource(StrEnum):
+    SYNCHRONIZED = "synchronized"
+    ANNOTATED = "annotated"
+
+
+def preferred_video_source(*, synchronized: VideoSourceInfo, annotated: VideoSourceInfo) -> PlaybackVideoSource:
+    candidates = ((PlaybackVideoSource.SYNCHRONIZED, synchronized), (PlaybackVideoSource.ANNOTATED, annotated))
+    for name, source in candidates:
+        if source.available and source.valid:
+            return name
+    for name, source in candidates:
+        if source.available:
+            return name
+    raise ValueError("No playback video source is available")
 
 
 class RecordingStatusSummary(BaseModel):
@@ -665,12 +682,7 @@ def list_videos(
             detail=f"No video files found in {recording_path}",
         )
 
-    preferred = (
-        "annotated" if (annotated.available and annotated.valid)
-        else "synchronized" if (synchronized.available and synchronized.valid)
-        else "annotated" if annotated.available
-        else "synchronized"
-    )
+    preferred = preferred_video_source(synchronized=synchronized, annotated=annotated)
 
     logger.info(
         f"Recording '{recording_id}': annotated={annotated.available}/{annotated.valid}, "
@@ -1037,12 +1049,7 @@ def get_recording_bundle(
                 detail=f"No video files found in {recording_path}",
             )
     else:
-        preferred = (
-            "annotated" if (annotated.available and annotated.valid)
-            else "synchronized" if (synchronized.available and synchronized.valid)
-            else "annotated" if annotated.available
-            else "synchronized"
-        )
+        preferred = preferred_video_source(synchronized=synchronized, annotated=annotated)
         videos_response = VideoSourcesResponse(
             preferred_source=preferred,
             sources={

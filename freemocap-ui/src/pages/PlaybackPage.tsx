@@ -151,7 +151,7 @@ const PlaybackPage: React.FC = () => {
                                             <RecordingPlaybackProvider
                                                 recordingId={activeRecordingName}
                                                 recordingParentDirectory={activeRecordingBaseDirectory}
-                                                getMediaPosition={controller.getMediaPosition}
+                                                getRecordingTime={controller.getRecordingTime}
                                                 mediaAvailable={videoEntries.length > 0}
                                                 manifest={controller.manifest}
                                                 reloadManifest={controller.reloadManifest}

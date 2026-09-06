@@ -22,7 +22,7 @@ from freemocap.core.recording.recording_metadata import (
     SourceKind,
 )
 from freemocap.core.recording.observation_recording_models import CameraRecordingDefinition
-from freemocap.core.recording.recording_reader import read_static_channels
+from freemocap.core.recording.recording_reader import read_static_channels, parse_recording_metadata
 from freemocap.core.recording.sample_conventions import SampleComponent
 from freemocap.core.recording.shared_recording_file import shared_recording_file
 from freemocap.core.streaming.message_composer import compose_messages
@@ -134,7 +134,7 @@ def recording_view(path: Path) -> Iterator[RecordingView]:
             payload = (parquet.schema_arrow.metadata or {}).get(DESCRIPTOR_KEY)
             if payload is None:
                 raise ValueError("Missing recording descriptor")
-            metadata = RecordingMetadata.model_validate_json(payload)
+            metadata = parse_recording_metadata(payload=payload, path=path)
             if metadata.recording_id != path.parent.name:
                 raise ValueError("Recording identity does not match its folder")
             yield RecordingView(parquet=parquet, metadata=metadata, revision=revision)

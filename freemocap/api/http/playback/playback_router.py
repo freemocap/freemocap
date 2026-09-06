@@ -213,7 +213,10 @@ def get_playback_manifest(recording_id: str, recording_parent_directory: str | N
     structure = RecordingStructure(base_directory=folder.parent, recording_name=folder.name)
     if not structure.data_parquet_path.is_file():
         raise HTTPException(status_code=404, detail="Process this recording to create playback data")
-    return playback_manifest(structure.data_parquet_path)
+    try:
+        return playback_manifest(structure.data_parquet_path)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @playback_router.post("/{recording_id}/window")

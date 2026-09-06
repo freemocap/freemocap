@@ -42,7 +42,6 @@ from freemocap.core.recording.recording_reader import (
 from freemocap.core.recording.recording_writer import (
     publish_recording,
     recording_write_lock,
-    repair_metadata_mirror,
 )
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
@@ -403,16 +402,23 @@ def test_mixed_rates_and_missing_components_round_trip(tmp_path: Path) -> None:
     assert eye.num_rows == 24
     assert eye.column("value").null_count == 3
     assert eye.column("timestamp_s")[6].as_py() == 2 / 120
-    structure.recording_info_path.write_text(
-        "interrupted JSON publication", encoding="utf-8"
-    )
-    assert repair_metadata_mirror(structure=structure) == metadata
-    assert (
-        RecordingMetadata.model_validate_json(
-            structure.recording_info_path.read_text(encoding="utf-8")
+    assert not structure.recording_info_path.exists()
+
+
+def test_publication_preserves_capture_metadata(tmp_path: Path) -> None:
+    structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
+    structure.full_path.mkdir()
+    capture_metadata = '{"recording_id": "recording", "capture_start": 123}'
+    structure.recording_info_path.write_text(capture_metadata, encoding="utf-8")
+    with recording_write_lock(structure=structure):
+        publish_recording(
+            structure=structure,
+            metadata=metadata_fixture(),
+            batches=[sample_batch(group="mocap", count=2, fps=30.0), sample_batch(group="eye", count=8, fps=120.0)],
         )
-        == metadata
-    )
+    assert structure.recording_info_path.read_text(encoding="utf-8") == capture_metadata
+    assert not (structure.full_path / "output_data").exists()
+    assert not (structure.full_path / "tracker_schema.json").exists()
 
 
 def test_failed_write_preserves_completed_recording(tmp_path: Path) -> None:

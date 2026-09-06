@@ -1,4 +1,4 @@
-"""Publish a complete validated Parquet before updating its JSON descriptor mirror."""
+"""Publish a complete validated Parquet with its embedded data descriptor."""
 
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
@@ -17,7 +17,6 @@ from freemocap.core.recording.recording_data import (
     SampleValidator,
 )
 from freemocap.core.recording.recording_metadata import RecordingMetadata
-from freemocap.core.recording.recording_reader import read_metadata
 from freemocap.core.recording.shared_recording_file import replace_recording_file
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
@@ -28,19 +27,6 @@ def recording_write_lock(*, structure: RecordingStructure) -> Iterator[None]:
     lock_path = structure.full_path / ".processing.lock"
     with FileLock(lock_file=lock_path, timeout=0):
         yield
-
-
-def write_metadata_mirror(*, path: Path, metadata: RecordingMetadata) -> None:
-    descriptor, temporary_name = tempfile.mkstemp(dir=path.parent, suffix=".json.tmp")
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-            output.write(metadata.model_dump_json(indent=2))
-            output.flush()
-            os.fsync(output.fileno())
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
 
 
 def publish_recording(
@@ -70,16 +56,6 @@ def publish_recording(
         with temporary.open("rb+") as completed:
             os.fsync(completed.fileno())
         replace_recording_file(source=temporary, destination=structure.data_parquet_path)
-        write_metadata_mirror(path=structure.recording_info_path, metadata=metadata)
     finally:
         temporary.unlink(missing_ok=True)
 
-
-def repair_metadata_mirror(*, structure: RecordingStructure) -> RecordingMetadata:
-    """Recover the JSON mirror from the last committed Parquet under the write lock."""
-    with recording_write_lock(structure=structure):
-        metadata = read_metadata(path=structure.data_parquet_path)
-        if metadata.recording_id != structure.recording_name:
-            raise ValueError("Recording identity does not match its directory")
-        write_metadata_mirror(path=structure.recording_info_path, metadata=metadata)
-        return metadata

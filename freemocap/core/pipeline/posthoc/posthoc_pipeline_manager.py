@@ -13,12 +13,15 @@ import logging
 import multiprocessing
 import multiprocessing.synchronize
 from dataclasses import dataclass, field
+from pathlib import Path
 from multiprocessing.sharedctypes import Synchronized
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
+from freemocap.core.recording.recording_reader import read_metadata
+from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
@@ -140,6 +143,12 @@ class PosthocPipelineManager(PipelineManagerABC):
         mocap_config: PosthocMocapPipelineConfig,
         start_pipeline: bool = True,
     ) -> PosthocPipeline:
+        structure = RecordingStructure(
+            base_directory=Path(recording_info.recording_directory),
+            recording_name=recording_info.recording_name,
+        )
+        if structure.data_parquet_path.exists():
+            read_metadata(path=structure.data_parquet_path)
         # Lazy import: the posthoc mocap task drags in the (still-deferred) skellyforge
         # Human/filter/interpolation modules, so it must not be imported at module load.
         from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_aggregator_task

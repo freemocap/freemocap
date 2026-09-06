@@ -183,8 +183,11 @@ geometry. The rebuild plan defines limited additional channel kinds, not an arbi
 
 ## Metadata and constant channels
 
-recording_info contains:
-- Recording ID, capture start, inputs, camera configurations, sensor groups and clock definitions.
+Recording metadata JSON contains only recording-level capture information: recording ID, capture
+start, inputs, camera configurations, sensor groups and clock definitions. Publication does not
+write a JSON copy of the Parquet descriptor or alter capture metadata.
+
+The Parquet embedded data descriptor contains:
 - Schema version and selected_run_id.
 - Per retained run: command argv or API request, resolved settings, software versions, stage status,
   dependencies, timing/quality statistics, exact calibration used, and computed output inventory.

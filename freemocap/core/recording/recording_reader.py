@@ -6,6 +6,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+from pydantic import ValidationError
 
 from freemocap.core.recording.recording_data import DESCRIPTOR_KEY, SAMPLE_SCHEMA
 from freemocap.core.recording.recording_metadata import RecordingMetadata, StaticChannel
@@ -20,7 +21,18 @@ def read_static_channels(run: RunDescriptor) -> tuple[StaticChannel, ...]:
 
 def read_metadata(*, path: Path) -> RecordingMetadata:
     payload = _read_metadata_payload(path=path)
-    return RecordingMetadata.model_validate_json(payload)
+    return parse_recording_metadata(payload=payload, path=path)
+
+
+def parse_recording_metadata(*, payload: bytes, path: Path) -> RecordingMetadata:
+    try:
+        return RecordingMetadata.model_validate_json(payload)
+    except ValidationError as error:
+        raise ValueError(
+            f"Recording metadata is incompatible or invalid: {path}. "
+            "Preserve this output outside the recording folder, then process the original videos "
+            f"to create a complete result. Validation details: {error}"
+        ) from error
 
 
 def _read_metadata_payload(*, path: Path) -> bytes:

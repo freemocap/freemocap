@@ -169,18 +169,7 @@ class RealtimePipeline:
                 pubsub=pubsub,
             )
 
-        # Create CharucoRecorderNode if charuco tracking is enabled.
-        # This node buffers observations during calibration recording windows
-        # so posthoc calibration can skip redundant detection.
         charuco_recorder_node: CharucoRecorderNode | None = None
-        if pipeline_config.camera_node_config.charuco_tracking_enabled:
-            charuco_recorder_node = CharucoRecorderNode.create(
-                camera_ids=pipeline_camera_ids,
-                ipc=ipc,
-                pubsub=pubsub,
-                board_config=pipeline_config.camera_node_config.charuco_tracker_config.stages[0].keypoint_detectors[0].board,
-                worker_registry=worker_registry,
-            )
 
         # Backpressure events between the aggregator and the websocket consumer.
         # The aggregator processes one frame, publishes the result, clears

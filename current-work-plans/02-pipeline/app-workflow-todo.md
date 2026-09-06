@@ -6,7 +6,30 @@ Companion contracts: [posthoc rebuild](posthoc-rebuild.md) and
 
 ## Where we are
 
+### Output scope — 2026-09-06
+
+The user reports a clean processing run. Pause additional export development for a data-model
+discussion. A recording represents a capture volume, with potentially multiple humans, animals,
+objects and calibration boards; it is not a single tracked person's model container.
+
+The only numerical data output currently enabled by posthoc mocap is the canonical Parquet,
+including its self-describing model/measurement data. No provisional `output_data` NPY/CSV files,
+top-level `tracker_schema.json`, or model/measurement JSON mirror are written. Recording metadata
+JSON is reserved for capture-level information and is left untouched by numerical publication.
+Automatic Blender export is disconnected from this processing task. Calibration retains its TOML
+artifact; observation JSON, reconstructed-board NPY and realtime Charuco disk-cache production are
+disabled. A future output layout must be agreed before rebuilding exports piece by piece.
+
 ### Real-world test handoff — 2026-09-05
+
+2026-09-06 acceptance blocker: `freemocap_test_data` contained an incompatible saved scale-fit
+descriptor missing `inputs`. Publication and playback rejected that output. Mocap now validates
+existing metadata before creating workers; playback reports a file-specific 422 error. Eight
+focused tests pass, including rejection before worker creation and preservation of invalid input.
+The affected Parquet and JSON mirror were hash-verified into
+`C:/Users/jonma/freemocap_data/recovery_backups/freemocap_test_data_2026-09-06_metadata`
+and removed from the recording folder; original videos and calibration remain in place.
+Next acceptance action: restart the app/backend and process `freemocap_test_data` again.
 
 The basic fresh-recording workflow is ready for user acceptance testing. Current preflight:
 60 Python recording/storage/playback/calibration/decoder tests, six TypeScript playback tests,

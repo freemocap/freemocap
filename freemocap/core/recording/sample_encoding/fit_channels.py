@@ -3,12 +3,12 @@
 from collections.abc import Iterator
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     RunDescriptor,
     StaticChannel,
 )
-from freemocap.core.recording.sample_conventions import SampleComponent
+from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
 from freemocap.core.types.channel_kind import ChannelKind
 
 

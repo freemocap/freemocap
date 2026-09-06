@@ -7,7 +7,7 @@ import struct
 
 import pyarrow as pa
 
-from freemocap.core.recording.recording_metadata import Channel, RecordingMetadata
+from freemocap.core.recording.data_descriptors.recording_descriptor import Channel, RecordingMetadata
 
 
 SAMPLE_SCHEMA = pa.schema(

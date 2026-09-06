@@ -1,12 +1,12 @@
 """Typed construction inputs and descriptor factories for observation recordings."""
 
 from freemocap.core.types.channel_kind import ChannelKind
-from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
-from freemocap.core.recording.spatial_point_series import SpatialPointSeries
-from freemocap.core.recording.reconstruction_recording import ReconstructionRecording
-from freemocap.core.recording.recorded_model import RecordedModel
+from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
+from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries
+from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from dataclasses import dataclass
-from freemocap.core.recording.sample_conventions import (
+from freemocap.core.recording.data_descriptors.sample_conventions import (
     SampleComponent,
     SampleUnit,
     TimingSampleName,
@@ -19,7 +19,7 @@ from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     Descriptor,
     Source,

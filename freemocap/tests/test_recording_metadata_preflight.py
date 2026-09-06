@@ -14,7 +14,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
 from freemocap.api.http.playback.playback_router import playback_router
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
-from freemocap.core.recording.recording_data import DESCRIPTOR_KEY, SAMPLE_SCHEMA
+from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 
 

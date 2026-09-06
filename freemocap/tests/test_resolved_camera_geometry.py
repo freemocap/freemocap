@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
+from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel

@@ -8,17 +8,17 @@ Pre-bind task_config via functools.partial when creating the pipeline.
 """
 from __future__ import annotations
 
-from freemocap.core.recording.observation_recording_models import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
-from freemocap.core.recording.recorded_model import RecordedModel
+from freemocap.core.recording.result_processing.observation_inputs import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
-from freemocap.core.recording.spatial_point_series import SpatialPointSeries, PointSeriesDefinition, SpatialReference
+from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
+from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import logging
 import shutil
 from pathlib import Path
 
 from freemocap.core.reconstruction.recording_reconstruction import RecordingReconstructionInput
-from freemocap.core.recording.reconstruction_recording import ReconstructionRecording, ReconstructionSourceDefinition
+from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording, ReconstructionSourceDefinition
 
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig  # noqa: TC001
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
@@ -36,7 +36,7 @@ from freemocap.core.skeletons.standard_human_skeleton import (
 )
 from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration, get_last_successful_calibration_toml_path
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
-from freemocap.core.recording.posthoc_observation_recording import publish_posthoc_observations
+from freemocap.core.recording.result_processing.observation_publication import publish_posthoc_observations
 from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # noqa: TC001

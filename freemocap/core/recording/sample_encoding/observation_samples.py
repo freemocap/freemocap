@@ -4,7 +4,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 import math
 from freemocap.core.types.channel_kind import ChannelKind
-from freemocap.core.recording.sample_conventions import (
+from freemocap.core.recording.data_descriptors.sample_conventions import (
     SampleComponent,
     SampleUnit,
     TimingSampleName,
@@ -14,8 +14,8 @@ import pyarrow as pa
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
-from freemocap.core.recording.recording_data import SAMPLE_SCHEMA
-from freemocap.core.recording.recording_metadata import Channel
+from freemocap.core.recording.sample_encoding.arrow_schema import SAMPLE_SCHEMA
+from freemocap.core.recording.data_descriptors.recording_descriptor import Channel
 
 
 @dataclass(frozen=True, slots=True)

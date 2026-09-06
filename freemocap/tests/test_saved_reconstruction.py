@@ -12,30 +12,30 @@ from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_board_defin
     CharucoBoardDefinition,
 )
 
-from freemocap.core.recording.channel_series import SeriesSampling
-from freemocap.core.recording.input_signatures import (
+from freemocap.core.recording.sample_encoding.channel_series import SeriesSampling
+from freemocap.core.recording.result_processing.input_signatures import (
     definition_signature,
     point_array_signature,
 )
-from freemocap.core.recording.recorded_model import RecordedModel
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     RecordingMetadata,
     RunDescriptor,
     SensorGroup,
     Source,
     SourceKind,
 )
-from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
-from freemocap.core.recording.recording_writer import (
+from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
+from freemocap.core.recording.parquet_storage.parquet_writer import (
     publish_recording,
     recording_write_lock,
 )
-from freemocap.core.recording.saved_reconstruction import (
+from freemocap.core.recording.result_processing.saved_reconstruction import (
     SavedPointPolicy,
     SavedReconstructionRequest,
     read_saved_reconstruction,
 )
-from freemocap.core.recording.spatial_point_series import (
+from freemocap.core.recording.sample_encoding.spatial_points import (
     PointSeriesDefinition,
     SpatialPointSeries,
     SpatialReference,

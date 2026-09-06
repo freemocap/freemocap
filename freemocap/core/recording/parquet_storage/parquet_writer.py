@@ -11,13 +11,13 @@ from filelock import FileLock
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from freemocap.core.recording.recording_data import (
+from freemocap.core.recording.sample_encoding.arrow_schema import (
     DESCRIPTOR_KEY,
     SAMPLE_SCHEMA,
     SampleValidator,
 )
-from freemocap.core.recording.recording_metadata import RecordingMetadata
-from freemocap.core.recording.shared_recording_file import replace_recording_file
+from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata
+from freemocap.core.recording.parquet_storage.shared_file import replace_recording_file
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 

@@ -20,7 +20,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
-from freemocap.core.recording.recording_reader import read_metadata
+from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline

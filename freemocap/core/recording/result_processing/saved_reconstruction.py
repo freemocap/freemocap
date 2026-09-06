@@ -5,7 +5,6 @@ from enum import StrEnum
 
 import numpy as np
 from numpy.typing import NDArray
-import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
@@ -13,18 +12,18 @@ from freemocap.core.reconstruction.recording_reconstruction import (
     RecordingReconstructionInput,
 )
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
-from freemocap.core.recording.input_signatures import (
+from freemocap.core.recording.result_processing.input_signatures import (
     ReconstructionInputSignatures,
     definition_signature,
     point_array_signature,
 )
-from freemocap.core.recording.recording_data import SampleValidator
-from freemocap.core.recording.recording_metadata import Channel, RecordingMetadata
-from freemocap.core.recording.recording_reader import read_metadata
-from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
-from freemocap.core.recording.recording_writer import recording_write_lock
-from freemocap.core.recording.sample_conventions import SampleComponent
-from freemocap.core.recording.spatial_point_series import SpatialReference
+from freemocap.core.recording.sample_encoding.arrow_schema import SampleValidator
+from freemocap.core.recording.data_descriptors.recording_descriptor import Channel, RecordingMetadata
+from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
+from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
+from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
+from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
+from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 

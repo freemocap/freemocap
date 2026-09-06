@@ -13,18 +13,18 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from pydantic import Field, model_validator
 
-from freemocap.core.recording.recording_data import DESCRIPTOR_KEY, SAMPLE_SCHEMA
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.sample_encoding.arrow_schema import SAMPLE_SCHEMA
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     Descriptor,
     RecordingMetadata,
     StaticChannel,
     SourceKind,
 )
-from freemocap.core.recording.observation_recording_models import CameraRecordingDefinition
-from freemocap.core.recording.recording_reader import read_static_channels, parse_recording_metadata
-from freemocap.core.recording.sample_conventions import SampleComponent
-from freemocap.core.recording.shared_recording_file import shared_recording_file
+from freemocap.core.recording.result_processing.observation_inputs import CameraRecordingDefinition
+from freemocap.core.recording.parquet_storage.parquet_reader import read_static_channels, metadata_from_schema
+from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
+from freemocap.core.recording.parquet_storage.shared_file import shared_recording_file
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import ModelDefinition
 from freemocap.core.streaming.producers.producer_contexts import StreamContext
@@ -129,12 +129,7 @@ def recording_view(path: Path) -> Iterator[RecordingView]:
             f"{stat.st_dev}:{stat.st_ino}:{stat.st_size}:{stat.st_mtime_ns}".encode()
         ).hexdigest()
         with pq.ParquetFile(source) as parquet:
-            if not parquet.schema_arrow.equals(SAMPLE_SCHEMA, check_metadata=False):
-                raise ValueError("Invalid canonical recording schema")
-            payload = (parquet.schema_arrow.metadata or {}).get(DESCRIPTOR_KEY)
-            if payload is None:
-                raise ValueError("Missing recording descriptor")
-            metadata = parse_recording_metadata(payload=payload, path=path)
+            metadata = metadata_from_schema(schema=parquet.schema_arrow, path=path)
             if metadata.recording_id != path.parent.name:
                 raise ValueError("Recording identity does not match its folder")
             yield RecordingView(parquet=parquet, metadata=metadata, revision=revision)

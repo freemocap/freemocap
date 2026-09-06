@@ -9,7 +9,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_board_defin
     CharucoBoardDefinition,
 )
 
-from freemocap.core.recording.recorded_model import RecordedModel
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
 
 

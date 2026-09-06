@@ -8,10 +8,10 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from pydantic import ValidationError
 
-from freemocap.core.recording.recording_data import DESCRIPTOR_KEY, SAMPLE_SCHEMA
-from freemocap.core.recording.recording_metadata import RecordingMetadata, StaticChannel
-from freemocap.core.recording.recording_metadata import RunDescriptor
-from freemocap.core.recording.scale_fit_channels import scale_fit_channels
+from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA
+from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata, StaticChannel
+from freemocap.core.recording.data_descriptors.recording_descriptor import RunDescriptor
+from freemocap.core.recording.sample_encoding.fit_channels import scale_fit_channels
 
 
 def read_static_channels(run: RunDescriptor) -> tuple[StaticChannel, ...]:
@@ -20,8 +20,8 @@ def read_static_channels(run: RunDescriptor) -> tuple[StaticChannel, ...]:
 
 
 def read_metadata(*, path: Path) -> RecordingMetadata:
-    payload = _read_metadata_payload(path=path)
-    return parse_recording_metadata(payload=payload, path=path)
+    with pq.ParquetFile(path) as parquet:
+        return metadata_from_schema(schema=parquet.schema_arrow, path=path)
 
 
 def parse_recording_metadata(*, payload: bytes, path: Path) -> RecordingMetadata:
@@ -35,15 +35,14 @@ def parse_recording_metadata(*, payload: bytes, path: Path) -> RecordingMetadata
         ) from error
 
 
-def _read_metadata_payload(*, path: Path) -> bytes:
-    with pq.ParquetFile(path) as parquet:
-        schema = parquet.schema_arrow
-        if not schema.equals(SAMPLE_SCHEMA, check_metadata=False):
-            raise ValueError(f"Invalid recording schema: {path}")
-        payload = (schema.metadata or {}).get(DESCRIPTOR_KEY)
-        if payload is None:
-            raise ValueError(f"Missing recording descriptor: {path}")
-        return payload
+def metadata_from_schema(*, schema: pa.Schema, path: Path) -> RecordingMetadata:
+    """Validate the schema and descriptor from the caller's open file snapshot."""
+    if not schema.equals(SAMPLE_SCHEMA, check_metadata=False):
+        raise ValueError(f"Invalid recording schema: {path}")
+    payload = (schema.metadata or {}).get(DESCRIPTOR_KEY)
+    if payload is None:
+        raise ValueError(f"Missing recording descriptor: {path}")
+    return parse_recording_metadata(payload=payload, path=path)
 
 
 def read_batches(

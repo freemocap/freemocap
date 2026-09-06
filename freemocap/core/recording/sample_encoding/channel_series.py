@@ -7,8 +7,8 @@ import numpy as np
 from numpy.typing import NDArray
 import pyarrow as pa
 
-from freemocap.core.recording.recording_data import SAMPLE_SCHEMA
-from freemocap.core.recording.recording_metadata import Channel
+from freemocap.core.recording.sample_encoding.arrow_schema import SAMPLE_SCHEMA
+from freemocap.core.recording.data_descriptors.recording_descriptor import Channel
 
 
 @dataclass(frozen=True, slots=True)

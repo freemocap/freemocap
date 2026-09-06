@@ -10,7 +10,7 @@ from freemocap.core.pipeline.posthoc.processing_request import (
     ProcessingStage,
     STAGE_ORDER,
 )
-from freemocap.core.recording.recording_metadata import RecordingMetadata, RunDescriptor
+from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata, RunDescriptor
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from freemocap.core.pipeline.posthoc.stage_dependencies import (
     dependency_closure,

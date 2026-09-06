@@ -1,13 +1,13 @@
 """Spatial channels retain units, coordinates and bounded batch sizes."""
 
-from freemocap.core.recording.channel_series import SeriesSampling
+from freemocap.core.recording.sample_encoding.channel_series import SeriesSampling
 
 import numpy as np
 import pyarrow as pa
 import pytest
 
-from freemocap.core.recording.sample_conventions import SampleUnit
-from freemocap.core.recording.spatial_point_series import (
+from freemocap.core.recording.data_descriptors.sample_conventions import SampleUnit
+from freemocap.core.recording.sample_encoding.spatial_points import (
     PointSeriesDefinition,
     SpatialPointSeries,
     SpatialReference,

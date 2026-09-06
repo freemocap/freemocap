@@ -2,12 +2,12 @@
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.reconstruction.recording_fit import RecordingFitInputs
-from freemocap.core.recording.input_signatures import definition_signature
-from freemocap.core.recording.observation_recording_models import (
+from freemocap.core.recording.result_processing.input_signatures import definition_signature
+from freemocap.core.recording.result_processing.observation_inputs import (
     ObservationRecordingRequest,
 )
-from freemocap.core.recording.recording_metadata import StageCheckpoint
-from freemocap.core.recording.saved_reconstruction import (
+from freemocap.core.recording.data_descriptors.recording_descriptor import StageCheckpoint
+from freemocap.core.recording.result_processing.saved_reconstruction import (
     SavedPointPolicy,
     SavedPointSeries,
 )

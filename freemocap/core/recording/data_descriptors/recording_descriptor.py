@@ -8,9 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.types.channel_kind import ChannelKind
-from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
-from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
-from freemocap.core.recording.recorded_model import RecordedModel
+from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
+from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 
 
 class Descriptor(BaseModel):

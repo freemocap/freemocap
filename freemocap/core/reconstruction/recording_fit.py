@@ -7,11 +7,11 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 
-from freemocap.core.recording.input_signatures import (
+from freemocap.core.recording.result_processing.input_signatures import (
     definition_signature,
     point_array_signature,
 )
-from freemocap.core.recording.recorded_model import RecordedModel
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 
 
 class RecordingFitInputs(BaseModel):

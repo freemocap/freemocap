@@ -8,15 +8,15 @@ from freemocap.core.pipeline.posthoc.stage_execution_plan import (
     StageExecutionPlan,
     retained_run,
 )
-from freemocap.core.recording.recording_data import SAMPLE_SCHEMA
+from freemocap.core.recording.sample_encoding.arrow_schema import SAMPLE_SCHEMA
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     RecordingMetadata,
     RunDescriptor,
     channel_key,
 )
-from freemocap.core.recording.recording_reader import read_batches, read_metadata
-from freemocap.core.recording.recording_writer import publish_recording
+from freemocap.core.recording.parquet_storage.parquet_reader import read_batches, read_metadata
+from freemocap.core.recording.parquet_storage.parquet_writer import publish_recording
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 

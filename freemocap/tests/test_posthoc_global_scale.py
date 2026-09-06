@@ -6,40 +6,40 @@ from freemocap.core.reconstruction.recording_reconstruction import (
 import numpy as np
 from numpy import testing as npt
 import pytest
-from freemocap.core.recording.recorded_model import RecordedModel
-from freemocap.core.recording.recording_reader import (
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
+from freemocap.core.recording.parquet_storage.parquet_reader import (
     read_static_channels,
     static_samples,
 )
 from freemocap.core.types.channel_kind import ChannelKind
 from pathlib import Path
-from freemocap.core.recording.reconstruction_recording import (
+from freemocap.core.recording.sample_encoding.reconstruction_samples import (
     ReconstructionRecording,
     ReconstructionSourceDefinition,
 )
-from freemocap.core.recording.spatial_point_series import (
+from freemocap.core.recording.sample_encoding.spatial_points import (
     SpatialReference,
     SpatialPointSeries,
     PointSeriesDefinition,
 )
-from freemocap.core.recording.saved_reconstruction import (
+from freemocap.core.recording.result_processing.saved_reconstruction import (
     SavedReconstructionRequest,
     SavedPointPolicy,
     read_saved_reconstruction,
 )
-from freemocap.core.recording.channel_series import SeriesSampling
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.sample_encoding.channel_series import SeriesSampling
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     RunDescriptor,
     RecordingMetadata,
     SensorGroup,
     Source,
     SourceKind,
 )
-from freemocap.core.recording.recording_writer import (
+from freemocap.core.recording.parquet_storage.parquet_writer import (
     publish_recording,
     recording_write_lock,
 )
-from freemocap.core.recording.recording_reader import read_metadata
+from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.core.reconstruction.posthoc_reconstruction import (
     reconstruct_skeletons_with_fits,

@@ -10,20 +10,20 @@ from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellytracker.core.data_primitives.observation import Observation, StageObservation
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
-from freemocap.core.recording.observation_samples import (
+from freemocap.core.recording.sample_encoding.observation_samples import (
     TimedObservation,
     observation_batches,
     timing_batches,
 )
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     RecordingMetadata,
     RunDescriptor,
     SensorGroup,
     Source,
 )
-from freemocap.core.recording.recording_reader import read_batches
-from freemocap.core.recording.recording_writer import (
+from freemocap.core.recording.parquet_storage.parquet_reader import read_batches
+from freemocap.core.recording.parquet_storage.parquet_writer import (
     publish_recording,
     recording_write_lock,
 )

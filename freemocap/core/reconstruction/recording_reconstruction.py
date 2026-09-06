@@ -8,7 +8,7 @@ from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
 from freemocap.core.reconstruction.recording_fit import RecordingFitInputs
-from freemocap.core.recording.recorded_model import RecordedModel
+from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 

@@ -10,16 +10,16 @@ from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.reconstruction.recording_reconstruction import (
     ModelRecordingReconstruction,
 )
-from freemocap.core.recording.channel_series import ChannelSeries
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     Descriptor,
     Source,
     SourceKind,
 )
-from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
-from freemocap.core.recording.sample_conventions import SampleComponent, SampleUnit
-from freemocap.core.recording.spatial_point_series import SpatialReference
+from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
+from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent, SampleUnit
+from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.types.derived_point_name import DerivedPointName

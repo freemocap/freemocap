@@ -26,7 +26,7 @@ import atexit
 from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReaders
 from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, camera_timing_path
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
-from freemocap.core.recording.playback_data import (
+from freemocap.core.recording.playback_queries import (
     PlaybackManifest, PlaybackWindow, PlaybackWindowRequest, StalePlaybackRevision,
     playback_manifest, playback_window, PlaybackMedia, PlaybackTimeline,
 )

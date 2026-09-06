@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
-from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
+from freemocap.core.recording.data_descriptors.camera_geometry import ResolvedCameraGeometry
 
 
 @dataclass(frozen=True, slots=True)

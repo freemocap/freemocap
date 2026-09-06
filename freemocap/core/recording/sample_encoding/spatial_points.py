@@ -10,9 +10,9 @@ import pyarrow as pa
 from pydantic import model_validator
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
-from freemocap.core.recording.channel_series import ChannelSeries, SeriesSampling
-from freemocap.core.recording.recording_metadata import Channel, Descriptor
-from freemocap.core.recording.sample_conventions import SampleComponent, SampleUnit
+from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
+from freemocap.core.recording.data_descriptors.recording_descriptor import Channel, Descriptor
+from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent, SampleUnit
 from freemocap.core.types.channel_kind import ChannelKind
 
 

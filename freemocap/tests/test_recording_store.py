@@ -5,8 +5,8 @@ from pathlib import Path
 from freemocap.core.reconstruction.recording_fit import RecordingFitInputs
 from dataclasses import replace
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
-from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
-from freemocap.core.recording.sample_conventions import SampleUnit
+from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
+from freemocap.core.recording.data_descriptors.sample_conventions import SampleUnit
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from filelock import Timeout
 
@@ -23,9 +23,9 @@ from freemocap.core.pipeline.posthoc.stage_execution_plan import (
     build_execution_plan,
     retained_run,
 )
-from freemocap.core.recording.recording_data import DESCRIPTOR_KEY, SAMPLE_SCHEMA
-from freemocap.core.recording.recording_checkpoint import publish_checkpoint
-from freemocap.core.recording.recording_metadata import (
+from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA
+from freemocap.core.recording.parquet_storage.checkpoint_publication import publish_checkpoint
+from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     RecordingMetadata,
     RunDescriptor,
@@ -34,12 +34,12 @@ from freemocap.core.recording.recording_metadata import (
     StageCheckpoint,
     StaticChannel,
 )
-from freemocap.core.recording.recording_reader import (
+from freemocap.core.recording.parquet_storage.parquet_reader import (
     read_batches,
     read_metadata,
     static_samples,
 )
-from freemocap.core.recording.recording_writer import (
+from freemocap.core.recording.parquet_storage.parquet_writer import (
     publish_recording,
     recording_write_lock,
 )

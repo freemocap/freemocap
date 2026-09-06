@@ -6,6 +6,12 @@ Companion contracts: [posthoc rebuild](posthoc-rebuild.md) and
 
 ## Where we are
 
+Code review entry point: `freemocap/core/recording/recording_guide.md`. Recording code uses
+`data_descriptors`, `sample_encoding`, `parquet_storage` and `result_processing` packages,
+with `playback_queries.py` directly under recording. Concrete two-word module names distinguish
+checkpoint publication from reconstruction completion. The Parquet contract is unchanged.
+Next: review descriptors and sample columns with the user before extending the data contract.
+
 ### Output scope — 2026-09-06
 
 The user reports a clean processing run. Pause additional export development for a data-model

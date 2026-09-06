@@ -7,12 +7,12 @@ import pyarrow as pa
 from freemocap.core.reconstruction.recording_reconstruction import (
     ModelRecordingReconstruction,
 )
-from freemocap.core.recording.channel_series import SeriesSampling
-from freemocap.core.recording.reconstruction_recording import (
+from freemocap.core.recording.sample_encoding.channel_series import SeriesSampling
+from freemocap.core.recording.sample_encoding.reconstruction_samples import (
     ReconstructionRecording,
     ReconstructionSourceDefinition,
 )
-from freemocap.core.recording.spatial_point_series import SpatialReference
+from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.types.channel_kind import ChannelKind
 

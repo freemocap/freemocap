@@ -526,16 +526,24 @@ def calibrate_cameras_from_rows(
 
     logger.info(f"Calibrating {num_cameras} cameras")
     for cam_idx, (rows, camera) in enumerate(zip(all_rows, cameras)):
-        logger.info(f"Camera {cam_idx} ({camera.id}): {len(rows)} frames with detections")
+        logger.info(f"Camera {cam_idx} ({camera.id}): {len(rows)} observation frames")
         if camera.image_size is None:
             raise ValueError(f"Camera '{camera.id}' has no image size")
 
     logger.info("Initializing camera intrinsics...")
     for cam_idx, (rows, camera) in enumerate(zip(all_rows, cameras)):
-        objp, imgp = charuco_board_ops.get_all_calibration_points(board, rows)
+        objp, imgp = charuco_board_ops.get_all_calibration_points(board, rows, min_points=1)
         mixed = [(o, i) for (o, i) in zip(objp, imgp) if len(o) >= 7]
         if len(mixed) == 0:
-            raise ValueError(f"No valid calibration points for camera {cam_idx} (need >= 7)")
+            raise ValueError(
+                f"Calibration cannot initialize camera {cam_idx} ('{camera.id}'): "
+                f"0 of {len(rows)} observation frames have at least 7 detected Charuco corners. "
+                f"{len(imgp)} frames contain corners; maximum corners in a frame: "
+                f"{max((len(points) for points in imgp), default=0)}. "
+                "Frames with fewer corners are skipped normally. "
+                "Open this recording in Playback and select annotated videos to inspect detection. "
+                "Check board visibility and the configured board dimensions and dictionary."
+            )
         logger.info(f"  Camera {cam_idx}: {len(mixed)} usable frames")
         objp, imgp = zip(*mixed)
         matrix = cv2.initCameraMatrix2D(objp, imgp, tuple(camera.image_size))

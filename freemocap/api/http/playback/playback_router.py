@@ -76,7 +76,31 @@ def read_unprocessed_media(
             ))
         finally:
             video.close()
-    return tuple(media)
+    return _include_annotated_media(folder=folder, media=tuple(media))
+
+
+def _include_annotated_media(*, folder: Path, media: tuple[PlaybackMedia, ...]) -> tuple[PlaybackMedia, ...]:
+    """Frame-preserving annotations inherit the original camera timeline."""
+    result = list(media)
+    for original in media:
+        filename = Path(original.video_filename)
+        annotated = folder / ANNOTATED_VIDEOS_FOLDER_NAME / f"{filename.stem}_annotated{filename.suffix}"
+        if not annotated.is_file():
+            continue
+        video = VideoHelper.from_video_path(annotated)
+        try:
+            if original.timeline.frame_numbers[-1] >= video.metadata.frame_count:
+                raise ValueError(
+                    f"Annotated video '{annotated.name}' is incomplete: "
+                    f"{video.metadata.frame_count} frames cannot cover its source timeline."
+                )
+            result.append(PlaybackMedia(
+                video_filename=annotated.name, nominal_fps=original.nominal_fps,
+                timeline=original.timeline,
+            ))
+        finally:
+            video.close()
+    return tuple(result)
 
 
 @playback_router.get("/{recording_id}/videos/{video_id}/frames/{frame_number}")
@@ -214,7 +238,11 @@ def get_playback_manifest(recording_id: str, recording_parent_directory: str | N
     if not structure.data_parquet_path.is_file():
         raise HTTPException(status_code=404, detail="Process this recording to create playback data")
     try:
-        return playback_manifest(structure.data_parquet_path)
+        manifest = playback_manifest(structure.data_parquet_path)
+        return manifest.model_copy(update={"runs": tuple(
+            run.model_copy(update={"media": _include_annotated_media(folder=folder, media=run.media)})
+            for run in manifest.runs
+        )})
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 

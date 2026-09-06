@@ -40,9 +40,16 @@ ManagedWorker raises if termination cannot complete rather than killing the appl
 regressions, worker lifecycle, process/thread exceptions and abrupt process exit with unrelated
 workers remaining alive. Frontend TypeScript checking and Python lint pass.
 
-The FreeMoCap virtual environment currently uses editable local SkellyCam. Until the dependency pin
-includes these SkellyCam changes, launch with `uv run --no-sync freemocap` from the FreeMoCap repo.
-Do not let dependency synchronization replace the edited worker package during acceptance testing.
+Dependencies are installed from Git. Make sibling-repository changes in their source checkouts;
+the user commits/pushes them and updates dependency pins before syncing and acceptance testing.
+Never substitute editable installs, edit site-packages, or bypass synchronization to test local changes.
+
+The user confirmed that stopping realtime leaves posthoc calibration running. Calibration then
+failed because one camera had no frames meeting the intrinsic-initialization corner threshold.
+Sparse frames are expected and skipped. Diagnostic playback now binds frame-preserving annotated
+videos to original media timelines, with FPS-derived timing when timestamp sidecars are absent.
+The recording browser refreshes upon opening. Acceptance: open the newly recorded calibration
+in Playback, select annotated videos, and inspect board detection for the camera named in the error.
 
 Real-app acceptance remains: run realtime tracking alongside posthoc mocap/calibration; stop
 realtime and verify posthoc continues. Start both posthoc task types; cancel one and verify the other

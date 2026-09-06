@@ -24,7 +24,6 @@ import {
 } from "@/store/slices/recording-status/recording-status-thunks";
 import {
   selectRecordingsList,
-  selectRecordingsFetchedAt,
   selectRecordingsIsLoading,
 } from "@/store/slices/recording-status/recording-status-slice";
 import { serverUrls } from "@/constants/server-urls";
@@ -172,7 +171,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
   const { api, isElectron } = useElectronIPC();
 
   const recordings = useAppSelector(selectRecordingsList);
-  const recordingsFetchedAt = useAppSelector(selectRecordingsFetchedAt);
   const isLoadingList = useAppSelector(selectRecordingsIsLoading);
   const baseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
 
@@ -189,29 +187,19 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const fetchRecordings = useCallback(
-    async (force = false) => {
-      const MAX_CACHE_AGE_MS = 30_000;
-      if (
-        !force &&
-        recordingsFetchedAt &&
-        Date.now() - recordingsFetchedAt < MAX_CACHE_AGE_MS
-      ) {
-        return;
-      }
+    async () => {
       try {
         await dispatch(fetchAllRecordings()).unwrap();
       } catch (e) {
         setError(e instanceof Error ? e.message : t("failedToFetch"));
       }
     },
-    [dispatch, recordingsFetchedAt],
+    [dispatch, t],
   );
 
   useEffect(() => {
-    if (recordings.length === 0) {
-      fetchRecordings();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    void fetchRecordings();
+  }, [fetchRecordings]);
 
   const filteredSorted = useMemo(() => {
     let result = recordings;
@@ -424,7 +412,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
               <ImportVideosModal
                 open={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
-                onImported={() => fetchRecordings(true)}
+                onImported={() => fetchRecordings()}
               />
             </div>
           </div>
@@ -445,7 +433,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
                 tooltip={true}
                 tooltipText={t("refresh")}
                 tooltipPosition="pos-bottom-right"
-                onClick={() => fetchRecordings(true)}
+                onClick={() => fetchRecordings()}
                 disabled={isLoadingList}
               />
           </div>

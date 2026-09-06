@@ -1,6 +1,7 @@
 """Playback HTTP and posthoc reading share deterministic sequential video decoding."""
 
 from pathlib import Path
+from shutil import copyfile
 
 import cv2
 import numpy as np
@@ -10,6 +11,21 @@ from fastapi.testclient import TestClient
 
 from freemocap.api.http.playback.playback_router import playback_router, video_readers, preferred_video_source, VideoSourceInfo, PlaybackVideoSource
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
+
+
+def test_annotations_inherit_inferred_source_timing(video_path: Path, tmp_path: Path) -> None:
+    annotated = video_path.parent.parent / "annotated_videos" / "camera_annotated.avi"
+    annotated.parent.mkdir()
+    copyfile(src=video_path, dst=annotated)
+    app = FastAPI()
+    app.include_router(playback_router)
+    with TestClient(app) as client:
+        response = client.get("/playback/recording/media", params={"recording_parent_directory": str(tmp_path)})
+    assert response.status_code == 200, response.text
+    original, overlay = response.json()
+    assert overlay["video_filename"] == annotated.name
+    assert overlay["timeline"] == original["timeline"]
+    assert overlay["timeline"]["timestamps_s"][-1] == pytest.approx(11 / 30)
 
 
 @pytest.mark.parametrize("synchronized_available, expected", [(True, PlaybackVideoSource.SYNCHRONIZED), (False, PlaybackVideoSource.ANNOTATED)])

@@ -17,9 +17,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 
 from freemocap.api.websocket.send_serializer import SendSerializer  # noqa: TC001
+from freemocap.api.websocket.frame_delivery_timing import FrameDeliverySample, FrameDeliveryTiming
 from freemocap.core.streaming.message_composer import MessageComposition  # noqa: TC001
 from freemocap.core.streaming.message_model import encode_message
 from freemocap.core.streaming.producers.producer_contexts import FrameContext  # noqa: TC001
@@ -44,11 +46,15 @@ class FrameRelay:
         self._should_continue = should_continue
         self._composition: MessageComposition | None = None
         self._last_sent_frame_number: int = -1
+        self._timing = FrameDeliveryTiming()
+        self._source_seconds = 0.0
 
     async def run(self) -> None:
         """Relay frames until the supervisor's should_continue goes False."""
         while self._should_continue():
+            started = time.perf_counter()
             frame_ctx = await self._source()
+            self._source_seconds += time.perf_counter() - started
             if frame_ctx is None:
                 await asyncio.sleep(0.01)
                 continue
@@ -57,8 +63,21 @@ class FrameRelay:
     async def _send_frame(self, frame_ctx: FrameContext) -> None:
         if self._composition is None:
             return
+        started = time.perf_counter()
         message = self._composition.compose_frame_message(frame_ctx)
-        await self._serializer.send_message(encode_message(message))
+        composed = time.perf_counter()
+        payload = encode_message(message)
+        encoded = time.perf_counter()
+        await self._serializer.send_message(payload)
+        sent = time.perf_counter()
+        self._timing.record(FrameDeliverySample(
+            source_seconds=self._source_seconds,
+            composition_seconds=composed - started,
+            encoding_seconds=encoded - composed,
+            send_seconds=sent - encoded,
+            payload_bytes=len(payload),
+        ))
+        self._source_seconds = 0.0
         self._last_sent_frame_number = frame_ctx.frame_number
 
     def set_composition(self, composition: MessageComposition) -> None:

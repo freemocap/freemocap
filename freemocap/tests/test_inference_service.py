@@ -77,6 +77,31 @@ class InferenceServiceTests(unittest.TestCase):
         self.assertFalse(second.registration.shutdown_flag.value)
         self.assertFalse(self.global_shutdown.value)
 
+    def test_submission_during_lease_retirement_does_not_sleep_with_work_ready(self) -> None:
+        retiring = self.client(name="retiring")
+        ready = self.client(name="ready", mode=InferenceMode.REALTIME)
+        retiring.submit(self.request()).result(timeout=2)
+        submitted, completed, slept_with_work = Event(), Event(), Event()
+        original_wait = self.service._condition.wait
+
+        def submit_during_close() -> None:
+            future = ready.submit(self.request())
+            future.add_done_callback(lambda result: completed.set())
+            submitted.set()
+
+        def observe_wait(timeout: float | None = None) -> bool:
+            if ready._pending is not None:
+                slept_with_work.set()
+            return original_wait(timeout=timeout)
+
+        self.leases[0].close.side_effect = submit_during_close
+        with patch.object(self.service._condition, "wait", side_effect=observe_wait):
+            retiring.close()
+            self.assertTrue(submitted.wait(timeout=2))
+            self.assertTrue(completed.wait(timeout=2))
+        self.assertFalse(slept_with_work.is_set())
+        self.assertIsNone(ready.failure)
+
     def test_active_cancellation_waits_for_native_work_and_discards_result(self) -> None:
         client = self.client(name="cancelled")
         client.submit(self.request()).result(timeout=2)

@@ -11,6 +11,20 @@ cannot establish the required contract.
 
 ## Findings
 
+### App QA gate: realtime performance
+
+Camera-only display is smooth, but enabling realtime mocap drops displayed throughput below
+10 fps. The cause is not yet established; do not proceed to geometry matching while this is open.
+The inference scheduler now rechecks queued work before sleeping after lease retirement, preventing
+a missed notification from adding a 50 ms idle wait. A deterministic retirement/submission regression
+test covers this race. Thirteen scheduler and live WebSocket tests pass.
+
+Live frame delivery reports actual sent FPS and mean source/wait, composition, encoding, and send
+durations every five seconds. Next app check: camera-only for 15 seconds, then realtime mocap for
+30 seconds; capture these summaries alongside pipeline timing and displayed FPS. A small synthetic
+composition/serialization profile measured approximately 3.6 ms per frame under cProfile; this is
+not a measurement of the full live payload or proof of the slowdown's cause.
+
 Paths below are relative to the named repository. Findings describe static code behavior and risks;
 they do not assert that every exposed path is exercised by the current FreeMoCap UI.
 

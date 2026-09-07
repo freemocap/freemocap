@@ -167,7 +167,13 @@ class InferenceService:
                         retired_client._lease.close()
                 if client is None or pending is None:
                     with self._condition:
-                        self._condition.wait(timeout=0.05)
+                        # Submission and retirement can occur while leases are released.
+                        # Check the queue under the condition lock before sleeping.
+                        if not self._shutdown.value and not any(
+                            item._pending is not None or item._closed or item.registration.shutdown_flag.value
+                            for item in self._clients
+                        ):
+                            self._condition.wait(timeout=0.05)
                     continue
                 if not pending.result.set_running_or_notify_cancel():
                     with self._condition:

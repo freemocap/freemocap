@@ -115,3 +115,22 @@ is proven, rather than expanding this task into the entire data-model refactor.
 
 Deferred: sidebar status redesign, calibration reprojection-based matching,
 remaining Mocap posthoc/API and recording data-model work.
+
+## Checkpoint 1: shared image packing implemented
+
+SkellyCam now exposes ImagePayloadFrame, ImagePayloadRequest and
+encode_image_payload in frontend_payload_bytearray.py. Live camera records adapt
+to this encoder; image-only callers supply oriented BGR arrays, explicit transport
+slots, output dimensions and JPEG parameters. The existing binary layout is
+unchanged. Transport IDs exceeding its ASCII slot fail instead of truncating;
+full playback media identities still require the planned session mapping.
+
+12 focused image/payload tests passed, covering wire layout, full-resolution
+images, equal ordinals, unique slots, invalid IDs, rotation through live tests,
+and independent payload lifetime. The broader 23-test module had one unrelated
+filename assertion failure (expects idx0, builder emits idx-0); 22 passed.
+
+This is the SkellyCam dependency handoff point. User commit/push and FreeMoCap
+Git-dependency update precede integration. No installed packages or dependency
+sources changed. Playback remains on its current implementation until session
+and frontend work are completed; this checkpoint alone does not fix MPEG-4 playback.

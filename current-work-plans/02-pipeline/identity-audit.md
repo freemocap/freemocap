@@ -167,6 +167,20 @@ Current synchronized mocap validation checks frame counts, not equality of float
 
 ### Implementation checkpoint: declared capture videos
 
+Next checkpoint: all 21 FreeMoCap import/association tests pass against the published copy helper,
+including a real brightness synchronization followed by import. Recording declaration loading now
+lives in SkellyCam's `VideoAssociations`; processing delegates to it. `VideoMetadata` no longer has
+filename-derived camera/recording identity properties. Playback resolves declared sources through the
+shared reader, retains unassociated files with file labels and inferred timing, and reuses its initial
+probe instead of opening another reader for each video's timing. Malformed declarations are a separate
+bundle resource error, leaving viable media visible. Nineteen SkellyCam tests pass. The changed bundle
+tests await publishing the new shared-reader methods and updating FreeMoCap's Git dependency.
+
+Still outstanding: `VideoGroupHelper.from_video_paths` parses names when no declarations exist;
+annotation relationships and older timestamp routes still apply filename conventions. Their removal
+is required before considering the policy unified. Geometry binding and permutation fitness remain
+subsequent work. This checkpoint does not claim they are fixed.
+
 Follow-up: the published SkellyCam association dependency is verified; all six focused FreeMoCap
 association tests pass using `uv run --locked --group dev pytest`. Import frame-count inspection now
 uses the identity-free SkellyCam probe and exposes no guessed camera ID in its API/UI result.

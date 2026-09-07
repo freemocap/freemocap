@@ -1,5 +1,6 @@
 """Independent recording resources survive failures in sibling resources."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -36,6 +37,14 @@ class BundleResourceTests(unittest.TestCase):
             self.assertEqual(bundle.media[0].timeline, bundle.media[1].timeline)
             self.assertTrue({RecordingResource.RECONSTRUCTION, RecordingResource.TRACKER_SCHEMA}.issubset(
                 {error.resource for error in bundle.errors}))
+            metadata_path = recording / "recording_info.json"
+            metadata_path.write_text("invalid json", encoding="utf-8")
+            bundle = get_recording_bundle(recording_id="recording", recording_parent_directory=temporary)
+            self.assertEqual(len(bundle.media), 2)
+            self.assertIn(RecordingResource.MEDIA_ASSOCIATIONS, {error.resource for error in bundle.errors})
+            metadata_path.write_text(json.dumps({"videos": {"declared-source": "camera.avi"}}), encoding="utf-8")
+            bundle = get_recording_bundle(recording_id="recording", recording_parent_directory=temporary)
+            self.assertEqual({item.timeline.source for item in bundle.media}, {"declared-source"})
             with patch("freemocap.api.http.playback.playback_router.compute_recording_status", side_effect=ValueError("bad status")):
                 bundle = get_recording_bundle(recording_id="recording", recording_parent_directory=temporary)
             self.assertIsNone(bundle.status_summary)

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class RecordingResource(StrEnum):
+    MEDIA_ASSOCIATIONS = "media associations"
     RAW_VIDEO = "raw video"
     ANNOTATED_VIDEO = "annotated video"
     RECONSTRUCTION = "reconstruction"

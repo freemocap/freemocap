@@ -28,7 +28,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata, probe_video_files
 from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, camera_timing_path
-from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
+from skellycam.core.recorders.videos.video_associations import VideoAssociations
 from freemocap.core.recording.playback_queries import (
     PlaybackManifest, PlaybackWindow, PlaybackWindowRequest, StalePlaybackRevision,
     playback_manifest, playback_window, PlaybackMedia, PlaybackTimeline,
@@ -65,20 +65,21 @@ def read_unprocessed_media(
 ) -> tuple[PlaybackMedia, ...]:
     folder = _resolve_recording_path(recording_id, recording_parent_directory)
     media: list[PlaybackMedia] = []
-    for path in _discover_videos(_find_video_folder(folder)).values():
-        video = VideoHelper.from_video_path(path)
-        try:
-            timing = resolve_camera_timing(
-                path=camera_timing_path(recording_folder=folder, camera_id=video.metadata.camera_id),
-                frame_count=video.metadata.frame_count, fps=video.metadata.fps, offset_s=0.0,
-            )
-            media.append(PlaybackMedia(
-                video_filename=path.name, nominal_fps=video.metadata.fps,
-                timeline=PlaybackTimeline(sensor_group="cameras", source=video.metadata.camera_id,
-                    frame_numbers=tuple(range(video.metadata.frame_count)), timestamps_s=timing.timestamps_s),
-            ))
-        finally:
-            video.close()
+    associations = VideoAssociations.from_recording_folder(recording_folder=folder)
+    video_folder = _find_video_folder(folder)
+    for path, metadata in probe_video_files(paths=_discover_videos(video_folder).values()).items():
+        source = associations.source_for_path(video_folder=video_folder, video_path=path) if associations else None
+        timestamps = tuple(frame / metadata.reported_fps for frame in range(metadata.reported_frame_count))
+        if source is not None:
+            timestamps = resolve_camera_timing(
+                path=camera_timing_path(recording_folder=folder, camera_id=source),
+                frame_count=metadata.reported_frame_count, fps=metadata.reported_fps, offset_s=0.0,
+            ).timestamps_s
+        media.append(PlaybackMedia(
+            video_filename=path.name, nominal_fps=metadata.reported_fps,
+            timeline=PlaybackTimeline(sensor_group="cameras", source=source or path.name,
+                frame_numbers=tuple(range(metadata.reported_frame_count)), timestamps_s=timestamps),
+        ))
     return _include_annotated_media(folder=folder, media=tuple(media))
 
 
@@ -997,6 +998,11 @@ def get_recording_bundle(
     errors: list[ResourceFailure] = []
     sources: dict[str, VideoSourceInfo] = {}
     media: list[PlaybackMedia] = []
+    associations = None
+    with resource_boundary(resource=RecordingResource.MEDIA_ASSOCIATIONS, item=recording_id, errors=errors):
+        associations = VideoAssociations.from_recording_folder(recording_folder=recording_path)
+    raw_folder = video_source_folder(recording=recording_path, source=PlaybackVideoSource.SYNCHRONIZED)
+
     for source, resource in ((PlaybackVideoSource.SYNCHRONIZED, RecordingResource.RAW_VIDEO),
                              (PlaybackVideoSource.ANNOTATED, RecordingResource.ANNOTATED_VIDEO)):
         sources[source] = VideoSourceInfo(available=False, valid=False, video_count=0)
@@ -1007,6 +1013,7 @@ def get_recording_bundle(
                 paths = discover_video_paths(folder=folder)
         videos: list[VideoInfo] = []
         frame_counts: dict[str, int] = {}
+        properties: dict[str, VideoFileMetadata] = {}
         for path in paths:
             with resource_boundary(resource=resource, item=path.name, errors=errors):
                 metadata = VideoFileMetadata.from_path(path=path)
@@ -1016,6 +1023,7 @@ def get_recording_bundle(
                 videos.append(VideoInfo(video_id=path.name, filename=path.name, size_bytes=path.stat().st_size,
                     stream_url=f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.stem, safe='')}?{urlencode(parameters)}"))
                 frame_counts[path.name] = metadata.reported_frame_count
+                properties[path.name] = metadata
         valid = len(videos) == len(paths) and len(set(frame_counts.values())) == 1
         if videos and not valid:
             errors.append(ResourceFailure(resource=resource, item=str(folder),
@@ -1023,21 +1031,22 @@ def get_recording_bundle(
         sources[source] = VideoSourceInfo(available=bool(videos), valid=valid, video_count=len(videos), videos=videos)
         for video_info in sources[source].videos:
             with resource_boundary(resource=resource, item=video_info.filename, errors=errors):
-                video = VideoHelper.from_video_path(folder / video_info.filename)
-                try:
-                    timing = None
-                    with resource_boundary(resource=RecordingResource.TIMING, item=video_info.filename, errors=errors):
-                        timing = resolve_camera_timing(
-                            path=camera_timing_path(recording_folder=recording_path, camera_id=video.metadata.camera_id),
-                            frame_count=video.metadata.frame_count, fps=video.metadata.fps, offset_s=0.0,
+                metadata = properties[video_info.filename]
+                source_id = None
+                timestamps = tuple(frame / metadata.reported_fps for frame in range(metadata.reported_frame_count))
+                with resource_boundary(resource=RecordingResource.TIMING, item=video_info.filename, errors=errors):
+                    if associations is not None:
+                        source_id = associations.source_for_path(
+                            video_folder=raw_folder, video_path=folder / video_info.filename,
                         )
-                    timestamps = timing.timestamps_s if timing is not None else tuple(
-                        frame / video.metadata.fps for frame in range(video.metadata.frame_count))
-                    media.append(PlaybackMedia(video_filename=video_info.filename, nominal_fps=video.metadata.fps,
-                        timeline=PlaybackTimeline(sensor_group="cameras", source=video.metadata.camera_id,
-                            frame_numbers=tuple(range(video.metadata.frame_count)), timestamps_s=timestamps)))
-                finally:
-                    video.close()
+                    if source_id is not None:
+                        timestamps = resolve_camera_timing(
+                            path=camera_timing_path(recording_folder=recording_path, camera_id=source_id),
+                            frame_count=metadata.reported_frame_count, fps=metadata.reported_fps, offset_s=0.0,
+                        ).timestamps_s
+                media.append(PlaybackMedia(video_filename=video_info.filename, nominal_fps=metadata.reported_fps,
+                    timeline=PlaybackTimeline(sensor_group="cameras", source=source_id or video_info.filename,
+                        frame_numbers=tuple(range(metadata.reported_frame_count)), timestamps_s=timestamps)))
 
     manifest = None
     with resource_boundary(resource=RecordingResource.RECONSTRUCTION, item=recording_id, errors=errors):

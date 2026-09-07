@@ -3,7 +3,6 @@ Simplified VideoHelper with OpenCV best practices.
 Includes smart frame reading and caching.
 """
 
-import json
 import logging
 from collections import OrderedDict
 from pathlib import Path
@@ -52,18 +51,6 @@ class VideoMetadata(BaseModel):
                     f"end_frame ({end_frame}) exceeds total frame_count ({total_frame_count})"
                 )
         return values
-
-    @property
-    def parsed_filename(self) -> ParsedVideoFilename:
-        return ParsedVideoFilename.from_path(self.file_path)
-
-    @property
-    def recording_name(self) -> str:
-        return self.parsed_filename.recording_name
-
-    @property
-    def camera_id(self) -> CameraIdString:
-        return self.parsed_filename.camera_id
 
 
 
@@ -488,26 +475,9 @@ def _frame_count_mismatch_detail(videos: dict[CameraIdString, "VideoHelper"]) ->
 
 
 def _load_manifest_videos(recording_path: Path) -> dict[str, str] | None:
-    """Read declared video associations; invalid or conflicting declarations are errors."""
-    candidates = [
-        recording_path / f"{recording_path.name}_recording_info.json",
-        recording_path / f"{recording_path.name}_info.json",
-    ]
-    declared: dict[str, str] | None = None
-    for path in candidates:
-        if not path.exists():
-            continue
-        with path.open(encoding="utf-8") as manifest_file:
-            data = json.load(manifest_file)
-        if not isinstance(data, dict):
-            raise ValueError(f"Recording metadata must be an object: {path}")
-        if "videos" not in data:
-            continue
-        associations = VideoAssociations.model_validate(data["videos"], strict=True).root
-        if declared is not None and declared != associations:
-            raise ValueError(f"Conflicting video associations in recording metadata: {recording_path}")
-        declared = associations
-    return declared
+    associations = VideoAssociations.from_recording_folder(recording_folder=recording_path)
+    return associations.root if associations is not None else None
+
 
 # Example usage
 if __name__ == "__main__":

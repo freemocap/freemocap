@@ -3,6 +3,10 @@
 Status: planning and alignment, 2026-09-06. Review before the next implementation chunk.
 This is a navigation and decision guide, not a new data model or implementation specification.
 
+2026-09-07 scope clarification: first complete the cross-application identity work described in
+[the camera/media audit](identity-audit.md). Capture, import, playback, timing and calibration
+associations must be reviewed together before resuming the request-level walkthrough below.
+
 ## Task and execution mode
 
 | Task | Realtime | Posthoc |

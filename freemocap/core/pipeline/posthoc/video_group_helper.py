@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator
 from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename, VIDEO_EXTENSIONS
 from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReader
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata
+from skellycam.core.recorders.videos.video_associations import VideoAssociations
 from skellycam.core.types.type_overloads import CameraIdString
 
 logger = logging.getLogger(__name__)
@@ -397,18 +398,12 @@ class VideoGroupHelper(BaseModel):
         videos_dir: Path,
     ) -> "VideoGroupHelper":
         """Build from an authoritative camera_id → relative-filename mapping."""
-        resolved_paths = [(videos_dir / filename).resolve(strict=True) for filename in manifest_videos.values()]
-        if len(set(resolved_paths)) != len(resolved_paths):
-            raise ValueError("Multiple source IDs reference the same video file")
+        resolved_paths = VideoAssociations.model_validate(manifest_videos, strict=True).resolve_paths(
+            video_folder=videos_dir,
+        )
         videos: dict[CameraIdString, VideoHelper] = {}
         try:
-            for camera_id, filename in manifest_videos.items():
-                video_path = videos_dir / filename
-                if not video_path.exists():
-                    raise FileNotFoundError(
-                        f"Manifest references video '{filename}' for camera '{camera_id}' "
-                        f"but the file does not exist at {video_path}"
-                    )
+            for camera_id, video_path in resolved_paths.items():
                 videos[camera_id] = VideoHelper.from_video_path(video_path)
 
             instance = cls(
@@ -493,29 +488,26 @@ def _frame_count_mismatch_detail(videos: dict[CameraIdString, "VideoHelper"]) ->
 
 
 def _load_manifest_videos(recording_path: Path) -> dict[str, str] | None:
-    """Return the manifest's `videos` map if present, else None.
-
-    The manifest is `{recording_name}_recording_info.json` (or the legacy
-    `{recording_name}_info.json` from SkellyCam). A missing or unreadable
-    manifest, or a manifest without a populated `videos` field, returns None.
-    """
+    """Read declared video associations; invalid or conflicting declarations are errors."""
     candidates = [
         recording_path / f"{recording_path.name}_recording_info.json",
         recording_path / f"{recording_path.name}_info.json",
     ]
+    declared: dict[str, str] | None = None
     for path in candidates:
         if not path.exists():
             continue
-        try:
-            with open(path, "r") as f:
-                data = json.load(f)
-        except (json.JSONDecodeError, OSError) as e:
-            logger.warning(f"Failed to read recording manifest at {path}: {e}")
+        with path.open(encoding="utf-8") as manifest_file:
+            data = json.load(manifest_file)
+        if not isinstance(data, dict):
+            raise ValueError(f"Recording metadata must be an object: {path}")
+        if "videos" not in data:
             continue
-        videos = data.get("videos")
-        if isinstance(videos, dict) and videos:
-            return {str(k): str(v) for k, v in videos.items()}
-    return None
+        associations = VideoAssociations.model_validate(data["videos"], strict=True).root
+        if declared is not None and declared != associations:
+            raise ValueError(f"Conflicting video associations in recording metadata: {recording_path}")
+        declared = associations
+    return declared
 
 # Example usage
 if __name__ == "__main__":

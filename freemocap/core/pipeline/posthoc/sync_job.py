@@ -15,6 +15,7 @@ import uuid
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
 from queue import Empty
+from pathlib import Path
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skelly_synchronize.core.exceptions import SkellySyncError
@@ -35,6 +36,7 @@ class SyncJob(BaseNode):
     progress_subscription: multiprocessing.queues.Queue
     result_subscription: multiprocessing.queues.Queue
     started: bool = False
+    import_sources: dict[Path, Path] = field(default_factory=dict)
     queued_message: SyncJobProgressMessage | None = None
     # Cached once the (single) result message has been drained from result_subscription.
     _finished: bool = field(default=False, repr=False)

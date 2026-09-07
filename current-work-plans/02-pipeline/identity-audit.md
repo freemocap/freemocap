@@ -167,6 +167,17 @@ Current synchronized mocap validation checks frame counts, not equality of float
 
 ### Implementation checkpoint: declared capture videos
 
+Closure candidate: the previous annotation/playback integration passes (19 tests plus two subtests),
+and FreeMoCap TypeScript passes. Playback media now carries its variant explicitly; backend and UI
+joins include variant plus filename. Capture writes relative camera/multiframe timing references;
+readers locate recording metadata independently of the folder's current name. Missing declarations
+permit FPS inference, while malformed declared resources surface errors. Realtime observation-cache
+alignment uses the same timing reference. Synchronization import binds the original selected paths to
+the job's staged paths and uses the producer's forward filename function, with no prefix stripping.
+Thirty-seven SkellyCam timing/media tests pass. These final shared timing methods must be published
+and installed before the full FreeMoCap integration run. Geometry remains untouched. App QA is gated
+on that run, including new identical-name variant coverage and the real synchronization/import test.
+
 Pre-geometry cleanup checkpoint: both playback routers use full filename IDs. FreeMoCap's unused
 per-video/all-video timestamp routes are removed; SkellyCam's active batch timestamp route uses
 declared associations and explicit FPS inference. Heuristic CSV statistics are replaced by a shared

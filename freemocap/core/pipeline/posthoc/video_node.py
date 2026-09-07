@@ -12,6 +12,7 @@ from freemocap.core.pipeline.posthoc.annotation_output import AnnotationOutputRe
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.pipeline.posthoc.annotation_input import AnnotationInput
 
+from skellycam.core.timestamps.recording_timing_reader import recorded_camera_timing_path
 import csv
 import logging
 import multiprocessing
@@ -435,34 +436,20 @@ def _load_recording_to_connection_frame_map(
     recording_path: Path,
     camera_id: CameraIdString,
 ) -> dict[int, int] | None:
-    recording_info = RecordingInfo(
-        recording_name=recording_path.name,
-        recording_directory=str(recording_path.parent),
-    )
-    csv_path = Path(recording_info.camera_timestamps_file_path_from_camera_id(camera_id))
-    if not csv_path.exists():
-        logger.warning(
-            f"VideoNode [{camera_id}]: timestamps CSV not found at {csv_path} — "
-            f"cannot align realtime cache, falling back to full detection"
-        )
+    csv_path = recorded_camera_timing_path(recording_folder=recording_path, camera_id=camera_id)
+    if csv_path is None:
         return None
 
-    try:
-        recording_to_connection: dict[int, int] = {}
-        with open(csv_path, newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                recording_to_connection[int(row["recording_frame_number"])] = int(
-                    row["connection_frame_number"]
-                )
-        return recording_to_connection
-    except Exception:
-        logger.warning(
-            f"VideoNode [{camera_id}]: failed to parse timestamps CSV {csv_path} — "
-            f"falling back to full detection",
-            exc_info=True,
-        )
-        return None
+    recording_to_connection: dict[int, int] = {}
+    with csv_path.open(newline="", encoding="utf-8") as stream:
+        reader = csv.DictReader(stream)
+        for row in reader:
+            frame = int(row["recording_frame_number"])
+            connection_frame = int(row["connection_frame_number"])
+            if frame in recording_to_connection or frame < 0 or connection_frame < 0:
+                raise ValueError(f"Invalid recording/connection frame association in {csv_path}")
+            recording_to_connection[frame] = connection_frame
+    return recording_to_connection
 
 
 def _get_observation(

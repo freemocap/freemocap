@@ -1,5 +1,6 @@
 """Canonical recording views for timestamp-based playback without reconstruction work."""
 
+from freemocap.core.playback.media_selection import PlaybackVideoSource
 from contextlib import contextmanager
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -69,13 +70,14 @@ class PlaybackTimeline(Descriptor):
 
 
 class PlaybackMedia(Descriptor):
+    video_source: PlaybackVideoSource
     video_filename: str
     nominal_fps: float = Field(gt=0, allow_inf_nan=False)
     timeline: PlaybackTimeline
 
     @classmethod
     def from_camera(cls, *, camera: CameraRecordingDefinition, timeline: PlaybackTimeline) -> "PlaybackMedia":
-        return cls(video_filename=camera.video_filename, nominal_fps=camera.nominal_fps, timeline=timeline)
+        return cls(video_source=PlaybackVideoSource.SYNCHRONIZED, video_filename=camera.video_filename, nominal_fps=camera.nominal_fps, timeline=timeline)
 
 
 class PlaybackRun(Descriptor):

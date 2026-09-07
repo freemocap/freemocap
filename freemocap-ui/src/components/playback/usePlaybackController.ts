@@ -50,7 +50,9 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const videosRef = useRef(videos);
     videosRef.current = videos;
     const videoKey = JSON.stringify(videos);
-    const leader = media.find(item => item.video_filename === videos[0]?.filename);
+    const selectedSource = Object.entries(bundle?.videos.sources ?? {}).find(([, value]) =>
+        value.videos.some(video => video.streamUrl === videos[0]?.streamUrl))?.[0];
+    const leader = media.find(item => item.video_source === selectedSource && item.video_filename === videos[0]?.filename);
     const timeline = leader?.timeline;
     const totalFrames = timeline?.frame_numbers.length ?? 0;
     const fps = leader?.nominal_fps ?? 30;
@@ -272,8 +274,8 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const getDisplayFps = useCallback((): number | null => playbackClock.current?.displayFps(performance.now()) ?? measuredFps.current, []);
     const getRecordingTime = useCallback((): number | null => presentedTime.current, []);
     const setPlaybackRun = useCallback((run: PlaybackRun): void => {
-        const saved = new Map(run.media.map(item => [item.video_filename, item]));
-        setMedia((bundle?.media ?? []).map(item => saved.get(item.video_filename) ?? item));
+        const saved = new Map(run.media.map(item => [JSON.stringify([item.video_source, item.video_filename]), item]));
+        setMedia((bundle?.media ?? []).map(item => saved.get(JSON.stringify([item.video_source, item.video_filename])) ?? item));
     }, [bundle]);
     const cacheGroupRef = useRef(decoderGroup);
     cacheGroupRef.current = decoderGroup;

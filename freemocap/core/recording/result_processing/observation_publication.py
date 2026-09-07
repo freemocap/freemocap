@@ -28,6 +28,8 @@ from freemocap.core.recording.result_processing.observation_inputs import (
 from skellycam.core.timestamps.recording_timing_reader import (
     read_recording_timing,
     resolve_camera_timing,
+    recorded_camera_timing_path,
+    recorded_multiframe_timing_path,
 )
 
 
@@ -81,8 +83,8 @@ def publish_posthoc_observations(
         if frame_numbers != tuple(range(video.start_frame, video.end_frame)):
             raise ValueError("Observations must cover the selected video frame range")
         timeline = resolve_camera_timing(
-            path=Path(
-                request.recording.camera_timestamps_file_path_from_camera_id(camera)
+            path=recorded_camera_timing_path(
+                recording_folder=Path(request.recording.full_recording_path), camera_id=camera,
             ),
             frame_count=video.frame_count,
             fps=video.fps,
@@ -114,8 +116,8 @@ def publish_posthoc_observations(
         channels.extend(
             (camera_channels[camera].overlay, camera_channels[camera].capture)
         )
-    group_path = Path(request.recording.timestamp_file_path)
-    if group_path.exists():
+    group_path = recorded_multiframe_timing_path(recording_folder=Path(request.recording.full_recording_path))
+    if group_path is not None:
         group_timing = read_recording_timing(
             path=group_path, kind=TimingFileKind.MULTIFRAME
         )

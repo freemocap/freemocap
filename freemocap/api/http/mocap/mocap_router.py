@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.recorders.videos.video_file_metadata import probe_video_files
 from skellycam.core.recorders.videos.video_copy_plan import VideoCopyPlan
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skelly_synchronize.core.config import synced_video_filename
 from skelly_synchronize.core.models import SyncMethod, SyncRequest, SyncResult, VideoBackendKind
 
 from freemocap.app.freemocap_application import get_freemocap_app
@@ -253,12 +254,13 @@ async def synchronize_videos(request: SynchronizeVideosRequest) -> SynchronizeVi
     try:
         VideoCopyPlan.create(
             source_files=tuple(paths), destination_folder=job_tmp_dir / "synchronized",
-            destination_names=tuple(f"{path.stem}.mp4" for path in paths),
+            destination_names=tuple(synced_video_filename(raw_video_filename=path.stem) for path in paths),
         )
-        VideoCopyPlan.create(
+        staging = VideoCopyPlan.create(
             source_files=tuple(paths), destination_folder=raw_folder,
             destination_names=tuple(path.name for path in paths),
-        ).copy_files()
+        )
+        staging.copy_files()
     except (ValueError, FileNotFoundError, FileExistsError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -271,6 +273,7 @@ async def synchronize_videos(request: SynchronizeVideosRequest) -> SynchronizeVi
         create_debug_artifacts=True,
     )
     job = get_freemocap_app().create_sync_job(sync_request)
+    job.import_sources = dict(zip(staging.sources, staging.destinations, strict=True))
     logger.info(f"Started sync job [{job.id}] for {len(paths)} video(s), method={request.method}")
     return SynchronizeVideosStartResponse(job_id=job.id)
 
@@ -309,6 +312,9 @@ async def import_videos(request: ImportVideosRequest) -> ImportVideosResponse:
             raise HTTPException(status_code=500, detail=job.error)
         if not job.finished:
             raise HTTPException(status_code=425, detail="Synchronization still in progress")
+        selected_paths = {Path(path).expanduser().resolve() for path in request.video_paths}
+        if not job.import_sources or selected_paths != set(job.import_sources):
+            raise HTTPException(status_code=400, detail="Selected videos do not match the synchronization job inputs")
         sync_result = job.result
     else:
         check_result = _check_video_sync(request.video_paths)
@@ -331,26 +337,20 @@ async def import_videos(request: ImportVideosRequest) -> ImportVideosResponse:
 
     try:
         if sync_result is not None:
-            # Synchronization outputs use the producer's synced_ naming convention.
-            # Validate uniqueness before constructing the lookup.
-            output_names = [video.video_name.removeprefix("synced_") for video in sync_result.videos_after]
-            if len(set(output_names)) != len(output_names):
-                raise ValueError("Synchronization returned ambiguous output names")
-            videos_after_by_name = {
-                video.video_name.removeprefix("synced_"): video
-                for video in sync_result.videos_after
-            }
+            outputs = {video.filepath.name: video.filepath for video in sync_result.videos_after}
+            if len(outputs) != len(sync_result.videos_after):
+                raise ValueError("Synchronization returned duplicate output filenames")
             source_files: list[Path] = []
             destination_names: list[str] = []
             for video_path in request.video_paths:
                 src = Path(video_path).expanduser()
-                synced_video = videos_after_by_name.get(src.stem)
+                synced_video = outputs.get(synced_video_filename(raw_video_filename=job.import_sources[src.resolve()].stem))
                 if synced_video is None:
                     raise HTTPException(
                         status_code=500,
                         detail=f"No synchronized output found for '{src.name}'",
                     )
-                source_files.append(synced_video.filepath)
+                source_files.append(synced_video)
                 destination_names.append(f"{src.stem}.mp4")
         else:
             source_files = [Path(path).expanduser() for path in request.video_paths]

@@ -49,6 +49,11 @@ class BundleResourceTests(unittest.TestCase):
             metadata_path.write_text(json.dumps({"videos": {"declared-source": "camera.avi"}}), encoding="utf-8")
             bundle = get_recording_bundle(recording_id="recording", recording_parent_directory=temporary)
             self.assertEqual({item.timeline.source for item in bundle.media}, {"declared-source"})
+            (recording / "annotated_videos" / "arbitrary annotation.avi").rename(recording / "annotated_videos" / "camera.avi")
+            bundle = get_recording_bundle(recording_id="recording", recording_parent_directory=temporary)
+            self.assertEqual(len(bundle.media), 2)
+            self.assertEqual({item.video_source for item in bundle.media}, {"synchronized", "annotated"})
+            self.assertEqual({item.video_filename for item in bundle.media}, {"camera.avi"})
             with patch("freemocap.api.http.playback.playback_router.compute_recording_status", side_effect=ValueError("bad status")):
                 bundle = get_recording_bundle(recording_id="recording", recording_parent_directory=temporary)
             self.assertIsNone(bundle.status_summary)

@@ -25,7 +25,7 @@ import tomllib
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata, probe_video_files
-from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, camera_timing_path
+from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, recorded_camera_timing_path
 from skellycam.core.recorders.videos.video_associations import VideoAssociations
 from skellycam.core.recorders.videos.video_derivation import VideoDerivation
 from freemocap.core.recording.playback_queries import (
@@ -71,11 +71,11 @@ def read_unprocessed_media(
         timestamps = tuple(frame / metadata.reported_fps for frame in range(metadata.reported_frame_count))
         if source is not None:
             timestamps = resolve_camera_timing(
-                path=camera_timing_path(recording_folder=folder, camera_id=source),
+                path=recorded_camera_timing_path(recording_folder=folder, camera_id=source),
                 frame_count=metadata.reported_frame_count, fps=metadata.reported_fps, offset_s=0.0,
             ).timestamps_s
         media.append(PlaybackMedia(
-            video_filename=path.name, nominal_fps=metadata.reported_fps,
+            video_source=PlaybackVideoSource.SYNCHRONIZED,            video_filename=path.name, nominal_fps=metadata.reported_fps,
             timeline=PlaybackTimeline(sensor_group="cameras", source=source or path.name,
                 frame_numbers=tuple(range(metadata.reported_frame_count)), timestamps_s=timestamps),
         ))
@@ -99,7 +99,7 @@ def _include_annotated_media(*, folder: Path, media: tuple[PlaybackMedia, ...]) 
         properties = VideoFileMetadata.from_path(path=path)
         if properties.reported_frame_count != relationship.frame_count or relationship.frame_count != len(original.timeline.frame_numbers):
             raise ValueError(f"Annotated video frame count disagrees with its declared source: {path}")
-        result.append(PlaybackMedia(video_filename=path.name, nominal_fps=original.nominal_fps, timeline=original.timeline))
+        result.append(PlaybackMedia(video_source=PlaybackVideoSource.ANNOTATED, video_filename=path.name, nominal_fps=original.nominal_fps, timeline=original.timeline))
     return tuple(result)
 
 
@@ -790,10 +790,10 @@ def get_recording_bundle(
                         )
                     if source_id is not None:
                         timestamps = resolve_camera_timing(
-                            path=camera_timing_path(recording_folder=recording_path, camera_id=source_id),
+                            path=recorded_camera_timing_path(recording_folder=recording_path, camera_id=source_id),
                             frame_count=metadata.reported_frame_count, fps=metadata.reported_fps, offset_s=0.0,
                         ).timestamps_s
-                media.append(PlaybackMedia(video_filename=video_info.filename, nominal_fps=metadata.reported_fps,
+                media.append(PlaybackMedia(video_source=source, video_filename=video_info.filename, nominal_fps=metadata.reported_fps,
                     timeline=PlaybackTimeline(sensor_group="cameras", source=source_id or video_info.filename,
                         frame_numbers=tuple(range(metadata.reported_frame_count)), timestamps_s=timestamps)))
 
@@ -804,14 +804,13 @@ def get_recording_bundle(
             manifest = playback_manifest(structure.data_parquet_path)
     if manifest is not None:
         selected = next(run for run in manifest.runs if run.run_id == manifest.selected_run_id)
-        saved_media = {item.video_filename: item for item in selected.media}
-        media = [saved_media.get(item.video_filename, item) for item in media]
+        saved_media = {(item.video_source, item.video_filename): item for item in selected.media}
+        media = [saved_media.get((item.video_source, item.video_filename), item) for item in media]
 
     originals = {(raw_folder / item.video_filename).resolve(): item for item in media
-                 if any(video.filename == item.video_filename for video in sources[PlaybackVideoSource.SYNCHRONIZED].videos)}
-    annotated_names = {video.filename for video in sources[PlaybackVideoSource.ANNOTATED].videos}
+                 if item.video_source == PlaybackVideoSource.SYNCHRONIZED}
     for index, item in enumerate(media):
-        if item.video_filename not in annotated_names:
+        if item.video_source != PlaybackVideoSource.ANNOTATED:
             continue
         with resource_boundary(resource=RecordingResource.MEDIA_ASSOCIATIONS, item=item.video_filename, errors=errors):
             path = recording_path / ANNOTATED_VIDEOS_FOLDER_NAME / item.video_filename

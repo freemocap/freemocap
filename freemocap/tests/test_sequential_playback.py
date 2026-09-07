@@ -3,6 +3,8 @@
 from pathlib import Path
 from shutil import copyfile
 
+from skellycam.core.recorders.videos.pyav_video_writer import PyavVideoWriter
+from skellycam.core.recorders.videos.video_derivation import VideoDerivation
 import cv2
 import numpy as np
 import pytest
@@ -16,7 +18,13 @@ from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
 def test_annotations_inherit_inferred_source_timing(video_path: Path, tmp_path: Path) -> None:
     annotated = video_path.parent.parent / "annotated_videos" / "camera_annotated.avi"
     annotated.parent.mkdir()
-    copyfile(src=video_path, dst=annotated)
+    writer = PyavVideoWriter(path=str(annotated), fps=30.0, width=64, height=48)
+    writer.set_container_metadata(metadata=VideoDerivation(source_video="synchronized_videos/camera.avi", frame_count=12).to_container_metadata())
+    try:
+        for _ in range(12):
+            writer.write(np.zeros((48, 64, 3), dtype=np.uint8))
+    finally:
+        writer.release()
     app = FastAPI()
     app.include_router(playback_router)
     with TestClient(app) as client:

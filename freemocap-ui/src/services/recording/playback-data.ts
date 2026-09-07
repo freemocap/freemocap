@@ -1,3 +1,4 @@
+import type {PlaybackSource} from './playback-protocol';
 import type {ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame, PointsFrame} from '@/services/server/transport/frame-types';
 
@@ -20,7 +21,7 @@ export interface RecordingChannel {
 export interface RecordingTimeline {
     sensor_group: string; source: string; frame_numbers: number[]; timestamps_s: number[];
 }
-export interface PlaybackMedia {video_filename: string; nominal_fps: number; timeline: RecordingTimeline}
+export interface PlaybackMedia {video_source: PlaybackSource; video_filename: string; nominal_fps: number; timeline: RecordingTimeline}
 export interface RecordingStaticChannel { channel: RecordingChannel; values: Record<string, Record<string, number>> }
 export interface PlaybackRun {
     run_id: number; models: ModelDefinition[]; channels: RecordingChannel[];

@@ -87,6 +87,33 @@ def _wait_for_sync_job(client: TestClient, job_id: str, timeout: float = 15.0) -
 
 
 class TestImportVideos:
+    def test_import_rejects_colliding_basenames_before_copy(self, tmp_path: Path, client: TestClient) -> None:
+        sources: list[Path] = []
+        for name in ("first", "second"):
+            folder = tmp_path / name
+            folder.mkdir()
+            sources.append(_make_video_file(folder, "clip.mp4"))
+        destination = tmp_path / "recordings"
+        response = client.post("/mocap/recording/import", json={
+            "videoPaths": [str(path) for path in sources],
+            "recordingName": "capture", "baseDirectory": str(destination),
+        })
+        assert response.status_code == 400
+        assert not destination.exists()
+
+    def test_import_preserves_existing_recording(self, tmp_path: Path, client: TestClient) -> None:
+        source = _make_video_file(tmp_path, "source.mp4")
+        destination = tmp_path / "capture"
+        destination.mkdir()
+        existing = destination / "keep.txt"
+        existing.write_text("keep", encoding="utf-8")
+        response = client.post("/mocap/recording/import", json={
+            "videoPaths": [str(source)], "recordingName": "capture", "baseDirectory": str(tmp_path),
+        })
+        assert response.status_code == 409
+        assert existing.read_text(encoding="utf-8") == "keep"
+        assert list(destination.iterdir()) == [existing]
+
     def test_import_creates_recording_structure_and_copies_videos(self, tmp_path, client):
         source_dir = tmp_path / "source"
         source_dir.mkdir()

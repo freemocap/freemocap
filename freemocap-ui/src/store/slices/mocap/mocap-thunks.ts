@@ -168,7 +168,6 @@ export const importVideos = createAsyncThunk<
 
 export interface VideoSyncInfo {
     filename: string;
-    cameraId: string;
     frameCount: number;
     fps: number;
     durationSeconds: number;
@@ -198,7 +197,6 @@ export const checkVideoSync = createAsyncThunk<
                 synchronized: result.synchronized,
                 videos: (result.videos ?? []).map((video: any) => ({
                     filename: video.filename,
-                    cameraId: video.camera_id,
                     frameCount: video.frame_count,
                     fps: video.fps,
                     durationSeconds: video.duration_seconds,

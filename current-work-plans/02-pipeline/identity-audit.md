@@ -167,6 +167,17 @@ Current synchronized mocap validation checks frame counts, not equality of float
 
 ### Implementation checkpoint: declared capture videos
 
+Follow-up: the published SkellyCam association dependency is verified; all six focused FreeMoCap
+association tests pass using `uv run --locked --group dev pytest`. Import frame-count inspection now
+uses the identity-free SkellyCam probe and exposes no guessed camera ID in its API/UI result.
+
+The next source change adds SkellyCam's `VideoCopyPlan`: validate all sources and destinations before
+copying, reject collisions and duplicate inputs, and use exclusive destination creation. FreeMoCap
+import and sync staging consume it; import rejects an existing recording directory. Sixteen SkellyCam
+association/copy tests pass. FreeMoCap endpoint verification requires publishing this additional
+SkellyCam change and updating its Git dependency. Synchronization's name-based result association
+still needs replacement with an explicit producer relationship; this change only guards its collisions.
+
 The first bounded change adds SkellyCam's typed `VideoAssociations` and writes the existing `videos`
 mapping from capture configuration and resolved capture files. It rejects duplicate file associations,
 escaping paths, empty source IDs, ambiguous capture containers and conflicting requested extensions.

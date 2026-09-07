@@ -3,16 +3,16 @@ import logging
 import shutil
 import tempfile
 from copy import deepcopy
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename
+from skellycam.core.recorders.videos.video_file_metadata import probe_video_files
+from skellycam.core.recorders.videos.video_copy_plan import VideoCopyPlan
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skelly_synchronize.core.models import SyncMethod, SyncRequest, SyncResult, VideoBackendKind
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH, default_recording_name, get_default_freemocap_recordings_path
 
@@ -123,7 +123,6 @@ class CheckVideoSyncRequest(BaseModel):
 
 class VideoSyncInfo(BaseModel):
     filename: str
-    camera_id: str
     frame_count: int
     fps: float
     duration_seconds: float
@@ -150,47 +149,28 @@ class SynchronizeVideosStartResponse(BaseModel):
 
 
 def _check_video_sync(video_paths: list[str]) -> CheckVideoSyncResponse:
-    """Check whether a group of imported videos share a single frame count.
-
-    Imported videos have no capture-time timestamp CSVs (those only exist for live
-    FreeMoCap/skellycam recordings), so frame count is the only signal available to judge
-    synchronization. This mirrors the check `VideoGroupHelper.validate_videos` enforces for
-    live recordings, but built from `VideoHelper` directly (rather than `VideoGroupHelper.
-    from_video_paths`) so per-video details can be returned even when frame counts mismatch.
-    """
+    """Check equal frame counts; synchronization itself must be established upstream."""
     paths = sorted(Path(p).expanduser() for p in video_paths)
     for path in paths:
         if not path.is_file():
             raise HTTPException(status_code=400, detail=f"Video file not found: {path}")
 
-    parsed_list = [ParsedVideoFilename.from_path(p) for p in paths]
-    indices = [pv.camera_index for pv in parsed_list]
-    if -1 in indices or len(set(indices)) < len(indices):
-        for i, pv in enumerate(parsed_list):
-            pv.camera_index = i
-
-    helpers = [VideoHelper.from_video_path(path) for path in paths]
-    try:
-        videos = [
-            VideoSyncInfo(
-                filename=path.name,
-                camera_id=pv.camera_id,
-                frame_count=helper.metadata.frame_count,
-                fps=helper.metadata.fps,
-                duration_seconds=helper.metadata.duration_seconds,
-            )
-            for path, pv, helper in zip(paths, parsed_list, helpers)
-        ]
-    finally:
-        for helper in helpers:
-            helper.close()
+    videos = [
+        VideoSyncInfo(
+            filename=path.name,
+            frame_count=metadata.reported_frame_count,
+            fps=metadata.reported_fps,
+            duration_seconds=metadata.reported_frame_count / metadata.reported_fps,
+        )
+        for path, metadata in probe_video_files(paths=paths).items()
+    ]
 
     frame_counts = {video.frame_count for video in videos}
     synchronized = len(frame_counts) == 1
 
     detail = None
     if not synchronized:
-        lines = [f"    {video.camera_id}: {video.frame_count} frames  ({video.filename})" for video in videos]
+        lines = [f"    {video.filename}: {video.frame_count} frames" for video in videos]
         detail = (
             "Selected videos must have the same frame count to be synchronized, but they differ:\n"
             + "\n".join(lines)
@@ -270,8 +250,17 @@ async def synchronize_videos(request: SynchronizeVideosRequest) -> SynchronizeVi
     job_tmp_dir = Path(tempfile.mkdtemp(prefix="freemocap_sync_"))
     raw_folder = job_tmp_dir / "raw"
     raw_folder.mkdir(parents=True)
-    for path in paths:
-        shutil.copy2(path, raw_folder / path.name)
+    try:
+        VideoCopyPlan.create(
+            source_files=tuple(paths), destination_folder=job_tmp_dir / "synchronized",
+            destination_names=tuple(f"{path.stem}.mp4" for path in paths),
+        )
+        VideoCopyPlan.create(
+            source_files=tuple(paths), destination_folder=raw_folder,
+            destination_names=tuple(path.name for path in paths),
+        ).copy_files()
+    except (ValueError, FileNotFoundError, FileExistsError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
     sync_request = SyncRequest(
         raw_video_folder_path=raw_folder,
@@ -333,25 +322,26 @@ async def import_videos(request: ImportVideosRequest) -> ImportVideosResponse:
     )
     recording_name = request.recording_name or default_recording_name(string_tag="imported")
 
-    # Legacy layout only — a single `synchronized_videos` folder at the recording root.
-    # Not `RecordingStructure.create_on_disk()`: that also creates `videos/annotated`,
-    # `output`, and `logs`, which an imported recording (nothing but videos) doesn't need yet.
+    if PureWindowsPath(recording_name).name != recording_name or recording_name in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Recording name must be a single folder name")
     recording_path = base_directory / recording_name
     synchronized_videos_dir = recording_path / "synchronized_videos"
-    synchronized_videos_dir.mkdir(parents=True, exist_ok=True)
+    if recording_path.exists():
+        raise HTTPException(status_code=409, detail=f"Recording already exists: {recording_path}")
 
     try:
         if sync_result is not None:
-            # skelly_synchronize's TrimStage re-probes its own output files, so
-            # `videos_after[i].video_name` is the OUTPUT filename's stem —
-            # "synced_{original_stem}" (see core/config.py::synced_video_filename)
-            # — not the original stem. Strip that prefix back off (and always coerce
-            # to .mp4, since skelly_synchronize's output is always mp4) so downstream
-            # camera-id filename parsing sees the original basename unchanged.
+            # Synchronization outputs use the producer's synced_ naming convention.
+            # Validate uniqueness before constructing the lookup.
+            output_names = [video.video_name.removeprefix("synced_") for video in sync_result.videos_after]
+            if len(set(output_names)) != len(output_names):
+                raise ValueError("Synchronization returned ambiguous output names")
             videos_after_by_name = {
                 video.video_name.removeprefix("synced_"): video
                 for video in sync_result.videos_after
             }
+            source_files: list[Path] = []
+            destination_names: list[str] = []
             for video_path in request.video_paths:
                 src = Path(video_path).expanduser()
                 synced_video = videos_after_by_name.get(src.stem)
@@ -360,13 +350,18 @@ async def import_videos(request: ImportVideosRequest) -> ImportVideosResponse:
                         status_code=500,
                         detail=f"No synchronized output found for '{src.name}'",
                     )
-                shutil.copy2(synced_video.filepath, synchronized_videos_dir / f"{src.stem}.mp4")
+                source_files.append(synced_video.filepath)
+                destination_names.append(f"{src.stem}.mp4")
         else:
-            for video_path in request.video_paths:
-                src = Path(video_path).expanduser()
-                if not src.is_file():
-                    raise HTTPException(status_code=400, detail=f"Video file not found: {video_path}")
-                shutil.copy2(src, synchronized_videos_dir / src.name)
+            source_files = [Path(path).expanduser() for path in request.video_paths]
+            destination_names = [path.name for path in source_files]
+        copy_plan = VideoCopyPlan.create(
+            source_files=tuple(source_files), destination_folder=synchronized_videos_dir,
+            destination_names=tuple(destination_names),
+        )
+        copy_plan.copy_files()
+    except (ValueError, FileNotFoundError, FileExistsError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as e:
         logger.exception(f"Error importing videos into {recording_path}: {e}")
         if isinstance(e, HTTPException):

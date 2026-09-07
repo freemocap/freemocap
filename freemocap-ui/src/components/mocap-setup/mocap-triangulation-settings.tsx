@@ -7,7 +7,6 @@ import {
 
 import ValueSelector from "../ui-components/ValueSelector";
 import ToggleComponent from "../ui-components/ToggleComponent";
-import SubactionHeader from "../ui-components/SubactionHeader";
 
 const TriangulationSettings: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -15,7 +14,7 @@ const TriangulationSettings: React.FC = () => {
 
     return (
         <div className="flex flex-col gap-1">
-            <SubactionHeader text="Triangulation Settings" />
+            <h2 className="mocap-settings-title">Triangulation Settings</h2>
 
             <ToggleComponent
                 text="Use outlier rejection"

@@ -9,6 +9,7 @@
 @import './checkbox.css';
 @import './components.css';
 @import './calibration-module.css';
+@import './mocap-settings.css';
 @import './playback.css';
 @import './tooltips.css';
 @import './toggle.css';
@@ -1139,4 +1140,3 @@ body,
   padding-top: 16px;
   padding-bottom: 16px;
 }
-

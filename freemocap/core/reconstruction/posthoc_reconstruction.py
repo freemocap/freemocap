@@ -76,8 +76,13 @@ def triangulate_observation_buffers(
     if triangulation_config is None:
         triangulation_config = TriangulationConfig()
 
-    # Stage-prefixed keypoint names are constant across frames; take them from frame 0.
     first_buffer = next(iter(observation_buffers.values()))
+    frame_numbers = tuple(observation.frame_number for observation in first_buffer.observations)
+    if not frame_numbers:
+        raise ValueError("Cannot triangulate an empty recording")
+    for buffer in observation_buffers.values():
+        if tuple(observation.frame_number for observation in buffer.observations) != frame_numbers:
+            raise ValueError("Camera observation frame numbers must match exactly")
     first_observation = first_buffer.observations[0]
     if stage_name is not None:
         stage_keypoints = first_observation.stages[stage_name].keypoints
@@ -91,9 +96,11 @@ def triangulate_observation_buffers(
             for camera_id, buffer in observation_buffers.items()
         }
     else:
-        prefixed_names = tuple(first_observation.to_keypoints().names)
+        prefixed_names = tuple(dict.fromkeys(
+            name for buffer in observation_buffers.values() for name in buffer.keypoint_names
+        ))
         data2d_by_camera = {
-            camera_id: buffer.to_keypoints_array()[..., :2]
+            camera_id: buffer.to_keypoints_array(names=prefixed_names)[..., :2]
             for camera_id, buffer in observation_buffers.items()
         }
     t0 = time.perf_counter()

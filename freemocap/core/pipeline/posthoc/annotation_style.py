@@ -9,6 +9,13 @@ from skellytracker.core.annotation.keypoint_annotator import (
     StageAnnotationSchema,
 )
 
+from skellytracker.core import TrackerConfig
+from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator, KeypointAnnotatorConfig, StageKeypointAnnotator
+from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_annotator import CharucoAnnotator, CharucoAnnotatorConfig
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import MediapipePoseDetectorConfig
+from freemocap.core.tracking.tracker_definitions import MEDIAPIPE_WHOLEBODY_DEFINITION, RTMPOSE_WHOLEBODY_DEFINITION
+
 # BGR (cv2 convention) equivalents of the realtime renderer's hex colors.
 _CENTER_COLOR = (0, 170, 0)       # #00AA00
 _RIGHT_COLOR = (68, 68, 255)      # #FF4444
@@ -122,4 +129,36 @@ def build_skeleton_stage_schema(
         draw_boxes=True,
         box_color_detected=_BOX_COLOR_DETECTED,
         box_color_reused=_BOX_COLOR_REUSED,
+    )
+
+
+def build_observation_annotator(tracker_config: TrackerConfig) -> KeypointAnnotator:
+    """Compose configured stage annotations on the supplied image."""
+    stage_annotators: dict[str, StageKeypointAnnotator] = {}
+    uses_mediapipe = False
+    pending_stages = list(tracker_config.stages)
+    while pending_stages:
+        stage = pending_stages.pop()
+        pending_stages.extend(stage.children)
+        for detector in stage.keypoint_detectors:
+            uses_mediapipe |= isinstance(detector, MediapipePoseDetectorConfig)
+            if isinstance(detector, CharucoDetectorConfig):
+                if stage.name in stage_annotators:
+                    raise ValueError(f"Multiple Charuco annotation definitions for stage {stage.name}")
+                stage_annotators[stage.name] = CharucoAnnotator(
+                    config=CharucoAnnotatorConfig(), board_def=detector.board,
+                )
+
+    tracker_definition = (
+        MEDIAPIPE_WHOLEBODY_DEFINITION
+        if uses_mediapipe
+        else RTMPOSE_WHOLEBODY_DEFINITION
+    )
+    return KeypointAnnotator(
+        config=KeypointAnnotatorConfig(stage_schemas={
+            "body": build_skeleton_stage_schema(
+                tracker_definition.connections, tracker_definition.tracked_points,
+            ),
+        }),
+        stage_annotators=stage_annotators,
     )

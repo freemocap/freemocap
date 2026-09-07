@@ -14,7 +14,8 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoard
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.calibration_pipeline import CalibrationPipeline
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase
-from freemocap.core.tasks.calibration.calibration_task_config import CalibrationBoardMode, PosthocCalibrationPipelineConfig
+from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.core.tracking.board_selection import CharucoBoardMode
 
 
 class CalibrationPipelineTests(unittest.TestCase):
@@ -48,7 +49,7 @@ class CalibrationPipelineTests(unittest.TestCase):
                     args = create.call_args.kwargs
                     resolved = args["aggregation_task_fn"].keywords["task_config"]
                     self.assertEqual(resolved.charuco_board, board.model_copy(update={"square_length_mm": measured_square_length_mm}))
-                    self.assertEqual(resolved.board_mode, CalibrationBoardMode.EXPLICIT)
+                    self.assertEqual(resolved.board_mode, CharucoBoardMode.EXPLICIT)
                     self.assertEqual(args["detector_config"], resolved.detector_config)
                     self.assertEqual(args["pipeline_id"], self.preparation.id)
                     first_camera.read_frame_number.assert_called_once_with(frame_number=0)
@@ -76,7 +77,7 @@ class CalibrationPipelineTests(unittest.TestCase):
         group.close.assert_called_once()
 
     def test_explicit_board_does_not_scan_videos(self) -> None:
-        self.preparation.config = PosthocCalibrationPipelineConfig(board_mode=CalibrationBoardMode.EXPLICIT)
+        self.preparation.config = PosthocCalibrationPipelineConfig(board_mode=CharucoBoardMode.EXPLICIT)
         with patch("freemocap.core.pipeline.posthoc.calibration_pipeline.VideoGroupHelper.from_recording_path") as scan, patch("freemocap.core.pipeline.posthoc.calibration_pipeline.PosthocPipeline.create") as create:
             self.preparation._prepare_calibration()
             scan.assert_not_called()
@@ -86,7 +87,7 @@ class CalibrationPipelineTests(unittest.TestCase):
         registry = WorkerRegistry(global_kill_flag=self.ipc.global_kill_flag, worker_mode=WorkerMode.PROCESS)
         preparation = CalibrationPipeline(
             id="thread-selection", recording_info=self.preparation.recording_info,
-            config=PosthocCalibrationPipelineConfig(board_mode=CalibrationBoardMode.EXPLICIT),
+            config=PosthocCalibrationPipelineConfig(board_mode=CharucoBoardMode.EXPLICIT),
             ipc=self.ipc, worker_registry=registry,
         )
         with patch("freemocap.core.pipeline.posthoc.calibration_pipeline.PosthocPipeline.create") as create:

@@ -366,6 +366,30 @@
 }
 
 /* ---- Toast Notification ---- */
+.operation-error-banner {
+  position: relative;
+  z-index: 200;
+  min-width: 0;
+}
+
+.operation-error-banner .toast-notification {
+  position: relative;
+  inset: auto;
+  transform: none;
+  max-width: none;
+  text-align: left;
+}
+
+.operation-error-banner p {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.operation-error-banner .icon-button {
+  flex-shrink: 0;
+}
+
 .toast-notification {
   position: fixed;
   bottom: 36px;

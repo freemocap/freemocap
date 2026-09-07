@@ -1,4 +1,5 @@
 from enum import Enum
+from freemocap.core.tracking.board_selection import CharucoBoardMode
 
 from pydantic import BaseModel, ConfigDict, Field
 from skellytracker.core import DetectionStageConfig, TrackerConfig
@@ -9,11 +10,6 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
-
-
-class CalibrationBoardMode(str, Enum):
-    AUTO = "auto"
-    EXPLICIT = "explicit"
 
 
 class CalibrationSolverMethod(str, Enum):
@@ -28,7 +24,7 @@ class PosthocCalibrationPipelineConfig(BaseModel):
     calibration_recording_folder: str | None = Field(
         default=None, alias="calibrationRecordingFolder",
     )
-    board_mode: CalibrationBoardMode = Field(default=CalibrationBoardMode.AUTO, alias="boardMode")
+    board_mode: CharucoBoardMode = Field(default=CharucoBoardMode.AUTO, alias="boardMode")
     charuco_board: CharucoBoardDefinition = Field(default_factory=CharucoBoardDefinition.create_letter_size_5x3,
                                                   alias="charucoBoard",
                                                   description="Definition of the charuco board used for calibration")
@@ -61,7 +57,7 @@ class PosthocCalibrationPipelineConfig(BaseModel):
 
     @property
     def detector_config(self) -> TrackerConfig:
-        if self.board_mode == CalibrationBoardMode.AUTO:
+        if self.board_mode == CharucoBoardMode.AUTO:
             raise ValueError("Resolve AUTO board selection before constructing calibration detectors")
         return TrackerConfig(
             stages=[

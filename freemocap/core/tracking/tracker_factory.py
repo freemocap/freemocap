@@ -52,6 +52,7 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 )
 
 logger = logging.getLogger(__name__)
+CHARUCO_STAGE_NAME = "charuco"
 
 
 def build_configured_tracker(*, config: TrackerConfig, batch_size: int) -> Tracker:
@@ -117,7 +118,7 @@ def build_charuco_tracker(
     config = TrackerConfig(
         stages=[
             DetectionStageConfig(
-                name="charuco",
+                name=CHARUCO_STAGE_NAME,
                 keypoint_detectors=[CharucoDetectorConfig(board=board_def)],
             )
         ]

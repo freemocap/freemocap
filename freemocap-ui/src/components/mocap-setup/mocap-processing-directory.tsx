@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
 import { useMocap } from "@/hooks/useMocap";
 import { useElectronIPC } from "@/services";
@@ -81,7 +80,7 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
       <div className="gap-1 flex flex-col">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
-          <SubactionHeader text="Process Directory" />
+          <h2 className="mocap-settings-title">Process Directory</h2>
         </div>
 
         {/* Process directory selector */}

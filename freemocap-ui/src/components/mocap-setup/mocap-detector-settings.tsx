@@ -1,5 +1,8 @@
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
+import {useAppDispatch, useAppSelector} from '@/store/hooks';
+import {mocapCharucoTrackingChanged} from '@/store/slices/mocap';
 import React, { useEffect, useRef } from 'react';
-import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import IconButton from '@/components/ui-components/IconButton';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import { useMocap } from '@/hooks/useMocap';
@@ -19,6 +22,8 @@ const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }
 const MOCAPDetectorSettings: React.FC<
     MOCAPDetectorSettingsProps
 > = ({ open, onClose }) => {
+    const dispatch = useAppDispatch();
+    const detectBoard = useAppSelector(state => state.mocap.config.charucoTrackingEnabled);
     const modalRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -57,18 +62,33 @@ const MOCAPDetectorSettings: React.FC<
     return (
         <div
             ref={modalRef}
-            className="flex flex-col w-full br-2 reveal fadeIn gap-1"
+            className="mocap-detector-settings flex flex-col w-full br-2 reveal fadeIn gap-1"
         >
             <div className="gap-1 flex flex-col">
 
-                {/* Header */}
-                <div className="flex justify-content-space-between items-center">
-                    <SubactionHeader text="Detector Settings" />
-                </div>
+                <h2 className="mocap-settings-title">Detector settings</h2>
 
-                {/* Detector type toggle */}
-                <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Detector</span>
+                <section className="mocap-detector-card mocap-board-card" aria-label="Charuco board detection">
+                    <div className="mocap-board-toggle">
+                        <ToggleComponent
+                            text="Detect and reconstruct Charuco board"
+                            isToggled={detectBoard}
+                            onToggle={enabled => dispatch(mocapCharucoTrackingChanged(enabled))}
+                        />
+                    </div>
+                    <IconButton
+                        icon="explainer-icon"
+                        className="mocap-settings-info icon-size-25"
+                        title="Charuco board detection settings"
+                        tooltip
+                        tooltipPosition="pos-bottom-right"
+                        tooltipText="Uses the board layout and square size from Charuco Board Settings. AUTO selects the layout; you must enter the measured square size."
+                    />
+                </section>
+
+                <section className="mocap-detector-card mocap-skeleton-card" aria-label="Skeleton detector settings">
+                <div className="mocap-detector-heading">
+                    <h3 className="mocap-settings-subtitle">Skeleton detector</h3>
                     <div className="flex flex-row gap-1">
                         <SegmentedControl
                             size="sm"
@@ -86,12 +106,12 @@ const MOCAPDetectorSettings: React.FC<
                 {/* RTMPose settings */}
                 {(detectorType ?? "rtmpose") === "rtmpose" && (
                     <>
-                        <div className="flex p-1 flex-col gap-1">
+                        <div className="mocap-detector-description">
                             <span className="text-sm text-gray">
                                 133 keypoints (body, hands, face) via YOLOX person detection + RTMPose estimation. Recommended for best accuracy.
                             </span>
                         </div>
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        <div className="mocap-detector-field">
                             <span className="text-sm">Model</span>
                             <div className="flex flex-row gap-1">
                                 <SegmentedControl
@@ -105,7 +125,7 @@ const MOCAPDetectorSettings: React.FC<
                                 />
                             </div>
                         </div>
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        <div className="mocap-detector-field">
                             <span className="text-sm">Confidence threshold</span>
                             <ValueSelector
                                 value={rtmPoseConfidenceThreshold ?? 0.004}
@@ -119,12 +139,12 @@ const MOCAPDetectorSettings: React.FC<
                 {/* MediaPipe settings */}
                 {(detectorType ?? "rtmpose") === "mediapipe" && (
                     <>
-                        <div className="flex p-1 flex-col gap-1">
+                        <div className="mocap-detector-description">
                             <span className="text-sm text-gray">
                                 Body (33 pts) + hands (21 pts each) + face (60 pts) in one pass. Faster on CPU, fewer total keypoints than RTMPose.
                             </span>
                         </div>
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        <div className="mocap-detector-field">
                             <span className="text-sm">Pose model size</span>
                             <div className="flex flex-row gap-1">
                                 <SegmentedControl
@@ -136,20 +156,21 @@ const MOCAPDetectorSettings: React.FC<
                                 />
                             </div>
                         </div>
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        <div className="mocap-detector-field">
                             <span className="text-sm">Detection confidence</span>
                             <ValueSelector value={mediapipeDetectionConfidence ?? 0.5} min={0} max={1} step={0.05} unit="" onChange={setMediapipeDetectionConfidence} />
                         </div>
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        <div className="mocap-detector-field">
                             <span className="text-sm">Presence confidence</span>
                             <ValueSelector value={mediapipePresenceConfidence ?? 0.5} min={0} max={1} step={0.05} unit="" onChange={setMediapipePresenceConfidence} />
                         </div>
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        <div className="mocap-detector-field">
                             <span className="text-sm">Tracking confidence</span>
                             <ValueSelector value={mediapipeTrackingConfidence ?? 0.5} min={0} max={1} step={0.05} unit="" onChange={setMediapipeTrackingConfidence} />
                         </div>
                     </>
                 )}
+                </section>
             </div>
         </div>
     );

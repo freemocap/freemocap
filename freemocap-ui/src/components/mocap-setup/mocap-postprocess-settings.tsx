@@ -6,7 +6,6 @@ import {
 } from "@/store/slices/mocap";
 
 import ValueSelector from "@/components/ui-components/ValueSelector"
-import SubactionHeader from "../ui-components/SubactionHeader";
 
 const PosthocFilterSettings:React.FC = () => {
     const dispatch = useAppDispatch();
@@ -18,7 +17,7 @@ const PosthocFilterSettings:React.FC = () => {
 
     return (
         <div className = "flex flex-col gap-1">
-            <SubactionHeader text = "Butterworth Low-Pass Filter" />
+            <h2 className="mocap-settings-title">Post processing</h2><h3 className="mocap-settings-subtitle">Butterworth low-pass filter</h3>
 
             <p className = "text sm text-gray p-1">
                 Method: Butterworth low-pass

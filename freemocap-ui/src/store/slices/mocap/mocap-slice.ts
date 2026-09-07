@@ -98,6 +98,7 @@ export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
  * Mirrors backend MocapPipelineConfig.
  */
 export interface MocapConfig {
+    charucoTrackingEnabled: boolean;
     detector: MediapipeDetectorConfig;
     skeleton_filter: RealtimeFilterConfig;
     triangulation: TriangulationConfig;
@@ -246,6 +247,7 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     skeleton_filter: {...DEFAULT_REALTIME_FILTER_CONFIG},
     posthoc_filter: {...DEFAULT_POSTHOC_FILTER_CONFIG},
 
+    charucoTrackingEnabled: true,
     detectorType: "rtmpose",
     rtmPoseModelName: "rtmw-x-l_256x192",
     rtmPoseConfidenceThreshold: 0.004,
@@ -304,6 +306,9 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
+        mocapCharucoTrackingChanged: (state, action: PayloadAction<boolean>) => {
+            state.config.charucoTrackingEnabled = action.payload;
+        },
         /** Switch between rtmpose and mediapipe detector backends. */
         mocapDetectorTypeChanged: (state, action: PayloadAction<DetectorType>) => {
             state.config.detectorType = action.payload;
@@ -502,6 +507,7 @@ export const selectCanProcessMocapRecording = createSelector(
 // ==================== Actions Export ====================
 
 export const {
+    mocapCharucoTrackingChanged,
     mocapDetectorTypeChanged,
     mocapRtmPoseModelNameChanged,
     mocapRtmPoseConfidenceThresholdChanged,

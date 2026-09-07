@@ -6,12 +6,10 @@ handles charuco detection, RTMPose skeleton detection, or any future tracker typ
 
 Annotations use raw frames by default, or an explicitly selected annotated input.
 """
-from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator, KeypointAnnotatorConfig, StageKeypointAnnotator
-from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_annotator import CharucoAnnotator, CharucoAnnotatorConfig
-from freemocap.core.pipeline.posthoc.annotation_style import build_skeleton_stage_schema
-from freemocap.core.tracking.tracker_definitions import MEDIAPIPE_WHOLEBODY_DEFINITION, RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.pipeline.posthoc.annotation_style import build_observation_annotator
 
-from skellycam.core.recorders.videos.pyav_video_writer import PyavVideoWriter
+from freemocap.core.pipeline.posthoc.annotation_output import AnnotationOutputRequest, AnnotationVideoOutput
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.pipeline.posthoc.annotation_input import AnnotationInput
 
 import csv
@@ -46,71 +44,19 @@ from freemocap.core.types.type_overloads import TopicPublicationQueue, PipelineI
     TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
-from freemocap.system.default_paths import ANNOTATED_VIDEOS_FOLDER_NAME
 
 logger = logging.getLogger(__name__)
 
 
-def _is_charuco_config(tracker_config: TrackerConfig) -> bool:
-    """Return True if this TrackerConfig is for charuco board detection."""
-    for stage in tracker_config.stages:
-        for kp_det in stage.keypoint_detectors:
-            if isinstance(kp_det, CharucoDetectorConfig):
-                return True
-    return False
-
-
-def _extract_board_def(tracker_config: TrackerConfig) -> CharucoBoardDefinition:
-    for stage in tracker_config.stages:
-        for kp_det in stage.keypoint_detectors:
-            if isinstance(kp_det, CharucoDetectorConfig):
-                return kp_det.board
-    return CharucoBoardDefinition.create_letter_size_5x3()
-
-
-def _is_mediapipe_config(tracker_config: TrackerConfig) -> bool:
-    """Return True if this TrackerConfig uses MediaPipe keypoint detectors."""
-    try:
-        from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
-            MediapipePoseDetectorConfig,
-        )
-    except ImportError:
-        return False
-    for stage in tracker_config.stages:
-        for kp_det in stage.keypoint_detectors:
-            if isinstance(kp_det, MediapipePoseDetectorConfig):
-                return True
-    return False
-
-
-def _build_annotator(tracker_config: TrackerConfig) -> KeypointAnnotator:
-    """Compose configured stage annotations on the supplied image."""
-    stage_annotators: dict[str, StageKeypointAnnotator] = {}
-    pending_stages = list(tracker_config.stages)
-    while pending_stages:
-        stage = pending_stages.pop()
-        pending_stages.extend(stage.children)
-        for detector in stage.keypoint_detectors:
-            if isinstance(detector, CharucoDetectorConfig):
-                if stage.name in stage_annotators:
-                    raise ValueError(f"Multiple Charuco annotation definitions for stage {stage.name}")
-                stage_annotators[stage.name] = CharucoAnnotator(
-                    config=CharucoAnnotatorConfig(), board_def=detector.board,
-                )
-
-    tracker_definition = (
-        MEDIAPIPE_WHOLEBODY_DEFINITION
-        if _is_mediapipe_config(tracker_config)
-        else RTMPOSE_WHOLEBODY_DEFINITION
-    )
-    return KeypointAnnotator(
-        config=KeypointAnnotatorConfig(stage_schemas={
-            "body": build_skeleton_stage_schema(
-                tracker_definition.connections, tracker_definition.tracked_points,
-            ),
-        }),
-        stage_annotators=stage_annotators,
-    )
+def _cached_board_detector(tracker_config: TrackerConfig) -> CharucoDetectorConfig | None:
+    """A board-only cache can satisfy only one independent board detection stage."""
+    if len(tracker_config.stages) != 1:
+        return None
+    stage = tracker_config.stages[0]
+    if stage.children or stage.object_detector is not None or len(stage.keypoint_detectors) != 1:
+        return None
+    detector = stage.keypoint_detectors[0]
+    return detector if isinstance(detector, CharucoDetectorConfig) else None
 
 
 @dataclass
@@ -224,31 +170,21 @@ class VideoNode(SourceNode):
         ))
 
         annotator = None
-        video_writer: PyavVideoWriter | None = None
-        base_reader: cv2.VideoCapture | None = None
-        temporary_output: Path | None = None
+        annotation_output: AnnotationVideoOutput | None = None
 
         frame_number: int = 0
         _error_occurred = False
         try:
             if save_annotated_video:
-                annotator = _build_annotator(detector_config)
-                annotated_dir = recording_path / ANNOTATED_VIDEOS_FOLDER_NAME
-                annotated_dir.mkdir(parents=True, exist_ok=True)
-                annotated_output_path = annotated_dir / f"{video_path.stem}_annotated{video_path.suffix}"
-                temporary_output = annotated_dir / f".{video_path.stem}.{pipeline_id}.partial{video_path.suffix}"
-                if annotation_input == AnnotationInput.ANNOTATED:
-                    if not annotated_output_path.is_file():
-                        raise FileNotFoundError(f"Annotated input does not exist: {annotated_output_path}")
-                    base_reader = cv2.VideoCapture(str(annotated_output_path), cv2.CAP_FFMPEG)
-                    if not base_reader.isOpened():
-                        raise RuntimeError(f"Cannot open annotated input: {annotated_output_path}")
-                    if int(base_reader.get(cv2.CAP_PROP_FRAME_COUNT)) != frame_count:
-                        raise ValueError("Annotated input frame count does not match raw video")
+                annotator = build_observation_annotator(detector_config)
                 fps = video_reader.get(cv2.CAP_PROP_FPS)
-                width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
-                height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                video_writer = PyavVideoWriter(path=str(temporary_output), fps=fps, width=width, height=height)
+                annotation_output = AnnotationVideoOutput(AnnotationOutputRequest(
+                    recording_path=recording_path, pipeline_id=pipeline_id, input_mode=annotation_input,
+                    video=VideoMetadata(file_path=video_path, fps=fps, frame_count=frame_count,
+                        width=int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                        height=int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                        fourcc="", duration_seconds=frame_count / fps, end_frame=frame_count),
+                ))
 
             logger.info(
                 f"VideoNode started for {video_path.stem}"
@@ -278,17 +214,8 @@ class VideoNode(SourceNode):
                         ),
                     )
 
-                    if annotator is not None and video_writer is not None:
-                        if base_reader is not None:
-                            base_ok, base_frame = base_reader.read()
-                            if not base_ok or base_frame is None:
-                                raise RuntimeError(f"Annotated input ends before frame {frame_number}: {video_path.name}")
-                            annotation_base = base_frame
-                        else:
-                            annotation_base = image
-
-                        annotated_frame = annotator.annotate(annotation_base, observation)
-                        video_writer.write(annotated_frame)
+                    if annotator is not None and annotation_output is not None:
+                        annotation_output.write_frame(image=image, observation=observation, annotator=annotator)
 
                     success, image = video_reader.read()
                     frame_number += 1
@@ -309,13 +236,8 @@ class VideoNode(SourceNode):
             elif frame_number != frame_count:
                 raise RuntimeError(f"Video ended after {frame_number} frames; expected {frame_count}: {video_path}")
             else:
-                if video_writer is not None:
-                    video_writer.release()
-                    video_writer = None
-                    if base_reader is not None:
-                        base_reader.release()
-                        base_reader = None
-                    temporary_output.replace(annotated_output_path)
+                if annotation_output is not None:
+                    annotation_output.publish()
 
             logger.info(
                 f"VideoNode for {video_path.stem} finished reading "
@@ -351,12 +273,8 @@ class VideoNode(SourceNode):
                     recording_name=recording_path.name,
                     recording_path=str(recording_path),
                 ))
-            if video_writer is not None:
-                video_writer.release()
-            if base_reader is not None:
-                base_reader.release()
-            if temporary_output is not None and temporary_output.exists():
-                temporary_output.unlink()
+            if annotation_output is not None:
+                annotation_output.close()
             logger.debug(f"VideoNode for {video_path.stem} exiting")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:
@@ -428,10 +346,8 @@ def _load_cache_by_connection_frame(
     detector_config: TrackerConfig,
 ) -> dict[int, Observation] | None:
     """Load realtime charuco observations keyed by connection frame number."""
-    if not _is_charuco_config(detector_config):
-        logger.debug(
-            f"VideoNode [{camera_id}]: not a charuco config — realtime cache N/A"
-        )
+    board_detector = _cached_board_detector(detector_config)
+    if board_detector is None:
         return None
 
     cache_path = recording_path / "output_data" / CACHE_FILENAME
@@ -459,7 +375,7 @@ def _load_cache_by_connection_frame(
         )
         return None
 
-    request_board = _extract_board_def(detector_config)
+    request_board = board_detector.board
     if (
         cached_board.squares_x != request_board.squares_x
         or cached_board.squares_y != request_board.squares_y
@@ -498,6 +414,13 @@ def _load_cache_by_connection_frame(
             f"{type(obs_by_connection_frame).__name__}, expected dict — rejecting cache"
         )
         return None
+
+    stage_name = detector_config.stages[0].name
+    for observation in obs_by_connection_frame.values():
+        if not isinstance(observation, Observation):
+            raise TypeError(f"Invalid cached observation in {cache_path}")
+        if set(observation.stages) != {stage_name} or observation.stages[stage_name].children:
+            return None
 
     logger.info(
         f"Loaded {len(obs_by_connection_frame)} cached Charuco observations "

@@ -53,11 +53,11 @@ class ReconstructionSourceDefinition(Descriptor):
 
     @classmethod
     def from_bundle(
-        cls, bundle: TrackedSkeletonBundle
+        cls, bundle: TrackedSkeletonBundle, *, tracker_source: str
     ) -> "ReconstructionSourceDefinition":
         return cls(
             model_id=bundle.model_id,
-            tracker=bundle.detector_type,
+            tracker=tracker_source,
             scale_reference_name=bundle.scale_reference_name,
             landmark_names=tuple(bundle.skeleton.landmarks),
             segment_origins={

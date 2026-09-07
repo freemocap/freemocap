@@ -1,0 +1,87 @@
+.mocap-settings-modal .mocap-settings-section {
+  padding: 8px 10px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-muted);
+  border-left: 3px solid color-mix(in srgb, var(--color-info) 25%, var(--color-border-primary));
+  border-radius: 4px;
+  scroll-margin-top: 4px;
+}
+
+.mocap-settings-modal .mocap-settings-title {
+  margin: 0 0 6px;
+  padding: 5px 7px;
+  background: color-mix(in srgb, var(--color-info-surface) 45%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-info) 15%, var(--color-border-muted));
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.mocap-detector-card {
+  padding: 4px 0;
+}
+
+.mocap-board-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.mocap-board-toggle {
+  flex: 1;
+  min-width: 0;
+}
+
+.mocap-board-toggle .toggle-button .text {
+  white-space: normal;
+}
+
+.mocap-skeleton-card {
+  border-top: 1px solid var(--color-border-muted);
+}
+
+.mocap-detector-heading,
+.mocap-detector-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.mocap-settings-modal .mocap-settings-subtitle {
+  margin: 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.mocap-detector-description {
+  margin: 4px 0 6px;
+  max-width: 70ch;
+  line-height: 1.5;
+}
+
+.mocap-detector-field {
+  padding: 4px 0;
+  color: var(--color-text-secondary);
+}
+
+.mocap-settings-info {
+  flex-shrink: 0;
+}
+
+.mocap-settings-info .tooltip-container {
+  min-width: 0;
+  width: 280px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.mocap-settings-info:focus-visible .tooltip-container {
+  opacity: 1;
+  visibility: visible;
+}

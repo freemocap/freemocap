@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useMocap } from "@/hooks/useMocap";
@@ -101,7 +100,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
       <div className="gap-1 flex flex-col">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
-          <SubactionHeader text="Blender settings" />
+          <h2 className="mocap-settings-title">Blender settings</h2>
         </div>
         <div className="flex flex-row justify-content-space-between items-center">
           <div className="flex flex-row items-center">

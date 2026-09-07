@@ -16,7 +16,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
+from freemocap.core.pipeline.posthoc.mocap_pipeline import MocapPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.posthoc.sync_job import SyncJob
 from freemocap.core.pipeline.posthoc.sync_job_manager import SyncJobManager
@@ -131,7 +131,7 @@ class FreemocapApplication:
             self,
             recording_info: RecordingInfo,
             mocap_config: PosthocMocapPipelineConfig,
-    ) -> PosthocPipeline:
+    ) -> MocapPipeline:
         pipeline = self.posthoc_pipeline_manager.create_mocap_pipeline(
             recording_info=recording_info,
             mocap_config=mocap_config,

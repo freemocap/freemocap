@@ -96,7 +96,7 @@ def publication(tmp_path: Path) -> ObservationRecordingRequest:
             ReconstructionRecording(
                 sensor_group="mocap",
                 reference=spatial.definition.reference,
-                definition=ReconstructionSourceDefinition.from_bundle(bundle),
+                definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=bundle.detector_type),
                 result=result,
             ),
         ),

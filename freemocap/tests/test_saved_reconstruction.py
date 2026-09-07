@@ -13,6 +13,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_board_defin
 )
 
 from freemocap.core.recording.sample_encoding.channel_series import SeriesSampling
+from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionSourceDefinition
 from freemocap.core.recording.result_processing.input_signatures import (
     definition_signature,
     point_array_signature,
@@ -74,7 +75,9 @@ def saved_request(tmp_path: Path) -> SavedReconstructionRequest:
                     bundle.detector_type: Source(
                         kind=SourceKind.TRACKER, definition={}
                     ),
-                    bundle.model_id: Source(kind=SourceKind.INSTANCE, definition={}),
+                    bundle.model_id: ReconstructionSourceDefinition.from_bundle(
+                        bundle, tracker_source=bundle.detector_type,
+                    ).to_source(),
                 },
                 reference_frames={reference.name: reference.model_dump(mode="json")},
                 models={bundle.model_id: RecordedModel.from_bundle(bundle)},

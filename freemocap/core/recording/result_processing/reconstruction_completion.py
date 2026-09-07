@@ -29,7 +29,7 @@ def reconstruction_checkpoints(
         candidates = tuple(
             series
             for series in request.spatial_series
-            if series.definition.source == model.detector_type
+            if series.definition.source == item.definition.tracker
             and series.definition.reference == item.reference
         )
         if len(candidates) != 1:

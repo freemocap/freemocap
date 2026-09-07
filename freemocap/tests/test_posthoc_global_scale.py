@@ -113,7 +113,7 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
     publication = ReconstructionRecording(
         sensor_group="mocap",
         reference=SpatialReference.for_camera_count(2),
-        definition=ReconstructionSourceDefinition.from_bundle(bundle),
+        definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=bundle.detector_type),
         result=expected,
     )
     structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")

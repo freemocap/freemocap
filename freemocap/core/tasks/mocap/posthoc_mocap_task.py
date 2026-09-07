@@ -1,17 +1,11 @@
-"""
-run_mocap_task: posthoc motion capture processing.
-
-Receives collected mediapipe observations, builds skeleton via triangulation.
-
-Called by PosthocAggregationNode after all frames are collected.
-Pre-bind task_config via functools.partial when creating the pipeline.
-"""
+"""Triangulate recording observations and reconstruct the selected tracked models."""
 from __future__ import annotations
 
 from freemocap.core.recording.result_processing.observation_inputs import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
+from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import logging
 import shutil
@@ -24,7 +18,7 @@ from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineCon
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
 from skellycam.core.recorders.videos.recording_info import RecordingInfo  # noqa: TC002
 
-from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
+from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.reconstruction.posthoc_reconstruction import (
     reconstruct_skeletons_for_recording,
@@ -43,23 +37,24 @@ from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # 
 logger = logging.getLogger(__name__)
 
 
-def run_posthoc_mocap_aggregator_task(
+def run_posthoc_mocap_task(
         *,
         frame_observations: list[dict[CameraIdString, Observation]],
         recording_info: RecordingInfo,
         video_metadata: dict[CameraIdString, VideoMetadata],
         task_config: PosthocMocapPipelineConfig,
+        selected_board: CharucoBoardDefinition | None,
         reporter: TaskProgressReporter | None = None,
 ) -> None:
     """
-    Run posthoc motion capture on collected skeleton observations.
+    Reconstruct the selected models from collected recording observations.
 
     Args:
         frame_observations: Per-frame dict of {camera_id: Observation}.
         recording_info: Recording metadata.
         video_metadata: Per-camera metadata.
         reporter: Progress reporter for named stage updates.
-        task_config: Mocap-specific config (pre-bound via partial).
+        task_config: Resolved Mocap detector configuration.
     """
     _reporter = reporter or TaskProgressReporter.noop()
     camera_ids = list(video_metadata.keys())
@@ -108,8 +103,8 @@ def run_posthoc_mocap_aggregator_task(
             logger.info(f"Calibration file already in recording folder, skipping copy: {recording_calibration_copy}")
 
     # ---- Triangulate + reconstruct on the shared realtime core ----
-    _reporter.report(stage=MocapStage.TRIANGULATING, detail="Triangulating skeleton")
-    logger.info("Starting skeleton triangulation...")
+    _reporter.report(stage=MocapStage.TRIANGULATING, detail="Triangulating observations")
+    logger.info("Starting observation triangulation...")
 
 
     timing = PosthocTimingReport()
@@ -123,9 +118,11 @@ def run_posthoc_mocap_aggregator_task(
         timing=timing,
     )
 
-    bundle = build_standard_human_bundle(detector_type=task_config.detector_type)
+    bundles = (build_standard_human_bundle(detector_type=task_config.detector_type),)
+    if selected_board is not None:
+        bundles += (build_charuco_board_bundle(board=selected_board),)
     reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
-        bundles=(bundle,),
+        bundles=bundles,
         keypoint_names=keypoint_names,
         keypoints_3d=keypoints_blender,
         compute_center_of_mass=True,
@@ -133,22 +130,22 @@ def run_posthoc_mocap_aggregator_task(
     ))
 
     publication = ObservationRecordingRequest(
-        models=(RecordedModel.from_bundle(bundle),),
-        reconstructions=(ReconstructionRecording(
+        models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
+        reconstructions=tuple(ReconstructionRecording(
             sensor_group="mocap", reference=SpatialReference.for_camera_count(len(camera_ids)),
-            definition=ReconstructionSourceDefinition.from_bundle(bundle),
+            definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=str(PosthocPipelineType.MOCAP)),
             result=reconstructions[bundle.model_id],
-        ),),
+        ) for bundle in bundles),
         camera_geometry=tuple(calibration.get_camera(camera) for camera in camera_ids) if calibration is not None else (),
         recording=recording_info,
         spatial_series=(SpatialPointSeries(
-            definition=PointSeriesDefinition(sensor_group="mocap", source=task_config.detector_type,
+            definition=PointSeriesDefinition(sensor_group="mocap", source=str(PosthocPipelineType.MOCAP),
                 names=keypoint_names, reference=SpatialReference.for_camera_count(len(camera_ids))),
             values=keypoints_blender,
         ),),
         group=ObservationGroup(name="mocap", frames=frame_observations, videos=video_metadata),
         tracker=TrackerRecordingDefinition(
-            name=task_config.detector_type,
+            name=str(PosthocPipelineType.MOCAP),
             configuration=task_config.model_dump(mode="json"),
             point_names=tuple(dict.fromkeys(
                 name for frame in frame_observations for observation in frame.values()

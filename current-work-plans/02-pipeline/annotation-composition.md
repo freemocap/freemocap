@@ -106,3 +106,115 @@ checkbox and board settings through the request; prevent board-only cached obser
 bypassing body detection; publish/reconstruct both selected model bundles instead of assuming
 one human model; verify composed annotations and no-board recordings in the real app. Do not
 resolve AUTO independently per camera or run the calibration task implicitly.
+
+### Consumer prerequisite and worker coordination review
+
+Verified FreeMoCap's installed Git dependency exposes CharucoBoardSelector.search_frame.
+Board-cache reuse now requires one independent Charuco stage with no additional detectors,
+children, or object detector. Cached stage structure must match the requested structure. A
+board-only cache cannot substitute for mixed body/board processing. Four focused tests pass,
+including sibling/nested/mixed-detector configurations, annotation composition, and video encoding.
+
+The default-on checkbox is not yet wired. Current PosthocPipeline creates independent video
+workers and binds the reconstruction configuration before detection. Recording-wide AUTO cannot
+be added by letting each worker independently select a board: detector definitions and the
+reconstructed board could disagree. The selector primitive alone does not solve coordination.
+
+Recommended next design checkpoint: use the existing Tracker.process_batch capability at a
+synchronized camera-group processing boundary. One owner supplies sequential multiframes to
+the selector, locks the board once, and configures the matching board stage/model while human
+processing continues every frame. Review worker ownership, cancellation, bounded image memory,
+annotation composition, and propagation of the resolved definition to reconstruction before
+changing that boundary. Reuse existing tracker batching and annotation machinery; do not build
+another detector implementation or independent camera-selection protocol. Calibration remains a
+separate task. No worker-layout change has been implemented at this checkpoint.
+
+### Shared detection implementation checkpoint
+
+`freemocap/core/pipeline/posthoc/mocap_detection.py` implements the recording-group detection
+iterator. One owner reads each camera sequentially through SkellyCam's reader and calls the
+installed SkellyTracker batch API. One selector searches the group with capped backoff; the
+first match configures the existing Charuco tracker for every camera, preserving the user's
+square length. Body processing runs every frame. Explicit layout and disabled board tracking
+bypass AUTO; no board is a normal outcome. ExitStack releases readers and tracker sessions on
+completion, iterator close, cancellation, and errors. Detector implementations remain in
+SkellyTracker. The iterator retains no recording-wide image cache.
+
+ObservationBuffer now aligns measurements to an explicit stage-qualified name axis. Batch
+triangulation obtains that axis from all cameras and all frames, not frame zero. Absent or
+invisible measurements stay NaN; mismatched camera frame sequences fail. This supports a board
+first detected later without inventing detections for earlier frames.
+
+Validation: seven recording-group tests use encoded video and actual Charuco detection (body
+inference is substituted to avoid model downloads), covering late selection, shared geometry,
+no board, disabled/explicit modes, cancellation, iterator close, and detector failure. Five
+alignment tests cover late/reordered points, cross-camera name alignment, missing schema names,
+frame mismatch, and actual single-camera planar reconstruction. Six calibration preparation
+tests and four cache/annotation/encoding tests also pass.
+
+The live Mocap worker and UI still use their existing route. Next: integrate this iterator into
+the managed Mocap worker lifecycle; reuse the annotation writer rather than duplicating its
+encoding/publication logic; pass the resolved board into shared multi-model reconstruction and
+Parquet publication; wire the default-on checkbox and shared board settings through the API.
+Keep calibration on its separate pipeline. Real-app QA follows this integration, including
+body+board overlays, no-board success, and pipeline-scoped cancellation/failure.
+
+### App-testing handoff
+
+The default-on **Detect and reconstruct Charuco board** control is wired through Mocap's
+persisted settings and both recording/processing request paths. It shares the existing board
+layout and user-entered square length settings. Board mode is a shared tracking enum in Python,
+not a calibration-task dependency.
+
+MocapPipeline now owns one managed worker for synchronized batch detection, annotation, and
+the existing reconstruction/publication task. It uses the installed SkellyTracker batch API;
+calibration retains its separate task and camera workers. Terminal progress is retained and
+worker failure signals only the owning pipeline. Detection progress describes synchronized
+multiframes. Readers advance incrementally and verify the declared end of each video.
+
+Both tasks use AnnotationVideoOutput and build_observation_annotator. Encoding, explicit input
+selection, temporary-file cleanup, and publication have one implementation. The normal Mocap
+workflow regenerates from raw pixels with all selected overlays. Shared reconstruction receives
+both human and selected board bundles; no detected board produces a human-only result. Physical
+board dimensions remain user-supplied.
+
+Mixed detection is described by a Mocap tracker source in Parquet. Reconstruction sources
+explicitly identify that input source; detector type describes the model rather than implicitly
+identifying its input stream. Completion validation and saved reconstruction use this explicit
+association. This was verified by publishing and reloading the board reconstruction.
+
+Validation: 29 focused unittest cases pass, including encoded-video detection, optional board
+publication, saved reconstruction, cancellation preserving previous annotations, and a real
+Windows-spawned worker's scoped failure. TypeScript type checking passes. Additional manual
+smoke runs used cached real RTMPose/YOLOX models: a complete single-camera recording through
+annotations and Parquet, and multicamera batch detection. No dependency installations or Git
+mutations were performed. Existing pytest-based tests are not included in this count because
+pytest is not installed in the FreeMoCap environment.
+
+Real-app checks:
+1. Restart normally. Open a recording in Playback, then Mocap processing / Detector Settings.
+   Confirm the board control defaults on. Choose AUTO and enter the measured square length.
+2. Process synchronized videos containing a person and board with the appropriate calibration
+   selected. Verify completion and fresh playback annotations with both overlays.
+3. Disable the board control and rerun: body processing remains active and regenerated
+   annotations contain no board overlay. Re-enable it and process footage without a board;
+   absence must not fail Mocap.
+4. Cancel during detection and verify the app/realtime pipeline stays responsive. A subsequent
+   rerun must complete. Also verify the separate calibration workflow still completes.
+
+Separate runtime follow-up: installed ONNX Runtime advertises TensorRT but cannot load
+`nvinfer_10.dll` in the test shell; its existing provider fallback selects CUDA and completes
+inference. SkellyTracker's provider selection/reporting owns that issue. No environment or
+provider-policy workaround was added here. App testing should distinguish this diagnostic from
+an actual Mocap pipeline failure.
+
+### App-test follow-up: launch errors and terminal progress
+
+- Corrected the application Mocap factory return type so runtime validation accepts the launched MocapPipeline.
+- Failed worker startup cleans up the pipeline; Mocap worker exit without a terminal outcome becomes FAILED.
+- Operation errors wrap in an in-flow banner rather than overflowing a fixed toast.
+- SkellyCam source correction: FullTimestamp.__repr__ returns its string, allowing diagnostic formatting. Requires the normal commit/push/dependency-update workflow; installed dependencies were not modified.
+- Validation: Mocap integration tests, application runtime-boundary test, unexpected-exit test, and UI TypeScript check.
+- App QA: restart backend normally, launch Mocap, verify launch succeeds; trigger a detector/input failure and confirm terminal error, cleared running progress, and unrelated realtime/calibration availability.
+
+Architecture correction: the single-worker Mocap execution path is slated for replacement. See [Mocap multiprocessing alignment](mocap-multiprocessing-alignment.md) for the audited topology, proposed reuse boundaries, and review checkpoints. Further app-test readiness depends on that correction.

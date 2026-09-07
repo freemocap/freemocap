@@ -6,7 +6,7 @@ from skellytracker.core.data_primitives.observation import Observation, StageObs
 from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition, CharucoDetectorConfig
 
-from freemocap.core.pipeline.posthoc.video_node import _build_annotator
+from freemocap.core.pipeline.posthoc.annotation_style import build_observation_annotator
 
 
 class PosthocAnnotationCompositionTests(unittest.TestCase):
@@ -16,7 +16,7 @@ class PosthocAnnotationCompositionTests(unittest.TestCase):
             with self.subTest(nested=nested):
                 board_config = DetectionStageConfig(name="calibration_board", keypoint_detectors=[CharucoDetectorConfig(board=board)])
                 body_config = DetectionStageConfig(name="body", children=[board_config] if nested else [])
-                renderer = _build_annotator(TrackerConfig(stages=[body_config] if nested else [body_config, board_config]))
+                renderer = build_observation_annotator(TrackerConfig(stages=[body_config] if nested else [body_config, board_config]))
                 board_observation = StageObservation(name="calibration_board", keypoints=Keypoints(
                     names=("CharucoCorner-0",), xyz=np.array([[180.0, 160.0, 0.0]]), visibility=np.ones(1),
                 ))

@@ -23,11 +23,19 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 )
 
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tracking.board_selection import CharucoBoardMode
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 
 
 class PosthocMocapPipelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
+    charuco_tracking_enabled: bool = Field(default=True, alias="charucoTrackingEnabled")
+    board_mode: CharucoBoardMode = Field(default=CharucoBoardMode.AUTO, alias="boardMode")
+    charuco_board: CharucoBoardDefinition = Field(
+        default_factory=CharucoBoardDefinition.create_letter_size_5x3, alias="charucoBoard",
+    )
 
     detector_type: Literal["rtmpose", "mediapipe"] = Field(
         default="rtmpose",

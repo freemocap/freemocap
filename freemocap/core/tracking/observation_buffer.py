@@ -23,13 +23,29 @@ class ObservationBuffer:
     def add_observation(self, observation: Observation) -> None:
         self.observations.append(observation)
 
-    def to_keypoints_array(self) -> NDArray[np.float64]:
-        """Return (frames, keypoints, 3) array by merging all stages per frame.
+    @property
+    def keypoint_names(self) -> tuple[str, ...]:
+        """Stage-qualified names encountered anywhere in the recording, in first-seen order."""
+        return tuple(dict.fromkeys(
+            name for observation in self.observations for name in observation.to_keypoints().names
+        ))
 
-        Equivalent to the old BaseRecorder.to_array which called
-        observation.to_2d_array() (which itself returned full xyz).
-        """
-        return np.stack([obs.to_keypoints().xyz for obs in self.observations]).astype(np.float64)
+    def to_keypoints_array(self, *, names: tuple[str, ...]) -> NDArray[np.float64]:
+        """Align each observation to a shared name axis; absent measurements remain NaN."""
+        indices = {name: index for index, name in enumerate(names)}
+        if len(indices) != len(names):
+            raise ValueError("The recording keypoint axis contains duplicate names")
+        values = np.full((len(self.observations), len(names), 3), np.nan, dtype=np.float64)
+        for frame_index, observation in enumerate(self.observations):
+            points = observation.to_keypoints()
+            if len(set(points.names)) != len(points.names):
+                raise ValueError(f"Duplicate keypoint names in frame {observation.frame_number}")
+            for point_index, name in enumerate(points.names):
+                if name not in indices:
+                    raise ValueError(f"Keypoint {name} is missing from the recording keypoint axis")
+                if np.isfinite(points.visibility[point_index]) and points.visibility[point_index] > 0.0:
+                    values[frame_index, indices[name]] = points.xyz[point_index]
+        return values
 
     def to_stage_array(self, stage_name: str, n_points: int | None = None) -> NDArray[np.float64]:
         """Return (frames, n_points, 3) array from a single named stage.

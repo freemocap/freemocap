@@ -14,7 +14,8 @@ from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, Pos
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
-from freemocap.core.tasks.calibration.calibration_task_config import CalibrationBoardMode, PosthocCalibrationPipelineConfig
+from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.core.tracking.board_selection import CharucoBoardMode
 from freemocap.core.tasks.calibration.posthoc_calibration_task import run_posthoc_calibration_task
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class CalibrationPipeline:
     def _prepare_calibration(self) -> None:
         try:
             config = self.config
-            if config.board_mode == CalibrationBoardMode.AUTO:
+            if config.board_mode == CharucoBoardMode.AUTO:
                 selector = CharucoBoardSelector()
                 group = VideoGroupHelper.from_recording_path(
                     recording_path=str(self.recording_info.full_recording_path),
@@ -85,7 +86,7 @@ class CalibrationPipeline:
                 if selected is None:
                     raise CharucoBoardSelectionError("AUTO could not detect a supported 5x3 or 7x5 calibration board in the recording.")
                 selected = selected.model_copy(update={"square_length_mm": config.charuco_board.square_length_mm})
-                config = config.model_copy(update={"charuco_board": selected, "board_mode": CalibrationBoardMode.EXPLICIT})
+                config = config.model_copy(update={"charuco_board": selected, "board_mode": CharucoBoardMode.EXPLICIT})
                 logger.info("AUTO selected %sx%s calibration board; user-configured square length: %s mm", selected.squares_x, selected.squares_y, selected.square_length_mm)
             if not self.ipc.should_continue:
                 return

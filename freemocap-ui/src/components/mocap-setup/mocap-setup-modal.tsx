@@ -181,7 +181,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             <div
               ref={panel1Ref}
               data-panel="panel1"
-              className="bg-secondary p-2 br-1"
+              className="mocap-settings-section"
             >
               <ProcessingDirectorySettings open={true} onClose={() => {}} />
             </div>
@@ -190,8 +190,9 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             <div
               ref={panel2Ref}
               data-panel="panel2"
-              className="bg-secondary p-2 br-1"
+              className="mocap-settings-section"
             >
+              <h2 className="mocap-settings-title">Calibration</h2>
               <CalibrationModule
                 appModeOverride={mode === "playback" ? "playback" : "streaming"}
               />
@@ -202,7 +203,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             <div
               ref={panel3Ref}
               data-panel="panel3"
-              className="bg-secondary p-2 br-1"
+              className="mocap-settings-section"
             >
               <MOCAPDetectorSettings open={true} onClose={() => {}} />
             </div>
@@ -211,7 +212,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             <div
               ref={panel4Ref}
               data-panel="panel4"
-              className="bg-secondary p-2 br-1"
+              className="mocap-settings-section"
             >
               <TriangulationSettings />
             </div>
@@ -220,7 +221,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             <div
               ref={panel5Ref}
               data-panel="panel5"
-              className="bg-secondary p-2 br-1"
+              className="mocap-settings-section"
             >
               <PosthocFilterSettings />
             </div>
@@ -229,7 +230,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             <div
               ref={panel6Ref}
               data-panel="panel6"
-              className="bg-secondary p-2 br-1"
+              className="mocap-settings-section"
             >
               <MOCAPBlenderSettings open={true} onClose={() => {}} />
             </div>

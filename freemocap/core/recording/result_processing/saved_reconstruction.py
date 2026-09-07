@@ -24,6 +24,7 @@ from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFi
 from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
+from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionSourceDefinition
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
@@ -85,7 +86,8 @@ def read_saved_reconstruction(
             raise ValueError("Recording identity does not match its directory")
         run = metadata.runs[request.run_id]
         model = run.models[request.model_id]
-        if model.detector_type != request.point_source:
+        reconstruction_source = ReconstructionSourceDefinition.model_validate(run.sources[request.model_id].definition)
+        if reconstruction_source.model_id != request.model_id or reconstruction_source.tracker != request.point_source:
             raise ValueError(
                 "Selected point source does not match the saved model's tracker"
             )

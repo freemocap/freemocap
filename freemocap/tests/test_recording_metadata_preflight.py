@@ -1,3 +1,4 @@
+from freemocap.core.pipeline.inference_service import InferenceService
 """Invalid saved output must fail before mocap workers are created."""
 
 from pathlib import Path
@@ -25,7 +26,7 @@ def test_invalid_metadata_blocks_workers_and_reports_file(tmp_path: Path) -> Non
     schema = SAMPLE_SCHEMA.with_metadata({DESCRIPTOR_KEY: b'{}'})
     pq.write_table(pa.Table.from_batches([], schema=schema), where=path)
     original = path.read_bytes()
-    manager = PosthocPipelineManager(global_kill_flag=Mock(spec=Synchronized), worker_registry=Mock(spec=WorkerRegistry))
+    manager = PosthocPipelineManager(inference_service=Mock(spec=InferenceService), global_kill_flag=Mock(spec=Synchronized), worker_registry=Mock(spec=WorkerRegistry))
     with patch("freemocap.core.pipeline.posthoc.posthoc_pipeline_manager.PosthocPipeline.create") as create:
         with pytest.raises(ValueError, match="Recording metadata is incompatible or invalid"):
             manager.create_mocap_pipeline(

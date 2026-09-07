@@ -13,6 +13,8 @@ Endpoints:
   GET  /playback/{recording_id}/timestamps               — timestamps for all videos
   GET  /playback/{recording_id}/videos/{video_id}/timestamps — timestamps for one video
 """
+import json
+from urllib.parse import quote, urlencode
 import csv
 from enum import StrEnum
 import logging
@@ -47,6 +49,8 @@ from freemocap.system.default_paths import (
 )
 
 _VIEWER_HTML = Path(__file__).parent.parent.parent.parent / "core" / "viz" / "parquet_viewer.html"
+
+from freemocap.api.http.playback.resource_loading import RecordingResource, ResourceFailure, resource_boundary
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +157,7 @@ class RecordingBundle(BaseModel):
     """All playback metadata for a recording in a single response."""
     recording_id: str
     manifest: PlaybackManifest | None
+    errors: list[ResourceFailure]
     media: tuple[PlaybackMedia, ...]
     recording_fps: Optional[float] = None
     total_frames: Optional[int] = None
@@ -160,8 +165,8 @@ class RecordingBundle(BaseModel):
     videos: VideoSourcesResponse
     timestamps: dict = {}
     calibration: Optional[dict[str, Any]] = None
-    tracker_schema: dict[str, Any]
-    status_summary: RecordingStatusSummary
+    tracker_schema: dict[str, Any] | None
+    status_summary: RecordingStatusSummary | None
 
 
 class RecordingListEntry(BaseModel):
@@ -991,177 +996,102 @@ def get_recording_bundle(
         description="Override the default recordings directory",
     ),
 ) -> RecordingBundle:
-    """Return videos, timestamps, calibration, tracker schema, and status
-    in one response. Individual resources are best-effort — calibration
-    returns null if no TOML is present, tracker schema returns a fallback
-    if no schema file exists. Only path resolution can produce a 404.
-    """
-    import json
-
+    """Load independent resources and return explicit errors beside viable data."""
     recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
+    errors: list[ResourceFailure] = []
+    sources: dict[str, VideoSourceInfo] = {}
+    media: list[PlaybackMedia] = []
+    for source, resource in ((PlaybackVideoSource.SYNCHRONIZED, RecordingResource.RAW_VIDEO),
+                             (PlaybackVideoSource.ANNOTATED, RecordingResource.ANNOTATED_VIDEO)):
+        sources[source] = VideoSourceInfo(available=False, valid=False, video_count=0)
+        folder = recording_path / (ANNOTATED_VIDEOS_FOLDER_NAME if source == PlaybackVideoSource.ANNOTATED else SYNCHRONIZED_VIDEOS_FOLDER_NAME)
+        if source == PlaybackVideoSource.SYNCHRONIZED and not folder.is_dir():
+            folder = recording_path
+        paths: list[Path] = []
+        with resource_boundary(resource=resource, item=str(folder), errors=errors):
+            if folder.is_dir():
+                paths = sorted(path for path in folder.iterdir() if path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS)
+        videos: list[VideoInfo] = []
+        frame_counts: dict[str, int] = {}
+        for path in paths:
+            with resource_boundary(resource=resource, item=path.name, errors=errors):
+                metadata = VideoFileMetadata.from_path(path=path)
+                parameters = {"source": source} if folder != recording_path else {}
+                if recording_parent_directory:
+                    parameters["recording_parent_directory"] = recording_parent_directory
+                videos.append(VideoInfo(video_id=path.stem, filename=path.name, size_bytes=path.stat().st_size,
+                    stream_url=f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.stem, safe='')}?{urlencode(parameters)}"))
+                frame_counts[path.name] = metadata.reported_frame_count
+        valid = len(videos) == len(paths) and len(set(frame_counts.values())) == 1
+        if videos and not valid:
+            errors.append(ResourceFailure(resource=resource, item=str(folder),
+                message=f"Synchronized group is incomplete or has unequal frame counts: {frame_counts}"))
+        sources[source] = VideoSourceInfo(available=bool(videos), valid=valid, video_count=len(videos), videos=videos)
+        for video_info in sources[source].videos:
+            with resource_boundary(resource=resource, item=video_info.filename, errors=errors):
+                video = VideoHelper.from_video_path(folder / video_info.filename)
+                try:
+                    timing = None
+                    with resource_boundary(resource=RecordingResource.TIMING, item=video_info.filename, errors=errors):
+                        timing = resolve_camera_timing(
+                            path=camera_timing_path(recording_folder=recording_path, camera_id=video.metadata.camera_id),
+                            frame_count=video.metadata.frame_count, fps=video.metadata.fps, offset_s=0.0,
+                        )
+                    timestamps = timing.timestamps_s if timing is not None else tuple(
+                        frame / video.metadata.fps for frame in range(video.metadata.frame_count))
+                    media.append(PlaybackMedia(video_filename=video_info.filename, nominal_fps=video.metadata.fps,
+                        timeline=PlaybackTimeline(sensor_group="cameras", source=video.metadata.camera_id,
+                            frame_numbers=tuple(range(video.metadata.frame_count)), timestamps_s=timestamps)))
+                finally:
+                    video.close()
 
-    # --- videos ---
-    annotated = _validate_video_source(recording_path, "annotated", recording_id, recording_parent_directory)
-    synchronized = _validate_video_source(recording_path, "synchronized", recording_id, recording_parent_directory)
+    manifest = None
+    with resource_boundary(resource=RecordingResource.RECONSTRUCTION, item=recording_id, errors=errors):
+        structure = RecordingStructure(base_directory=recording_path.parent, recording_name=recording_path.name)
+        if structure.data_parquet_path.is_file():
+            manifest = playback_manifest(structure.data_parquet_path)
+    if manifest is not None:
+        selected = next(run for run in manifest.runs if run.run_id == manifest.selected_run_id)
+        saved_media = {item.video_filename: item for item in selected.media}
+        media = [saved_media.get(item.video_filename, item) for item in media]
 
-    if not annotated.available and not synchronized.available:
-        try:
-            video_folder = _find_video_folder(recording_path)
-            videos_dict = _discover_videos(video_folder)
-            if videos_dict:
-                parent_directory_suffix = (
-                    f"?recording_parent_directory={recording_parent_directory}"
-                    if recording_parent_directory
-                    else ""
-                )
-                video_list = [
-                    VideoInfo(
-                        video_id=vid_id,
-                        filename=path.name,
-                        size_bytes=path.stat().st_size,
-                        stream_url=f"/freemocap/playback/{recording_id}/videos/{vid_id}{parent_directory_suffix}",
-                    )
-                    for vid_id, path in videos_dict.items()
-                ]
-                root_source = VideoSourceInfo(
-                    available=True,
-                    valid=False,
-                    video_count=len(video_list),
-                    videos=video_list,
-                )
-                videos_response = VideoSourcesResponse(
-                    preferred_source="synchronized",
-                    sources={
-                        "annotated": VideoSourceInfo(available=False, valid=False, video_count=0),
-                        "synchronized": root_source,
-                    },
-                )
-            else:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No video files found in {recording_path}",
-                )
-        except FileNotFoundError:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No video files found in {recording_path}",
-            )
-    else:
-        preferred = preferred_video_source(synchronized=synchronized, annotated=annotated)
-        videos_response = VideoSourcesResponse(
-            preferred_source=preferred,
-            sources={
-                "annotated": annotated,
-                "synchronized": synchronized,
-            },
-        )
+    originals = {item.video_filename: item for item in media
+                 if any(video.filename == item.video_filename for video in sources[PlaybackVideoSource.SYNCHRONIZED].videos)}
+    for index, item in enumerate(media):
+        filename = Path(item.video_filename)
+        original = originals.get(f"{filename.stem.removesuffix('_annotated')}{filename.suffix}")
+        if original is not None and original is not item and len(original.timeline.frame_numbers) == len(item.timeline.frame_numbers):
+            media[index] = item.model_copy(update={"timeline": original.timeline, "nominal_fps": original.nominal_fps})
 
-    # --- timestamps ---
-    timestamps_result: dict = {}
-    stats_video_folder = None
-    try:
-        stats_video_folder = _find_video_folder(recording_path)
-        all_timestamps: dict[str, list[float]] = {}
-        warnings: list[str] = []
-        for vid_id in _discover_videos(stats_video_folder):
-            ts_values = _read_timestamp_values_for_video(recording_path, video_id=vid_id)
-            if ts_values is not None:
-                all_timestamps[vid_id] = ts_values
-            else:
-                warnings.append(f"No timestamp data found for video '{vid_id}'")
-        timestamps_result = {"timestamps": all_timestamps, "warnings": warnings}
-    except FileNotFoundError:
-        pass
-
-    # --- calibration ---
-    calibration_result: dict[str, Any] | None = None
-    toml_path = _find_calibration_toml(recording_path)
-    if toml_path is not None:
-        try:
-            raw = toml_path.read_text(encoding="utf-8")
-            parsed = tomllib.loads(raw)
-            mtime_ms = toml_path.stat().st_mtime * 1000
-            cameras = []
-            for key, val in parsed.items():
-                if key == "metadata" or not isinstance(val, dict):
-                    continue
-                if "world_position" not in val or "world_orientation" not in val:
-                    continue
-                cameras.append({
-                    "id": key,
-                    "name": str(val.get("name", key)),
-                    "size": val.get("size"),
-                    "matrix": val.get("matrix"),
-                    "distortions": val.get("distortions"),
-                    "rotation": val.get("rotation"),
-                    "translation": val.get("translation"),
-                    "world_orientation": val["world_orientation"],
-                    "world_position": val["world_position"],
-                })
-            calibration_result = {
-                "path": str(toml_path),
-                "mtimeMs": mtime_ms,
-                "cameras": cameras,
-                "metadata": parsed.get("metadata", None),
-            }
-        except Exception:
-            logger.warning(f"Failed to parse calibration TOML for '{recording_id}'", exc_info=True)
-
-    # --- tracker schema ---
-    schema_path = recording_path / "tracker_schema.json"
-    if schema_path.is_file():
-        try:
-            tracker_schema_result = json.loads(schema_path.read_text(encoding="utf-8"))
-        except Exception:
-            tracker_schema_result = {
-                "name": "fallback",
-                "tracker_type": "unknown",
-                "tracked_points": [],
-                "connections": [],
-                "landmark_schema": "generic",
-            }
-    else:
-        tracker_schema_result = {
-            "name": "fallback",
-            "tracker_type": "unknown",
-            "tracked_points": [],
-            "connections": [],
-            "landmark_schema": "generic",
-        }
-
-    # --- recording stats ---
-    stats = {}
-    if stats_video_folder is not None:
-        try:
-            stats = _get_recording_stats(recording_path, stats_video_folder)
-        except Exception:
-            pass
-
-    # --- status summary ---
-    status = compute_recording_status(recording_path)
-    status_summary = RecordingStatusSummary(
-        blender_export_ready=status.blender_export_ready,
-        has_blend_file=status.has_blend_file,
-        has_annotated_videos=status.has_annotated_videos,
-        has_calibration_toml=status.has_calibration_toml,
-        stages_complete=sum(1 for s in status.stages if s.complete),
-        stages_total=len(status.stages),
-    )
-
-    manifest = get_playback_manifest(recording_id=recording_id, recording_parent_directory=recording_parent_directory)
-    media = read_unprocessed_media(recording_id=recording_id, recording_parent_directory=recording_parent_directory) if manifest is None else next(
-        run.media for run in manifest.runs if run.run_id == manifest.selected_run_id
-    )
+    calibration = None
+    with resource_boundary(resource=RecordingResource.CALIBRATION, item=recording_id, errors=errors):
+        if _find_calibration_toml(recording_path) is not None:
+            calibration = get_recording_calibration(recording_id=recording_id, recording_parent_directory=recording_parent_directory)
+    tracker_schema = None
+    with resource_boundary(resource=RecordingResource.TRACKER_SCHEMA, item=recording_id, errors=errors):
+        schema_path = recording_path / "tracker_schema.json"
+        if schema_path.is_file():
+            tracker_schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            if not isinstance(tracker_schema, dict):
+                tracker_schema = None
+                raise ValueError("Tracker schema must be an object")
+    stats: dict[str, Any] = {}
+    with resource_boundary(resource=RecordingResource.STATISTICS, item=recording_id, errors=errors):
+        if media:
+            stats = _get_recording_stats(recording_path, _find_video_folder(recording_path))
+    status_summary = None
+    with resource_boundary(resource=RecordingResource.STATUS, item=recording_id, errors=errors):
+        status = compute_recording_status(recording_path)
+        status_summary = RecordingStatusSummary(
+            blender_export_ready=status.blender_export_ready, has_blend_file=status.has_blend_file,
+            has_annotated_videos=status.has_annotated_videos, has_calibration_toml=status.has_calibration_toml,
+            stages_complete=sum(1 for stage in status.stages if stage.complete), stages_total=len(status.stages))
+    preferred = preferred_video_source(synchronized=sources[PlaybackVideoSource.SYNCHRONIZED],
+        annotated=sources[PlaybackVideoSource.ANNOTATED]) if any(source.available for source in sources.values()) else PlaybackVideoSource.SYNCHRONIZED
     return RecordingBundle(
-        manifest=manifest,
-        media=media,
-        recording_id=recording_id,
-        recording_fps=stats.get("fps"),
-        total_frames=stats.get("total_frames"),
-        duration_seconds=stats.get("duration_seconds"),
-        videos=videos_response,
-        timestamps=timestamps_result,
-        calibration=calibration_result,
-        tracker_schema=tracker_schema_result,
-        status_summary=status_summary,
+        recording_id=recording_id, manifest=manifest, errors=errors, media=tuple(media),
+        videos=VideoSourcesResponse(preferred_source=preferred, sources=sources),
+        recording_fps=stats.get("fps"), total_frames=stats.get("total_frames"), duration_seconds=stats.get("duration_seconds"),
+        timestamps={"timestamps": {item.timeline.source: item.timeline.timestamps_s for item in media}},
+        calibration=calibration, tracker_schema=tracker_schema, status_summary=status_summary,
     )

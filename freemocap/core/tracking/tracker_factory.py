@@ -9,6 +9,11 @@ directly, so the registry-side-effect imports are guaranteed to have run.
 
 from __future__ import annotations
 
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import MediapipePoseDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.face.mediapipe_face_detector import MediapipeFaceDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.hands.mediapipe_hand_detector import MediapipeHandDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import MediapipePoseModelComplexity
+
 import logging
 from contextlib import ExitStack
 from pathlib import Path
@@ -35,6 +40,7 @@ from skellytracker.core.sessions.mediapipe_session import (
     MediaPipeSession,
     MediaPipeSessionConfig,
 )
+from skellytracker.core.sessions.shared_sessions import SessionRequest
 from skellytracker.core.sessions.session import Session  # noqa: TC002
 from skellytracker.core.sessions.onnx_model_spec import OnnxModelSpec  # noqa: TC002
 from skellytracker.core.detectors.object_detectors.yolox import (
@@ -61,6 +67,22 @@ def build_configured_tracker(*, config: TrackerConfig, batch_size: int) -> Track
     The returned tracker owns the sessions and closes them through Tracker.close.
     Construction failures release sessions before propagating the error.
     """
+    requests = tracker_session_requests(config=config, batch_size=batch_size, execution_provider=None)
+    with ExitStack() as cleanup:
+        sessions: dict[str, Session] = {}
+        for request in requests:
+            session = request.session_type.create(request.config)
+            sessions[request.config.backend] = session
+            cleanup.callback(session.close)
+        tracker = Tracker.create(config=config, sessions=sessions)
+        cleanup.pop_all()
+    return tracker
+
+
+def tracker_session_requests(
+    *, config: TrackerConfig, batch_size: int, execution_provider: ExecutionProviderName | None,
+) -> tuple[SessionRequest, ...]:
+    """Describe compatible model resources without allocating sessions."""
     if batch_size < 1:
         raise ValueError("batch_size must be positive")
     backends: set[str] = set()
@@ -86,24 +108,18 @@ def build_configured_tracker(*, config: TrackerConfig, batch_size: int) -> Track
                 raise ValueError(f"Unsupported ONNX detector: {detector.detector_type}")
     if not backends or backends - {"cpu", "mediapipe", "onnx"}:
         raise ValueError(f"Unsupported tracker backends: {backends}")
-    sessions: dict[str, Session] = {}
-    with ExitStack() as cleanup:
-        for backend in sorted(backends):
-            if backend == "cpu":
-                session = CpuSession.create(CpuSessionConfig())
-            elif backend == "mediapipe":
-                session = MediaPipeSession.create(MediaPipeSessionConfig())
-            else:
-                session = OnnxSession.create(
-                    OnnxSessionConfig(
-                        batch_size=batch_size, models=list(models.values())
-                    )
-                )
-            sessions[backend] = session
-            cleanup.callback(session.close)
-        tracker = Tracker.create(config=config, sessions=sessions)
-        cleanup.pop_all()
-    return tracker
+    requests: list[SessionRequest] = []
+    for backend in sorted(backends):
+        if backend == "cpu":
+            requests.append(SessionRequest(session_type=CpuSession, config=CpuSessionConfig()))
+        elif backend == "mediapipe":
+            requests.append(SessionRequest(session_type=MediaPipeSession, config=MediaPipeSessionConfig()))
+        else:
+            requests.append(SessionRequest(session_type=OnnxSession, config=OnnxSessionConfig(
+                batch_size=batch_size, models=sorted(models.values(), key=lambda model: model.name),
+                execution_provider=execution_provider,
+            )))
+    return tuple(requests)
 
 
 def build_charuco_tracker(
@@ -180,8 +196,16 @@ def build_skeleton_tracker(
     The session must have been created with build_skeleton_onnx_session() using
     matching model names.
     """
+    config = skeleton_tracker_config(model_name=model_name, confidence_threshold=confidence_threshold,
+        video_fps=video_fps, keypoint_bbox_expansion=keypoint_bbox_expansion)
+    return Tracker.create(config, {"onnx": onnx_session})
+
+
+def skeleton_tracker_config(
+    *, model_name: str, confidence_threshold: float, video_fps: float, keypoint_bbox_expansion: float,
+) -> TrackerConfig:
     redetect_interval = max(1, round(_REDETECT_SECONDS * video_fps))
-    config = TrackerConfig(
+    return TrackerConfig(
         stages=[
             DetectionStageConfig(
                 name="body",
@@ -203,12 +227,11 @@ def build_skeleton_tracker(
             )
         ]
     )
-    return Tracker.create(config, {"onnx": onnx_session})
 
 
 def build_mediapipe_tracker(
     *,
-    model_complexity=None,
+    model_complexity: MediapipePoseModelComplexity | None = None,
     detection_confidence: float = 0.5,
     presence_confidence: float = 0.5,
     tracking_confidence: float = 0.5,
@@ -220,28 +243,21 @@ def build_mediapipe_tracker(
     Returns (tracker, session). The session type is MediaPipeSession from
     skellytracker.core.sessions.mediapipe_session.
     """
-    from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
-        MediapipePoseDetectorConfig,
-    )
-    from skellytracker.core.detectors.keypoint_detectors.mediapipe.face.mediapipe_face_detector import (
-        MediapipeFaceDetectorConfig,
-    )
-    from skellytracker.core.detectors.keypoint_detectors.mediapipe.hands.mediapipe_hand_detector import (
-        MediapipeHandDetectorConfig,
-    )
-    from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
-        MediapipePoseModelComplexity,
-    )
-    from skellytracker.core.sessions.mediapipe_session import (
-        MediaPipeSession,
-        MediaPipeSessionConfig,
-    )
-
     if model_complexity is None:
         model_complexity = MediapipePoseModelComplexity.HEAVY
 
+    config = mediapipe_tracker_config(model_complexity=model_complexity,
+        detection_confidence=detection_confidence, presence_confidence=presence_confidence,
+        tracking_confidence=tracking_confidence, num_hands=num_hands, num_faces=num_faces)
     session = MediaPipeSession.create(MediaPipeSessionConfig())
-    config = TrackerConfig(
+    return Tracker.create(config, {"mediapipe": session}), session
+
+
+def mediapipe_tracker_config(
+    *, model_complexity: MediapipePoseModelComplexity, detection_confidence: float,
+    presence_confidence: float, tracking_confidence: float, num_hands: int, num_faces: int,
+) -> TrackerConfig:
+    return TrackerConfig(
         stages=[
             DetectionStageConfig(
                 name="body",
@@ -272,5 +288,3 @@ def build_mediapipe_tracker(
             )
         ]
     )
-    tracker = Tracker.create(config, {"mediapipe": session})
-    return tracker, session

@@ -15,6 +15,7 @@ from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import (
     RealtimeAggregatorNodeConfig,
 )
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.core.skeletons.standard_human_skeleton import STANDARD_HUMAN_MODEL_ID
 
@@ -96,7 +97,9 @@ def test_realtime_pipeline_processes_test_data(
         f"cameras={list(mock.configs.keys())}"
     )
 
-    manager = RealtimePipelineManager(worker_registry=registry)
+    inference_service = InferenceService(worker_registry=registry)
+    inference_service.start()
+    manager = RealtimePipelineManager(worker_registry=registry, inference_service=inference_service)
     t0 = time.perf_counter()
     try:
         pipeline = manager.create_pipeline(camera_group=mock, pipeline_config=config)
@@ -169,6 +172,7 @@ def test_realtime_pipeline_processes_test_data(
         logger.info(f"=== REALTIME PIPELINE TEST PASSED: mode={mode!r} ===")
     finally:
         manager.shutdown()
+        inference_service.close()
         time.sleep(0.25)
         mock.close()
         logger.info("Realtime pipeline manager shut down and mock camera group closed")

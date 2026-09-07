@@ -154,6 +154,7 @@ class PosthocAggregationNode(AggregatorNode):
                 unit="obs",
                 leave=True,
                 dynamic_ncols=True,
+                mininterval=0.25,
             ) as pbar:
                 while not shutdown_self_flag.value and ipc.should_continue:
                     try:

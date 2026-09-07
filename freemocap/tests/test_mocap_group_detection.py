@@ -1,3 +1,15 @@
+import multiprocessing
+import time
+from threading import Event
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
+from skellycam.core.ipc.process_management.managed_worker import WorkerMode
+from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
+from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
+from freemocap.core.tracking.board_selection import CharucoBoardMode
+from concurrent.futures import CancelledError
+from queue import Queue
+from freemocap.core.pipeline.inference_service import InferenceService
+from skellytracker.core.sessions.shared_sessions import TrackerLease
 import json
 import tempfile
 import unittest
@@ -9,6 +21,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 from skellycam.core.recorders.videos.pyav_video_writer import PyavVideoWriter
+from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReader
 from skellytracker.core import Tracker, TrackerConfig
 from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellytracker.core.data_primitives.observation import Observation, StageObservation
@@ -32,18 +45,68 @@ def body_batch(
 
 
 class MocapGroupDetectionTests(unittest.TestCase):
+    def test_next_frame_decodes_while_inference_is_running(self) -> None:
+        self.write_recording(camera_count=1, board_at=None, frame_count=3)
+        next_decoded = Event()
+        original_read = SequentialVideoReader.read_bgr
+
+        def read(reader: SequentialVideoReader, *, frame_number: int) -> NDArray[np.uint8]:
+            image = original_read(reader, frame_number=frame_number)
+            if frame_number == 1:
+                next_decoded.set()
+            return image
+
+        def infer(*, images: dict[str, NDArray[np.uint8]], frame_number: int,
+                  states: dict[str, TrackerState]) -> tuple[dict[str, Observation], dict[str, TrackerState]]:
+            if frame_number == 0:
+                self.assertTrue(next_decoded.wait(timeout=2.0), "Decode was blocked behind inference")
+            return body_batch(images=images, frame_number=frame_number, states=states)
+
+        self.body.process_batch.side_effect = infer
+        with patch("freemocap.core.pipeline.posthoc.mocap_video_node.SequentialVideoReader.read_bgr", new=read):
+            frames = list(detect_mocap_recording(self.request))
+        self.assertEqual([frame.frame_number for frame in frames], [0, 1, 2])
+        self.assertFalse(any(node.worker.is_alive() for node in self.request.video_nodes))
+
+    def test_video_failure_stops_sibling_threads_and_preserves_service(self) -> None:
+        self.write_recording(camera_count=3, board_at=None)
+        with patch("freemocap.core.pipeline.posthoc.mocap_video_node.SequentialVideoReader.read_bgr",
+                   side_effect=RuntimeError("video decoder failed")):
+            with self.assertRaisesRegex(RuntimeError, "video decoder failed"):
+                list(detect_mocap_recording(self.request))
+        self.assertTrue(self.ipc.pipeline_shutdown_flag.value)
+        self.assertFalse(self.ipc.global_kill_flag.value)
+        self.assertTrue(self.service.worker.is_alive())
+        self.assertFalse(any(node.worker.is_alive() for node in self.request.video_nodes))
+
+    def setup_service(self) -> None:
+        self.registry = WorkerRegistry(global_kill_flag=self.ipc.global_kill_flag, worker_mode=WorkerMode.THREAD)
+        self.pool = Mock()
+        lease = Mock(spec=TrackerLease)
+        lease.tracker = self.body
+        self.pool.create_tracker.return_value = lease
+        pool_patch = patch("freemocap.core.pipeline.inference_service.SharedSessionPool", return_value=self.pool)
+        pool_patch.start()
+        self.addCleanup(pool_patch.stop)
+        self.service = InferenceService(worker_registry=self.registry)
+        self.service.start()
+        self.addCleanup(self.service.close)
+
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.folder = Path(temporary.name)
         self.body = Mock(spec=Tracker)
         self.body.process_batch.side_effect = body_batch
-        self.request = MocapDetectionRequest(
-            recording_path=self.folder, tracker_config=TrackerConfig(stages=[]), detect_board=True,
-            auto_select_board=True, board=CharucoBoardDefinition.create_letter_size_5x3().model_copy(
-                update={"square_length_mm": 37.5},
-            ), should_continue=lambda: True,
-        )
+        self.logs = multiprocessing.Queue()
+        self.addCleanup(self.logs.close)
+        self.ipc = PipelineIPC(pipeline_id="group-test", ws_queue=self.logs,
+            global_kill_flag=multiprocessing.Value("b", False),
+            heartbeat_timestamp=multiprocessing.Value("d", time.perf_counter()))
+        self.config = PosthocMocapPipelineConfig(charucoBoard={"squares_x": 5, "squares_y": 3, "square_length_mm": 37.5})
+        self.setup_service()
+        self.request = MocapDetectionRequest(recording_path=self.folder, config=self.config,
+            ipc=self.ipc, progress=Queue(), registry=self.registry, inference_service=self.service, video_nodes=[])
 
     def write_recording(self, *, camera_count: int, board_at: int | None, frame_count: int = 8) -> None:
         video_folder = self.folder / "synchronized_videos"
@@ -63,8 +126,7 @@ class MocapGroupDetectionTests(unittest.TestCase):
 
     def test_late_board_locks_across_group_without_skipping_body_frames(self) -> None:
         self.write_recording(camera_count=3, board_at=3)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            frames = list(detect_mocap_recording(self.request))
+        frames = list(detect_mocap_recording(self.request))
         self.assertEqual([call.kwargs["frame_number"] for call in self.body.process_batch.call_args_list], list(range(8)))
         self.assertTrue(all(frame.selected_board is None for frame in frames[:5]))
         selected = frames[5].selected_board
@@ -81,57 +143,52 @@ class MocapGroupDetectionTests(unittest.TestCase):
         values = buffer.to_keypoints_array(names=buffer.keypoint_names)
         self.assertTrue(np.isnan(values[:5, 1:]).all())
         self.assertTrue(np.isfinite(values[5:, 1:, :2]).any())
-        self.body.close.assert_called_once()
+        self.assertFalse(any(worker.is_alive() for worker in self.registry._workers if worker.name.startswith("MocapVideo-")))
 
     def test_no_board_is_a_complete_body_recording(self) -> None:
         self.write_recording(camera_count=1, board_at=None)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            frames = list(detect_mocap_recording(self.request))
+        frames = list(detect_mocap_recording(self.request))
         self.assertEqual(len(frames), 8)
         self.assertTrue(all(frame.selected_board is None for frame in frames))
-        self.body.close.assert_called_once()
+        self.assertFalse(any(worker.is_alive() for worker in self.registry._workers if worker.name.startswith("MocapVideo-")))
 
     def test_closing_iteration_releases_resources(self) -> None:
         self.write_recording(camera_count=2, board_at=None)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            frames = detect_mocap_recording(self.request)
-            next(frames)
-            frames.close()
-        self.body.close.assert_called_once()
+        frames = detect_mocap_recording(self.request)
+        next(frames)
+        frames.close()
+        self.assertFalse(any(worker.is_alive() for worker in self.registry._workers if worker.name.startswith("MocapVideo-")))
 
     def test_detection_failure_propagates_and_releases_resources(self) -> None:
         self.write_recording(camera_count=2, board_at=None)
         self.body.process_batch.side_effect = RuntimeError("detector failure")
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            with self.assertRaisesRegex(RuntimeError, "detector failure"):
-                list(detect_mocap_recording(self.request))
-        self.body.close.assert_called_once()
+        with self.assertRaisesRegex(RuntimeError, "detector failure"):
+            list(detect_mocap_recording(self.request))
+        self.assertFalse(any(worker.is_alive() for worker in self.registry._workers if worker.name.startswith("MocapVideo-")))
 
     def test_cancellation_between_frames_releases_resources(self) -> None:
         self.write_recording(camera_count=2, board_at=None)
         continuing = Mock(return_value=True)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            frames = detect_mocap_recording(replace(self.request, should_continue=continuing))
-            next(frames)
-            continuing.return_value = False
-            self.assertEqual(list(frames), [])
+        frames = detect_mocap_recording(self.request)
+        next(frames)
+        self.ipc.shutdown_pipeline()
+        with self.assertRaises(CancelledError):
+            list(frames)
         self.body.process_batch.assert_called_once()
-        self.body.close.assert_called_once()
+        self.assertFalse(any(worker.is_alive() for worker in self.registry._workers if worker.name.startswith("MocapVideo-")))
 
     def test_disabled_board_tracking_does_not_construct_selector_or_detector(self) -> None:
         self.write_recording(camera_count=1, board_at=0)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body), \
-                patch("freemocap.core.pipeline.posthoc.mocap_detection.CharucoBoardSelector") as selector, \
-                patch("freemocap.core.pipeline.posthoc.mocap_detection.build_charuco_tracker") as board_tracker:
-            frames = list(detect_mocap_recording(replace(self.request, detect_board=False)))
+        with patch("freemocap.core.pipeline.posthoc.mocap_detection.CharucoBoardSelector") as selector, \
+                patch("freemocap.core.pipeline.posthoc.mocap_video_node.build_charuco_tracker") as board_tracker:
+            frames = list(detect_mocap_recording(replace(self.request, config=self.config.model_copy(update={"charuco_tracking_enabled": False}))))
         selector.assert_not_called()
         board_tracker.assert_not_called()
         self.assertEqual(len(frames), 8)
 
     def test_explicit_board_skips_auto_selection_and_preserves_user_geometry(self) -> None:
         self.write_recording(camera_count=1, board_at=None)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body), \
-                patch("freemocap.core.pipeline.posthoc.mocap_detection.CharucoBoardSelector") as selector:
-            frames = list(detect_mocap_recording(replace(self.request, auto_select_board=False)))
+        with patch("freemocap.core.pipeline.posthoc.mocap_detection.CharucoBoardSelector") as selector:
+            frames = list(detect_mocap_recording(replace(self.request, config=self.config.model_copy(update={"board_mode": CharucoBoardMode.EXPLICIT}))))
         selector.assert_not_called()
-        self.assertTrue(all(frame.selected_board is self.request.board for frame in frames))
+        self.assertTrue(all(frame.selected_board is self.config.charuco_board for frame in frames))

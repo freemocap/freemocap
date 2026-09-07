@@ -111,7 +111,7 @@ export const pipelinesSlice = createSlice({
             // Derive base pipeline ID (everything before the first colon)
             const colonIdx = incoming.pipelineId.indexOf(':');
             const baseId = colonIdx !== -1 ? incoming.pipelineId.slice(0, colonIdx) : incoming.pipelineId;
-            // Open snackbar when this base pipeline ID is not yet tracked at all
+            // Only active pipeline updates open the snackbar; terminal history remains inspectable.
             const baseIsNew = !Object.keys(state.activePipelines).some(id => {
                 const c = id.indexOf(':');
                 return (c !== -1 ? id.slice(0, c) : id) === baseId;
@@ -121,9 +121,9 @@ export const pipelinesSlice = createSlice({
                 calibrationStage: incoming.pipelineType === PipelineType.CALIBRATION
                     ? CALIBRATION_STAGES.includes(incoming.phase) ? incoming.phase : existing?.calibrationStage
                     : undefined,
-                completedAt: isTerminal ? Date.now() : undefined,
+                completedAt: isTerminal ? existing?.completedAt ?? Date.now() : undefined,
             };
-            if (baseIsNew) {
+            if (baseIsNew && !isTerminal) {
                 state.snackbarVisible = true;
                 state.dismissedBasePipelineIds = state.dismissedBasePipelineIds.filter(id => id !== baseId);
             }

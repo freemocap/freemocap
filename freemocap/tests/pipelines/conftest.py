@@ -1,3 +1,5 @@
+from freemocap.core.pipeline.inference_service import InferenceService
+from unittest.mock import Mock
 """Shared fixtures for the end-to-end pipeline tests.
 
 These tests run the REAL posthoc + realtime pipelines against the canonical test
@@ -235,7 +237,7 @@ def thread_worker_registry(global_kill_flag) -> WorkerRegistry:
 @pytest.fixture(scope="session")
 def posthoc_manager(global_kill_flag, thread_worker_registry):
     logger.info("Creating PosthocPipelineManager...")
-    manager = PosthocPipelineManager(
+    manager = PosthocPipelineManager(inference_service=Mock(spec=InferenceService),
         global_kill_flag=global_kill_flag,
         worker_registry=thread_worker_registry,
     )
@@ -315,4 +317,3 @@ def posthoc_mocap_output_dir(
     for f in npy_files + csv_files:
         logger.info(f"  {f.name}  ({f.stat().st_size / 1024:.1f} KB)")
     return output_dir
-

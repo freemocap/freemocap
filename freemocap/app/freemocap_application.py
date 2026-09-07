@@ -16,6 +16,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString
 
+from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.posthoc.mocap_pipeline import MocapPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.posthoc.sync_job import SyncJob
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FreemocapApplication:
     global_kill_flag: Synchronized
+    inference_service: InferenceService
     worker_registry: WorkerRegistry
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
@@ -47,14 +49,17 @@ class FreemocapApplication:
         global_kill_flag = fastapi_app.state.global_kill_flag
         worker_registry = fastapi_app.state.worker_registry
 
+        inference_service = InferenceService(worker_registry=worker_registry)
+        inference_service.start()
         return cls(
+            inference_service=inference_service,
             global_kill_flag=global_kill_flag,
             worker_registry=worker_registry,
             realtime_pipeline_manager=RealtimePipelineManager(
-                worker_registry=worker_registry,
+                inference_service=inference_service,                worker_registry=worker_registry,
             ),
             posthoc_pipeline_manager=PosthocPipelineManager(
-                global_kill_flag=global_kill_flag,
+                inference_service=inference_service,                global_kill_flag=global_kill_flag,
                 worker_registry=worker_registry,
             ),
             sync_job_manager=SyncJobManager(
@@ -203,7 +208,10 @@ class FreemocapApplication:
 
     def close(self) -> None:
         self.global_kill_flag.value = True
-        self.shutdown_all_processing()
+        try:
+            self.shutdown_all_processing()
+        finally:
+            self.inference_service.close()
 
 
 FREEMOCAP_APP: FreemocapApplication | None = None

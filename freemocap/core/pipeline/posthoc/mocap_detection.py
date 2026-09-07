@@ -1,96 +1,145 @@
-"""Sequential recording-group detection with one shared board selection."""
+"""Lossless multiframe coordination across video threads and shared inference."""
 
-from collections.abc import Callable, Iterator
-from contextlib import ExitStack
+from collections.abc import Iterator
+from concurrent.futures import CancelledError, Future, TimeoutError
 from dataclasses import dataclass
 from pathlib import Path
+from queue import Queue
+from typing import TypeVar
 
-import numpy as np
-from numpy.typing import NDArray
-from skellytracker.core import Tracker, TrackerConfig
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.core.data_primitives.observation import Observation
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
-from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_board_selection import CharucoBoardSelector
-from skellytracker.core.tracker.tracker_state import TrackerState
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition, CharucoBoardSelector
 
+from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.inference_service import InferenceService, InferenceRegistration, InferenceRequest, InferenceMode
+from freemocap.core.pipeline.posthoc.mocap_video_node import MocapVideoNode, VideoWorkerConfig, ReadFrame, AnnotateFrame, FinishVideo
+from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper, VideoMetadata
-from freemocap.core.tracking.tracker_factory import build_charuco_tracker, build_configured_tracker
+from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
+from freemocap.core.tracking.board_selection import CharucoBoardMode
+from freemocap.core.tracking.tracker_factory import tracker_session_requests
+
+Result = TypeVar("Result")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class MocapDetectionRequest:
     recording_path: Path
-    tracker_config: TrackerConfig
-    detect_board: bool
-    auto_select_board: bool
-    board: CharucoBoardDefinition
-    should_continue: Callable[[], bool]
+    config: PosthocMocapPipelineConfig
+    ipc: PipelineIPC
+    progress: Queue[PipelineProgressMessage]
+    registry: WorkerRegistry
+    inference_service: InferenceService
+    video_nodes: list[MocapVideoNode]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class MocapDetectionFrame:
     frame_number: int
     frame_count: int
-    images: dict[str, NDArray[np.uint8]]
     observations: dict[str, Observation]
     selected_board: CharucoBoardDefinition | None
     video_metadata: dict[str, VideoMetadata]
 
 
+def _wait(*, future: Future[Result], request: MocapDetectionRequest, nodes: list[MocapVideoNode]) -> Result:
+    while True:
+        try:
+            return future.result(timeout=0.05)
+        except CancelledError:
+            for node in nodes:
+                if node.failure is not None:
+                    raise node.failure
+            raise
+        except TimeoutError:
+            if future.done():
+                raise
+            for node in nodes:
+                if node.failure is not None:
+                    raise node.failure
+                if not node.worker.is_alive():
+                    raise RuntimeError(f"Video worker exited before completing requested work: {node.config.camera_id}")
+            if not request.ipc.should_continue:
+                raise CancelledError("Mocap pipeline stopped")
+
+
 def detect_mocap_recording(request: MocapDetectionRequest) -> Iterator[MocapDetectionFrame]:
-    """Yield complete multiframes; closing the iterator releases readers and trackers.
-
-    Board search never skips human processing. Images are retained only for the current
-    multiframe; consumers must finish encoding before advancing or retain their own copy.
-    Cancellation returns without claiming that the recording is complete.
-    """
-    with ExitStack() as cleanup:
-        group = VideoGroupHelper.from_recording_path(recording_path=str(request.recording_path))
-        cleanup.callback(group.close)
-        if not request.should_continue():
-            return
-        tracker = build_configured_tracker(config=request.tracker_config, batch_size=len(group.videos))
-        cleanup.callback(tracker.close)
-        states: dict[str, TrackerState] = {}
-        board_states: dict[str, TrackerState] = {}
-        board_tracker: Tracker | None = None
-        selected_board = request.board if request.detect_board and not request.auto_select_board else None
-        selector = CharucoBoardSelector() if request.detect_board and request.auto_select_board else None
-
-        for frame_number in range(group.frame_count):
-            if not request.should_continue():
-                return
-            images: dict[str, NDArray[np.uint8]] = {}
-            for camera_id, video in group.videos.items():
-                images[camera_id] = video.video_reader.read_bgr(frame_number=frame_number)
-            observations, states = tracker.process_batch(images=images, frame_number=frame_number, states=states)
-            if selector is not None and selected_board is None:
-                detected_board = selector.search_frame(frame_number=frame_number, images=images.values())
-                if detected_board is not None:
-                    selected_board = detected_board.model_copy(update={"square_length_mm": request.board.square_length_mm})
-            if selected_board is not None:
-                if board_tracker is None:
-                    board_tracker, _ = build_charuco_tracker(board_def=selected_board)
-                    cleanup.callback(board_tracker.close)
-                board_observations, board_states = board_tracker.process_batch(
-                    images=images, frame_number=frame_number, states=board_states,
-                )
-                for camera_id, board_observation in board_observations.items():
-                    observation = observations[camera_id]
-                    if observation.stages.keys() & board_observation.stages.keys():
-                        raise ValueError("Mocap and board trackers must have distinct stage names")
-                    observation.stages.update(board_observation.stages)
-            if not request.should_continue():
-                return
-            yield MocapDetectionFrame(
-                frame_number=frame_number, frame_count=group.frame_count,
-                images=images, observations=observations, selected_board=selected_board,
-                video_metadata=group.video_metadata_by_id,
-            )
-        if request.should_continue():
-            for video in group.videos.values():
-                try:
-                    video.video_reader.read_bgr(frame_number=group.frame_count)
-                except IndexError:
-                    continue
-                raise ValueError(f"Video contains more than the declared {group.frame_count} frames: {video.video_path}")
+    group = VideoGroupHelper.from_recording_path(recording_path=str(request.recording_path))
+    try:
+        metadata = group.video_metadata_by_id
+        frame_count = group.frame_count
+    finally:
+        group.close()
+    nodes = request.video_nodes
+    client = request.inference_service.register(InferenceRegistration(
+        pipeline_id=request.ipc.pipeline_id, mode=InferenceMode.POSTHOC,
+        tracker_config=request.config.tracker_config,
+        sessions=tracker_session_requests(config=request.config.tracker_config, batch_size=len(metadata), execution_provider=None),
+        shutdown_flag=request.ipc.pipeline_shutdown_flag,
+    ))
+    completed = False
+    try:
+        for camera_id, video in metadata.items():
+            node = MocapVideoNode(config=VideoWorkerConfig(camera_id=camera_id, video=video,
+                recording_path=request.recording_path, tracker_config=request.config.tracker_config,
+                ipc=request.ipc, progress=request.progress), registry=request.registry)
+            node.worker.start()
+            nodes.append(node)
+        selected = request.config.charuco_board if request.config.charuco_tracking_enabled and request.config.board_mode == CharucoBoardMode.EXPLICIT else None
+        selector = CharucoBoardSelector() if request.config.charuco_tracking_enabled and selected is None else None
+        reads = {node.config.camera_id: ReadFrame(number=0) for node in nodes}
+        for node in nodes:
+            node.commands.put_nowait(reads[node.config.camera_id])
+        for number in range(frame_count):
+            if not request.ipc.should_continue:
+                raise CancelledError("Mocap pipeline stopped")
+            images = {camera: _wait(future=command.result, request=request, nodes=nodes) for camera, command in reads.items()}
+            inference = client.submit(InferenceRequest(frame_number=number, images=images))
+            # Decode one multiframe ahead while inference owns the current images.
+            if number + 1 < frame_count:
+                reads = {node.config.camera_id: ReadFrame(number=number + 1) for node in nodes}
+                for node in nodes:
+                    node.commands.put_nowait(reads[node.config.camera_id])
+            if selector is not None and selected is None:
+                detected = selector.search_frame(frame_number=number, images=images.values())
+                if detected is not None:
+                    selected = detected.model_copy(update={"square_length_mm": request.config.charuco_board.square_length_mm})
+            observations = _wait(future=inference, request=request, nodes=nodes)
+            annotations = {camera: AnnotateFrame(image=images[camera], observation=observation, board=selected)
+                           for camera, observation in observations.items()}
+            for node in nodes:
+                node.commands.put_nowait(annotations[node.config.camera_id])
+            merged = {camera: _wait(future=command.result, request=request, nodes=nodes) for camera, command in annotations.items()}
+            yield MocapDetectionFrame(frame_number=number, frame_count=frame_count,
+                observations=merged, selected_board=selected, video_metadata=metadata)
+        for publish in (False, True):
+            finishes = [FinishVideo(publish=publish) for node in nodes]
+            for node, command in zip(nodes, finishes, strict=True):
+                node.commands.put_nowait(command)
+            # Finished video workers may exit while their siblings finalize output.
+            for command in finishes:
+                while True:
+                    try:
+                        command.result.result(timeout=0.05)
+                        break
+                    except TimeoutError:
+                        if command.result.done():
+                            raise
+                        for node in nodes:
+                            if node.failure is not None:
+                                raise node.failure
+                        if not request.ipc.should_continue:
+                            raise CancelledError("Mocap pipeline stopped")
+        completed = True
+    finally:
+        client.close()
+        if not completed:
+            request.ipc.shutdown_pipeline()
+        for node in nodes:
+            node.worker.mark_stopping()
+        for node in nodes:
+            node.worker.join(timeout=10.0)
+        alive = [node.config.camera_id for node in nodes if node.worker.is_alive()]
+        if alive:
+            raise RuntimeError(f"Video threads did not finish shutdown: {alive}")

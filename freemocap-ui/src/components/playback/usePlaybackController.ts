@@ -74,6 +74,14 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
 
     useEffect(() => {
         if (!videosRef.current.length || !recordingCache.current) {setDecoderGroup(null); return;}
+        const selectedSource = Object.values(bundle?.videos.sources ?? {}).find(source =>
+            source.videos.some(video => video.streamUrl === videosRef.current[0]?.streamUrl));
+        if (selectedSource && !selectedSource.valid) {
+            setDecoderGroup(null);
+            setError('This synchronized video group is incomplete or has unequal frame counts. See the recording resource errors.');
+            return;
+        }
+        setError(null);
         const group = recordingCache.current.getGroup(videosRef.current);
         let active = true;
         setDecoderGroup(group);

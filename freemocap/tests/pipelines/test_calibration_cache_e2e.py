@@ -24,6 +24,7 @@ from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import (
     RealtimeAggregatorNodeConfig,
 )
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.calibration.shared.calibration_paths import (
@@ -98,7 +99,9 @@ class TestCalibrationCacheE2E:
             f"cameras={list(mock.configs.keys())}"
         )
 
-        manager = RealtimePipelineManager(worker_registry=registry)
+        inference_service = InferenceService(worker_registry=registry)
+        inference_service.start()
+        manager = RealtimePipelineManager(worker_registry=registry, inference_service=inference_service)
         try:
             pipeline = manager.create_pipeline(camera_group=mock, pipeline_config=config)
             logger.info(f"RealtimePipeline [{pipeline.id}] created")
@@ -213,6 +216,7 @@ class TestCalibrationCacheE2E:
 
         finally:
             manager.shutdown()
+            inference_service.close()
             time.sleep(0.25)
             mock.close()
             logger.info("=== CACHE WRITE E2E TEST DONE ===")

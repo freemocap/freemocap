@@ -196,6 +196,7 @@ class VideoNode(SourceNode):
                 unit="frame",
                 leave=True,
                 dynamic_ncols=True,
+                mininterval=0.25,
             ) as pbar:
                 success, image = video_reader.read()
                 while success and not shutdown_self_flag.value and ipc.should_continue:

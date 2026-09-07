@@ -278,3 +278,26 @@ Sequence: explicit source identities and bindings, then agree search inputs/scor
 review examples, then implement a cancellable search with diagnostic results. This is entirely new
 search code, not an existing feature. The present reminder confirms roadmap priority, not permission
 to bypass the agreed design review or silently accept the lowest-error permutation.
+
+
+### Partial recording loads are required
+
+Bundle loading isolates resource failures: video files/sources, reconstruction,
+timing, calibration, tracker schema, statistics and status. Errors are explicit
+response entries and displayed with the viable resources; absent/failed optional
+resources are null, with no synthetic schema or status. A malformed Parquet
+file must never block video inspection. Missing timestamps use frame ordinal
+and nominal FPS; invalid timing is reported while inferred timing permits media
+inspection. A damaged member or unequal frame counts invalidates synchronized
+group playback, without removing the other recording resources.
+
+Completed progress history remains inspectable after reconnect, but terminal
+history alone does not reopen the progress popup.
+
+
+### Playback storage constraint
+
+Playback must not create duplicate video files on disk. Investigate codec failures
+against the actual previously working source and decoding path before proposing
+changes. Client frame decoding and bounded memory caches remain the intended
+playback architecture.

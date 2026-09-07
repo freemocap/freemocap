@@ -54,6 +54,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         const timeline = clock;
         if (!timeline?.timestamps_s.length) { setError('Recording has no synchronized timeline for this group'); return; }
         let cached: PlaybackWindow | null = null;
+        let prefetched: PlaybackWindow | null = null;
         let pending: AbortController | null = null;
         let pendingStart: number | null = null;
         let raf = 0;
@@ -84,15 +85,23 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
                 raf = requestAnimationFrame(tick);
                 return;
             }
-            if (cached && time >= cached.start_s && time < cached.end_s) emit(time);
-            else {
-                const start = Math.floor(time) - 0.25;
-                if (pendingStart !== start) {
+            if (prefetched && time >= prefetched.start_s && time < prefetched.end_s) {
+                cached = prefetched;
+                prefetched = null;
+                emittedTime = NaN;
+            }
+            const covered = cached !== null && time >= cached.start_s && time < cached.end_s;
+            if (covered) emit(time);
+            const needsLookahead = covered && cached !== null && cached.end_s - time < 1.5
+                && cached.end_s <= timeline.timestamps_s[timeline.timestamps_s.length - 1];
+            if (!covered || (needsLookahead && !prefetched)) {
+                const start = covered && cached ? cached.end_s : Math.floor(time) - 0.25;
+                // Keep an in-flight window when it already contains the requested time.
+                const pendingCoversTime = pendingStart !== null && time >= pendingStart && time < pendingStart + 2.5;
+                if (pendingStart === null || (!covered && !pendingCoversTime)) {
                     pending?.abort();
                     const controller = new AbortController();
                     pending = controller; pendingStart = start;
-                    state.current.frames = [];
-                    frameSubscribers.current.forEach(callback => callback([]));
                     void (async () => {
                         try {
                             const response = await fetch(`${baseUrl}/window?${query}`, {method: 'POST',
@@ -102,7 +111,9 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
                             if (!response.ok) throw new Error(`Unable to load recording samples: ${await response.text()}`);
                             const data: PlaybackWindow = await response.json();
                             if (disposed || controller.signal.aborted) return;
-                            cached = data; pendingStart = null; emittedTime = NaN;
+                            if (covered) prefetched = data;
+                            else { cached = data; prefetched = null; emittedTime = NaN; }
+                            pendingStart = null;
                         } catch (failure) {
                             if (!disposed && !controller.signal.aborted) {
                                 failed = true; setError(failure instanceof Error ? failure.message : String(failure));

@@ -1,3 +1,4 @@
+from freemocap.core.pipeline.inference_service import InferenceService
 """Cancellation endpoints preserve unrelated task and mode scopes."""
 
 import multiprocessing
@@ -26,7 +27,7 @@ def pipeline_fixture(*, identity: str, task: PosthocPipelineType) -> Mock:
 
 
 def test_cancellation_scope_and_wrong_task_rejection() -> None:
-    manager = PosthocPipelineManager(
+    manager = PosthocPipelineManager(inference_service=Mock(spec=InferenceService),
         global_kill_flag=multiprocessing.Value("b", False),
         worker_registry=Mock(spec=WorkerRegistry),
     )

@@ -338,3 +338,25 @@ linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--progress-percent), #212121 v
     transform: scale(1);
   }
 }
+.playback-resource-errors {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.playback-resource-errors summary {
+  cursor: pointer;
+}
+
+.playback-resource-error-details {
+  max-height: 10rem;
+  overflow: auto;
+  color: var(--color-text-muted);
+}
+
+.playback-resource-error-details pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: inherit;
+}

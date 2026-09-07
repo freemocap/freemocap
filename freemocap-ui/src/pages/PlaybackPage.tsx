@@ -145,6 +145,15 @@ const PlaybackPage: React.FC = () => {
                             )}
                         </div>
 
+                        {bundle?.errors.length ? <details className="playback-resource-errors">
+                            <summary className="text-error">{bundle.errors.length} recording resource{bundle.errors.length === 1 ? '' : 's'} could not load — show details</summary>
+                            <div className="playback-resource-error-details">
+                                {bundle.errors.map((failure, index) => <section key={index}>
+                                    <strong>{failure.resource}: {failure.item}</strong>
+                                    <pre>{failure.message}</pre>
+                                </section>)}
+                            </div>
+                        </details> : null}
                         {folderError && <p role="alert" className="text-error">{folderError}</p>}
                         <div className="playback-mode-below-main p-1 flex flex-col flex-1 min-h-0">
                             {settings.show3dView ? (

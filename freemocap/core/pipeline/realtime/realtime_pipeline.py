@@ -22,6 +22,7 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
+from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.camera_node import CameraNode
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimeAggregatorNode
@@ -117,6 +118,7 @@ class RealtimePipeline:
             camera_group: CameraGroup,
             worker_registry: WorkerRegistry,
             pipeline_config: RealtimePipelineConfig,
+            inference_service: InferenceService,
             realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> "RealtimePipeline":
         global_kill_flag = camera_group.ipc.global_kill_flag
@@ -163,6 +165,7 @@ class RealtimePipeline:
         if (pipeline_config.use_centralized_inference
                 and pipeline_config.camera_node_config.skeleton_tracking_enabled):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
+                inference_service=inference_service,
                 camera_group_id=camera_group.id,
                 camera_ids=pipeline_camera_ids,
                 worker_registry=worker_registry,

@@ -1,3 +1,7 @@
+from concurrent.futures import CancelledError
+from queue import Queue
+from freemocap.core.pipeline.inference_service import InferenceService
+from skellytracker.core.sessions.shared_sessions import TrackerLease
 import asyncio
 import json
 import multiprocessing
@@ -53,7 +57,7 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
         with patch("freemocap.core.pipeline.posthoc.mocap_pipeline.PipelineIPC.create", return_value=self.ipc):
             pipeline = MocapPipeline.create(
                 pipeline_id=self.ipc.pipeline_id, recording_info=self.recording,
-                config=self.config, worker_registry=registry, global_kill_flag=self.ipc.global_kill_flag,
+                config=self.config, worker_registry=registry, global_kill_flag=self.ipc.global_kill_flag, inference_service=self.service,
             )
         application = FreemocapApplication.__new__(FreemocapApplication)
         application.posthoc_pipeline_manager = Mock()
@@ -66,14 +70,26 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
         finally:
             pipeline.shutdown()
 
+    def setup_service(self) -> None:
+        self.registry = WorkerRegistry(global_kill_flag=self.ipc.global_kill_flag, worker_mode=WorkerMode.THREAD)
+        self.pool = Mock()
+        lease = Mock(spec=TrackerLease)
+        lease.tracker = self.body
+        self.pool.create_tracker.return_value = lease
+        pool_patch = patch("freemocap.core.pipeline.inference_service.SharedSessionPool", return_value=self.pool)
+        pool_patch.start()
+        self.addCleanup(pool_patch.stop)
+        self.service = InferenceService(worker_registry=self.registry)
+        self.service.start()
+        self.addCleanup(self.service.close)
+
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.recording = RecordingInfo(recording_name="capture", recording_directory=temporary.name)
         self.folder = Path(self.recording.full_recording_path)
-        self.progress = multiprocessing.Queue()
+        self.progress = Queue()
         self.logs = multiprocessing.Queue()
-        self.addCleanup(self.progress.close)
         self.addCleanup(self.logs.close)
         self.ipc = PipelineIPC(pipeline_id="integration", ws_queue=self.logs,
             global_kill_flag=multiprocessing.Value('b', False),
@@ -83,8 +99,9 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
         })
         self.body = Mock(spec=Tracker)
         self.body.process_batch.side_effect = body_batch
+        self.setup_service()
         self.request = MocapWorkerRequest(pipeline_id="integration", recording=self.recording,
-            config=self.config, ipc=self.ipc, progress_queue=self.progress)
+            config=self.config, ipc=self.ipc, progress_queue=self.progress, registry=self.registry, inference_service=self.service, video_nodes=[])
 
     def write_video(self, *, board_visible: bool) -> None:
         folder = self.folder / "synchronized_videos"
@@ -101,8 +118,7 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
 
     def test_recording_produces_annotations_and_parquet_with_optional_board(self) -> None:
         self.write_video(board_visible=True)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            run_mocap_pipeline(request=self.request)
+        run_mocap_pipeline(request=self.request)
         self.assertFalse(self.ipc.pipeline_shutdown_flag.value)
         structure = RecordingStructure(base_directory=self.folder.parent, recording_name=self.folder.name)
         metadata = read_metadata(path=structure.data_parquet_path)
@@ -120,11 +136,11 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
             self.assertEqual(len(frames), 4)
         self.assertFalse(list(self.folder.rglob("*.partial*")))
 
-    def test_spawned_worker_failure_preserves_application_and_error_detail(self) -> None:
+    def test_thread_worker_failure_preserves_application_and_error_detail(self) -> None:
         registry = WorkerRegistry(global_kill_flag=self.ipc.global_kill_flag, worker_mode=WorkerMode.PROCESS)
         with patch("freemocap.core.pipeline.posthoc.mocap_pipeline.PipelineIPC.create", return_value=self.ipc):
             pipeline = MocapPipeline.create(pipeline_id=self.ipc.pipeline_id, recording_info=self.recording,
-                config=self.config, worker_registry=registry, global_kill_flag=self.ipc.global_kill_flag)
+                config=self.config, worker_registry=registry, global_kill_flag=self.ipc.global_kill_flag, inference_service=self.service)
         try:
             pipeline.start()
             pipeline.worker.join(timeout=20.0)
@@ -150,8 +166,7 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
             return body_batch(images=images, frame_number=frame_number, states=states)
 
         self.body.process_batch.side_effect = cancel_second_frame
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            run_mocap_pipeline(request=self.request)
+        run_mocap_pipeline(request=self.request)
         self.assertEqual(annotated.read_bytes(), b"previous completed output")
         self.assertFalse(list(self.folder.rglob("*.partial*")))
         self.assertFalse(self.ipc.global_kill_flag.value)
@@ -159,8 +174,7 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
 
     def test_no_board_still_publishes_mocap_results(self) -> None:
         self.write_video(board_visible=False)
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            run_mocap_pipeline(request=self.request)
+        run_mocap_pipeline(request=self.request)
         structure = RecordingStructure(base_directory=self.folder.parent, recording_name=self.folder.name)
         metadata = read_metadata(path=structure.data_parquet_path)
         self.assertNotIn(CHARUCO_BOARD_MODEL_ID, metadata.runs[0].models)
@@ -168,9 +182,8 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
     def test_worker_failure_reports_and_only_stops_its_pipeline(self) -> None:
         self.write_video(board_visible=False)
         self.body.process_batch.side_effect = RuntimeError("detector failed")
-        with patch("freemocap.core.pipeline.posthoc.mocap_detection.build_configured_tracker", return_value=self.body):
-            with self.assertRaisesRegex(RuntimeError, "detector failed"):
-                run_mocap_pipeline(request=self.request)
+        with self.assertRaisesRegex(RuntimeError, "detector failed"):
+            run_mocap_pipeline(request=self.request)
         messages = []
         while True:
             try:

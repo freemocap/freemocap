@@ -25,6 +25,7 @@ from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, PosthocPipelineType
+from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.posthoc.mocap_pipeline import MocapPipeline
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
@@ -46,6 +47,7 @@ class PosthocPipelineManager(PipelineManagerABC):
 
     global_kill_flag: Synchronized
     worker_registry: WorkerRegistry
+    inference_service: InferenceService
     lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, MocapPipeline | CalibrationPipeline] = field(default_factory=dict)
     # Synthetic terminal messages for pipelines stopped manually (via stop_pipeline/
@@ -147,6 +149,7 @@ class PosthocPipelineManager(PipelineManagerABC):
         if structure.data_parquet_path.exists():
             read_metadata(path=structure.data_parquet_path)
         pipeline = MocapPipeline.create(
+            inference_service=self.inference_service,
             pipeline_id=str(uuid.uuid4())[:6], recording_info=recording_info,
             config=mocap_config, worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,

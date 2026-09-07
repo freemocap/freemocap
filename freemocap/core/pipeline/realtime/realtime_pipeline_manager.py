@@ -21,6 +21,7 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString
 
+from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
@@ -41,6 +42,7 @@ class RealtimePipelineManager(PipelineManagerABC):
     """
 
     worker_registry: WorkerRegistry
+    inference_service: InferenceService
     lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, RealtimePipeline] = field(default_factory=dict)
 
@@ -75,6 +77,7 @@ class RealtimePipelineManager(PipelineManagerABC):
                     return pipeline
 
             pipeline = RealtimePipeline.create(
+                inference_service=self.inference_service,
                 pipeline_config=pipeline_config,
                 camera_group=camera_group,
                 worker_registry=self.worker_registry,

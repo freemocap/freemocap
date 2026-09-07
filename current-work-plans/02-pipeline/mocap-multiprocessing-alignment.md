@@ -1,6 +1,6 @@
 # Mocap posthoc multiprocessing alignment
 
-Status: architecture proposal for review; execution changes have not started.
+Status: initial threaded graph and shared inference integration implemented; ready for first real-app functional QA. GPU throughput, batch limits, and deeper overlap remain to be measured.
 
 ## Scope and observed architecture
 
@@ -90,3 +90,79 @@ SkellyTracker implementation checkpoint:
 This checkpoint does not wire the shared service into the app and does not replace the single-worker Mocap graph yet. FreeMoCap continues to use its Git-installed SkellyTracker. Before integration tests can exercise the new API, the user must commit/push SkellyTracker and update the dependency through the normal workflow. No editable installs, site-packages changes, or import-path overrides are permitted.
 
 Next: implement the application service's typed registration/request/result and cancellation protocol against these leases, test fairness and failure fanout, migrate the realtime inference adapter, then wire the threaded posthoc worker graph. GPU resource admission and multiple model configurations still need validation; session reuse alone is not a VRAM capacity guarantee. MediaPipe sessions choose device context but their landmarkers remain per-tracker resources, so sharing a MediaPipe session is not equivalent to sharing loaded ONNX model weights.
+
+### Scheduler implementation checkpoint
+
+Verified the Git-installed SkellyTracker exposes SharedSessionPool. Added `freemocap/core/pipeline/inference_service.py` with a managed thread, typed registrations and requests, per-client tracker leases/state, one outstanding multiframe per client, and round-robin scheduling within mode. Ready posthoc work gets a turn after three realtime requests. Image ownership lasts until the result future is terminal; active cancellation discards results after native inference returns. Request failure signals only its pipeline; service teardown fails remaining dependent requests.
+
+Six tests in `freemocap/tests/test_inference_service.py` pass, including an integration test using the installed pool and actual CPU session implementation. Tests exercise distinct client state for identical camera names, request failure isolation, cancellation while work is active, bounded admission, finite-recording frame order, and scheduling fairness. GPU throughput and multiple-model VRAM limits remain unvalidated.
+
+The service is not connected to the live pipeline factories yet. The next implementation step is to unify session-request construction with the existing tracker factory and replace realtime session ownership with a service client adapter; then replace the Mocap single-worker path with the approved threaded graph. Do not describe this checkpoint as app-test-ready.
+
+Audit finding for the adapter: realtime `_read_frames` currently logs a warning and uses an available frame if its ordinal differs from the requested one. The shared adapter must not mislabel that image with the requested ordinal. Handle live stale-frame selection explicitly; posthoc mismatches must fail. This is separate from media filename identity resolution.
+
+### Realtime service adapter checkpoint
+
+Realtime's centralized inference adapter is now a managed thread submitting to the application-owned InferenceService. The application creates and shuts down the service; stopping an individual realtime pipeline closes only its client. Camera and aggregation workers retain their own topology. Session requests and tracker configuration construction are factored from the existing factories so leased and directly owned trackers use the same model definitions.
+
+The adapter retains newest-request scheduling and confidence gating, closes its shared-memory handles, and never substitutes another frame ordinal for the requested one. Backend timeout exceptions are distinguished from polling timeouts. Service failures remain inspectable by idle clients so a stopped service cannot look like successful worker completion.
+
+Validation: seven scheduler/adapter tests pass; the adapter test exercises both RTMPose and MediaPipe configurations with mocked inference. The existing seven Mocap integration tests passed after factory consolidation. Python compilation passed for realtime modules and adjusted pipeline test callers. No live-camera or GPU performance result is claimed.
+
+Remaining: the threaded posthoc worker graph and its service adapter, shape/batch admission limits, end-to-end simultaneous-pipeline failure tests, and real-app validation. Current posthoc execution still uses its single worker and is not the approved final topology.
+
+
+### Threaded Mocap graph: real-app QA checkpoint
+
+Mocap now creates per-video managed threads for sequential decoding, board detection, and annotation encoding. A separate managed aggregation thread coordinates complete multiframes and invokes reconstruction/publication. Skeleton inference is submitted to the same application-owned service used by realtime. The standalone all-in-one detection loop has been replaced.
+
+Because these workers are threads, bounded queues carry references to decoded NumPy images in shared process memory; no additional image serialization or custom shared-memory ring is introduced. The initial schedule allows one complete multiframe at a time, with per-camera work parallel and board selection overlapping inference. Deeper decode/encode lookahead is a performance follow-up, not claimed implemented here.
+
+Per-video progress uses the existing video-node progress contract. The aggregation bar remains the recording-level collection/staged-processing status. A dedicated inference progress row still requires extending the UI node-role contract; inference must not be presented as a fake camera.
+
+All video EOF checks pass before publication begins. Cleanup joins video threads; failures retain the originating error and stop the owning pipeline. Pipeline liveness includes remaining video threads, so a blocked native thread is not silently evicted as completed. Threads cannot be forcibly killed safely.
+
+Validation: 24 focused tests across threaded detection, recording integration, scheduler, realtime adapter, and retained progress; Python compilation and UI TypeScript checks. Body inference is mocked in recording tests; board detection and video encoding/decoding are real. A decoder fault test verifies sibling threads exit while the inference service and application remain available. No full GPU performance claim.
+
+User QA after normal backend restart:
+1. Start realtime tracking, then process a short recording with person and board. Expect one progress row per video plus recording stages; verify both overlays and playback.
+2. Stop realtime during posthoc processing. Posthoc must continue. Repeat by canceling posthoc while realtime remains active.
+3. Run without a visible board, then with board detection disabled. Both must complete skeleton processing.
+4. Trigger an input/decoder failure and confirm the error appears, progress becomes failed, and another pipeline can start.
+5. Report any startup errors, missing progress rows, stalls, or GPU memory/performance problems. Keep real recordings intact; test outputs may be regenerated in the designated test recording.
+
+
+### Processing throughput and playback continuity follow-up
+
+The real-app run produced annotated videos and reconstruction, but exposed slow
+processing and periodic 3D playback stalls. Per-video progress measures completed
+annotations; reports occur at roughly 2% intervals. The central inference batch
+uses one synchronized multiframe, so similar video progress remains expected.
+
+Video workers now decode one multiframe ahead during shared inference, bounded
+to two queued commands per worker. Encoding and observation collection still
+join per multiframe; deeper stage overlap and real detector throughput measurement
+remain outstanding. This is not calibration's independent detector-per-video
+scheduling: skeleton inference is intentionally shared at application scope.
+Both paths reuse managed workers, scoped IPC, tracker/annotation facilities and
+tqdm terminal progress. Mocap terminal bars count actual annotated frames and
+exist only in the posthoc video worker.
+
+The 3D provider now requests the next 2.5-second sample window with 1.5 seconds
+remaining in the active window, retaining active data while loading. It keeps at
+most two completed windows and one request; no per-frame server requests.
+Real-app QA: inspect terminal frame rates, compare processing duration, play
+through several window boundaries, and seek forward/backward while playing.
+The lookahead is latency mitigation, not a guarantee against arbitrarily slow
+window responses. GPU/MediaPipe profiling remains required before asserting the
+overall throughput problem is resolved.
+
+### Terminal progress display
+
+SkellyLogs console output coordinates with tqdm to print logs above active bars
+and redraw them under the shared display lock. Posthoc bars remain enabled in
+IDE consoles as well as terminals, refresh at most four times per second during
+normal updates, and Mocap labels use camera IDs to reduce wrapping. The SkellyLogs
+source/dependency change requires user commit/push and a FreeMoCap dependency
+update before full app validation. Test in the normal app launch console. Cursor handling still requires real-app
+verification; terminal detection must not silently suppress requested progress.

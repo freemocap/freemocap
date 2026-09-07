@@ -1,3 +1,4 @@
+from freemocap.core.pipeline.inference_service import InferenceService
 import unittest
 import multiprocessing
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -10,7 +11,7 @@ from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProg
 
 class TerminalProgressTests(unittest.TestCase):
     def test_evicted_failure_remains_available_to_multiple_clients(self) -> None:
-        manager = PosthocPipelineManager(global_kill_flag=multiprocessing.Value('b', False), worker_registry=Mock(spec=WorkerRegistry))
+        manager = PosthocPipelineManager(inference_service=Mock(spec=InferenceService), global_kill_flag=multiprocessing.Value('b', False), worker_registry=Mock(spec=WorkerRegistry))
         failure = AggregatorNodeProgressMessage(
             pipeline_id="calibration-task", phase=AggregatorPhase.FAILED,
             detail="No usable board observations", pipeline_type="calibration",
@@ -25,7 +26,7 @@ class TerminalProgressTests(unittest.TestCase):
         pipeline.shutdown.assert_called_once()
 
     def test_terminal_history_is_bounded(self) -> None:
-        manager = PosthocPipelineManager(global_kill_flag=multiprocessing.Value('b', False), worker_registry=Mock(spec=WorkerRegistry))
+        manager = PosthocPipelineManager(inference_service=Mock(spec=InferenceService), global_kill_flag=multiprocessing.Value('b', False), worker_registry=Mock(spec=WorkerRegistry))
         manager._retain_terminal_progress([
             AggregatorNodeProgressMessage(pipeline_id=str(index), phase=AggregatorPhase.COMPLETE)
             for index in range(105)

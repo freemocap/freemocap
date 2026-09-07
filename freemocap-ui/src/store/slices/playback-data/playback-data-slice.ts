@@ -11,6 +11,7 @@ import type {LoadedCalibration} from '@/store/slices/calibration/calibration-sli
 
 export interface PlaybackBundle {
     manifest: PlaybackManifest | null;
+    errors: Array<{resource: string; item: string; message: string}>;
     media: PlaybackMedia[];
     recordingId: string;
     recordingFps: number | null;
@@ -35,8 +36,8 @@ export interface PlaybackBundle {
         warnings?: string[];
     };
     calibration: LoadedCalibration | null;
-    trackerSchema: Record<string, unknown>;
-    statusSummary: RecordingStatusSummary;
+    trackerSchema: Record<string, unknown> | null;
+    statusSummary: RecordingStatusSummary | null;
 }
 
 export interface PerRecordingPlaybackData {
@@ -113,6 +114,7 @@ export const fetchPlaybackBundle = createAsyncThunk<
             return {
                 recordingId: data.recording_id,
                 manifest: data.manifest,
+                errors: data.errors,
                 media: data.media,
                 recordingFps: data.recording_fps ?? null,
                 totalFrames: data.total_frames ?? null,
@@ -123,14 +125,8 @@ export const fetchPlaybackBundle = createAsyncThunk<
                 },
                 timestamps: data.timestamps ?? {},
                 calibration: data.calibration ?? null,
-                trackerSchema: data.tracker_schema ?? {
-                    name: 'fallback',
-                    tracker_type: 'unknown',
-                    tracked_points: [],
-                    connections: [],
-                    landmark_schema: 'generic',
-                },
-                statusSummary: data.status_summary ?? {},
+                trackerSchema: data.tracker_schema,
+                statusSummary: data.status_summary,
             };
         } catch (error) {
             return rejectWithValue(

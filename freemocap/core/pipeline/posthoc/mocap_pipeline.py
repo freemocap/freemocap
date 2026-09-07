@@ -1,30 +1,27 @@
 """Managed Mocap recording task: group detection, annotation, and reconstruction."""
 
-import multiprocessing
 from contextlib import ExitStack, closing
 from dataclasses import dataclass, field
-from multiprocessing.queues import Queue
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
-from queue import Empty
+from queue import Empty, Queue
+from concurrent.futures import CancelledError
 
-from skellycam.core.ipc.process_management.managed_worker import ManagedWorker
+from skellycam.core.ipc.process_management.managed_worker import ManagedWorker, WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.core import DetectionStageConfig, TrackerConfig
-from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator
 from skellytracker.core.data_primitives.observation import Observation
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition, CharucoDetectorConfig
 
+from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.posthoc.annotation_input import AnnotationInput
-from freemocap.core.pipeline.posthoc.annotation_output import AnnotationOutputRequest, AnnotationVideoOutput
 from freemocap.core.pipeline.posthoc.mocap_detection import MocapDetectionRequest, detect_mocap_recording
+from freemocap.core.pipeline.posthoc.mocap_video_node import MocapVideoNode
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
-from freemocap.core.pipeline.posthoc.annotation_style import build_observation_annotator
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_task
@@ -38,7 +35,11 @@ class MocapWorkerRequest:
     recording: RecordingInfo
     config: PosthocMocapPipelineConfig
     ipc: PipelineIPC
-    progress_queue: Queue
+    progress_queue: Queue[PipelineProgressMessage]
+
+    registry: WorkerRegistry
+    inference_service: InferenceService
+    video_nodes: list[MocapVideoNode]
 
     def report(self, stage: str, detail: str, fraction: float) -> None:
         self.progress_queue.put(AggregatorNodeProgressMessage(
@@ -56,15 +57,12 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
         video_metadata: dict[str, VideoMetadata] = {}
         selected_board: CharucoBoardDefinition | None = None
         resolved_config = request.config
-        annotator: KeypointAnnotator = build_observation_annotator(request.config.tracker_config)
-        outputs: dict[str, AnnotationVideoOutput] = {}
         with ExitStack() as cleanup:
             frames = cleanup.enter_context(closing(detect_mocap_recording(MocapDetectionRequest(
                 recording_path=Path(request.recording.full_recording_path),
-                tracker_config=request.config.tracker_config,
-                detect_board=request.config.charuco_tracking_enabled,
-                auto_select_board=request.config.board_mode == CharucoBoardMode.AUTO,
-                board=request.config.charuco_board, should_continue=lambda: request.ipc.should_continue,
+                config=request.config, ipc=request.ipc, progress=request.progress_queue,
+                registry=request.registry, inference_service=request.inference_service,
+                video_nodes=request.video_nodes,
             ))))
             for frame in frames:
                 video_metadata = frame.video_metadata
@@ -78,16 +76,6 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
                         "charuco_board": selected_board, "board_mode": CharucoBoardMode.EXPLICIT,
                         "tracker_config": tracker_config,
                     })
-                    annotator = build_observation_annotator(tracker_config)
-                for camera_id, observation in frame.observations.items():
-                    if camera_id not in outputs:
-                        output = AnnotationVideoOutput(AnnotationOutputRequest(
-                            recording_path=Path(request.recording.full_recording_path), pipeline_id=request.pipeline_id,
-                            video=video_metadata[camera_id], input_mode=AnnotationInput.RAW,
-                        ))
-                        cleanup.callback(output.close)
-                        outputs[camera_id] = output
-                    outputs[camera_id].write_frame(image=frame.images[camera_id], observation=observation, annotator=annotator)
                 observations.append(frame.observations)
                 if len(observations) % max(1, frame.frame_count // 50) == 0 or len(observations) == frame.frame_count:
                     request.report(AggregatorPhase.COLLECTING_CAMERA_OUTPUT,
@@ -97,8 +85,6 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
                 return
             if not observations:
                 raise ValueError("Mocap detection produced no frames")
-            for output in outputs.values():
-                output.publish()
         if not request.ipc.should_continue:
             return
         run_posthoc_mocap_task(
@@ -108,6 +94,8 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
         )
         if request.ipc.should_continue:
             request.report(AggregatorPhase.COMPLETE, "Mocap processing complete", 1.0)
+    except CancelledError:
+        return
     except Exception as error:
         request.report(AggregatorPhase.FAILED, f"{type(error).__name__}: {error}", 0.0)
         request.ipc.shutdown_pipeline()
@@ -120,7 +108,8 @@ class MocapPipeline(PipelineABC):
     recording_info: RecordingInfo
     ipc: PipelineIPC
     worker: ManagedWorker
-    progress_queue: Queue
+    progress_queue: Queue[PipelineProgressMessage]
+    video_nodes: list[MocapVideoNode] = field(default_factory=list)
     pipeline_type: PosthocPipelineType = field(default=PosthocPipelineType.MOCAP, init=False)
     started: bool = False
     _latest: dict[str, PipelineProgressMessage] = field(default_factory=dict)
@@ -128,24 +117,26 @@ class MocapPipeline(PipelineABC):
     @classmethod
     def create(
         cls, *, pipeline_id: str, recording_info: RecordingInfo, config: PosthocMocapPipelineConfig,
-        worker_registry: WorkerRegistry, global_kill_flag: Synchronized,
+        worker_registry: WorkerRegistry, global_kill_flag: Synchronized, inference_service: InferenceService,
     ) -> "MocapPipeline":
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
             heartbeat_timestamp=worker_registry.heartbeat_timestamp, pipeline_id=pipeline_id)
-        progress_queue = multiprocessing.Queue()
+        progress_queue: Queue[PipelineProgressMessage] = Queue()
+        video_nodes: list[MocapVideoNode] = []
         request = MocapWorkerRequest(pipeline_id=pipeline_id, recording=recording_info,
-            config=config, ipc=ipc, progress_queue=progress_queue)
+            config=config, ipc=ipc, progress_queue=progress_queue, registry=worker_registry,
+            inference_service=inference_service, video_nodes=video_nodes)
         try:
             worker = worker_registry.create_worker(
-                shutdown_flag=ipc.pipeline_shutdown_flag, worker_mode=worker_registry.worker_mode,
+                shutdown_flag=ipc.pipeline_shutdown_flag, worker_mode=WorkerMode.THREAD,
                 target=run_mocap_pipeline, name=f"Mocap-{pipeline_id}", log_queue=ipc.ws_queue,
                 kwargs={"request": request},
             )
         except Exception:
-            progress_queue.close()
+            ipc.shutdown_pipeline()
             raise
         pipeline = cls(id=pipeline_id, recording_info=recording_info, ipc=ipc,
-            worker=worker, progress_queue=progress_queue)
+            worker=worker, progress_queue=progress_queue, video_nodes=video_nodes)
         pipeline._latest[pipeline_id] = AggregatorNodeProgressMessage(
             pipeline_id=pipeline_id, pipeline_type=str(PosthocPipelineType.MOCAP),
             phase=AggregatorPhase.SETTING_UP, detail="Mocap pipeline queued",
@@ -156,7 +147,7 @@ class MocapPipeline(PipelineABC):
 
     @property
     def alive(self) -> bool:
-        return self.worker.is_alive()
+        return self.worker.is_alive() or any(node.worker.is_alive() for node in self.video_nodes)
 
     def start(self) -> None:
         if self.started:
@@ -173,10 +164,10 @@ class MocapPipeline(PipelineABC):
             self._latest[message.pipeline_id] = message
         exited_without_outcome = self.started and not self.alive and not any(
             message.phase in (AggregatorPhase.COMPLETE, AggregatorPhase.FAILED)
-            for message in self._latest.values()
+            for message in self._latest.values() if message.pipeline_id == self.id
         )
         if (self.worker.failure_exitcode is not None or exited_without_outcome) and not any(
-            message.phase == AggregatorPhase.FAILED for message in self._latest.values()
+            message.phase == AggregatorPhase.FAILED for message in self._latest.values() if message.pipeline_id == self.id
         ):
             self._latest[self.id] = AggregatorNodeProgressMessage(
                 pipeline_id=self.id, pipeline_type=str(self.pipeline_type), phase=AggregatorPhase.FAILED,
@@ -197,5 +188,6 @@ class MocapPipeline(PipelineABC):
             self.worker.terminate_gracefully()
         else:
             self.worker._reap()
-        self.progress_queue.close()
-        self.progress_queue.join_thread()
+        alive = [node.config.camera_id for node in self.video_nodes if node.worker.is_alive()]
+        if self.worker.is_alive() or alive:
+            raise RuntimeError(f"Mocap threads are still shutting down; active video threads: {alive}")

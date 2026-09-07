@@ -27,7 +27,7 @@ def test_invalid_metadata_blocks_workers_and_reports_file(tmp_path: Path) -> Non
     pq.write_table(pa.Table.from_batches([], schema=schema), where=path)
     original = path.read_bytes()
     manager = PosthocPipelineManager(inference_service=Mock(spec=InferenceService), global_kill_flag=Mock(spec=Synchronized), worker_registry=Mock(spec=WorkerRegistry))
-    with patch("freemocap.core.pipeline.posthoc.posthoc_pipeline_manager.PosthocPipeline.create") as create:
+    with patch("freemocap.core.pipeline.posthoc.posthoc_pipeline_manager.MocapPipeline.create") as create:
         with pytest.raises(ValueError, match="Recording metadata is incompatible or invalid"):
             manager.create_mocap_pipeline(
                 recording_info=RecordingInfo(recording_directory=str(tmp_path), recording_name=folder.name, mic_device_index=-1),

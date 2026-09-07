@@ -167,6 +167,30 @@ Current synchronized mocap validation checks frame counts, not equality of float
 
 ### Implementation checkpoint: declared capture videos
 
+App-QA gate, 2026-09-07: the updated Git dependencies pass 34 annotation/playback/import/association
+integration tests, plus four publication/preflight/composition tests and four subtests. FreeMoCap's
+TypeScript check passes. Timing fixtures now declare their file references; the preflight test targets
+the current MocapPipeline factory. Geometry matching remains unchanged. Pause implementation for the
+following real-app checks before beginning geometry work.
+
+1. Make a short fresh recording. Confirm it appears in playback without a page refresh; play, seek,
+   step and pause its raw videos. Verify all views show the same frame ordinal.
+2. Run calibration on that recording with the correct board and square size. Inspect newly generated
+   annotations; switch raw/annotated at a paused frame, then during playback. Position must persist.
+3. Run Mocap processing using that recording's calibration. Verify annotations refresh, both layers
+   appear when layering is selected, and playback plus reconstruction remain usable.
+4. Repeat annotation generation with overwrite. Check the recording folder for unexpected duplicate
+   outputs or partial files. Newly generated annotations use `<original filename>.annotated.mp4` and
+   embed their source relationship; pre-existing untagged annotations remain independent media.
+5. Import videos with arbitrary names and no timing sidecars. Playback and board detection must work
+   with inferred timing. Do not test automatic assignment to an unrelated calibration in this pass.
+6. On disposable test data, rename the recording folder and verify the new metadata's relative timing
+   and video relationships still work. Corrupt a derived Parquet output and verify videos remain
+   available with a bounded resource error. Do not corrupt a recording you want to preserve.
+
+Report the first failing action, selected recording, and relevant logs. Do not start geometry matching
+until this gate is accepted. Automated validation does not substitute for these real-app checks.
+
 Closure candidate: the previous annotation/playback integration passes (19 tests plus two subtests),
 and FreeMoCap TypeScript passes. Playback media now carries its variant explicitly; backend and UI
 joins include variant plus filename. Capture writes relative camera/multiframe timing references;

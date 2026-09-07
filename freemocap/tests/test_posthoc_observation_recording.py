@@ -1,5 +1,6 @@
 """Posthoc ingestion reads capture sidecars or infers timing for imported video."""
 
+import json
 from pathlib import Path
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.playback_queries import playback_manifest
@@ -65,7 +66,12 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
         }
         for frame in range(2)
     ]
+    timing_references = {
+        camera: Path(info.camera_timestamps_file_path_from_camera_id(camera)).relative_to(Path(info.full_recording_path)).as_posix()
+        for camera in videos
+    }
     if recorded:
+        Path(info.recording_info_path).write_text(json.dumps({"camera_timing": timing_references}), encoding="utf-8")
         for index, camera in enumerate(videos):
             Path(info.camera_timestamps_file_path_from_camera_id(camera)).write_text(
                 "# recording_frame_number,timestamp.from_recording_start.sec\n"
@@ -137,6 +143,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
     Path(info.camera_timestamps_file_path_from_camera_id("a")).write_text(
         "broken\n", encoding="utf-8"
     )
+    Path(info.recording_info_path).write_text(json.dumps({"camera_timing": timing_references}), encoding="utf-8")
     with pytest.raises(ValueError, match="Missing recording timing columns"):
         publish_posthoc_observations(
             ObservationRecordingRequest(

@@ -216,6 +216,8 @@ const PlaybackPage: React.FC = () => {
                             currentFrame={controller.currentFrame}
                             seekFrame={controller.seekFrame}
                             totalFrames={controller.totalFrames}
+                            getCachedFrames={controller.getCachedFrames}
+                            getBitmapFrames={controller.getBitmapFrames} getDisplayFps={controller.getDisplayFps}
                             fps={controller.fps}
                             recordingFps={recordingFps}
                             settings={controller.settings}

@@ -28,6 +28,7 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
 
     return (
         <div
+            ref={containerRef}
             className="w-full h-full overflow-hidden pos-rel"
             style={{
                 backgroundColor: '#000',
@@ -35,7 +36,7 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
             }}
             {...containerHandlers}
         >
-            <div ref={containerRef} style={zoomWrapperStyle}>
+            <div style={zoomWrapperStyle}>
                 <canvas
                     ref={(el) => setVideoRef(videoId, el)}
                     className="w-full h-full block"

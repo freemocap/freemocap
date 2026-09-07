@@ -1,17 +1,7 @@
-// offscreen-renderer.worker.ts
-//
-// Per-camera module Web Worker that owns one camera's display <canvas> (via
-// OffscreenCanvas) AND composites that camera's 2D skeleton overlay. Each
-// camera has its own worker, so overlay compositing runs in PARALLEL across
-// cameras instead of serializing in the single decode worker. The decode
-// worker returns raw bitmaps; this worker draws the skeleton overlay on top
-// before display.
-//
-// The frame and its skeleton observation arrive in ONE message — the standard
-// stream carries the image and the overlay for frame N in the same sample, so
-// this worker composites the frame's own overlay (no cross-stream timing, no
-// staleness heuristic). The last observation is kept until a newer one
-// replaces it.
+import {RenderCommand, RenderEvent, type ScheduledRenderMessage} from './render-protocol';
+// Per-camera bitmap preparation and presentation for live and scheduled images.
+// Live frames use latest-frame scheduling; scheduled images remain worker-owned
+// until the client explicitly presents or releases them.
 
 import { OverlayManager } from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import type { SkeletonObservation } from "@/services/server/server-helpers/image-overlay/skeleton-types";
@@ -40,11 +30,30 @@ interface FrameMessage {
     skeleton: SkeletonObservation | null;
 }
 interface VisibilityMessage { type: "visibility"; charuco: boolean; skeleton: boolean; }
-type InboundMessage = InitMessage | FrameMessage | VisibilityMessage;
+type InboundMessage = InitMessage | FrameMessage | VisibilityMessage | ScheduledRenderMessage;
+const preparedImages = new Map<number, ImageBitmap>();
 
 self.addEventListener("message", (event: MessageEvent) => {
     const msg = event.data as InboundMessage;
     switch (msg.type) {
+        case RenderCommand.Prepare:
+            void prepareImage(msg);
+            break;
+        case RenderCommand.Present:
+            try {
+                const bitmap = preparedImages.get(msg.id);
+                if (!bitmap) throw new Error(`Missing prepared image ${msg.id}`);
+                preparedImages.delete(msg.id);
+                try {drawImage(bitmap);} finally {bitmap.close();}
+                workerScope.postMessage({type: RenderEvent.Presented, id: msg.id});
+            } catch (error) {
+                workerScope.postMessage({type: RenderEvent.Failed, id: msg.id, detail: String(error)});
+            }
+            break;
+        case RenderCommand.Release:
+            preparedImages.get(msg.id)?.close();
+            preparedImages.delete(msg.id);
+            break;
         case "init":
             offscreenCanvas = msg.canvas;
             ctx = offscreenCanvas.getContext("bitmaprenderer");
@@ -79,12 +88,7 @@ function handleFrame(
     // happening independently in each per-camera worker instead of batched
     // in the decode worker's Promise.all. Frame-dropping (setPending) means
     // stale pixel buffers are discarded before ever touching the GPU.
-    const imageData = new ImageData(
-        new Uint8ClampedArray(pixelBuffer),
-        width,
-        height,
-    );
-    createImageBitmap(imageData).then((rawBitmap) => {
+    createRawBitmap(pixelBuffer, width, height).then((rawBitmap) => {
         if (skeletonObs) {
             overlayManager
                 .processFrame(rawBitmap, null, skeletonObs)
@@ -122,15 +126,29 @@ function renderLoop(): void {
     const frame = pendingFrame;
     pendingFrame = null;
 
-    // Match canvas size to the frame (handles rotation / resolution changes).
-    if (offscreenCanvas.width !== frame.width || offscreenCanvas.height !== frame.height) {
-        offscreenCanvas.width = frame.width;
-        offscreenCanvas.height = frame.height;
-    }
-
-    // transferFromImageBitmap detaches (consumes) the bitmap.
-    ctx.transferFromImageBitmap(frame);
+    drawImage(frame);
 
     // If another frame arrived while rendering, keep going.
     if (pendingFrame) scheduleRender();
+}
+
+async function prepareImage(message: Extract<ScheduledRenderMessage, {type: RenderCommand.Prepare}>): Promise<void> {
+    try {
+        const bitmap = await createRawBitmap(message.pixelBuffer, message.width, message.height);
+        preparedImages.set(message.id, bitmap);
+        workerScope.postMessage({type: RenderEvent.Prepared, id: message.id});
+    } catch (error) {
+        workerScope.postMessage({type: RenderEvent.Failed, id: message.id, detail: String(error)});
+    }
+}
+
+function drawImage(frame: ImageBitmap): void {
+    if (!ctx || !offscreenCanvas) throw new Error('Camera canvas is not initialized');
+    if (offscreenCanvas.width !== frame.width) offscreenCanvas.width = frame.width;
+    if (offscreenCanvas.height !== frame.height) offscreenCanvas.height = frame.height;
+    ctx.transferFromImageBitmap(frame);
+}
+
+function createRawBitmap(pixelBuffer: ArrayBuffer, width: number, height: number): Promise<ImageBitmap> {
+    return createImageBitmap(new ImageData(new Uint8ClampedArray(pixelBuffer), width, height));
 }

@@ -1,8 +1,5 @@
-// frame-processor.ts
-//
-// Manages the decode module worker. The worker parses the binary payload and
-// decodes JPEG→ImageBitmap off the main thread, returning RAW bitmaps. Overlay
-// compositing happens downstream in the per-camera canvas workers.
+// Shared worker JPEG decoding returns transferable RGBA buffers.
+// Camera workers own bitmap preparation and presentation.
 
 export interface FrameData {
     cameraId: string;
@@ -151,5 +148,13 @@ export class FrameProcessor {
         // Terminate and recreate the worker (re-applies visibility/schema).
         this.worker.terminate();
         this.worker = this.createWorker();
+    }
+
+    public close(): void {
+        this.worker.terminate();
+        for (const pending of this.pendingRequests.values()) pending.reject(new Error('Frame decoder closed'));
+        this.pendingRequests.clear();
+        this.lastFrameTime.clear();
+        this.currentFps.clear();
     }
 }

@@ -1,11 +1,5 @@
-// frame-decode.worker.ts
-//
-// Module Web Worker that parses the binary payload and decodes each camera's
-// JPEG → ImageBitmap, off the main thread. It returns RAW decoded bitmaps as
-// fast as possible — overlay compositing happens downstream, in parallel, in the
-// per-camera canvas workers (offscreen-renderer.worker). Keeping this worker
-// decode-only means the main-thread "one decode in flight" gate releases after
-// decode, so it doesn't wait on compositing.
+// Shared worker JPEG decoding returns transferable RGBA buffers.
+// Camera workers own bitmap preparation and presentation.
 
 import { parseMultiFramePayload } from "./binary-frame-parser";
 

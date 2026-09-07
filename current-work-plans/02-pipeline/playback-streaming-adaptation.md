@@ -1,136 +1,210 @@
 # Playback streaming adaptation
 
-Status: source audit and proposed implementation plan; awaiting design agreement.
+Status: implemented; ready for Windows app testing with full-resolution recordings.
 Scope: recorded video playback within the Mocap posthoc/data-model initiative.
-No production implementation or dependency changes in this audit.
 
-## Existing machinery
+## Ownership and data flow
 
-- SkellyCam `core/recorders/videos/sequential_video_reader.py` owns PyAV sequential
-  decoding, rotation and restart-from-start reads. Reuse it. Do not create video copies.
-- SkellyCam `core/types/frontend_payload_bytearray.py:create_frontend_payload`
-  owns multiframe image encoding/packing and enforces equal frame ordinals. Its
-  input currently requires live-camera recarrays. Extract an image-oriented typed
-  input boundary in SkellyCam; retain the live-camera adapter there. Do not fabricate
-  capture timestamps or camera configuration to package a video frame.
-- That packer currently caps resolution at half size, defaults JPEG quality to 60,
-  and truncates camera IDs to 16 bytes. These are explicit adaptation points:
-  playback encoding quality/resolution must be specified, rotation applied once,
-  and transport identity must not truncate arbitrary media IDs. A session-local
-  numeric index mapped to full media identity is a candidate for the existing
-  payload camera slots; it is not a calibration-camera identity.
-- FreeMoCap `api/websocket/frame_relay.py` composes CBOR frame messages and uses
-  `send_serializer.py` for one-writer ordering. Actual live source selection in
-  `websocket_server.py` is newest-wins. The relay itself need not introduce dropping.
-- `TransportService.ts` dispatches CBOR. Its live model/image state is global to
-  that transport instance, so playback frames must not overwrite live state.
-- `ServerContextProvider.tsx` overwrites `pendingPayloadRef` on image receipt and
-  acknowledges before image decoding. Neither operation provides playback credit.
-- `FrameProcessor` and `frame-decode.worker.ts` already transfer buffers and decode
-  images off-thread. `binary-frame-parser.ts` uses jpeg-js and returns RGBA buffers
-  (some worker comments inaccurately describe ImageBitmaps). Reuse the actual code,
-  adapting its input identity boundary jointly with the Python packer.
-- `FrameLookahead`, the decoded-frame LRU, and playback's ordinal presentation
-  controller own useful behavior. Replace the compressed-video decoder dependency
-  underneath them, not the timeline or cache with another independent player.
+The playback client owns scheduling and requested image encoding. It requests explicit half-open frame ranges
+(start_frame inclusive, end_frame exclusive) through a dedicated WebSocket. The
+backend fulfills precisely that range as quickly as native decoding and socket
+transport permit, then sends a completion message and waits. Each payload contains
+one synchronized multiframe: the same frame ordinal from every selected video.
+There is no per-frame acknowledgment or fixed multiframe allowance.
 
-## Proposed ownership and transport
+Realtime remains a separate scheduling policy: live images prioritize freshness.
+Playback never uses the live newest-frame queue. It receives requested frame ordinals
+faithfully, but may skip their decoding/presentation to follow its playback clock.
+It shares SkellyCam's sequential reader and image encoder, CBOR/SendSerializer,
+and the frontend FrameProcessor worker with the established streaming machinery.
 
-SkellyCam owns video reading, synchronized image-group construction, and reusable
-image packing/encoding. FreeMoCap owns recording-resource selection, the playback
-session endpoint/lifecycle, and association with saved kinematics. The frontend
-owns presentation time, group assembly, bounded caches and flow-control requests.
-A playback session is not an inference pipeline; no inference service or fake
-camera capture group should be created to play videos.
+No video copies are written to disk, and playback does not download compressed
+videos or make per-frame HTTP requests. Native reads advance sequentially; uncached
+backward reads restart from zero. Equal frame counts are required, never equality
+of measured floating-point FPS values. Recording timing drives presentation.
 
-Prefer a dedicated playback WebSocket connection using the existing serializer,
-CBOR infrastructure and image decode components. This isolates a large buffered
-playback stream from live image/log/control traffic and avoids new stream routing
-through singleton live state. A second connection is not a second transport stack.
-Do not instantiate the live WebsocketRunner with its camera/application lifecycle.
-Extract only reusable pieces proven necessary by the playback session.
+## Client workflow
 
-Session control models: open selected recording/source; grant capacity; seek;
-close. Server outcomes: ready, frame group, end, failed. Use enums and typed
-Python/TypeScript contracts. Carry session identity, generation, source revision,
-and multiframe ordinal. Distinguish stream delivery metadata from recording data
-provenance; no new run IDs or output metadata are needed for this transport.
+- Opening a recording prefers viable annotated videos, with raw as the fallback.
+- During playback, ranges request scale 0.5 and JPEG quality 60 (half width and
+  height, matching realtime preview policy). The selected source requests upcoming missing ranges within its
+  available decoded-image budget. The presentation clock remains independent of
+  range delivery. The controller retains its canvas presentation/look-ahead layer.
+- When paused, only the paused ordinal is requested from each available source,
+  with scale 1.0 and JPEG quality 90. A cached preview is shown while the detail
+  image loads; the canvas is not cleared. Resume selects preview encoding again.
+  Both sources retain their compressed images and native decoder positions.
+- Switching sources pauses playback and preserves the displayed ordinal. Cached
+  multiframes can be reused without another range request.
+- Seeking changes the client's priority interval and cancels irrelevant range work.
+  The client waits for completion of cancellation before issuing the next range,
+  so outstanding reservations cannot accumulate across rapid seeks.
+- Closing a recording closes its sockets, decoder workers and image caches.
 
-## Buffer and lifetime contract
+## Memory and observability
 
-Client grants a cumulative send limit per generation in a bounded window of
-multiframe ordinals. Capacity is derived from reserved decoded bytes for all
-images in a group, plus bounded encoded/in-flight buffers. Grants replenish in
-batches as capacity becomes available; they are not one request per frame.
-Repeated control messages cannot mint extra capacity. No unbounded worker queue.
-Server checks credit before decoding; blocking decode/encode stays in managed
-threads outside the event loop. Initial implementation bounds concurrent groups
-and measures throughput before adding deeper parallelism.
+The persistent recording cache retains the compressed multiframe byte payload
+(camera headers and JPEG images), indexed by source, encoding profile and frame ordinal. Preview and detail profiles
+map to fixed, distinct scale/quality settings; they never share cache entries. Receiving
+and storing a payload does not decode it. Cache accounting uses actual byte length.
+The client reserves the enforced maximum wire payload size for each outstanding
+multiframe before requesting a range; actual compressed sizes free space for more
+requests when that range completes. Small recordings can remain entirely cached.
 
-Every transmitted ordinal contains all selected views. Presentation advances only
-when the whole group is available. Encoded byte limits and decoded byte limits
-must both be enforced. A single group too large for the budget is an explicit
-configuration error, not unlimited allocation. Cache entries own their image
-buffers; transferring a buffer into a canvas must not detach a retained cache entry.
+RecordingVideoCache allocates three quarters of the selected recording budget to
+JPEG payloads across available sources. The presentation look-ahead uses up to a
+quarter (capped at 256 MiB), including headroom for the displayed frame and decode work.
+The target is one second of prepared images, reduced when the byte limit requires it. Bitmap
+ownership belongs to the presentation buffer: frames are decoded on demand,
+drawn, and released. The main cache never retains bitmaps or expanded pixel arrays.
+The retained payload is copied before transferring to the shared decoder worker,
+so decoding does not detach the cached bytes. Paused-source warming fetches JPEGs
+without decoding inactive views. Browser/GPU overhead is not a strict memory cap.
 
-Cached seeks display locally. Uncached forward seeks advance readers sequentially;
-uncached backward seeks reopen at zero and decode forward. Seek increments the
-session generation; revoke old credit and discard stale results even if native
-work finishes late. Cache keys include source revision, media identity, frame
-ordinal and encoding/resolution policy. Raw and annotated groups share the same
-mechanism and preserve the selected ordinal when switching.
+Two canvas strips show different residency information on the slider:
+- Thin green: ordinals with compressed JPEG payloads retained for the selected source
+  (preview or detail).
+- Thicker pink: decoded presentation look-ahead plus the currently displayed frame.
 
-EOF must agree across the selected synchronized group. Report errors from any
-reader/encoder to the session and stop sibling work. Closing the view, changing
-recording, cancellation or disconnect releases readers, workers and buffers.
-Playback failure must not stop realtime, Mocap processing, calibration, or the app.
+They update every 250 ms independently of the presentation loop, use theme colors,
+and do not count requested/in-flight frames as resident. Hover text explains both.
 
-## Image quality and reconstruction
+## Implementation boundaries
 
-Reuse JPEG transport as an explicit display encoding, not a change to originals
-or saved measurements. Do not silently inherit the live half-size/quality-60
-policy. Start prototype with explicit quality and resolution; measure CPU cost,
-bytes/sec and decode time before selecting production defaults.
-Keep saved 3D window queries independent initially. Present their samples from
-the same displayed ordinal/time; do not couple Parquet validity to video playback.
-Unifying saved numeric delivery into FrameMessage can follow after image playback
-is proven, rather than expanding this task into the entire data-model refactor.
+- core/playback/media_selection.py: shared source-folder and full-filename discovery.
+- core/playback/video_source.py: managed native reader thread and shared image packing.
+- core/playback/stream_session.py: exact range execution, cancellation and completion.
+- api/websocket/playback_socket.py: typed wire requests, source opening and scoped cleanup.
+- freemocap-ui/src/services/recording/client-video-group.ts: client range scheduling,
+  outstanding wire-byte reservations and compressed-multiframe cache ownership.
+- freemocap-ui/src/services/recording/recording-video-cache.ts: recording-wide source ownership.
+- freemocap-ui/src/components/playback/usePlaybackController.ts: playback state,
+  paused-source warming, frame presentation and preserved media timelines when
+  selecting a reconstruction run.
+- freemocap-ui/src/components/playback/CachedTimeline.tsx: cache residency rendering.
 
-## Implementation checkpoints
+## Camera rendering ownership
 
-1. Agree this boundary plan, especially dedicated connection, media identity and
-   explicit display-encoding policy.
-2. Adapt SkellyCam image input/packing without duplicating encoder code. Test
-   live payload compatibility, arbitrary identities, rotation and exact ordinals.
-   User commits/pushes; FreeMoCap consumes the Git dependency as usual.
-3. Build a headless playback session using a fake consumer. Verify credit bounds,
-   pause, seek generations, source changes, EOF mismatch, failure and disconnect.
-4. Integrate the shared frontend decoder with existing cache/lookahead. Remove
-   the production Mediabunny video-decoding path once replaced; no per-frame HTTP
-   route or disk transcode fallback. Keep raw and annotated on one source adapter.
-5. Real-app Windows checkpoint: MPEG-4 test data and H.264 recordings; arbitrary
-   video counts; rapid seeks/source switches; long playback; simultaneous realtime
-   and posthoc; cancellation. Measure memory, throughput and stalls. Then packaged
-   Linux/macOS verification. No claim of smooth performance before those checks.
+Playback and realtime use `offscreen-renderer.worker.ts` for bitmap creation and
+`bitmaprenderer` presentation on worker-owned canvases. Realtime uses its latest-image
+policy. Playback uses typed prepare/present/release commands through
+`scheduled-renderer.ts`; its bounded look-ahead holds image handles, while the bitmaps
+remain inside the camera workers. Preparation runs concurrently across cameras.
 
-Deferred: sidebar status redesign, calibration reprojection-based matching,
-remaining Mocap posthoc/API and recording data-model work.
+The controller submits a presentation only after every camera image is prepared,
+and waits for every worker to acknowledge presentation before advancing the ordinal.
+This is a logical multiframe barrier, not a guarantee of atomic hardware scanout across
+separate canvases. Frame labels and timeline overlays remain small canvas operations
+on the main thread. JPEG decoding uses Electron's native JPEG decoder inside the shared decoder worker,
+with a CPU-readable OffscreenCanvas producing transferable RGBA output. Both realtime
+and playback use this path. Buffer refill starts when a presentation slot is consumed,
+so decoding overlaps the rendering acknowledgments.
 
-## Checkpoint 1: shared image packing implemented
+Canvas workers survive React ref detach/reattach within a commit and terminate when
+their canvas leaves the view. Closing look-ahead releases unpresented image handles;
+renderer errors reject outstanding operations and surface in playback.
 
-SkellyCam now exposes ImagePayloadFrame, ImagePayloadRequest and
-encode_image_payload in frontend_payload_bytearray.py. Live camera records adapt
-to this encoder; image-only callers supply oriented BGR arrays, explicit transport
-slots, output dimensions and JPEG parameters. The existing binary layout is
-unchanged. Transport IDs exceeding its ASCII slot fail instead of truncating;
-full playback media identities still require the planned session mapping.
+## Validation and app check
 
-12 focused image/payload tests passed, covering wire layout, full-resolution
-images, equal ordinals, unique slots, invalid IDs, rotation through live tests,
-and independent payload lifetime. The broader 23-test module had one unrelated
-filename assertion failure (expects idx0, builder emits idx-0); 22 passed.
+Seven Python tests pass: exact requested ranges without acknowledgments, cancellation
+of an in-flight multiframe, failure cleanup, bounds/payload validation, annotated
+preference, full-filename discovery and native socket seeking/disconnect cleanup.
 
-This is the SkellyCam dependency handoff point. User commit/push and FreeMoCap
-Git-dependency update precede integration. No installed packages or dependency
-sources changed. Playback remains on its current implementation until session
-and frontend work are completed; this checkpoint alone does not fix MPEG-4 playback.
+Frontend coverage includes an Electron worker JPEG benchmark and malformed-image rejection. The Electron integration test uses the real controller,
+native backend and shared image decoder; it verifies rendered ordinal pixels,
+slider clicks/drags, reconstruction-run selection with raw-only saved timing,
+annotated switching, paused source warming, reload, recording switches and React
+StrictMode cleanup. It verifies image canvases are worker-owned and renderer failures
+reject pending presentation without stopping independent canvases. It checks cached switches do not receive additional images,
+playback does not request video HTTP resources, and client-selected batches can
+span more than four multiframes. JPEG-cache coverage exceeds the small decoded
+presentation buffer, and the two indicators use distinct theme colors. Tests cover presentation-buffer ownership, dropping queued images while preserving consecutive decode requests, in-flight completion, wall-clock speed, and actual presentation-rate measurement.
+
+Renderer and harness TypeScript checks pass. The renderer/worker build passes with
+existing asset/CSS/chunk warnings. The broader pytest module remains unavailable
+because pytest is absent from the installed environment; no environment changes
+were made to bypass that dependency boundary.
+
+App test: restart frontend and backend together; open annotated test data, play,
+pause and compare Raw/Annotated, drag forward/backward, switch recordings, and
+reload. Repeat using full-resolution recordings and concurrent realtime capture.
+Watch whether the green cached region stays ahead of the playback marker.
+
+## Remaining work
+
+- Measure arrival waits, JPEG decode, worker bitmap preparation, presentation latency,
+  buffer starvation, memory overhead and large-recording seek latency on real footage.
+- Playback performance is parked after the buffer-starvation recovery checkpoint.
+  Catch-up drops only already-prepared multiframes. Decoding remains sequential;
+  recovery rebases presentation time to the next available frame. Sustained input
+  shortages may slow playback rather than accumulating catch-up work.
+- Native cancellation currently waits for the active sequential read to finish.
+  Interruptible long reads belong in SkellyCam and require the normal Git dependency
+  handoff. Socket cancellation prevents subsequent payload delivery and range work.
+- Linux/macOS validation and user-configurable memory/quality settings follow Windows QA.
+- Resume media/camera identity work, including the planned calibration-reprojection
+  fitness matching design, within the larger Mocap posthoc/data-model refactor.
+
+Preview/detail validation additionally checks native wire dimensions and Electron
+canvas dimensions: preview images halve both dimensions during playback, then full
+resolution is restored at pause without changing the displayed frame ordinal.
+Scaling uses the existing SkellyCam image encoder; no installed dependency changes
+or changes to realtime encoding policy are required.
+
+## Focused throughput checkpoint
+
+The Electron worker benchmark uses deterministic synthetic JPEGs at quality 60,
+20 iterations per size after warmup. The production native decoder (including Blob
+creation and RGBA readback) measured approximately 2.4 / 5.4 / 8.3 ms at 640x360 /
+960x540 / 1280x720. The JavaScript comparison measured 15 / 34 / 60 ms. These isolate
+JPEG decoding; they do not establish end-to-end throughput with real footage or a
+busy 3D viewport. Run `playwright test e2e/jpeg-throughput.spec.ts --reporter=line`
+from freemocap-ui to repeat the comparison. The JavaScript library is only used by
+the benchmark, not the application's image path.
+
+App checkpoint: restart the frontend and replay the same recording at 1x, then
+check paused detail, source switching, and realtime rendering. If playback remains
+unsatisfactory, record that result and park further playback performance work;
+resume the media/camera identity and Mocap posthoc architecture/data-model work.
+Wall-clock presentation skipping is implemented. After initial buffering, elapsed
+wall time and the selected playback speed determine the due frame. The controller
+presents the newest ready multiframe at or before that position and releases obsolete
+prepared images. Decoding always requests consecutive ordinals. After an empty-buffer
+stall, presentation time resumes from the next available image without resetting the
+display-FPS measurement. Final-frame presentation remains exact.
+
+The slider displays actual completed multiframe presentations per second over a
+rolling one-second window. It starts unspecified, resets when playback starts, and
+retains its last measurement when paused. An isolated UI counter samples four times
+per second; no per-frame React updates are added for telemetry. This measures worker
+presentation acknowledgments, not physical monitor scanout. Skipping preserves
+motion speed rather than inflating the measured display FPS.
+
+The Electron playback test also injects 100 ms bitmap preparation and checks that
+presentation continues above four FPS after the initial buffer drains, with both
+camera canvases reaching the exact final ordinal. The initial unspecified FPS readout and subsequent measured value are checked.
+
+Next work after the brief app check: resume media/camera identity within the Mocap
+posthoc architecture and recording-data-model work. Keep calibration reprojection
+fitness matching on that roadmap; further playback tuning is deferred.
+
+Starvation regression checkpoint: playback scheduling uses a bounded timer rather
+than depending on animation-frame callbacks. The slow-preparation Electron case
+presented 48 camera sets and reported 9 FPS with a deliberate 100 ms preparation
+cost. This is a controlled regression result, not a real-recording throughput claim.
+Sequential decode, prepared-only dropping, and clock rebasing form the functional
+fallback; sustained insufficient throughput may slow recording time. Further
+performance tuning is deferred after the app smoke check.
+
+## Resource and zoom checkpoint
+
+Electron chooses a recording-cache budget no greater than 2 GiB, one sixteenth of
+physical RAM, or one quarter of available RAM at initialization, whichever is smaller.
+Insufficient memory and invalid OS readings fail explicitly. Browser-only playback
+retains its conservative 512 MiB default. These are allocation budgets with OS
+headroom, not guarantees against subsequent memory pressure or GPU/native overhead.
+
+Playback zoom uses the fixed outer viewport for cursor coordinates, with transforms
+applied only to its inner image wrapper, matching realtime's shared zoom hook.
+Electron checks repeated cursor-anchored zoom in/out, zoom after panning, and reset
+on the actual playback tile. Further playback work remains deferred after this check.

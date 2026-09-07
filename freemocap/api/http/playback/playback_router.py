@@ -1,6 +1,6 @@
 """
 Playback router: serves recording descriptors, numeric windows and video file bytes.
-Video decoding and frame caching belong to the playback client.
+Native decoding is delivered through the playback socket; decoded frames are cached by the client.
 
 Endpoints are keyed on {recording_id} (the recording folder name). The full
 recording path is resolved as {BASE_RECORDINGS_DIRECTORY}/{recording_id},
@@ -16,9 +16,11 @@ Endpoints:
 import json
 from urllib.parse import quote, urlencode
 import csv
-from enum import StrEnum
 import logging
 from pathlib import Path
+from freemocap.core.playback.media_selection import (
+    PlaybackVideoSource, VIDEO_EXTENSIONS, video_source_folder, discover_video_paths,
+)
 from typing import Any, Optional
 
 import tomllib
@@ -101,7 +103,6 @@ def _include_annotated_media(*, folder: Path, media: tuple[PlaybackMedia, ...]) 
     return tuple(result)
 
 
-VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 TIMESTAMP_EXTENSIONS = {".csv"}
 
 
@@ -128,13 +129,8 @@ class VideoSourcesResponse(BaseModel):
     sources: dict[str, VideoSourceInfo]
 
 
-class PlaybackVideoSource(StrEnum):
-    SYNCHRONIZED = "synchronized"
-    ANNOTATED = "annotated"
-
-
 def preferred_video_source(*, synchronized: VideoSourceInfo, annotated: VideoSourceInfo) -> PlaybackVideoSource:
-    candidates = ((PlaybackVideoSource.SYNCHRONIZED, synchronized), (PlaybackVideoSource.ANNOTATED, annotated))
+    candidates = ((PlaybackVideoSource.ANNOTATED, annotated), (PlaybackVideoSource.SYNCHRONIZED, synchronized))
     for name, source in candidates:
         if source.available and source.valid:
             return name
@@ -1004,13 +1000,11 @@ def get_recording_bundle(
     for source, resource in ((PlaybackVideoSource.SYNCHRONIZED, RecordingResource.RAW_VIDEO),
                              (PlaybackVideoSource.ANNOTATED, RecordingResource.ANNOTATED_VIDEO)):
         sources[source] = VideoSourceInfo(available=False, valid=False, video_count=0)
-        folder = recording_path / (ANNOTATED_VIDEOS_FOLDER_NAME if source == PlaybackVideoSource.ANNOTATED else SYNCHRONIZED_VIDEOS_FOLDER_NAME)
-        if source == PlaybackVideoSource.SYNCHRONIZED and not folder.is_dir():
-            folder = recording_path
-        paths: list[Path] = []
+        folder = video_source_folder(recording=recording_path, source=source)
+        paths: tuple[Path, ...] = ()
         with resource_boundary(resource=resource, item=str(folder), errors=errors):
             if folder.is_dir():
-                paths = sorted(path for path in folder.iterdir() if path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS)
+                paths = discover_video_paths(folder=folder)
         videos: list[VideoInfo] = []
         frame_counts: dict[str, int] = {}
         for path in paths:
@@ -1019,7 +1013,7 @@ def get_recording_bundle(
                 parameters = {"source": source} if folder != recording_path else {}
                 if recording_parent_directory:
                     parameters["recording_parent_directory"] = recording_parent_directory
-                videos.append(VideoInfo(video_id=path.stem, filename=path.name, size_bytes=path.stat().st_size,
+                videos.append(VideoInfo(video_id=path.name, filename=path.name, size_bytes=path.stat().st_size,
                     stream_url=f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.stem, safe='')}?{urlencode(parameters)}"))
                 frame_counts[path.name] = metadata.reported_frame_count
         valid = len(videos) == len(paths) and len(set(frame_counts.values())) == 1

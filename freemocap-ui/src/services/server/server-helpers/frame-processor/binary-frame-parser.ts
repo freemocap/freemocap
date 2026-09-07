@@ -9,36 +9,7 @@ import {
     PAYLOAD_HEADER_SIZE,
 } from './binary-protocol';
 
-// ---------------------------------------------------------------------------
-// CPU JPEG decode (pure JS) — avoids GPU contention with the Three.js viewport.
-//
-// JPEG bytes are decoded via jpeg-js which runs entirely on the CPU. We return
-// the raw RGBA pixel buffer — ImageBitmap creation is deferred to each
-// per-camera worker so GPU uploads happen independently (not batched in a
-// Promise.all that serializes on the GPU command queue).
-//
-// jpeg-js is pure JavaScript (no WASM), so it works in any Worker context
-// without Vite WASM-loading issues.
-// ---------------------------------------------------------------------------
-
-// Lazily-resolved pure-JS decoder — loaded once on first use, cached forever.
-let _cpuDecodePromise: Promise<
-    (jpegData: Uint8Array) => { width: number; height: number; data: Uint8Array }
-> | null = null;
-
-function getCpuDecoder(): Promise<
-    (jpegData: Uint8Array) => { width: number; height: number; data: Uint8Array }
-> {
-    if (!_cpuDecodePromise) {
-        _cpuDecodePromise = import("jpeg-js").then((m) => {
-            console.log("[binary-frame-parser] jpeg-js pure-JS decoder loaded (CPU path)");
-            const decode = m.default.decode;
-            // useTArray: true → returns Uint8Array instead of Node Buffer (browser compat)
-            return (jpegData: Uint8Array) => decode(jpegData, { useTArray: true });
-        });
-    }
-    return _cpuDecodePromise;
-}
+import {decodeJpeg} from './jpeg-decoder';
 
 export interface ParsedFrame {
     cameraId: string;
@@ -249,39 +220,21 @@ export async function parseMultiFramePayload(
     // Trim array to actual size.
     frameMetadata.length = validFrameCount;
 
-    // Decode JPEG → raw RGBA pixel buffer for every camera in parallel.
-    //
-    // jpeg-js runs on CPU only — no GPU touch. Raw pixel buffers are returned
-    // so that ImageBitmap creation (GPU upload) happens independently in each
-    // per-camera worker, avoiding the GPU queue serialization that occurs when
-    // 3 createImageBitmap calls race in a single Promise.all.
-    const framePromises = frameMetadata.map(async (metadata) => {
-        try {
-            const decodeJpeg = await getCpuDecoder();
-            const jpegData = new Uint8Array(data, metadata.jpegStart, metadata.jpegLength);
-            const raw = decodeJpeg(jpegData); // synchronous
-
-            // Slice the exact pixel buffer for zero-copy transfer to main thread.
-            // raw.data is a Uint8Array from jpeg-js with useTArray:true.
-            const pixelBuffer = raw.data.buffer.slice(
-                raw.data.byteOffset,
-                raw.data.byteOffset + raw.data.byteLength,
-            );
-
-            return {
-                cameraId: metadata.cameraId,
-                cameraIndex: metadata.cameraIndex,
-                frameNumber: metadata.frameNumber,
-                width: metadata.width,
-                height: metadata.height,
-                colorChannels: metadata.colorChannels,
-                pixelBuffer,
-            } as ParsedFrame;
-        } catch (error) {
-            console.error(`Failed to decode frame for camera ${metadata.cameraId}:`, error);
-            throw error;
+    const framePromises = frameMetadata.map(async (metadata): Promise<ParsedFrame> => {
+        const jpegData = new Uint8Array(data, metadata.jpegStart, metadata.jpegLength);
+        const image = await decodeJpeg(jpegData);
+        if (image.width !== metadata.width || image.height !== metadata.height) {
+            throw new Error(`JPEG dimensions disagree with the frame header for ${metadata.cameraId}`);
         }
+        return {
+            cameraId: metadata.cameraId,
+            cameraIndex: metadata.cameraIndex,
+            frameNumber: metadata.frameNumber,
+            width: metadata.width,
+            height: metadata.height,
+            colorChannels: metadata.colorChannels,
+            pixelBuffer: image.pixelBuffer,
+        };
     });
-
     return Promise.all(framePromises);
 }

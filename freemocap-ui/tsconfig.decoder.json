@@ -1,5 +1,17 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/vite-env.d.ts", "prototypes/**/*.ts", "prototypes/**/*.tsx", "tools/media-*.ts", "tools/verify-playback-build.ts", "e2e/media-decoder.spec.ts", "e2e/app-playback.spec.ts"],
+  "include": [
+    "src/vite-env.d.ts",
+    "prototypes/**/*.ts",
+    "prototypes/**/*.tsx",
+    "tools/media-*.ts",
+    "tools/jpeg-benchmark.worker.ts",
+    "e2e/jpeg-throughput.spec.ts",
+    "tools/verify-playback-build.ts",
+    "e2e/app-playback.spec.ts",
+    "e2e/frame-lookahead.spec.ts",
+    "e2e/playback-clock.spec.ts",
+    "e2e/playback-budget.spec.ts"
+  ],
   "references": []
 }

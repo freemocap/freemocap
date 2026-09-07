@@ -360,3 +360,24 @@ linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--progress-percent), #212121 v
   overflow-wrap: anywhere;
   font-size: inherit;
 }
+.playback-cache-timeline {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 4px;
+  color: var(--color-success, #69a87b);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.playback-cache-timeline--bitmap {
+  bottom: 5px;
+  height: 6px;
+  color: var(--color-danger);
+}
+
+.playback-display-framerate {
+  min-width: 18ch;
+  font-variant-numeric: tabular-nums;
+}

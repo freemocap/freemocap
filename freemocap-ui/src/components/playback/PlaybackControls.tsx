@@ -1,3 +1,4 @@
+import {DisplayFramerate} from './DisplayFramerate';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import SegmentedControl from "@/components/ui-components/SegmentedControl";
@@ -6,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import IconButton from "@/components/ui-components/IconButton";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
+import {CachedTimeline, CacheLayer} from './CachedTimeline';
 
 interface PlaybackControlsProps {
     isPlaying: boolean;
@@ -15,6 +17,9 @@ interface PlaybackControlsProps {
     currentFrame: number;
     seekFrame: number;
     totalFrames: number;
+    getCachedFrames: () => number[];
+    getBitmapFrames: () => number[];
+    getDisplayFps: () => number | null;
     fps: number;
     recordingFps?: number;
     settings: PlaybackSettings;
@@ -58,6 +63,9 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     currentFrame,
     seekFrame,
     totalFrames,
+    getCachedFrames,
+    getBitmapFrames,
+    getDisplayFps,
     fps,
     recordingFps,
     settings,
@@ -146,7 +154,10 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         <div className="playback-controls bg-dark br-2 flex flex-row flex-wrap row-reverse justify-center gap-2 p-2 m-1 mt-0">
             {/* Timeline Scrubber */}
             <div className="playback-timeline-scrubber flex flex-row items-center">
-                <div className="playback-timeline-track flex-1 bg-middark relative">
+                <div className="playback-timeline-track flex-1 bg-middark relative"
+                    title="Green: cached JPEG payloads. Pink: decoded presentation buffer, including the displayed frame.">
+                    <CachedTimeline totalFrames={totalFrames} getCachedFrames={getCachedFrames} layer={CacheLayer.Jpeg}/>
+                    <CachedTimeline totalFrames={totalFrames} getCachedFrames={getBitmapFrames} layer={CacheLayer.Bitmap}/>
                     <input
                         type="range"
                         dir="ltr"
@@ -171,6 +182,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                                 · Rec: {recordingFps} fps
                             </span>
                         )}
+                        <DisplayFramerate getDisplayFps={getDisplayFps}/>
                     </div>
 
                     <span className="playback-timeline-start-time pos-abs z-2 text-white" title={t("estimatedTime")}>

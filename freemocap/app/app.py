@@ -25,6 +25,7 @@ from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS, APP_ROUTERS
 from freemocap.api.server_constants import PROTOCOL, HOSTNAME
 from freemocap.api.websocket.websocket_connect import websocket_router
+from freemocap.api.websocket.playback_socket import playback_socket_router
 from freemocap.app.freemocap_application import create_freemocap_app
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
@@ -402,6 +403,7 @@ def _register_routes(app: FastAPI) -> None:
         return FileResponse(FREEMOCAP_FAVICON_ICO_PATH)
 
     logger.api(f"\nRegistering WebSocket routes:")
+    app.include_router(playback_socket_router)
     app.include_router(websocket_router)
     for route in websocket_router.routes:
         logger.api(f"\tRegistered WebSocket route: {route.path}")

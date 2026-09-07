@@ -28,11 +28,11 @@ def test_annotations_inherit_inferred_source_timing(video_path: Path, tmp_path: 
     assert overlay["timeline"]["timestamps_s"][-1] == pytest.approx(11 / 30)
 
 
-@pytest.mark.parametrize("synchronized_available, expected", [(True, PlaybackVideoSource.SYNCHRONIZED), (False, PlaybackVideoSource.ANNOTATED)])
-def test_playback_prefers_original_videos(synchronized_available: bool, expected: PlaybackVideoSource) -> None:
+@pytest.mark.parametrize("annotated_available, expected", [(True, PlaybackVideoSource.ANNOTATED), (False, PlaybackVideoSource.SYNCHRONIZED)])
+def test_playback_prefers_annotated_videos(annotated_available: bool, expected: PlaybackVideoSource) -> None:
     assert preferred_video_source(
-        synchronized=VideoSourceInfo(available=synchronized_available, valid=synchronized_available, video_count=int(synchronized_available)),
-        annotated=VideoSourceInfo(available=True, valid=True, video_count=1),
+        synchronized=VideoSourceInfo(available=True, valid=True, video_count=1),
+        annotated=VideoSourceInfo(available=annotated_available, valid=annotated_available, video_count=int(annotated_available)),
     ) == expected
 
 

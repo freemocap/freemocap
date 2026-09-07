@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
-from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename, VIDEO_EXTENSIONS
+from skellycam.core.recorders.videos.video_filename import VIDEO_EXTENSIONS
 from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReader
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata
 from skellycam.core.recorders.videos.video_associations import VideoAssociations
@@ -309,14 +309,10 @@ class VideoGroupHelper(BaseModel):
     )
     # The group owns open readers; callers must close the group after use.
     videos: dict[CameraIdString, VideoHelper]
-    video_metadata_by_id: dict[CameraIdString, VideoMetadata]
-    # True if camera_id keys came from the recording manifest (authoritative).
-    # False if they came from filename parsing (best-effort).
-    keyed_from_manifest: bool = False
-    # True if filename parsing had to fall back to alphabetical reindex
-    # because indices were missing or colliding. Operator should verify
-    # the camera assignment is correct. Always False when keyed_from_manifest.
-    filename_reindex_applied: bool = False
+
+    @property
+    def video_metadata_by_id(self) -> dict[CameraIdString, VideoMetadata]:
+        return {source: video.metadata for source, video in self.videos.items()}
 
     @property
     def camera_ids(self) -> list[CameraIdString]:
@@ -330,7 +326,7 @@ class VideoGroupHelper(BaseModel):
         return list(frame_counts)[0]
 
     @model_validator(mode="after")
-    def validate_videos(self):
+    def validate_videos(self) -> "VideoGroupHelper":
         if len(self.videos) == 0:
             raise ValueError("VideoGroup must contain at least one video.")
         if len(set(video.metadata.frame_count for video in self.videos.values())) != 1:
@@ -339,39 +335,26 @@ class VideoGroupHelper(BaseModel):
 
     @classmethod
     def from_video_paths(cls, video_paths: list[str | Path]) -> "VideoGroupHelper":
-        """Create VideoGroupHelper from a list of video file paths.
+        """Use complete filenames as local source labels, without inferring physical cameras."""
+        paths = [Path(path).expanduser().resolve(strict=True) for path in video_paths]
+        names = [path.name for path in paths]
+        if len(set(names)) != len(names):
+            raise ValueError("Duplicate video filenames require an explicit source-to-video association")
+        return cls.from_source_paths(source_paths=dict(zip(names, paths, strict=True)))
 
-        Camera IDs and indices are extracted via ParsedVideoFilename.from_path(),
-        which tries the canonical SkellyCam format first then falls back to
-        heuristic extraction. Conflicting IDs or indices require explicit assignment.
-        """
-        paths = sorted(Path(p) for p in video_paths)
-        parsed_list = [ParsedVideoFilename.from_path(p) for p in paths]
-
-        ids = [parsed.camera_id for parsed in parsed_list]
-        if len(set(ids)) != len(ids):
-            assignments = ", ".join(f"{path.name} -> {parsed.camera_id}" for path, parsed in zip(paths, parsed_list))
-            raise ValueError(f"Ambiguous video source IDs: {assignments}. Supply an explicit source-to-video mapping.")
-        indices = [parsed.camera_index for parsed in parsed_list]
-        if -1 in indices or len(set(indices)) != len(indices):
-            raise ValueError("Ambiguous video source ordering. Supply an explicit source-to-video mapping.")
-        reindex_applied = False
-
-        # Sort by camera_index and build VideoHelper map keyed by camera_id
-        pairs = sorted(zip(parsed_list, paths), key=lambda x: x[0].camera_index)
-
+    @classmethod
+    def from_source_paths(cls, *, source_paths: dict[str, Path]) -> "VideoGroupHelper":
+        """Open an explicitly ordered source mapping and own its readers."""
+        paths = [path.resolve(strict=True) for path in source_paths.values()]
+        if len(set(paths)) != len(paths):
+            raise ValueError("Multiple sources reference the same video file")
+        if any(not source.strip() or source != source.strip() for source in source_paths):
+            raise ValueError("Video source IDs must be nonempty and have no surrounding whitespace")
         videos: dict[CameraIdString, VideoHelper] = {}
         try:
-            for pv, path in pairs:
-                videos[pv.camera_id] = VideoHelper.from_video_path(path)
-
-            instance = cls(
-                videos=videos,
-                video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
-                keyed_from_manifest=False,
-                filename_reindex_applied=reindex_applied,
-            )
-            return instance
+            for source, path in zip(source_paths, paths, strict=True):
+                videos[source] = VideoHelper.from_video_path(video_path=path)
+            return cls(videos=videos)
         except Exception:
             for video in videos.values():
                 video.close()
@@ -379,31 +362,13 @@ class VideoGroupHelper(BaseModel):
 
     @classmethod
     def from_manifest_videos(
-        cls,
-        *,
-        manifest_videos: dict[str, str],
-        videos_dir: Path,
+        cls, *, manifest_videos: dict[str, str], videos_dir: Path,
     ) -> "VideoGroupHelper":
-        """Build from an authoritative camera_id → relative-filename mapping."""
-        resolved_paths = VideoAssociations.model_validate(manifest_videos, strict=True).resolve_paths(
+        """Build from declared source IDs; declarations are not proof of physical identity."""
+        paths = VideoAssociations.model_validate(manifest_videos, strict=True).resolve_paths(
             video_folder=videos_dir,
         )
-        videos: dict[CameraIdString, VideoHelper] = {}
-        try:
-            for camera_id, video_path in resolved_paths.items():
-                videos[camera_id] = VideoHelper.from_video_path(video_path)
-
-            instance = cls(
-                videos=videos,
-                video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
-                keyed_from_manifest=True,
-                filename_reindex_applied=False,
-            )
-            return instance
-        except Exception:
-            for video in videos.values():
-                video.close()
-            raise
+        return cls.from_source_paths(source_paths=paths)
 
     @classmethod
     def from_video_folder_path(cls, video_folder_path: Path) -> "VideoGroupHelper":
@@ -421,8 +386,8 @@ class VideoGroupHelper(BaseModel):
         """Build a VideoGroup for a recording.
 
         Prefers the manifest's `videos` map (camera_id → filename) when
-        present; falls back to filename parsing of the synchronized-videos
-        folder when the manifest is missing or has no videos map.
+        present; otherwise uses full filenames as local source labels.
+        No physical camera association is inferred from those labels.
         """
         recording_path_obj = Path(recording_path)
         videos_dir = recording_path_obj / video_subfolder_name
@@ -435,7 +400,7 @@ class VideoGroupHelper(BaseModel):
             )
         return cls.from_video_folder_path(videos_dir)
 
-    def close(self):
+    def close(self) -> None:
         for video in self.videos.values():
             video.close()
 
@@ -444,8 +409,6 @@ class VideoGroupHelper(BaseModel):
             f"VideoGroupHelper:",
             f"  number_of_videos     = {len(self.videos)}",
             f"  frame_count          = {self.frame_count}",
-            f"  keyed_from_manifest  = {self.keyed_from_manifest}",
-            f"  filename_reindex_applied = {self.filename_reindex_applied}",
             f"  camera_ids:",
         ]
         for camera_id in self.camera_ids:

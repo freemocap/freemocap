@@ -167,6 +167,35 @@ Current synchronized mocap validation checks frame counts, not equality of float
 
 ### Implementation checkpoint: declared capture videos
 
+Pre-geometry cleanup checkpoint: both playback routers use full filename IDs. FreeMoCap's unused
+per-video/all-video timestamp routes are removed; SkellyCam's active batch timestamp route uses
+declared associations and explicit FPS inference. Heuristic CSV statistics are replaced by a shared
+reader of the defined multiframe format. Reverse filename parsing and automatic disk transcoding
+are deleted; `VideoFilename` only formats names from capture configuration. Device enumeration rejects
+ID collisions before dictionary construction. Annotation output embeds a typed source-video/frame-count
+relationship in the container and uses H264 MP4 output; playback reads that relationship rather than
+stripping suffixes. Missing declarations leave media usable independently. Partial files are excluded
+from inventory. Embedded metadata round-trips through MP4/AVI/MOV/MKV in tests.
+
+Validation: 33 focused SkellyCam tests pass; FreeMoCap TypeScript passes. SkellyCam TypeScript is blocked
+by its baseUrl deprecation configuration. FreeMoCap integration awaits the user publishing these shared
+SkellyCam changes and updating its Git dependency. Do not start in-app QA or geometry matching yet.
+Remaining pre-geometry closure includes synchronization result associations, explicit timing references
+when recording folders move/rename, and checking media-variant identity through the bundle consumers.
+The final app checklist must exercise raw/annotated switching, regeneration, inferred timing, arbitrary
+names, same stems with different extensions, malformed metadata, and independent calibration failure.
+
+Processing fallback checkpoint: the published shared reader passes playback integration. FreeMoCap's
+`VideoGroupHelper` no longer imports the filename parser: explicit associations determine source IDs
+and order; bare video paths use complete filenames as local labels and preserve supplied order.
+Duplicate labels/files fail before readers open. Both factories share reader ownership and cleanup;
+the separate metadata dictionary and unused filename-reindex flags are removed. Eleven focused tests
+pass, covering real videos, declared identities, collisions, unequal counts and partial playback.
+No SkellyCam dependency change is needed for this checkpoint. Recordings without declarations do not
+silently recover physical camera IDs from canonical names; geometry assignment remains necessary for
+operations needing existing calibration. The remaining work is annotation/timing relationships, older
+playback routes and unified geometry binding, including the planned fitness approach.
+
 Next checkpoint: all 21 FreeMoCap import/association tests pass against the published copy helper,
 including a real brightness synchronization followed by import. Recording declaration loading now
 lives in SkellyCam's `VideoAssociations`; processing delegates to it. `VideoMetadata` no longer has

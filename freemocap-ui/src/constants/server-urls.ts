@@ -61,10 +61,6 @@ class ServerUrls {
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos`,
             playbackVideoStream: (recordingId: string, videoId: string) =>
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}`,
-            playbackAllTimestamps: (recordingId: string) =>
-                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/timestamps`,
-            playbackVideoTimestamps: (recordingId: string, videoId: string) =>
-                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}/timestamps`,
             playbackRecordingStatus: (recordingId: string) =>
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/status`,
             playbackBundle: (recordingId: string) =>

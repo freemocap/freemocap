@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
-from skellycam.core.recorders.videos.parse_video_filename import VIDEO_EXTENSIONS
+from skellycam.core.recorders.videos.video_filename import VIDEO_EXTENSIONS
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app

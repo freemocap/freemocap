@@ -23,4 +23,4 @@ def video_source_folder(*, recording: Path, source: PlaybackVideoSource) -> Path
 
 def discover_video_paths(*, folder: Path) -> tuple[Path, ...]:
     return tuple(sorted(path for path in folder.iterdir()
-                        if path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS))
+                        if path.is_file() and not path.name.startswith(".") and path.suffix.lower() in VIDEO_EXTENSIONS))

@@ -71,17 +71,17 @@ def test_playback_serves_video_bytes(video_path: Path, tmp_path: Path, source: s
     app.include_router(playback_router)
     query = {"recording_parent_directory": str(tmp_path), "source": source}
     with TestClient(app) as client:
-        response = client.get("/playback/recording/videos/camera", params=query, headers={"Range": "bytes=0-127"})
+        response = client.get("/playback/recording/videos/camera.avi", params=query, headers={"Range": "bytes=0-127"})
         assert response.status_code == 206, response.text
         assert response.content == video_path.read_bytes()[:128]
-        assert client.get("/playback/recording/videos/camera/frames/0", params=query).status_code == 404
+        assert client.get("/playback/recording/videos/camera.avi/frames/0", params=query).status_code == 404
 
 
 def test_media_inspection_does_not_infer_camera_identity(video_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def reject_identity(*args: object, **kwargs: object) -> None:
         raise AssertionError("Media inspection must not infer camera identity")
 
-    monkeypatch.setattr("freemocap.core.pipeline.posthoc.video_group_helper.ParsedVideoFilename.from_path", reject_identity)
+    monkeypatch.setattr("skellycam.core.recorders.videos.video_filename.VideoFilename.from_camera_config", reject_identity)
     folder = video_path.parent.parent / "annotated_videos"
     folder.mkdir()
     for name in ("a date 2026-09-06_annotated.avi", "arbitrary subject.avi"):

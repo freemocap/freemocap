@@ -10,13 +10,11 @@ Endpoints:
   GET  /playback/recordings                              — list available recordings
   GET  /playback/{recording_id}/videos                   — list videos in a recording
   GET  /playback/{recording_id}/videos/{video_id}        — stream a video file
-  GET  /playback/{recording_id}/timestamps               — timestamps for all videos
-  GET  /playback/{recording_id}/videos/{video_id}/timestamps — timestamps for one video
 """
 import json
 from urllib.parse import quote, urlencode
-import csv
 import logging
+from skellycam.core.recorders.videos.recording_statistics import read_recording_statistics
 from pathlib import Path
 from freemocap.core.playback.media_selection import (
     PlaybackVideoSource, VIDEO_EXTENSIONS, video_source_folder, discover_video_paths,
@@ -29,6 +27,7 @@ from fastapi.responses import FileResponse
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata, probe_video_files
 from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, camera_timing_path
 from skellycam.core.recorders.videos.video_associations import VideoAssociations
+from skellycam.core.recorders.videos.video_derivation import VideoDerivation
 from freemocap.core.recording.playback_queries import (
     PlaybackManifest, PlaybackWindow, PlaybackWindowRequest, StalePlaybackRevision,
     playback_manifest, playback_window, PlaybackMedia, PlaybackTimeline,
@@ -84,23 +83,23 @@ def read_unprocessed_media(
 
 
 def _include_annotated_media(*, folder: Path, media: tuple[PlaybackMedia, ...]) -> tuple[PlaybackMedia, ...]:
-    """Frame-preserving annotations inherit the original camera timeline."""
+    raw_folder = video_source_folder(recording=folder, source=PlaybackVideoSource.SYNCHRONIZED)
+    originals = {(raw_folder / item.video_filename).resolve(): item for item in media}
     result = list(media)
-    for original in media:
-        filename = Path(original.video_filename)
-        annotated = folder / ANNOTATED_VIDEOS_FOLDER_NAME / f"{filename.stem}_annotated{filename.suffix}"
-        if not annotated.is_file():
+    directory = folder / ANNOTATED_VIDEOS_FOLDER_NAME
+    if not directory.is_dir():
+        return media
+    for path in discover_video_paths(folder=directory):
+        relationship = VideoDerivation.from_video(path=path)
+        if relationship is None:
             continue
-        video = VideoFileMetadata.from_path(path=annotated)
-        if len(original.timeline.frame_numbers) != video.reported_frame_count:
-            raise ValueError(
-                f"Annotated video '{annotated.name}' does not match its source: "
-                f"{video.reported_frame_count} frames versus {len(original.timeline.frame_numbers)} source frames."
-            )
-        result.append(PlaybackMedia(
-            video_filename=annotated.name, nominal_fps=original.nominal_fps,
-            timeline=original.timeline,
-        ))
+        original = originals.get((folder / relationship.source_video).resolve())
+        if original is None:
+            continue
+        properties = VideoFileMetadata.from_path(path=path)
+        if properties.reported_frame_count != relationship.frame_count or relationship.frame_count != len(original.timeline.frame_numbers):
+            raise ValueError(f"Annotated video frame count disagrees with its declared source: {path}")
+        result.append(PlaybackMedia(video_filename=path.name, nominal_fps=original.nominal_fps, timeline=original.timeline))
     return tuple(result)
 
 
@@ -245,14 +244,14 @@ def get_playback_window(recording_id: str, request: PlaybackWindowRequest,
 
 
 def _discover_videos(folder: Path) -> dict[str, Path]:
-    """Find video files in a folder, keyed by a stable ID derived from the filename stem."""
+    """Find video files in a folder, keyed by complete filename, including extension."""
     videos: dict[str, Path] = {}
     if not folder.is_dir():
         raise FileNotFoundError(f"Not a directory: {folder}")
 
     for p in sorted(folder.iterdir()):
-        if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS:
-            video_id = p.stem
+        if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in VIDEO_EXTENSIONS:
+            video_id = p.name
             videos[video_id] = p
     return videos
 
@@ -314,11 +313,11 @@ def _validate_video_source(
     )
     videos = [
         VideoInfo(
-            video_id=p.stem,
+            video_id=p.name,
             filename=p.name,
             size_bytes=p.stat().st_size,
             stream_url=(
-                f"/freemocap/playback/{recording_id}/videos/{p.stem}"
+                f'/freemocap/playback/{quote(recording_id, safe="")}/videos/{quote(p.name, safe="")}'
                 f"?source={source_name}{parent_directory_suffix}"
             ),
         )
@@ -337,7 +336,7 @@ def _get_total_size(video_folder: Path) -> int:
     """Sum of all video file sizes in a folder."""
     total = 0
     for p in video_folder.iterdir():
-        if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS:
+        if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in VIDEO_EXTENSIONS:
             try:
                 total += p.stat().st_size
             except OSError:
@@ -345,120 +344,9 @@ def _get_total_size(video_folder: Path) -> int:
     return total
 
 
-def _get_recording_stats(
-    recording_path: Path,
-    video_folder: Path,
-    *,
-    use_cv2_fallback: bool = True,
-) -> dict:
-    """Try to extract frame count, duration, and fps from timestamp CSV files.
-
-    When *use_cv2_fallback* is False the cv2 VideoCapture path is skipped
-    entirely. Callers that iterate many recordings (e.g. the listing endpoint)
-    should pass False to avoid opening video files for every recording on disk.
-    """
-    stats: dict = {
-        "total_frames": None,
-        "duration_seconds": None,
-        "fps": None,
-    }
-
-    # Look for timestamp CSV files in various locations
-    timestamp_dirs = [
-        recording_path / "synchronized_videos" / "timestamps" / "camera_timestamps",
-        recording_path / "synchronized_videos" / "timestamps",
-        recording_path / "timestamps",
-        video_folder,
-    ]
-
-    for ts_dir in timestamp_dirs:
-        if not ts_dir.is_dir():
-            continue
-        for ts_file in sorted(ts_dir.iterdir()):
-            if ts_file.suffix.lower() != ".csv":
-                continue
-            try:
-                with open(ts_file, "r", newline="") as f:
-                    reader = csv.reader(f)
-                    header = next(reader, None)
-                    if header is None:
-                        continue
-                    rows = list(reader)
-                    if len(rows) < 2:
-                        continue
-
-                    frame_count = len(rows)
-                    stats["total_frames"] = frame_count
-
-                    # Try to get timestamps for duration/fps calculation
-                    timestamp_col = None
-                    for i, col_name in enumerate(header):
-                        col_lower = col_name.strip().lower()
-                        if any(kw in col_lower for kw in ["timestamp", "time", "elapsed", "seconds"]):
-                            timestamp_col = i
-                            break
-
-                    if timestamp_col is not None and len(rows) >= 2:
-                        try:
-                            first_ts = float(rows[0][timestamp_col])
-                            last_ts = float(rows[-1][timestamp_col])
-                            duration = abs(last_ts - first_ts)
-
-                            # If duration seems to be in nanoseconds or milliseconds, convert
-                            if duration > 1e15:  # nanoseconds
-                                duration /= 1e9
-                            elif duration > 1e6:  # milliseconds
-                                duration /= 1e3
-
-                            if duration > 0:
-                                stats["duration_seconds"] = round(duration, 2)
-                                stats["fps"] = round(frame_count / duration, 1)
-                        except (ValueError, IndexError):
-                            pass
-
-                    # Found a timestamp file — use it and stop
-                    return stats
-            except (OSError, csv.Error):
-                continue
-
-    if not use_cv2_fallback:
-        return stats
-
-    # No timestamp CSV found — fall back to reading video metadata with cv2
-    logger.warning(
-        f"No timestamp CSVs found for '{recording_path.name}'. "
-        f"Searched: {[str(d) for d in timestamp_dirs]}. Falling back to cv2."
-    )
-    try:
-        import cv2
-        video_files = sorted(
-            p for p in video_folder.iterdir()
-            if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
-        )
-        if video_files:
-            cap = cv2.VideoCapture(str(video_files[0]))
-            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            cap.release()
-            if frame_count > 0:
-                stats["total_frames"] = frame_count
-                if fps and fps > 0:
-                    stats["fps"] = round(fps, 1)
-                    stats["duration_seconds"] = round(frame_count / fps, 2)
-                logger.info(
-                    f"cv2 fallback for '{recording_path.name}': "
-                    f"{frame_count} frames @ {fps:.1f} fps "
-                    f"(from '{video_files[0].name}')"
-                )
-            else:
-                logger.warning(
-                    f"cv2 read 0 frames from '{video_files[0].name}' — "
-                    f"video may be unreadable or empty"
-                )
-    except Exception as e:
-        logger.warning(f"cv2 fallback failed for '{video_folder}': {e}")
-
-    return stats
+def _get_recording_stats(recording_path: Path, video_folder: Path, *, use_cv2_fallback: bool = True) -> dict:
+    return read_recording_statistics(recording_folder=recording_path, video_folder=video_folder,
+                                     inspect_video=use_cv2_fallback)
 
 
 def _get_created_timestamp(recording_path: Path) -> str | None:
@@ -471,58 +359,6 @@ def _get_created_timestamp(recording_path: Path) -> str | None:
     except OSError:
         return None
 
-
-def _read_timestamp_values_for_video(recording_path: Path, video_id: str) -> list[float] | None:
-    """Read the timestamp CSV for a video and return the list of float timestamps.
-
-    Returns None if no matching CSV can be found or parsed.
-    """
-    timestamp_dirs = [
-        recording_path / "synchronized_videos" / "timestamps" / "camera_timestamps",
-        recording_path / "synchronized_videos" / "timestamps",
-        recording_path / "timestamps",
-    ]
-
-    for ts_dir in timestamp_dirs:
-        if not ts_dir.is_dir():
-            continue
-        for ts_file in ts_dir.iterdir():
-            if ts_file.suffix.lower() != ".csv" or video_id not in ts_file.stem:
-                continue
-            try:
-                with open(ts_file, "r", newline="") as f:
-                    reader = csv.reader(f)
-                    header = next(reader, None)
-                    if header is None:
-                        continue
-                    rows = list(reader)
-                    if len(rows) < 2:
-                        continue
-
-                    # Find the timestamp column
-                    timestamp_col: int | None = None
-                    for i, col_name in enumerate(header):
-                        col_lower = col_name.strip().lower()
-                        if any(kw in col_lower for kw in ["timestamp", "time", "elapsed", "seconds"]):
-                            timestamp_col = i
-                            break
-
-                    if timestamp_col is None:
-                        continue
-
-                    values: list[float] = []
-                    for row in rows:
-                        values.append(float(row[timestamp_col]))
-                    return values
-            except (OSError, csv.Error, ValueError, IndexError):
-                continue
-
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
 
 @playback_router.get("/viewer", summary="Parquet skeleton viewer (HTML)", include_in_schema=False)
 def parquet_viewer() -> FileResponse:
@@ -891,93 +727,6 @@ def get_tracker_schema(
     return json.loads(schema_path.read_text(encoding="utf-8"))
 
 
-@playback_router.get(
-    "/{recording_id}/timestamps",
-    summary="Get timestamps for all videos in a recording",
-)
-def get_all_timestamps(
-    recording_id: str,
-    recording_parent_directory: str | None = Query(
-        default=None,
-        description="Override the default recordings directory",
-    ),
-) -> dict:
-    """Return frame timestamps for every video in the recording.
-
-    Response shape: {"timestamps": {"<video_id>": [t0, t1, ...], ...}, "warnings": [...]}
-    Videos without discoverable timestamp CSVs produce a warning instead of an error.
-    """
-    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
-
-    try:
-        video_folder = _find_video_folder(recording_path)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    videos = _discover_videos(video_folder)
-    all_timestamps: dict[str, list[float]] = {}
-    warnings: list[str] = []
-
-    for vid_id in videos:
-        ts_values = _read_timestamp_values_for_video(recording_path, video_id=vid_id)
-        if ts_values is not None:
-            all_timestamps[vid_id] = ts_values
-        else:
-            warnings.append(f"No timestamp data found for video '{vid_id}'")
-
-    return {"timestamps": all_timestamps, "warnings": warnings}
-
-
-@playback_router.get(
-    "/{recording_id}/videos/{video_id}/timestamps",
-    summary="Get timestamp data for a specific video in a recording",
-)
-def get_video_timestamps(
-    recording_id: str,
-    video_id: str,
-    recording_parent_directory: str | None = Query(
-        default=None,
-        description="Override the default recordings directory",
-    ),
-) -> dict:
-    """Return timestamp CSV info for a specific video.
-
-    Returns a warning instead of 404 when timestamps are not found,
-    since not all recordings have timestamp data.
-    """
-    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
-
-    timestamp_dirs = [
-        recording_path / "synchronized_videos" / "timestamps" / "camera_timestamps",
-        recording_path / "synchronized_videos" / "timestamps",
-        recording_path / "timestamps",
-    ]
-
-    for ts_dir in timestamp_dirs:
-        if not ts_dir.is_dir():
-            continue
-        for ts_file in ts_dir.iterdir():
-            if ts_file.suffix.lower() == ".csv" and video_id in ts_file.stem:
-                lines = ts_file.read_text().strip().split("\n")
-                if len(lines) < 2:
-                    continue
-                headers = lines[0].split(",")
-                rows = [line.split(",") for line in lines[1:]]
-                return {
-                    "video_id": video_id,
-                    "headers": headers,
-                    "row_count": len(rows),
-                    "file": ts_file.name,
-                }
-
-    return {
-        "video_id": video_id,
-        "warning": f"No timestamp data found for video '{video_id}'",
-        "headers": [],
-        "row_count": 0,
-    }
-
-
 # ---------------------------------------------------------------------------
 # Bundle endpoint — single call for all playback metadata
 # ---------------------------------------------------------------------------
@@ -1021,7 +770,7 @@ def get_recording_bundle(
                 if recording_parent_directory:
                     parameters["recording_parent_directory"] = recording_parent_directory
                 videos.append(VideoInfo(video_id=path.name, filename=path.name, size_bytes=path.stat().st_size,
-                    stream_url=f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.stem, safe='')}?{urlencode(parameters)}"))
+                    stream_url=f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.name, safe='')}?{urlencode(parameters)}"))
                 frame_counts[path.name] = metadata.reported_frame_count
                 properties[path.name] = metadata
         valid = len(videos) == len(paths) and len(set(frame_counts.values())) == 1
@@ -1058,12 +807,22 @@ def get_recording_bundle(
         saved_media = {item.video_filename: item for item in selected.media}
         media = [saved_media.get(item.video_filename, item) for item in media]
 
-    originals = {item.video_filename: item for item in media
+    originals = {(raw_folder / item.video_filename).resolve(): item for item in media
                  if any(video.filename == item.video_filename for video in sources[PlaybackVideoSource.SYNCHRONIZED].videos)}
+    annotated_names = {video.filename for video in sources[PlaybackVideoSource.ANNOTATED].videos}
     for index, item in enumerate(media):
-        filename = Path(item.video_filename)
-        original = originals.get(f"{filename.stem.removesuffix('_annotated')}{filename.suffix}")
-        if original is not None and original is not item and len(original.timeline.frame_numbers) == len(item.timeline.frame_numbers):
+        if item.video_filename not in annotated_names:
+            continue
+        with resource_boundary(resource=RecordingResource.MEDIA_ASSOCIATIONS, item=item.video_filename, errors=errors):
+            path = recording_path / ANNOTATED_VIDEOS_FOLDER_NAME / item.video_filename
+            relationship = VideoDerivation.from_video(path=path)
+            if relationship is None:
+                continue
+            original = originals.get((recording_path / relationship.source_video).resolve())
+            if original is None:
+                continue
+            if len(original.timeline.frame_numbers) != relationship.frame_count or len(item.timeline.frame_numbers) != relationship.frame_count:
+                raise ValueError(f"Annotated video frame count disagrees with its declared source: {path}")
             media[index] = item.model_copy(update={"timeline": original.timeline, "nominal_fps": original.nominal_fps})
 
     calibration = None

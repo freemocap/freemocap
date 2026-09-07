@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 from skellycam.core.recorders.videos.pyav_video_writer import PyavVideoWriter
+from skellycam.core.recorders.videos.video_derivation import VideoDerivation
 from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator
 from skellytracker.core.data_primitives.observation import Observation
 
@@ -29,8 +30,8 @@ class AnnotationVideoOutput:
         directory = request.recording_path / ANNOTATED_VIDEOS_FOLDER_NAME
         directory.mkdir(parents=True, exist_ok=True)
         source = request.video.file_path
-        self.destination = directory / f"{source.stem}_annotated{source.suffix}"
-        self.temporary = directory / f".{source.stem}.{request.pipeline_id}.partial{source.suffix}"
+        self.destination = directory / f"{source.name}.annotated.mp4"
+        self.temporary = directory / f".{source.name}.{request.pipeline_id}.partial.mp4"
         self.writer: PyavVideoWriter | None = None
         self.base_reader: cv2.VideoCapture | None = None
         self.frames_written = 0
@@ -38,6 +39,10 @@ class AnnotationVideoOutput:
             if request.input_mode == AnnotationInput.ANNOTATED:
                 if not self.destination.is_file():
                     raise FileNotFoundError(f"Annotated input does not exist: {self.destination}")
+                relationship = VideoDerivation.from_video(path=self.destination)
+                expected_source = source.resolve().relative_to(request.recording_path.resolve()).as_posix()
+                if relationship is None or relationship.source_video != expected_source or relationship.frame_count != request.video.frame_count:
+                    raise ValueError(f"Annotated input does not declare the expected source: {self.destination}")
                 self.base_reader = cv2.VideoCapture(str(self.destination), cv2.CAP_FFMPEG)
                 if not self.base_reader.isOpened():
                     raise RuntimeError(f"Cannot open annotated input: {self.destination}")
@@ -47,6 +52,10 @@ class AnnotationVideoOutput:
                 path=str(self.temporary), fps=request.video.fps,
                 width=request.video.width, height=request.video.height,
             )
+            self.writer.set_container_metadata(metadata=VideoDerivation(
+                source_video=source.resolve().relative_to(request.recording_path.resolve()).as_posix(),
+                frame_count=request.video.frame_count,
+            ).to_container_metadata())
         except Exception:
             self.close()
             raise

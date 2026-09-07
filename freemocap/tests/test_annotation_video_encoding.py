@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import av
 import numpy as np
 from skellycam.core.recorders.videos.pyav_video_writer import PyavVideoWriter
+from skellycam.core.recorders.videos.video_derivation import VideoDerivation
 from skellytracker.core import TrackerConfig
 from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator
 from skellytracker.core.data_primitives.observation import Observation
@@ -24,10 +25,12 @@ class AnnotationVideoEncodingTests(unittest.TestCase):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 folder = Path(directory)
                 raw = folder / "camera.mp4"
-                annotated = folder / "annotated_videos" / "camera_annotated.mp4"
+                annotated = folder / "annotated_videos" / "camera.mp4.annotated.mp4"
                 annotated.parent.mkdir()
                 for path, value in ((raw, 60), (annotated, 180)):
                     writer = PyavVideoWriter(path=str(path), fps=30.0, width=64, height=64)
+                    if path == annotated:
+                        writer.set_container_metadata(metadata=VideoDerivation(source_video="camera.mp4", frame_count=1).to_container_metadata())
                     writer.write(np.full((64, 64, 3), value, dtype=np.uint8))
                     writer.release()
                 ipc = Mock(spec=PipelineIPC)

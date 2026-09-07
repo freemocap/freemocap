@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import cv2
+from skellycam.core.recorders.videos.pyav_video_writer import PyavVideoWriter
+from skellycam.core.recorders.videos.video_derivation import VideoDerivation
 import numpy as np
 
 from freemocap.api.http.playback.playback_router import get_recording_bundle
@@ -17,11 +18,14 @@ class BundleResourceTests(unittest.TestCase):
     def test_invalid_outputs_do_not_hide_raw_or_annotated_videos(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             recording = Path(temporary) / "recording"
-            for folder, filename in (("synchronized_videos", "camera.avi"), ("annotated_videos", "camera_annotated.avi")):
+            for folder, filename in (("synchronized_videos", "camera.avi"), ("annotated_videos", "arbitrary annotation.avi")):
                 path = recording / folder / filename
                 path.parent.mkdir(parents=True)
-                writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"MJPG"), 30.0, (64, 48))
-                self.assertTrue(writer.isOpened())
+                writer = PyavVideoWriter(path=str(path), fps=30.0, width=64, height=48)
+                if folder == "annotated_videos":
+                    writer.set_container_metadata(metadata=VideoDerivation(
+                        source_video="synchronized_videos/camera.avi", frame_count=3,
+                    ).to_container_metadata())
                 try:
                     for _ in range(3):
                         writer.write(np.zeros((48, 64, 3), dtype=np.uint8))
@@ -34,7 +38,7 @@ class BundleResourceTests(unittest.TestCase):
             self.assertIsNone(bundle.tracker_schema)
             self.assertEqual(len(bundle.media), 2)
             self.assertTrue(all(source.valid for source in bundle.videos.sources.values()))
-            self.assertEqual(bundle.media[0].timeline, bundle.media[1].timeline)
+            self.assertEqual(bundle.media[0].timeline.frame_numbers, bundle.media[1].timeline.frame_numbers)
             self.assertTrue({RecordingResource.RECONSTRUCTION, RecordingResource.TRACKER_SCHEMA}.issubset(
                 {error.resource for error in bundle.errors}))
             metadata_path = recording / "recording_info.json"

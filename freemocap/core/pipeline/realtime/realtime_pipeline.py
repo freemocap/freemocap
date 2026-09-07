@@ -70,6 +70,7 @@ class RealtimePipeline:
     pubsub: PubSubTopicManager
     worker_registry: WorkerRegistry
     started: bool = False
+    _latest_aggregation_output: AggregationNodeOutputMessage | None = None
     # Config stashed while a calibration recording temporarily forces Charuco-only
     # mode (skeleton inference paused). None whenever not in that mode.
     _pre_calibration_config: RealtimePipelineConfig | None = None
@@ -434,11 +435,7 @@ class RealtimePipeline:
         self,
         if_newer_than: FrameNumberInt,
     ) -> AggregationNodeOutputMessage | None:
-        """Drain and return the newest aggregator output newer than ``if_newer_than``.
-
-        The standard-stream FrameRelay consumes this — the raw message carries
-        the rotations / CoM / xcom / rigidified skeleton the encoder needs.
-        """
+        """Retain the newest output and serve each connection's independent cursor."""
         if not self.alive:
             return None
 
@@ -448,14 +445,11 @@ class RealtimePipeline:
                 candidate = self.aggregation_output_subscription.get_nowait()
             except Empty:
                 break
-            if candidate.frame_number > if_newer_than:
-                aggregation_output = candidate
+            aggregation_output = candidate
 
-        if aggregation_output is None:
-            return None
-
-        # Consume the backpressure events — the next aggregator pass is gated on
-        # this consumed signal, exactly as the old payload path did.
-        self.result_ready_event.clear()
-        self.result_consumed_event.set()
-        return aggregation_output
+        if aggregation_output is not None:
+            self._latest_aggregation_output = aggregation_output
+            self.result_ready_event.clear()
+            self.result_consumed_event.set()
+        latest = self._latest_aggregation_output
+        return latest if latest is not None and latest.frame_number > if_newer_than else None

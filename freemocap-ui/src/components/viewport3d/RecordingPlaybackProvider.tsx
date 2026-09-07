@@ -152,6 +152,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     }, [dataPlaying, mediaAvailable, clock]);
 
     const source = useMemo<KeypointsSource>(() => ({
+        isLive: false,
         getModels: () => state.current.models,
         getLatestModelFrames: () => state.current.frames,
         getLatestKeypoints: () => state.current.points,

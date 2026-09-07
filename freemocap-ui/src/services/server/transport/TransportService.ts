@@ -1,3 +1,4 @@
+import {snapshotEqual} from './snapshot-equality';
 // TransportService.ts
 //
 // Owns the WebSocketConnection and is the single kind-keyed dispatcher for the
@@ -56,29 +57,6 @@ export interface TransportServiceOptions {
     url: string;
 }
 
-/** A cheap, stable signature of the calibration: a calibration hot-reload
- *  changes the intrinsics, extrinsics or rotation and thus the signature, so
- *  the camera slice updates without comparing full object graphs every frame.
- *
- *  `intrinsics`/`extrinsics` are null for a camera the loaded calibration does not
- *  describe, which is a normal state - this runs BEFORE `fanOut`'s fault isolation, so
- *  dereferencing them unguarded would throw straight into the message dispatch loop.
- *  `match_kind` is part of the signature so an exact -> unmatched transition (or the
- *  reverse) re-fans-out even when nothing else about the camera changed. */
-function cameraSignature(cameras: CalibratedCamera[]): string {
-    return cameras
-        .map(
-            (c) =>
-                `${c.id}:${c.index}:${c.rotation ?? ""}:${c.image_size[0]}x${c.image_size[1]}:` +
-                `${c.match_kind ?? ""}:${c.calibration_camera_id ?? ""}:` +
-                `${JSON.stringify(c.intrinsics ?? null)}:` +
-                `${c.extrinsics ? c.extrinsics.quaternion_wxyz.join(",") : ""}:` +
-                `${c.extrinsics ? c.extrinsics.translation.join(",") : ""}:` +
-                `${JSON.stringify(c.world_position ?? "")}:${JSON.stringify(c.world_orientation ?? "")}`,
-        )
-        .join("|");
-}
-
 /** Call every callback in a set, isolating faults: one throwing subscriber must
  *  neither abort the fan-out for the remaining subscribers nor escape into the
  *  message dispatch loop. */
@@ -103,8 +81,6 @@ export class TransportService {
     private modelsLatest: ModelDefinition[] | null = null;
     private conventionLatest: CoordinateConvention | null = null;
     private camerasLatest: CalibratedCamera[] | null = null;
-    private lastModelSequence = -1;
-    private lastCameraSignature: string | null = null;
 
     // Frame-channel subscriber sets.
     private readonly keypointsSubscribers = new Set<(f: PointsFrame) => void>();
@@ -173,10 +149,8 @@ export class TransportService {
         this.updateStaticModel(frame);
         const resolved = resolveFrameChannels(frame);
 
-        if (resolved.keypoints) {
-            this.keypointsLatest = resolved.keypoints;
-            fanOut(this.keypointsSubscribers, resolved.keypoints);
-        }
+        this.keypointsLatest = resolved.keypoints ?? {names: [], data: new Float32Array()};
+        fanOut(this.keypointsSubscribers, this.keypointsLatest);
         this.modelFramesLatest = resolved.models;
         fanOut(this.modelFramesSubscribers, resolved.models);
         for (const overlay of resolved.overlays) {
@@ -206,28 +180,19 @@ export class TransportService {
     }
 
     private updateStaticModel(frame: FrameMessage): void {
-        if (frame.model_sequence !== this.lastModelSequence) {
-            this.lastModelSequence = frame.model_sequence;
+        if (!snapshotEqual(frame.models, this.modelsLatest)) {
             this.modelsLatest = frame.models;
-            this.conventionLatest = frame.convention;
-            this.camerasLatest = frame.cameras;
-            this.lastCameraSignature = cameraSignature(frame.cameras);
             fanOut(this.modelsSubscribers, frame.models);
-            fanOut(this.conventionSubscribers, frame.convention);
-            fanOut(this.camerasSubscribers, frame.cameras);
-            return;
         }
-        // Cameras (calibration) can change independently of the model: only emit
-        // when the signature actually changed, never every frame.
-        const signature = cameraSignature(frame.cameras);
-        if (signature !== this.lastCameraSignature) {
-            this.lastCameraSignature = signature;
+        if (!snapshotEqual(frame.convention, this.conventionLatest)) {
+            this.conventionLatest = frame.convention;
+            fanOut(this.conventionSubscribers, frame.convention);
+        }
+        if (!snapshotEqual(frame.cameras, this.camerasLatest)) {
             this.camerasLatest = frame.cameras;
             fanOut(this.camerasSubscribers, frame.cameras);
         }
     }
-
-    // ── lifecycle ────────────────────────────────────────────────────────
 
     connect(): void {
         this.connection.connect();
@@ -345,7 +310,8 @@ export class TransportService {
         this.modelsLatest = null;
         this.conventionLatest = null;
         this.camerasLatest = null;
-        this.lastModelSequence = -1;
-        this.lastCameraSignature = null;
+        fanOut(this.modelsSubscribers, []);
+        fanOut(this.modelFramesSubscribers, []);
+        fanOut(this.keypointsSubscribers, {names: [], data: new Float32Array()});
     }
 }

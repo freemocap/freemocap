@@ -177,6 +177,7 @@ self.addEventListener("message", (event: MessageEvent) => {
             break;
         }
         case "teardown": {
+            workerDataStore.dispatch("presentationReset", null);
             if (root) {
                 console.log("[viewport3d worker] tearing down root");
                 root.unmount();

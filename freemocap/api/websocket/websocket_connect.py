@@ -10,11 +10,13 @@ websocket_router = APIRouter(tags=["Websocket"], prefix="/websocket")
 
 
 @websocket_router.websocket("/connect")
-async def websocket_server_connect(websocket: WebSocket):
+async def websocket_server_connect(websocket: WebSocket) -> None:
     await websocket.accept()
     app = websocket.scope["app"]
     logger.success(f"Websocket connection established at url: {websocket.url}")
-    async with WebsocketServer(websocket=websocket,
-                               fastapi_app=app) as websocket_server:
-        await websocket_server.run()
-    logger.info("Websocket closed")
+    try:
+        async with WebsocketServer(websocket=websocket,
+                                   fastapi_app=app) as websocket_server:
+            await websocket_server.run()
+    finally:
+        logger.info("Websocket closed at url: %s", websocket.url)

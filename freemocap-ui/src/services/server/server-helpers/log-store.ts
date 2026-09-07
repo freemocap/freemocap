@@ -93,7 +93,12 @@ export class LogStore {
 
     constructor() {
         this.restoreFromLocalStorage();
-        this.saveInterval = setInterval(() => this.persistIfDirty(), AUTO_SAVE_INTERVAL_MS);
+    }
+
+    start(): void {
+        if (this.saveInterval === null) {
+            this.saveInterval = setInterval(() => this.persistIfDirty(), AUTO_SAVE_INTERVAL_MS);
+        }
     }
 
     /** Stop the auto-save timer and flush one last time. Call on teardown. */

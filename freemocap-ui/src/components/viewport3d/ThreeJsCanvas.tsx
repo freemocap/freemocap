@@ -175,6 +175,7 @@ export function ThreeJsCanvas() {
   const calibrationConfig = useAppSelector(selectCalibrationConfig);
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
   const {
+    isLive,
     subscribeToKeypoints,
     subscribeToModels,
     getModels,
@@ -229,8 +230,12 @@ export function ThreeJsCanvas() {
   }, []);
 
   useEffect(() => {
+    VIEWPORT_WORKER.postMessage({type: "livePresentation", data: isLive});
+    return () => { VIEWPORT_WORKER.postMessage({type: "presentationReset"}); };
+  }, [isLive]);
+
+  useEffect(() => {
     return subscribeToKeypoints((frame) => {
-      if (!_frameHasVisiblePoints(frame)) return;
       VIEWPORT_WORKER.postMessage({ type: "keypoints", data: frame });
     });
   }, [subscribeToKeypoints]);

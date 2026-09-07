@@ -90,6 +90,7 @@ function resolveModelFrame(
     model: ModelDefinition,
     channels: ChannelBlock[],
     fittedScaleMm: number | null,
+    instanceId: number,
 ): ResolvedModelFrame {
     const segmentNames: readonly string[] = model.segments.map((s) => s.name);
     const landmarkNames: readonly string[] = model.landmarks.map((l) => l.name);
@@ -148,6 +149,7 @@ function resolveModelFrame(
 
     return {
         modelId: model.model_id,
+        instanceId,
         fittedScaleMm,
         segmentOrigins,
         landmarks,
@@ -168,7 +170,7 @@ export function resolveFrameChannels(frame: FrameMessage): ResolvedFrameChannels
         // paper over with a guessed model.
         if (!model) continue;
         models.push(
-            resolveModelFrame(model, instance.channels, instance.fitted_scale_mm ?? null),
+            resolveModelFrame(model, instance.channels, instance.fitted_scale_mm ?? null, instance.instance_id),
         );
     }
 

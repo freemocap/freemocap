@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import replace
 from collections.abc import Awaitable, Callable
 
 from freemocap.api.websocket.send_serializer import SendSerializer  # noqa: TC001
@@ -40,13 +41,14 @@ class FrameRelay:
         serializer: SendSerializer,
         source: FrameSource,
         should_continue: Callable[[], bool],
+        connection_id: str,
     ):
         self._serializer = serializer
         self._source = source
         self._should_continue = should_continue
         self._composition: MessageComposition | None = None
         self._last_sent_frame_number: int = -1
-        self._timing = FrameDeliveryTiming()
+        self._timing = FrameDeliveryTiming(connection_id=connection_id)
         self._source_seconds = 0.0
 
     async def run(self) -> None:
@@ -82,7 +84,8 @@ class FrameRelay:
 
     def set_composition(self, composition: MessageComposition) -> None:
         """Swap in a rebuilt composition (data-model change)."""
-        self._composition = composition
+        sequence = 0 if self._composition is None else self._composition.model_sequence + 1
+        self._composition = replace(composition, model_sequence=sequence)
 
     @property
     def composition(self) -> MessageComposition | None:

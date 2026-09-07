@@ -40,6 +40,7 @@ export type ModelsCallback = (models: ModelDefinition[]) => void;
  * reason these five channels travel together instead of separately.
  */
 export interface KeypointsSource {
+    isLive: boolean;
     subscribeToKeypoints: (cb: KeypointsCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
     /** The STATIC model definitions — segments, landmarks, connections, groups. Emitted only
@@ -104,6 +105,7 @@ export function useKeypointsSource(): KeypointsSource {
     const liveAdapter = useMemo<KeypointsSource | null>(() => {
         if (!server) return null;
         return {
+            isLive: true,
             subscribeToKeypoints: server.subscribeToKeypoints,
             getLatestKeypoints: server.getLatestKeypoints,
             subscribeToModels: server.subscribeToModels,

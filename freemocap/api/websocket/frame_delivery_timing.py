@@ -20,6 +20,7 @@ class FrameDeliverySample:
 
 @dataclass(slots=True)
 class FrameDeliveryTiming:
+    connection_id: str
     samples: deque[FrameDeliverySample] = field(default_factory=lambda: deque(maxlen=300))
     started_at: float = field(default_factory=time.perf_counter)
     delivered: int = 0
@@ -32,9 +33,9 @@ class FrameDeliveryTiming:
         if elapsed < 5.0:
             return
         logger.info(
-            "Live frame delivery: %.1f fps; mean ms: source/wait=%.1f compose=%.1f "
+            "Live frame delivery [%s]: %.1f fps; mean ms: source/wait=%.1f compose=%.1f "
             "encode=%.1f send=%.1f; mean payload=%.1f KiB",
-            self.delivered / elapsed,
+            self.connection_id, self.delivered / elapsed,
             mean(item.source_seconds for item in self.samples) * 1000,
             mean(item.composition_seconds for item in self.samples) * 1000,
             mean(item.encoding_seconds for item in self.samples) * 1000,

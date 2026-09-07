@@ -92,7 +92,7 @@ export function recordedModelFrame(run: PlaybackRun, window: PlaybackWindow, mod
     const com = derived && comIndex >= 0 ? Array.from(derived.data.slice(comIndex * 3, comIndex * 3 + 3)) : null;
     const fittedScaleMm = scale ? scalarValues(scale)[0] : null;
     return {
-        modelId: model.model_id, fittedScaleMm,
+        modelId: model.model_id, instanceId: 0, fittedScaleMm,
         landmarks: points(RecordingChannelKind.Landmarks), segmentOrigins: points(RecordingChannelKind.Origins),
         rotations: world && worldData ? {boneNames: world.channel.names, worldQuaternions: worldData,
             localQuaternions: localData ?? new Float32Array(worldData.length).fill(NaN)} : null,

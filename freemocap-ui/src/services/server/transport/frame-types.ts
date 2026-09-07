@@ -72,6 +72,7 @@ export interface OverlayFrame {
  *  definition by `modelId`.
  */
 export interface ResolvedModelFrame {
+    instanceId: number;
     modelId: string;
     /** This occurrence's fitted size (mm) in the unit its model names, or null. */
     fittedScaleMm: number | null;

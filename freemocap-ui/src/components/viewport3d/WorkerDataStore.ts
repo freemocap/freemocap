@@ -13,6 +13,8 @@ import type { ResolvedModelFrame } from "@/services/server/transport/frame-types
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
 import type { KeypointsFrame, KeypointsSource, ModelFramesCallback, ModelsCallback } from "./KeypointsSourceContext";
+import {PresentationBuffer} from './presentation-buffer';
+import {snapshotEqual} from '@/services/server/transport/snapshot-equality';
 
 // ---------------------------------------------------------------------------
 // Shared channel primitive
@@ -75,6 +77,12 @@ const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
 const resetCameraChan = makeChannel<null>(null);
+let livePresentation = false;
+const modelPresentation = new PresentationBuffer<ResolvedModelFrame>(values => modelFramesChan.dispatch(values), 1000);
+const pointPresentation = new PresentationBuffer<KeypointsFrame>(values => keypointsChan.dispatch(
+    values[0] ?? {pointNames: [], interleaved: new Float32Array()},
+), 1000);
+const modelKey = (value: ResolvedModelFrame): string => JSON.stringify([value.modelId, value.instanceId]);
 
 // ---------------------------------------------------------------------------
 // Public store — also satisfies KeypointsSource for the KeypointsSourceProvider
@@ -91,6 +99,7 @@ export const workerDataStore: KeypointsSource & {
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
 } = {
+    get isLive(): boolean { return livePresentation; },
     // KeypointsSource interface — channels hold KeypointsFrame|null but callbacks expect non-null.
     subscribeToKeypoints: (cb) => {
         const unsub = keypointsChan.subscribe((f) => { if (f) cb(f); });
@@ -130,14 +139,33 @@ export const workerDataStore: KeypointsSource & {
 
     dispatch(type: string, data: unknown) {
         switch (type) {
+            case "livePresentation":
+                livePresentation = data === true;
+                modelPresentation.clear();
+                pointPresentation.clear();
+                break;
+            case "presentationReset":
+                modelPresentation.clear();
+                pointPresentation.clear();
+                modelsChan.dispatch([]);
+                break;
             case "keypoints":
-                keypointsChan.dispatch(data as KeypointsFrame);
+                if (livePresentation) pointPresentation.update([data as KeypointsFrame], () => "points",
+                    value => value.interleaved.some(Number.isFinite));
+                else keypointsChan.dispatch(data as KeypointsFrame);
                 break;
             case "models":
+                if (!snapshotEqual(modelsChan.getLatest(), data)) {
+                    modelPresentation.clear();
+                    pointPresentation.clear();
+                }
                 modelsChan.dispatch(data as ModelDefinition[]);
                 break;
             case "modelFrames":
-                modelFramesChan.dispatch(data as ResolvedModelFrame[]);
+                if (livePresentation) modelPresentation.update(data as ResolvedModelFrame[], modelKey,
+                    value => Boolean(value.segmentOrigins?.data.some(Number.isFinite)
+                        || value.landmarks?.data.some(Number.isFinite)));
+                else modelFramesChan.dispatch(data as ResolvedModelFrame[]);
                 break;
             case "calibration":
                 calibChan.dispatch(data as LoadedCalibration | null);

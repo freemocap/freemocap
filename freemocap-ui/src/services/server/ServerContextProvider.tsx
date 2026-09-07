@@ -62,7 +62,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
-    const logStoreRef = useRef<LogStore>(new LogStore());
+    const [logStore] = useState(() => new LogStore());
+    const logStoreRef = useRef<LogStore>(logStore);
 
     const serverFpsRef = useRef<number | null>(null);
     const lastPipelineProgressRef = useRef<Record<string, string>>({});
@@ -87,6 +88,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     // Initialize services once
     useEffect(() => {
+        let disposed = false;
+        logStoreRef.current.start();
         transportRef.current = new TransportService({
             url: serverUrls.getWebSocketUrl(),
         });
@@ -173,28 +176,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
 
-        return () => {
-            for (const unsub of subs) unsub();
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            logStoreRef.current?.dispose();
-            if (transportRef.current) {
-                transportRef.current.disconnect();
-                transportRef.current = null;
-            }
-            if (canvasManagerRef.current) {
-                canvasManagerRef.current.terminateAllWorkers();
-            }
-            if (frameProcessorRef.current) {
-                frameProcessorRef.current.reset();
-            }
-        };
-    }, []);
-
-    // Wire connection state + frame/image rendering.
-    useEffect(() => {
-        const transport = transportRef.current;
-        if (!transport) return;
-
         const handleStateChange = (newState: ConnectionState): void => {
             const connected = newState === ConnectionState.CONNECTED;
             setIsConnected(connected);
@@ -270,10 +251,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
         };
 
-        transport.subscribeToImages((buf, frameNumber) => {
+        subs.push(transport.subscribeToImages((buf, frameNumber) => {
             pendingAckFrameNumberRef.current = frameNumber;
             pendingPayloadRef.current = buf;
-        });
+        }));
 
         const processFrameLoop = (): void => {
             if (pendingAckFrameNumberRef.current !== null) {
@@ -290,9 +271,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingPayloadRef.current = null;
                 processingFrameRef.current = true;
                 frameProcessorRef.current!.processFramePayload(payload)
-                    .then(result => dispatchFrames(result))
-                    .catch(err => console.error('Error processing frame:', err))
-                    .finally(() => { processingFrameRef.current = false; });
+                    .then(result => { if (!disposed) dispatchFrames(result); })
+                    .catch(err => { if (!disposed) console.error('Error processing frame:', err); })
+                    .finally(() => { if (!disposed) processingFrameRef.current = false; });
             }
 
             frameLoopRef.current = requestAnimationFrame(processFrameLoop);
@@ -303,8 +284,19 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         transport.on('state-change', handleStateChange);
 
         return () => {
+            disposed = true;
+            for (const unsub of subs) unsub();
+            window.removeEventListener('beforeunload', handleBeforeUnload);
             transport.off('state-change', handleStateChange);
             transport.disconnect();
+            transportRef.current = null;
+            canvasManagerRef.current?.terminateAllWorkers();
+            frameProcessorRef.current?.close();
+            processingFrameRef.current = false;
+            pendingPayloadRef.current = null;
+            pendingAckFrameNumberRef.current = null;
+            pendingOverlaysRef.current.clear();
+            logStoreRef.current?.dispose();
             if (frameLoopRef.current !== null) {
                 cancelAnimationFrame(frameLoopRef.current);
                 frameLoopRef.current = null;

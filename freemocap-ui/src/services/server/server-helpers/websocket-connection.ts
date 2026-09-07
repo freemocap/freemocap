@@ -1,3 +1,5 @@
+const clientId = crypto.randomUUID();
+
 export interface WebSocketConfig {
     url: string;
     reconnectDelay?: number;
@@ -63,20 +65,25 @@ export class WebSocketConnection {
         if (this.state === ConnectionState.CONNECTING || this.state === ConnectionState.CONNECTED) {
             return;
         }
+        this.clearTimers();
         this.disconnectRequested = false;
 
         this.setState(ConnectionState.CONNECTING);
 
         try {
-            this.ws = new WebSocket(this.config.url);
-            this.ws.binaryType = 'arraybuffer';
-
-            this.ws.onopen = this.handleOpen.bind(this);
-            this.ws.onclose = this.handleClose.bind(this);
-            this.ws.onerror = this.handleError.bind(this);
-            this.ws.onmessage = this.handleMessage.bind(this);
+            const url = new URL(this.config.url);
+            url.searchParams.set('client_id', clientId);
+            url.searchParams.set('connection_id', crypto.randomUUID());
+            const socket = new WebSocket(url);
+            this.ws = socket;
+            socket.binaryType = 'arraybuffer';
+            socket.onopen = () => { if (this.ws === socket) this.handleOpen(); };
+            socket.onclose = (event) => { if (this.ws === socket) this.handleClose(event); };
+            socket.onerror = (event) => { if (this.ws === socket) this.handleError(event); };
+            socket.onmessage = (event) => { if (this.ws === socket) this.handleMessage(event); };
         } catch (error) {
-            this.handleError(error as Event);
+            this.setState(ConnectionState.FAILED);
+            throw error;
         }
     }
 
@@ -86,10 +93,13 @@ export class WebSocketConnection {
         this.disconnectRequested = true;
 
         if (this.ws) {
-            // Remove handlers to avoid reconnection on close
-            this.ws.onclose = null;
-            this.ws.close();
+            const socket = this.ws;
             this.ws = null;
+            socket.onopen = null;
+            socket.onclose = null;
+            socket.onerror = null;
+            socket.onmessage = null;
+            socket.close();
         }
 
         this.setState(ConnectionState.DISCONNECTED);

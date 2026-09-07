@@ -1,5 +1,6 @@
 """Camera-only frame polling uses SkellyCam's group-local cursor contract."""
 
+import asyncio
 from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -50,7 +51,7 @@ def server(monkeypatch: pytest.MonkeyPatch) -> WebsocketServer:
     result = WebsocketServer(
         fastapi_app=fastapi,
         websocket=WebSocket(
-            scope={"type": "websocket"}, receive=AsyncMock(), send=AsyncMock()
+            scope={"type": "websocket", "query_string": b"connection_id=test"}, receive=AsyncMock(), send=AsyncMock()
         ),
     )
     monkeypatch.setattr(result, "_ensure_composition", AsyncMock())
@@ -62,6 +63,31 @@ def server(monkeypatch: pytest.MonkeyPatch) -> WebsocketServer:
 async def test_empty_manager_accepts_initial_cursor(server: WebsocketServer) -> None:
     assert await server._await_camera_only_frame() is None
     assert server._camera_frame_cursors == {}
+
+
+@pytest.mark.parametrize("fails", [False, True])
+async def test_connection_exit_joins_tasks_without_stopping_app(
+    server: WebsocketServer, monkeypatch: pytest.MonkeyPatch, fails: bool,
+) -> None:
+    async def idle() -> None:
+        await asyncio.Event().wait()
+
+    async def finish() -> None:
+        if fails:
+            raise ValueError("frame delivery failed")
+
+    monkeypatch.setattr(server._relay, "run", idle)
+    for name in ("_logs_relay", "_app_state_sender", "_posthoc_progress_sender"):
+        monkeypatch.setattr(server, name, idle)
+    monkeypatch.setattr(server, "_client_message_handler", finish)
+    if fails:
+        with pytest.raises(ValueError, match="frame delivery failed"):
+            await server.run()
+    else:
+        await server.run()
+    assert all(task.done() for task in server.ws_tasks)
+    assert not server._global_kill_flag.value
+    assert not server.should_continue
 
 
 async def test_group_counters_are_independent(server: WebsocketServer) -> None:

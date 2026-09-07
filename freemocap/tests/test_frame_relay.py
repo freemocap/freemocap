@@ -101,7 +101,7 @@ async def test_frames_relay_as_cbor_messages():
     async def source():
         return await queue.get()
 
-    relay = FrameRelay(serializer=serializer, source=source, should_continue=lambda: True)
+    relay = FrameRelay(serializer=serializer, source=source, should_continue=lambda: True, connection_id="test")
     relay.set_composition(_composition())
 
     relay_task = asyncio.create_task(relay.run())
@@ -125,6 +125,25 @@ async def test_frames_relay_as_cbor_messages():
     assert relay.last_sent_frame_number == 2
 
 
+async def test_model_revision_changes_when_pipeline_replaces_camera_only_composition() -> None:
+    ws = FakeWebSocket()
+
+    async def source() -> FrameContext | None:
+        return None
+
+    relay = FrameRelay(serializer=SendSerializer(ws), source=source,
+                       should_continue=lambda: True, connection_id="test")
+    relay.set_composition(compose_messages(StreamContext(skeletons=())))
+    await relay._send_frame(_frame_ctx(0))
+    relay.set_composition(_composition())
+    await relay._send_frame(_frame_ctx(1))
+    await relay._send_frame(_frame_ctx(2))
+    messages = [cbor2.loads(payload) for payload in ws.sent_bytes]
+    assert [message["model_sequence"] for message in messages] == [0, 1, 1]
+    assert messages[0]["models"] == []
+    assert messages[1]["models"]
+
+
 async def test_relay_stops_on_its_own_when_should_continue_flips():
     ws = FakeWebSocket()
     serializer = SendSerializer(ws)
@@ -135,6 +154,7 @@ async def test_relay_stops_on_its_own_when_should_continue_flips():
 
     keep_running = {"value": True}
     relay = FrameRelay(
+        connection_id="test",
         serializer=serializer,
         source=source,
         should_continue=lambda: keep_running["value"],

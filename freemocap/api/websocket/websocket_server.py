@@ -101,6 +101,7 @@ class WebsocketServer:
         self._tracked_skeletons_cache: tuple[str, tuple] | None = None
         # The relay consumes raw frame contexts via the injected source.
         self._relay = FrameRelay(
+            connection_id=websocket.query_params.get("connection_id", "unidentified"),
             serializer=self._serializer,
             source=self._await_next_frame,
             should_continue=lambda: self.should_continue,
@@ -152,7 +153,7 @@ class WebsocketServer:
         only in the rate frames actually reach the client.
         """
         current = self._relay.composition
-        if current is not None and self._live_context_signature(aggregator_output) == self._context_signature(
+        if current is not None and self._tracked_skeletons() is current.context.skeletons and self._live_context_signature(aggregator_output) == self._context_signature(
             current.context
         ):
             return
@@ -310,14 +311,17 @@ class WebsocketServer:
         aggregator output (lockstep, newest-wins); with no pipeline it serves
         camera images directly (the frame's image field).
         """
-        await self._app.wait_for_realtime_result(timeout=0.5)
-
         if not self._app.realtime_pipeline_manager.pipelines:
             return await self._await_camera_only_frame()
 
         outputs = self._app.get_latest_aggregator_outputs(
             if_newer_than=self._relay.last_sent_frame_number,
         )
+        if not outputs:
+            await self._app.wait_for_realtime_result(timeout=0.5)
+            outputs = self._app.get_latest_aggregator_outputs(
+                if_newer_than=self._relay.last_sent_frame_number,
+            )
         if not outputs:
             # Pipeline live but no new solver output — keep waiting; the
             # frame message must carry the frame's pose and image together.
@@ -431,18 +435,21 @@ class WebsocketServer:
         ]
 
         try:
-            await asyncio.gather(*self.ws_tasks)
+            done, _ = await asyncio.wait(self.ws_tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                task.result()
+        except WebSocketDisconnect:
+            logger.info("Client disconnected")
         except Exception as e:
             logger.exception(f"Error in websocket runner: {e.__class__}: {e}")
-            # A fatal runner error must stop the whole app — if it only kills
-            # this connection, the frontend reconnects into the same crash
-            # forever.
             self._websocket_should_continue = False
-            self._global_kill_flag.value = True
+            raise
+        finally:
+            self._websocket_should_continue = False
             for task in self.ws_tasks:
                 if not task.done():
                     task.cancel()
-            raise
+            await asyncio.gather(*self.ws_tasks, return_exceptions=True)
 
     async def _app_state_sender(self):
         logger.info("Starting app-state sender task...")
@@ -464,7 +471,6 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error in app-state sender: {e.__class__}: {e}")
             self._websocket_should_continue = False
-            self._global_kill_flag.value = True
             raise
 
     async def _posthoc_progress_sender(self):
@@ -495,7 +501,6 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error in posthoc-progress sender: {e.__class__}: {e}")
             self._websocket_should_continue = False
-            self._global_kill_flag.value = True
             raise
 
     def _record_framerate(
@@ -558,15 +563,12 @@ class WebsocketServer:
                         await await_10ms()
                         continue
                     except (EOFError, OSError) as error:
-                        # The queue itself is failing - back off and log rather
-                        # than spin on it inside the event loop.
                         logger.error(
-                            "Log queue read failed (%s: %s); backing off 100ms",
+                            "Log queue read failed (%s: %s)",
                             error.__class__.__name__,
                             error,
                         )
                         self._websocket_should_continue = False
-                        self._global_kill_flag.value = True
                         raise
                     if not isinstance(log_entry, dict):
                         continue
@@ -586,7 +588,6 @@ class WebsocketServer:
                 f"— ws state: {self.websocket.client_state}"
             )
             self._websocket_should_continue = False
-            self._global_kill_flag.value = True
             raise
 
     async def _client_message_handler(self):
@@ -647,7 +648,6 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error handling client message: {e.__class__}: {e}")
             self._websocket_should_continue = False
-            self._global_kill_flag.value = True
             raise
         finally:
             logger.info("Ending client message handler...")

@@ -111,18 +111,20 @@ const HIDDEN_COLOR = new Color("#000000");
 /** One model's bone table plus where its block of instance slots starts. */
 interface ModelBoneBlock {
     modelId: string;
+    instanceId: number;
     table: BoneInstanceTable;
     baseSlot: number;
 }
 
 /** Identity of the MODEL SET — what a rebuild depends on. */
 function modelSetSignature(models: ResolvedModelFrame[]): string {
-    return models.map((m) => m.modelId).join("|");
+    return JSON.stringify(models.map(m => [m.modelId, m.instanceId]));
 }
 
 export function RigidBodyBoneRenderer() {
     const { subscribeToModelFrames } = useKeypointsSource();
     const definitionsById = useModelDefinitionsById();
+    const appliedDefinitionsRef = useRef(definitionsById.current);
     const meshRef = useRef<InstancedMesh>(null);
     const idxToNameRef = useRef<Map<number, string>>(new Map());
 
@@ -186,7 +188,7 @@ export function RigidBodyBoneRenderer() {
             for (const inst of table.instances) {
                 idxToNameRef.current.set(nextSlot + inst.instanceIdx, inst.name);
             }
-            blocks.push({ modelId: entry.modelId, table, baseSlot: nextSlot });
+            blocks.push({ modelId: entry.modelId, instanceId: entry.instanceId, table, baseSlot: nextSlot });
             nextSlot += segmentCount;
         }
         blocksRef.current = blocks;
@@ -217,12 +219,17 @@ export function RigidBodyBoneRenderer() {
     useFrame(() => {
         const mesh = meshRef.current;
         const models = modelFramesRef.current;
+        if (models && appliedDefinitionsRef.current !== definitionsById.current) {
+            appliedDefinitionsRef.current = definitionsById.current;
+            rebuild(models);
+            dirtyRef.current = true;
+        }
         if (!mesh || !models || !dirtyRef.current || !blocksAppliedRef.current) return;
 
-        const frameByModelId = new Map(models.map((m) => [m.modelId, m]));
+        const frameByInstance = new Map(models.map(m => [JSON.stringify([m.modelId, m.instanceId]), m]));
 
         for (const block of blocksRef.current) {
-            const entry = frameByModelId.get(block.modelId);
+            const entry = frameByInstance.get(JSON.stringify([block.modelId, block.instanceId]));
             const origins = entry?.segmentOrigins;
             const rotations = entry?.rotations;
             const liveLengths = entry?.segmentLengths ?? null;

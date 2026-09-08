@@ -42,7 +42,6 @@ const PlaybackPage: React.FC = () => {
     const loadedVideos = ctx?.loadedVideos ?? [];
     const recordingPath = activeRecordingPath;
     const recordingFps = ctx?.recordingFps;
-    const frameTimestamps = ctx?.frameTimestamps ?? null;
     const onFrameChange = ctx?.onFrameChange;
     const availableSources = ctx?.availableSources ?? null;
     const selectedSource = ctx?.selectedSource ?? null;

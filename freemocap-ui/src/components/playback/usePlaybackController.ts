@@ -29,7 +29,6 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const players = useRef<BrowserVideo[]>([]);
     const frameLabels = useRef(new Map<string, PlaybackLabel>());
     const currentFrameRef = useRef(0);
-    const frameTimestampsRef = useRef<Record<string, number[]> | null>(null);
     const measuredFps = useRef<number | null>(null);
     const seekGeneration = useRef(0);
     const onFrameChangeRef = useRef(onFrameChange); onFrameChangeRef.current = onFrameChange;
@@ -178,7 +177,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         handlePlaybackRateChange: setPlaybackRate,
         handleSeekToStart: (): void => {void seek(0);}, handleSeekToEnd: (): void => {void seek(totalFrames - 1);},
         handleToggleLoop: (): void => setIsLooping(value => !value),
-        setVideoRef, setFrameOverlayRef, frameTimestampsRef, currentFrameRef,
+        setVideoRef, setFrameOverlayRef, currentFrameRef,
     };
 }
 export type PlaybackController = ReturnType<typeof usePlaybackController>;

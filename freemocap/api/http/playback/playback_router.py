@@ -163,7 +163,6 @@ class RecordingBundle(BaseModel):
     total_frames: Optional[int] = None
     duration_seconds: Optional[float] = None
     videos: VideoSourcesResponse
-    timestamps: dict = {}
     calibration: Optional[dict[str, Any]] = None
     tracker_schema: dict[str, Any] | None
     status_summary: RecordingStatusSummary | None
@@ -888,6 +887,5 @@ def get_recording_bundle(
         recording_id=recording_id, manifest=manifest, errors=errors, media=tuple(media),
         videos=VideoSourcesResponse(preferred_source=preferred, sources=sources),
         recording_fps=stats.get("fps"), total_frames=stats.get("total_frames"), duration_seconds=stats.get("duration_seconds"),
-        timestamps={"timestamps": {item.timeline.source: item.timeline.timestamps_s for item in media}},
         calibration=calibration, tracker_schema=tracker_schema, status_summary=status_summary,
     )

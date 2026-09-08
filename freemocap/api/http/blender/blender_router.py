@@ -57,7 +57,7 @@ class ExportToBlenderRequest(BaseModel):
 
     @property
     def blend_file_path(self):
-        recording_name = Path(self.recording_folder_path).stem
+        recording_name = Path(self.recording_folder_path).name
         return str(Path(self.recording_folder_path) /f"{recording_name}.blend")
 
 

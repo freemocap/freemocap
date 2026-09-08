@@ -21,7 +21,6 @@ export interface SourceInfo {
 interface PlaybackContextValue {
     loadedVideos: LoadedVideo[];
     recordingFps: number | undefined;
-    frameTimestamps: Record<string, number[]> | null;
     cachedCurrentFrame: number;
     availableSources: Record<string, SourceInfo> | null;
     selectedSource: string | null;
@@ -46,7 +45,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
 
     const [loadedVideos, setLoadedVideos] = useState<LoadedVideo[]>([]);
     const [recordingFps, setRecordingFps] = useState<number | undefined>(undefined);
-    const [frameTimestamps, setFrameTimestamps] = useState<Record<string, number[]> | null>(null);
     const [availableSources, setAvailableSources] = useState<Record<string, SourceInfo> | null>(null);
     const [selectedSource, setSelectedSource] = useState<string | null>(null);
     const currentFrameRef = useRef<number>(0);
@@ -62,7 +60,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
     ) => {
         setLoadedVideos(videos);
         setRecordingFps(fps);
-        setFrameTimestamps(null);
         setAvailableSources(sources ?? null);
         setSelectedSource(preferred ?? (sources ? Object.keys(sources)[0] ?? null : null));
         currentFrameRef.current = 0;
@@ -103,7 +100,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
 
         setLoadedVideos(preferredVids);
         setRecordingFps(bundle.recordingFps ?? undefined);
-        setFrameTimestamps(bundle.timestamps?.timestamps ?? null);
         setAvailableSources(sources);
         setSelectedSource(preferred);
         if (!sameRecording) currentFrameRef.current = 0;
@@ -115,7 +111,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
         const source = availableSources[selectedSource];
         if (!source?.videos.length) return;
         setLoadedVideos(source.videos);
-        setFrameTimestamps(null);
     }, [selectedSource, availableSources]);
 
     // Bootstrap: if no active recording on mount, auto-pick the most recent from cache.
@@ -140,7 +135,6 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({child
         <PlaybackContext.Provider value={{
             loadedVideos,
             recordingFps,
-            frameTimestamps,
             cachedCurrentFrame: currentFrameRef.current,
             availableSources,
             selectedSource,

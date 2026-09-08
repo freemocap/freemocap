@@ -31,10 +31,6 @@ export interface PlaybackBundle {
             }>;
         }>;
     };
-    timestamps: {
-        timestamps?: Record<string, number[]>;
-        warnings?: string[];
-    };
     calibration: LoadedCalibration | null;
     trackerSchema: Record<string, unknown> | null;
     statusSummary: RecordingStatusSummary | null;
@@ -123,7 +119,6 @@ export const fetchPlaybackBundle = createAsyncThunk<
                     preferredSource: data.videos.preferred_source,
                     sources,
                 },
-                timestamps: data.timestamps ?? {},
                 calibration: data.calibration ?? null,
                 trackerSchema: data.tracker_schema,
                 statusSummary: data.status_summary,

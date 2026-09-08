@@ -136,7 +136,7 @@ def raise_if_not_blender_ready(recording_folder_path: str|Path,
 
 
 def _find_blend_file(recording_folder: str|Path) -> Path | None:
-    expected = recording_folder / f"{recording_folder.stem}.blend"
+    expected = recording_folder / f"{recording_folder.name}.blend"
     if expected.is_file():
         return expected
     for p in recording_folder.iterdir():

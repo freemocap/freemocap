@@ -65,7 +65,7 @@ def export_to_blender(
         if not blender_exe_path.is_file():
             raise RuntimeError(f"Blender executable not found at: {blender_exe_path}")
     if blend_file_path is None:
-        blend_file_path = Path(recording_folder_path)/f"{Path(recording_folder_path).stem}.blend"
+        blend_file_path = Path(recording_folder_path)/f"{Path(recording_folder_path).name}.blend"
 
     # Resolve the site-packages directory containing freemocap_blender_addon
     # so we can inject it into Blender's sys.path (no addon installation needed)
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
 
     recording_path_in = r"C:\Users\jonma\freemocap_data\recording_sessions\steen_pantsOn_gait"
-    blend_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).stem) + ".blend"))
+    blend_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).name) + ".blend"))
     blender_exe_path_in = get_best_guess_of_blender_path()
 
     export_to_blender(

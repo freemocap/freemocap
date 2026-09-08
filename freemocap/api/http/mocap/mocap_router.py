@@ -40,7 +40,7 @@ class StartMocapRecordingRequest(BaseModel):
 
     def to_recording_info(self) -> RecordingInfo:
         recording_dir = Path(self.mocap_recording_directory).expanduser()
-        recording_name = recording_dir.stem
+        recording_name = recording_dir.name
 
         return RecordingInfo(
             recording_directory=str(recording_dir.parent),
@@ -84,7 +84,7 @@ class ProcessMocapRecordingRequest(BaseModel):
         recording_dir = Path(self.mocap_recording_directory).expanduser()
         return RecordingInfo(
             recording_directory=str(recording_dir.parent),
-            recording_name=recording_dir.stem,
+            recording_name=recording_dir.name,
             mic_device_index=-1,
         )
 

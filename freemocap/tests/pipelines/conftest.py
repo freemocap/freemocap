@@ -196,7 +196,7 @@ def synchronized_videos_dir(test_recording_path: Path) -> Path:
 def recording_info(test_recording_path: Path) -> RecordingInfo:
     info = RecordingInfo(
         recording_directory=str(test_recording_path.parent),
-        recording_name=test_recording_path.stem,
+        recording_name=test_recording_path.name,
         mic_device_index=-1,
     )
     logger.info(

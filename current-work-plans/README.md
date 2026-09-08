@@ -1,5 +1,10 @@
 # Current Work Plans
 
+Current identity closure and next-step boundary: [identity audit](02-pipeline/identity-audit.md)
+(2026-09-08). This is the current status for the media/identity work; older progress notes
+in the broader plans are historical. Next is camera geometry matching design, followed by
+the Mocap/posthoc walkthrough and recording output contract.
+
 Current posthoc review entry point: [posthoc architecture review](02-pipeline/posthoc-architecture-review.md).
 This separates agreed boundaries from provisional layout/API decisions before further implementation.
 

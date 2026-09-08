@@ -26,7 +26,7 @@ def test_calibration_writes_last_successful_toml(calibration_toml_path):
 
 @pytest.mark.e2e
 def test_calibration_writes_recording_local_toml(test_recording_path, calibration_toml_path):
-    expected = test_recording_path / f"{test_recording_path.stem}_camera_calibration.toml"
+    expected = test_recording_path / f"{test_recording_path.name}_camera_calibration.toml"
     logger.info(f"Checking recording-local TOML: {expected}")
     assert expected.exists(), f"Expected recording-local calibration TOML at {expected}"
     size_kb = expected.stat().st_size / 1024

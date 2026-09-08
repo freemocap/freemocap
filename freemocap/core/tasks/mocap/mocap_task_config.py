@@ -23,6 +23,7 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 )
 
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingConfig
 from freemocap.core.tracking.board_selection import CharucoBoardMode
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
@@ -30,6 +31,8 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoard
 
 class PosthocMocapPipelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
+    camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig, alias="cameraMatching")
 
     charuco_tracking_enabled: bool = Field(default=True, alias="charucoTrackingEnabled")
     board_mode: CharucoBoardMode = Field(default=CharucoBoardMode.AUTO, alias="boardMode")

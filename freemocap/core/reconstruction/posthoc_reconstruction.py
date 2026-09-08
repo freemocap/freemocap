@@ -20,7 +20,7 @@ from freemocap.core.reconstruction.recording_reconstruction import (
     ModelRecordingReconstruction,
 )
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction  # noqa: TC001 - runtime type checking
-from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_state import (
     _strip_stage_prefix,
 )
@@ -53,7 +53,7 @@ def _to_blender(positions: np.ndarray) -> np.ndarray:
 def triangulate_observation_buffers(
     *,
     observation_buffers: dict[CameraIdString, ObservationBuffer],
-    calibration: CalibrationResult | None,
+    camera_geometry: dict[str, CameraModel],
     triangulation_config: TriangulationConfig | None,
     max_reprojection_error_px: float | None,
     timing: PosthocTimingReport,
@@ -112,16 +112,14 @@ def triangulate_observation_buffers(
         per_camera_weights = None
         reprojection_error = None
     else:
-        if calibration is None:
+        if set(camera_geometry) != set(camera_ids):
             raise ValueError(
                 "Multi-camera triangulation requires resolved calibration geometry"
             )
-        triangulator = Triangulator.from_calibration_for_cameras(
-            calibration=calibration,
-            camera_ids=camera_ids,
-        )
+        triangulator = Triangulator(cameras=[camera_geometry[source] for source in camera_ids])
         result = triangulator.triangulate(
-            data2d=data2d_by_camera,
+            data2d=np.stack([data2d_by_camera[source] for source in camera_ids]),
+            camera_order=triangulator.camera_ids,
             config=triangulation_config,
         )
         points_3d = result.points_3d

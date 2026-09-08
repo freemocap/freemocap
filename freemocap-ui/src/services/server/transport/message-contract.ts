@@ -66,7 +66,7 @@ export const CameraExtrinsicsSchema = z.object({
  *  state, not an error - cameras get replugged and the calibration on hand often does not
  *  describe them. Such a camera still streams images and 2D overlays (its `image_size` is
  *  live and correct); it just carries no intrinsics/extrinsics and cannot be triangulated. */
-export const CameraCalibrationMatchSchema = z.enum(["exact", "index", "unmatched"]);
+export const CameraCalibrationMatchSchema = z.enum(["exact", "index", "geometry", "unmatched"]);
 export type CameraCalibrationMatch = z.infer<typeof CameraCalibrationMatchSchema>;
 
 /** The frame's `cameras` array describes EVERY live camera, not just the calibrated ones,

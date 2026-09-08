@@ -103,6 +103,7 @@ class CameraCalibrationMatch(StrEnum):
     """
 
     EXACT = "exact"
+    GEOMETRY = "geometry"
     INDEX = "index"
     UNMATCHED = "unmatched"
 

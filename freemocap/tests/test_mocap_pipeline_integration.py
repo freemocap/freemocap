@@ -130,7 +130,7 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
             compute_center_of_mass=True,
         ))
         self.assertEqual(saved.numerical_input.frame_count, 4)
-        with av.open(str(self.folder / "annotated_videos" / "input_annotated.mp4")) as container:
+        with av.open(str(self.folder / "annotated_videos" / "input.mp4.annotated.mp4")) as container:
             self.assertEqual(container.streams.video[0].codec_context.name, "h264")
             frames = list(container.decode(video=0))
             self.assertEqual(len(frames), 4)

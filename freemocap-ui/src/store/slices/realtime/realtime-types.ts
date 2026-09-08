@@ -1,3 +1,4 @@
+import {CameraMatchingOptions, defaultCameraMatchingOptions} from '@/types/camera-matching';
 import {DetectorType, MediapipeModelComplexity, RTMPoseModelName} from "@/store/slices/mocap";
 
 export interface CharucoBoardConfigForPipeline {
@@ -22,6 +23,7 @@ export interface CameraNodeConfig {
 }
 
 export interface RealtimeAggregatorNodeConfig {
+    camera_matching: CameraMatchingOptions;
     calibration_toml_path: string | null;
     triangulation_enabled: boolean;
     filter_enabled: boolean;
@@ -50,6 +52,7 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         mediapipe_num_faces: 1,
     },
     aggregator_config: {
+        camera_matching: {...defaultCameraMatchingOptions},
         calibration_toml_path: null,
         triangulation_enabled: true,
         filter_enabled: false,

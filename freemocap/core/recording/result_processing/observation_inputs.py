@@ -65,6 +65,8 @@ class ObservationRecordingRequest:
     camera_geometry: tuple[CameraModel, ...]
 
     def __post_init__(self) -> None:
+        if self.camera_geometry and len(self.camera_geometry) != len(self.group.videos):
+            raise ValueError("Published geometry must cover every source in video order")
         if len({model.model_id for model in self.models}) != len(self.models):
             raise ValueError("Recorded models must be unique")
         model_ids = [item.definition.model_id for item in self.reconstructions]
@@ -91,6 +93,7 @@ class ObservationRecordingRequest:
 
 class ImageReference(Descriptor):
     camera_id: str
+    calibration_camera_id: str | None
     width: int
     height: int
 

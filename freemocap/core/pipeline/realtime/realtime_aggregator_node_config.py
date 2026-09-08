@@ -2,9 +2,11 @@ from pydantic import BaseModel, Field
 
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingConfig
 
 
 class RealtimeAggregatorNodeConfig(BaseModel):
+    camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig)
     calibration_toml_path: str | None = Field(
         default=None,
         description="Path to calibration TOML. If None, the most-recent successful calibration is used (and hot-reloaded).",

@@ -1,3 +1,4 @@
+import {CameraMatchingOptions, defaultCameraMatchingOptions} from '@/types/camera-matching';
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
@@ -98,6 +99,7 @@ export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
  * Mirrors backend MocapPipelineConfig.
  */
 export interface MocapConfig {
+    cameraMatching: CameraMatchingOptions;
     charucoTrackingEnabled: boolean;
     detector: MediapipeDetectorConfig;
     skeleton_filter: RealtimeFilterConfig;
@@ -242,6 +244,7 @@ export interface MocapState {
 
 
 const DEFAULT_MOCAP_CONFIG: MocapConfig = {
+    cameraMatching: {...defaultCameraMatchingOptions},
     detector: {...MEDIAPIPE_REALTIME_PRESET},
     triangulation: {...DEFAULT_TRIANGULATION_CONFIG},
     skeleton_filter: {...DEFAULT_REALTIME_FILTER_CONFIG},
@@ -306,6 +309,9 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
+        cameraMatchingUpdated: (state, action: PayloadAction<CameraMatchingOptions>) => {
+            state.config.cameraMatching = action.payload;
+        },
         mocapCharucoTrackingChanged: (state, action: PayloadAction<boolean>) => {
             state.config.charucoTrackingEnabled = action.payload;
         },
@@ -507,6 +513,7 @@ export const selectCanProcessMocapRecording = createSelector(
 // ==================== Actions Export ====================
 
 export const {
+    cameraMatchingUpdated,
     mocapCharucoTrackingChanged,
     mocapDetectorTypeChanged,
     mocapRtmPoseModelNameChanged,

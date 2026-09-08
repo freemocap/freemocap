@@ -1,5 +1,9 @@
 # Current Work Plans
 
+Camera matching design for discussion: [camera geometry matching](02-pipeline/camera-geometry-matching.md).
+Includes the numerical objective, bounded search, acceptance gates and shared live/posthoc setting.
+Numerical implementation has started; pipeline integration and app testing remain pending.
+
 Current identity closure and next-step boundary: [identity audit](02-pipeline/identity-audit.md)
 (2026-09-08). This is the current status for the media/identity work; older progress notes
 in the broader plans are historical. Next is camera geometry matching design, followed by

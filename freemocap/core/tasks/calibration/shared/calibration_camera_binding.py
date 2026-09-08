@@ -39,7 +39,10 @@ class CalibrationMatchKind(str, Enum):
     """How the live cameras were bound to the calibration's cameras."""
 
     EXACT = "exact"
-    """Every live camera matched a calibration camera by id. The trustworthy case."""
+    """Initial assignment from matching source labels; geometry is not yet verified."""
+
+    GEOMETRY = "geometry"
+    """Assignment passed observation-based geometry fitness checks."""
 
     INDEX = "index"
     """No id match, but every live camera bound to a distinct calibration camera by

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
+import CameraMatchingSettings from './camera-matching-settings';
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import { useMocap } from "@/hooks/useMocap";
@@ -235,6 +236,10 @@ const MOCAPthreeDReconstructionSettings: React.FC<
           onToggle={handleSkeletonToggle}
           disabled={isLoading}
         />
+        <CameraMatchingSettings config={aggregatorConfig.camera_matching} showFailurePolicy={false}
+          onChange={camera_matching => applyOrUpdatePipelineConfig({
+            ...pipelineConfig, aggregator_config: {...aggregatorConfig, camera_matching},
+          })}/>
       </div>
     </div>
   );

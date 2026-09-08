@@ -77,6 +77,8 @@ from freemocap.core.tasks.calibration.shared.calibration_camera_binding import (
 from freemocap.core.tasks.calibration.shared.calibration_state import (
     CalibrationStateTracker,
 )
+from freemocap.core.tasks.calibration.camera_matching.live_matching import LiveGeometryMatcher
+from skellytracker.core.data_primitives.observation import Observation
 from freemocap.core.tasks.triangulation.helpers.angulation_result import (
     AngulationResult,
 )
@@ -446,6 +448,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             )
 
         filter_config = aggregator_config.realtime_filter_config
+        geometry_matcher = LiveGeometryMatcher(calibration=calibration, camera_indices=live_camera_indices)
 
         # Initialize velocity gate for rejecting teleportation spikes
         point_gate = RealtimePointGate(
@@ -812,6 +815,33 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 # ---- Triangulate and process if calibration is valid ----
+                matching_observations: dict[str, Observation] = {}
+                for source, output in frame_n_outputs.items():
+                    if not isinstance(output, CameraNodeOutputMessage):
+                        continue
+                    for observation in (output.skeleton_observation, output.charuco_observation):
+                        if observation is None:
+                            continue
+                        if source not in matching_observations:
+                            matching_observations[source] = Observation(
+                                frame_number=observation.frame_number, image_size=observation.image_size,
+                                stages=dict(observation.stages),
+                            )
+                        else:
+                            if (matching_observations[source].frame_number != observation.frame_number
+                                    or matching_observations[source].image_size != observation.image_size):
+                                raise ValueError("Matching detector observations disagree on frame or image dimensions")
+                            if set(matching_observations[source].stages).intersection(observation.stages):
+                                raise ValueError("Duplicate detector stages in matching observations")
+                            matching_observations[source].stages.update(observation.stages)
+                if aggregator_config.triangulation_enabled and geometry_matcher.update(
+                    observations=matching_observations, config=aggregator_config.camera_matching,
+                    elapsed_seconds=time.perf_counter(),
+                ):
+                    keypoint_filter.reset()
+                    point_gate.reset()
+                    skeleton_set.reset()
+                    skeleton_observability_logged.clear()
                 # All processing stays in dict[str, ndarray] until final
                 # conversion to Point3d for the output message.
                 raw_keypoints: dict[str, np.ndarray] = {}
@@ -1015,4 +1045,5 @@ class RealtimeAggregatorNode(AggregatorNode):
                 timing_reporter_stop.set()
             if timing_reporter is not None:
                 timing_reporter.join(timeout=2.0)
+            geometry_matcher.close()
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] exiting")

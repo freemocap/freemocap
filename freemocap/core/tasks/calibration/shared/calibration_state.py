@@ -19,6 +19,7 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingResult, CameraMatchingStatus
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.calibration_camera_binding import (
     CalibrationBinding,
@@ -127,6 +128,35 @@ class CalibrationStateTracker:
     def binding(self) -> CalibrationBinding | None:
         """How the live cameras map onto the calibration, or None before `bind_live_cameras`."""
         return self._binding
+
+    @property
+    def generation(self) -> int:
+        return self._calibration_generation
+
+    def reset_matching(self, *, camera_indices: Mapping[str, int]) -> None:
+        self._binding_key = None
+        self.bind_live_cameras(live_camera_indices=camera_indices)
+
+    def apply_matching(self, *, source_ids: tuple[str, ...], result: CameraMatchingResult) -> None:
+        if self._calibration is None:
+            raise ValueError("Cannot install camera matching without calibration")
+        if result.status is CameraMatchingStatus.INSUFFICIENT:
+            return
+        accepted = result.status in (CameraMatchingStatus.INITIAL_ACCEPTED, CameraMatchingStatus.MATCHED)
+        if accepted and result.assignment is None:
+            raise ValueError("Accepted camera matching requires an assignment")
+        self._binding = CalibrationBinding(
+            by_live_id={source: self._calibration.cameras[result.assignment[index]] if accepted else None
+                        for index, source in enumerate(source_ids)},
+            kind=CalibrationMatchKind.GEOMETRY if accepted else CalibrationMatchKind.UNMATCHED,
+            applicable=accepted, reason=f"Camera geometry matching: {result.status}",
+            live_camera_ids=source_ids, calibration_camera_ids=tuple(camera.id for camera in self._calibration.cameras),
+        )
+        self._subset_triangulator_cache.clear()
+        logger.info(self._binding.reason)
+        if accepted:
+            self._is_valid = True
+            self._consecutive_failure_count = 0
 
     def is_applicable(self) -> bool:
         """Whether the loaded calibration actually describes the current camera set.

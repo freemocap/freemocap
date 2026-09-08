@@ -47,7 +47,7 @@ class ObservationAlignmentTests(unittest.TestCase):
         buffer.add_observation(observed_frame(frame_number=0, names=("a",), visibility=(1.,)))
         buffer.add_observation(observed_frame(frame_number=1, names=("b", "a"), visibility=(1., 1.)))
         values, names, _ = triangulate_observation_buffers(
-            observation_buffers={"camera": buffer}, calibration=None, triangulation_config=None,
+            observation_buffers={"camera": buffer}, camera_geometry={}, triangulation_config=None,
             max_reprojection_error_px=None, timing=PosthocTimingReport(),
         )
         self.assertEqual(names, ("a", "b"))
@@ -67,6 +67,6 @@ class ObservationAlignmentTests(unittest.TestCase):
         second.add_observation(observed_frame(frame_number=1, names=("a",), visibility=(1.,)))
         with self.assertRaisesRegex(ValueError, "frame numbers must match"):
             triangulate_observation_buffers(
-                observation_buffers={"first": first, "second": second}, calibration=None,
+                observation_buffers={"first": first, "second": second}, camera_geometry={},
                 triangulation_config=None, max_reprojection_error_px=None, timing=PosthocTimingReport(),
             )

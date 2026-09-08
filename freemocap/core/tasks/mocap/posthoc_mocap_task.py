@@ -4,6 +4,8 @@ from __future__ import annotations
 from freemocap.core.recording.result_processing.observation_inputs import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.camera_matching.posthoc_matching import PosthocMatchingRequest
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
@@ -110,9 +112,20 @@ def run_posthoc_mocap_task(
     timing = PosthocTimingReport()
 
     calibration = CalibrationResult.load_anipose_toml(calibration_toml_path) if calibration_toml_path is not None else None
+    camera_geometry: dict[str, CameraModel] = {}
+    if calibration is not None:
+        matching_request = PosthocMatchingRequest(
+            frames=frame_observations, videos=video_metadata,
+            cameras=tuple(calibration.cameras), config=task_config.camera_matching,
+        )
+        matching_result = matching_request.evaluate()
+        camera_geometry = matching_request.resolve(result=matching_result)
+        _reporter.report(stage=MocapStage.TRIANGULATING, detail=f"Camera matching: {matching_result.status}")
+        logger.info("Camera matching: %s; source assignments: %s; fitness: %s",
+                    matching_result.status, {source: camera.id for source, camera in camera_geometry.items()}, matching_result.fitness)
     keypoints_blender, keypoint_names, _per_camera_weights = triangulate_observation_buffers(
         observation_buffers=observation_recorders,
-        calibration=calibration,
+        camera_geometry=camera_geometry,
         triangulation_config=task_config.triangulation_config,
         max_reprojection_error_px=None,
         timing=timing,
@@ -136,7 +149,7 @@ def run_posthoc_mocap_task(
             definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=str(PosthocPipelineType.MOCAP)),
             result=reconstructions[bundle.model_id],
         ) for bundle in bundles),
-        camera_geometry=tuple(calibration.get_camera(camera) for camera in camera_ids) if calibration is not None else (),
+        camera_geometry=tuple(camera_geometry[source] for source in camera_ids) if camera_geometry else (),
         recording=recording_info,
         spatial_series=(SpatialPointSeries(
             definition=PointSeriesDefinition(sensor_group="mocap", source=str(PosthocPipelineType.MOCAP),

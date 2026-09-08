@@ -1,4 +1,6 @@
 import React from "react";
+import CameraMatchingSettings from './camera-matching-settings';
+import {cameraMatchingUpdated} from '@/store/slices/mocap';
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
     triangulationConfigUpdated,
@@ -11,10 +13,13 @@ import ToggleComponent from "../ui-components/ToggleComponent";
 const TriangulationSettings: React.FC = () => {
     const dispatch = useAppDispatch();
     const config = useAppSelector(selectMocapTriangulationConfig);
+    const matching = useAppSelector(state => state.mocap.config.cameraMatching);
 
     return (
         <div className="flex flex-col gap-1">
             <h2 className="mocap-settings-title">Triangulation Settings</h2>
+            <CameraMatchingSettings config={matching} showFailurePolicy={true}
+                onChange={value => dispatch(cameraMatchingUpdated(value))}/>
 
             <ToggleComponent
                 text="Use outlier rejection"

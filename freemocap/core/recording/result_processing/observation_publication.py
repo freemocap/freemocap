@@ -79,7 +79,7 @@ def publish_posthoc_observations(
     references: dict[str, dict[str, object]] = {}
     camera_times: dict[str, tuple[float, ...]] = {}
     camera_channels: dict[str, CameraObservationChannels] = {}
-    for camera, video in request.group.videos.items():
+    for source_index, (camera, video) in enumerate(request.group.videos.items()):
         if frame_numbers != tuple(range(video.start_frame, video.end_frame)):
             raise ValueError("Observations must cover the selected video frame range")
         timeline = resolve_camera_timing(
@@ -100,7 +100,10 @@ def publish_posthoc_observations(
             nominal_fps=video.fps,
             inferred_offset_s=0.0,
         )
-        image = ImageReference(camera_id=camera, width=video.width, height=video.height)
+        image = ImageReference(
+            camera_id=camera, width=video.width, height=video.height,
+            calibration_camera_id=request.camera_geometry[source_index].id if request.camera_geometry else None,
+        )
         sources[camera_definition.source_name] = camera_definition.to_source()
         references[image.name] = image.model_dump(mode="json")
         for index, frame in enumerate(request.group.frames):

@@ -1,4 +1,6 @@
 import numpy as np
+from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
+from skellyforge.core.math.geometry.transform_math import Transform
 from typing import Annotated
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
@@ -47,6 +49,24 @@ class CameraModel(BaseModel, TomlMixin):
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, CameraModel) and self.model_dump(mode="json") == other.model_dump(mode="json")
+
+    def in_world_frame(self, *, transform: Transform) -> "CameraModel":
+        """Express this camera in X' = Q X + b without changing its projection.
+
+        The transform must use the same coordinates and length unit as the extrinsics.
+        Camera-local coordinates and intrinsics are unchanged; all world-pose fields
+        are derived from the transformed extrinsics.
+        """
+        rotation = self.extrinsics.rotation_matrix @ transform.rotation.to_rotation_matrix().T
+        extrinsics = CameraExtrinsics(
+            quaternion_wxyz=RotationQuaternion.from_rotation_matrix(matrix=rotation).as_array(),
+            translation=self.extrinsics.translation - rotation @ transform.translation.array,
+        )
+        result = self.model_copy(deep=True)
+        result.extrinsics = extrinsics
+        result.world_position = extrinsics.world_position
+        result.world_orientation = extrinsics.world_orientation
+        return result
 
     @property
     def projection_matrix(self) -> NDArray[np.float64]:

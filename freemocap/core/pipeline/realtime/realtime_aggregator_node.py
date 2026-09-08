@@ -128,23 +128,15 @@ _SKELETON_RESULT_POLL_SECONDS: float = 0.005
 Small enough to keep frame pickup responsive, big enough that waiting costs
 ~nothing instead of burning the loop's core at 100%."""
 
+from skellyforge.core.math.geometry.spatial_vectors import Point
+from freemocap.core.reconstruction.coordinate_conventions import (
+    CALIBRATION_TO_RECONSTRUCTION, RECONSTRUCTION_TO_CALIBRATION,
+)
+
 logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
-
-
-def _to_blender(position: np.ndarray) -> np.ndarray:
-    """FreeMoCap (+X forward, +Y left, +Z up) -> Blender (+X right, +Y forward, +Z up).
-
-    Both frames are right-handed and +Z up, so this is a 90-degree rotation about Z.
-    """
-    return np.array([-position[1], position[0], position[2]], dtype=np.float64)
-
-
-def _from_blender(position: np.ndarray) -> np.ndarray:
-    """Blender (+X right, +Y forward) -> FreeMoCap (+X forward, +Y left), the inverse."""
-    return np.array([position[1], -position[0], position[2]], dtype=np.float64)
 
 
 def _reproject_segment_origins(
@@ -166,7 +158,10 @@ def _reproject_segment_origins(
     for i, name in enumerate(segment_names):
         pos = solver_landmarks.get(origin_names[name])
         if pos is not None and not np.any(np.isnan(pos)):
-            origins[i] = _from_blender(np.asarray(pos, dtype=np.float64)[:3])
+            origins[i] = np.asarray(pos, dtype=np.float64)[:3]
+    origins = RECONSTRUCTION_TO_CALIBRATION.convert_point(
+        point=Point.from_prevalidated_array(array=origins)
+    ).array
     projected = calibration.triangulator.project(origins)  # (n_cameras, 60, 2)
     # The triangulator is keyed by CALIBRATION camera id; every consumer of these
     # overlays looks them up by LIVE camera id. Translate here, or the overlays
@@ -908,9 +903,14 @@ class RealtimeAggregatorNode(AggregatorNode):
 
                     # Convert the triangulated keypoints to Blender once at the source:
                     # the skeleton solve and the wire are Blender-native (+X right, +Y forward, +Z up).
-                    raw_keypoints = {
-                        name: _to_blender(pos) for name, pos in raw_keypoints.items()
-                    }
+                    if raw_keypoints:
+                        point_names = tuple(raw_keypoints)
+                        converted = CALIBRATION_TO_RECONSTRUCTION.convert_point(
+                            point=Point.from_prevalidated_array(
+                                array=np.asarray([raw_keypoints[name] for name in point_names], dtype=np.float64)
+                            )
+                        ).array
+                        raw_keypoints = dict(zip(point_names, converted, strict=True))
 
                     # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
                     if raw_keypoints:

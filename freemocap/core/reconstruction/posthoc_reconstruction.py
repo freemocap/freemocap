@@ -2,6 +2,7 @@
 
 import logging
 import time
+from freemocap.core.reconstruction.coordinate_conventions import CALIBRATION_TO_RECONSTRUCTION
 from freemocap.core.reconstruction.recording_fit import FittedRecordingScale
 
 import numpy as np
@@ -35,19 +36,6 @@ from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from skellycam.core.types.type_overloads import CameraIdString
 
 logger = logging.getLogger(__name__)
-
-
-def _to_blender(positions: np.ndarray) -> np.ndarray:
-    """FreeMoCap (+X forward, +Y left) -> Blender (+X right, +Y forward), vectorized.
-
-    Mirrors `realtime_aggregator_node._to_blender`, expressed over a (..., 3) batch so
-    the posthoc driver can convert the whole recording in one array operation.
-    """
-    out = np.empty_like(positions, dtype=np.float64)
-    out[..., 0] = -positions[..., 1]
-    out[..., 1] = positions[..., 0]
-    out[..., 2] = positions[..., 2]
-    return out
 
 
 def triangulate_observation_buffers(
@@ -137,7 +125,9 @@ def triangulate_observation_buffers(
         mean_reproj = np.nanmean(reprojection_error, axis=0)
         points_3d = np.asarray(points_3d).copy()
         points_3d[mean_reproj > max_reprojection_error_px] = np.nan
-    keypoints_blender = _to_blender(points_3d)
+    keypoints_blender = CALIBRATION_TO_RECONSTRUCTION.convert_point(
+        point=Point.from_prevalidated_array(array=np.asarray(points_3d, dtype=np.float64))
+    ).array
     unprefixed_names = tuple(_strip_stage_prefix(name) for name in prefixed_names)
     timing.record("reprojection_gate_and_blender", time.perf_counter() - t0)
     return keypoints_blender, unprefixed_names, per_camera_weights

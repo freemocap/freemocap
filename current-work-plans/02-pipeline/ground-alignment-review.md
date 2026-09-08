@@ -218,3 +218,14 @@ FreeMoCap's installed dependency was verified to contain the first estimator che
 The second checkpoint needs the normal user commit/push/dependency update before app integration.
 Remaining adapter work is observation-quality propagation and model-declared selection of alignment
 regions/contact landmarks; the pose-to-body-axis conversion itself is implemented in Forge.
+
+Third checkpoint: Forge now declares alignment regions and foot-contact landmarks in
+`definitions/human_skeleton/alignment_definition.yaml`, resolved to existing model objects by
+`core/biomechanics/alignment_definition.py`. This keeps anatomical name rules out of FreeMoCap.
+Seventeen focused Forge tests pass. FreeMoCap now uses Forge's authored coordinate conventions
+in both live/posthoc conversion (batched in the live path), and CameraModel.in_world_frame applies
+an existing Forge Transform while preserving identity/intrinsics and recomputing world poses.
+Eleven FreeMoCap geometry/reconstruction/matching tests pass. These camera transforms are tested
+building blocks; automatic alignment and UI settings are not wired yet. The new Forge definition
+needs the normal commit/push/dependency update. Observation-quality propagation, evidence collection,
+result persistence and live/posthoc control wiring remain.

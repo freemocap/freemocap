@@ -207,3 +207,14 @@ Anipose alignment flag and perform actual camera-model reprojection tests during
 The first plane solver uses episode representatives and one PCA refinement; iterative robust
 refinement and competing-plane diagnostics remain to be evaluated with noisy recording evidence.
 Do not describe it as physical-floor detection or as already wired into either Mocap mode.
+
+Second Forge checkpoint: `BodyReferenceTrack.from_segment_poses` now composes measured pose
+orientation with inverse authored rest orientation and excludes missing/direction-only/carried-roll
+poses. A test hydrates the actual default human after a known scene rotation and verifies recovery
+across rigid-fit segments. `reference_alignment.py` owns the shared enabled/explicit-ground/
+feet/body/unchanged selection policy, returning the existing Transform and typed diagnostics.
+Fifteen focused tests pass. The active Anipose path sets groundplane_aligned; PyCeres remains deferred.
+FreeMoCap's installed dependency was verified to contain the first estimator checkpoint.
+The second checkpoint needs the normal user commit/push/dependency update before app integration.
+Remaining adapter work is observation-quality propagation and model-declared selection of alignment
+regions/contact landmarks; the pose-to-body-axis conversion itself is implemented in Forge.

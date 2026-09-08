@@ -2246,7 +2246,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#5fe45aa8c44cc7ab974d7b0f675eaca6c2f56af3" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#9d7d6dab03ff75d0bbf568036928f228b2097dbc" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -2257,7 +2257,7 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs#535206f8e7b7d1d73e904c340cdcbdfeeed7a26f" }
+source = { git = "https://github.com/freemocap/skellylogs?branch=main#535206f8e7b7d1d73e904c340cdcbdfeeed7a26f" }
 dependencies = [
     { name = "tqdm", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
 ]

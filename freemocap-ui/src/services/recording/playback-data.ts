@@ -1,4 +1,4 @@
-import type {PlaybackSource} from './playback-protocol';
+import type {PlaybackSource} from './playback-source';
 import type {ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame, PointsFrame} from '@/services/server/transport/frame-types';
 

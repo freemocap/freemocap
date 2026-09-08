@@ -1,9 +1,8 @@
 import {useEffect, useRef} from 'react';
 
 /** Samples cache residency independently of the video presentation loop. */
-export enum CacheLayer {Jpeg = 'jpeg', Bitmap = 'bitmap'}
-export function CachedTimeline({totalFrames, getCachedFrames, layer}: {
-    totalFrames: number; getCachedFrames: () => number[]; layer: CacheLayer;
+export function CachedTimeline({totalFrames, getCachedFrames}: {
+    totalFrames: number; getCachedFrames: () => number[];
 }): React.JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     useEffect(() => {
@@ -27,6 +26,6 @@ export function CachedTimeline({totalFrames, getCachedFrames, layer}: {
         const timer = setInterval(draw, 250);
         return () => clearInterval(timer);
     }, [totalFrames, getCachedFrames]);
-    return <canvas ref={canvasRef} className={`playback-cache-timeline playback-cache-timeline--${layer}`}
-        aria-label={layer === CacheLayer.Jpeg ? 'JPEG payload cache' : 'Decoded presentation buffer'}/>;
+    return <canvas ref={canvasRef} className="playback-cache-timeline"
+        aria-label="Buffered video"/>;
 }

@@ -127,7 +127,7 @@ export const RecordingCompleteDialog: React.FC = () => {
               {completionData.number_of_frames} frames
               {" · "}
               {completionData.total_duration_sec}s{" · "}
-              {completionData.mean_framerate} Hz avg
+              {completionData.mean_framerate.toFixed(2)} Hz avg
             </p>
             <div className="divider" />
             <p className=" text-white mb-2 font-semibold">

@@ -671,7 +671,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                       className="text-nowrap text md tag camera-config-chip tag text-gray"
                       title={t("recordingCaptureFps")}
                     >
-                      {`${rec.fps} fps`}
+                      {`${rec.fps.toFixed(2)} fps`}
                     </span>
                   )}
                 </div>

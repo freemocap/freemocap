@@ -1,6 +1,6 @@
 """
 Playback router: serves recording descriptors, numeric windows and video file bytes.
-Native decoding is delivered through the playback socket; decoded frames are cached by the client.
+Browser playback uses original video bytes or an in-memory codec compatibility stream.
 
 Endpoints are keyed on {recording_id} (the recording folder name). The full
 recording path is resolved as {BASE_RECORDINGS_DIRECTORY}/{recording_id},
@@ -12,6 +12,10 @@ Endpoints:
   GET  /playback/{recording_id}/videos/{video_id}        — stream a video file
 """
 import json
+import anyio
+from collections.abc import AsyncIterator
+from starlette.concurrency import run_in_threadpool
+from skellycam.core.recorders.videos.browser_stream import BrowserStreamRequest, browser_video_chunks
 from urllib.parse import quote, urlencode
 import logging
 from skellycam.core.recorders.videos.recording_statistics import read_recording_statistics
@@ -23,7 +27,7 @@ from typing import Any, Optional
 
 import tomllib
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata, probe_video_files
 from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, recorded_camera_timing_path
 from skellycam.core.recorders.videos.video_associations import VideoAssociations
@@ -599,6 +603,37 @@ def stream_video(
         filename=video_path.name,
         headers={"Cache-Control": "no-cache"},
     )
+
+
+@playback_router.get("/{recording_id}/videos/{video_id}/browser")
+async def browser_video_stream(
+    recording_id: str,
+    video_id: str,
+    start_seconds: float = Query(ge=0, allow_inf_nan=False),
+    duration_seconds: float = Query(gt=0, allow_inf_nan=False),
+    source: str | None = None,
+    recording_parent_directory: str | None = None,
+) -> StreamingResponse:
+    file = await run_in_threadpool(stream_video, recording_id=recording_id, video_id=video_id,
+        source=source, recording_parent_directory=recording_parent_directory)
+    chunks = browser_video_chunks(request=BrowserStreamRequest(path=Path(file.path),
+        start_seconds=start_seconds, duration_seconds=duration_seconds))
+    try:
+        first = await run_in_threadpool(next, chunks)
+    except Exception as error:
+        await run_in_threadpool(chunks.close)
+        raise HTTPException(status_code=422, detail=f"Cannot prepare video playback: {error}") from error
+
+    async def body() -> AsyncIterator[bytes]:
+        try:
+            yield first
+            while (chunk := await run_in_threadpool(next, chunks, None)) is not None:
+                yield chunk
+        finally:
+            with anyio.CancelScope(shield=True):
+                await run_in_threadpool(chunks.close)
+
+    return StreamingResponse(body(), media_type="video/mp4", headers={"Cache-Control": "no-store"})
 
 
 @playback_router.get(

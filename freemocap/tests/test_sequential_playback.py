@@ -13,6 +13,15 @@ from fastapi.testclient import TestClient
 
 from freemocap.api.http.playback.playback_router import playback_router, _validate_video_source, preferred_video_source, VideoSourceInfo, PlaybackVideoSource
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
+from freemocap.core.playback.media_selection import discover_video_paths, video_source_folder
+
+
+def test_root_media_discovery_keeps_matching_stems(tmp_path: Path) -> None:
+    for name in ("view.mp4", "view.avi", "notes.txt"):
+        (tmp_path / name).touch()
+    folder = video_source_folder(recording=tmp_path, source=PlaybackVideoSource.SYNCHRONIZED)
+    assert folder == tmp_path
+    assert tuple(path.name for path in discover_video_paths(folder=folder)) == ("view.avi", "view.mp4")
 
 
 def test_annotations_inherit_inferred_source_timing(video_path: Path, tmp_path: Path) -> None:

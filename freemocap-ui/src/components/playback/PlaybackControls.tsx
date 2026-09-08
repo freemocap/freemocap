@@ -5,9 +5,11 @@ import SegmentedControl from "@/components/ui-components/SegmentedControl";
 import type { PlaybackSettings } from "./SyncedVideoPlayer";
 import { useTranslation } from "react-i18next";
 import IconButton from "@/components/ui-components/IconButton";
+import PromptTooltip from "@/components/ui-components/PromptTooltip";
+import { useDismissibleTooltip } from "@/hooks/useDismissibleTooltip";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
-import {CachedTimeline, CacheLayer} from './CachedTimeline';
+import {CachedTimeline} from './CachedTimeline';
 
 interface PlaybackControlsProps {
     isPlaying: boolean;
@@ -18,7 +20,6 @@ interface PlaybackControlsProps {
     seekFrame: number;
     totalFrames: number;
     getCachedFrames: () => number[];
-    getBitmapFrames: () => number[];
     getDisplayFps: () => number | null;
     fps: number;
     recordingFps?: number;
@@ -64,7 +65,6 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     seekFrame,
     totalFrames,
     getCachedFrames,
-    getBitmapFrames,
     getDisplayFps,
     fps,
     recordingFps,
@@ -93,6 +93,9 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     const [speedDropdownOpen, setSpeedDropdownOpen] = useState(false);
     const speedButtonRef = useRef<HTMLButtonElement>(null);
     const speedPopupRef = useRef<HTMLDivElement>(null);
+    const [syncInfoOpen, openSyncInfo, dismissSyncInfo] = useDismissibleTooltip(
+        "freemocap:tooltip:syncInfo",
+    );
 
 
     const updateSetting = <K extends keyof PlaybackSettings>(key: K, value: PlaybackSettings[K]) => {
@@ -155,9 +158,8 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             {/* Timeline Scrubber */}
             <div className="playback-timeline-scrubber flex flex-row items-center">
                 <div className="playback-timeline-track flex-1 bg-middark relative"
-                    title="Green: cached JPEG payloads. Pink: decoded presentation buffer, including the displayed frame.">
-                    <CachedTimeline totalFrames={totalFrames} getCachedFrames={getCachedFrames} layer={CacheLayer.Jpeg}/>
-                    <CachedTimeline totalFrames={totalFrames} getCachedFrames={getBitmapFrames} layer={CacheLayer.Bitmap}/>
+                    title="Green: video buffered by the browser.">
+                    <CachedTimeline totalFrames={totalFrames} getCachedFrames={getCachedFrames}/>
                     <input
                         type="range"
                         dir="ltr"
@@ -179,7 +181,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                         Frame {currentFrame} / {totalFrames}
                         {recordingFps != null && recordingFps > 0 && (
                             <span title={t("recordingCaptureFps")}>
-                                · Rec: {recordingFps} fps
+                                · Rec: {recordingFps.toFixed(2)} fps
                             </span>
                         )}
                         <DisplayFramerate getDisplayFps={getDisplayFps}/>
@@ -315,6 +317,25 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
                 {/* Info & Settings Group */}
                 <div className="playback-controls-group-info-settings flex items-center gap-1 flow-row p-1 bg-middark br-2">
+                    <div className="flex pos-rel items-center onclick-tooltip-wrapper">
+                        <PromptTooltip
+                            show={syncInfoOpen}
+                            title="Recording Playback Timing Issue"
+                            text={t("syncInfoTitle")}
+                            position="pos-top"
+                            variant="warning"
+                            onClose={dismissSyncInfo}
+                        />
+                        <IconButton
+                            icon="warning-icon"
+                            onClick={() => (syncInfoOpen ? dismissSyncInfo() : openSyncInfo())}
+                            title={t("syncInfo")}
+                            className={clsx("icon-size-25", syncInfoOpen && "activated")}
+                            tooltip={true}
+                            tooltipText={t("syncInfo")}
+                            tooltipPosition="pos-top"
+                        />
+                    </div>
 
                     <div className="playback-settings-button-opener flex pos-rel items-center onclick-tooltip-wrapper">
                         <IconButton

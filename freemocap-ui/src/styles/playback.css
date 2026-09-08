@@ -371,11 +371,6 @@ linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--progress-percent), #212121 v
   z-index: 3;
 }
 
-.playback-cache-timeline--bitmap {
-  bottom: 5px;
-  height: 6px;
-  color: var(--color-danger);
-}
 
 .playback-display-framerate {
   min-width: 18ch;

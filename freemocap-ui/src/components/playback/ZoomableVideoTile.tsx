@@ -1,4 +1,4 @@
-import React, {useRef} from 'react';
+import React, {useCallback, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useZoomTransform} from '@/hooks/useZoomTransform';
 import type {PlaybackController} from './usePlaybackController';
@@ -23,6 +23,9 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     setFrameOverlayRef,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const registerVideo = useCallback((element: HTMLVideoElement | null): void => {
+        setVideoRef(videoId, element);
+    }, [videoId, setVideoRef]);
     const { zoomWrapperStyle, cursor, containerHandlers } = useZoomTransform(containerRef);
     const { t } = useTranslation();
 
@@ -37,8 +40,8 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
             {...containerHandlers}
         >
             <div style={zoomWrapperStyle}>
-                <canvas
-                    ref={(el) => setVideoRef(videoId, el)}
+                <video playsInline muted
+                    ref={registerVideo}
                     className="w-full h-full block"
                     style={{ objectFit: 'contain' }}
                 />

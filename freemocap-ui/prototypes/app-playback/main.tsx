@@ -1,7 +1,7 @@
 import {ZoomableVideoTile} from '../../src/components/playback/ZoomableVideoTile';
 import '../../src/styles/App.css';
 import type {PlaybackBundle} from '../../src/store/slices/playback-data/playback-data-slice';
-/** Integration harness exercising the application's actual controller against the native playback socket. */
+/** Integration harness exercising the application's actual controller against HTTP media delivery. */
 import React, {useState, useEffect} from 'react';
 import {createRoot} from 'react-dom/client';
 import {usePlaybackController} from '../../src/components/playback/usePlaybackController';
@@ -15,6 +15,7 @@ function Harness(): React.JSX.Element {
     const [bundle, setBundle] = useState<PlaybackBundle | null>(null);
     const [recordingId, setRecordingId] = useState('test');
     const [annotated, setAnnotated] = useState(false);
+    const [showVideos, setShowVideos] = useState(false);
     const videos = Array.from({length: 2}, (_, index) => {
         const filename = `camera${index}${annotated ? '_annotated' : ''}.mp4`;
         return {filename, sizeBytes: bundle ? Object.values(bundle.videos.sources).flatMap(source => source.videos).find(video => video.filename === filename)!.sizeBytes : 0, videoId: filename, streamUrl: `${location.origin}/test-media/${filename}`};
@@ -24,7 +25,7 @@ function Harness(): React.JSX.Element {
         return response.json();
     }).then(setBundle);}, [recordingId]);
     const controller = usePlaybackController({videos, recordingId, recordingParentDirectory: null,
-        bundle, cacheBudgetBytes: 512 * 1024 ** 2, reloadManifest: () => {throw new Error('Unexpected reload');}});
+        bundle, reloadManifest: () => {throw new Error('Unexpected reload');}});
     useEffect(() => {
         if (bundle) controller.setPlaybackRun({run_id: 0, models: [], channels: [], static_channels: [], timelines: [],
             media: bundle.media.filter(item => !item.video_filename.includes('_annotated'))});
@@ -32,7 +33,10 @@ function Harness(): React.JSX.Element {
     return <>
         <output id="error">{controller.error}</output>
         <output id="ready">{String(controller.allReady)}</output>
+        <output id="bundle-ready">{String(bundle !== null)}</output>
         <output id="playing">{String(controller.isPlaying)}</output>
+        <output id="frame">{controller.currentFrame}</output>
+        <button id="mount-videos" onClick={() => setShowVideos(value => !value)}>Toggle video tiles</button>
         <button id="play" onClick={controller.handlePlayPause}>Play/pause</button>
         <button id="back" onClick={() => controller.handleSeekCommit(2)}>Seek 2</button>
         <button id="forward" onClick={() => controller.handleSeekCommit(30)}>Seek 30</button>
@@ -43,7 +47,7 @@ function Harness(): React.JSX.Element {
             onSeekCommit={controller.handleSeekCommit} onFrameStep={controller.handleFrameStep}
             onPlaybackRateChange={controller.handlePlaybackRateChange} onSeekToStart={controller.handleSeekToStart}
             onSeekToEnd={controller.handleSeekToEnd} onToggleLoop={controller.handleToggleLoop}/>
-        {videos.map(video => <div key={video.videoId} className="test-video-panel" style={{width: 320, height: 240, display: 'inline-block'}}>
+        {showVideos && videos.map(video => <div key={video.videoId} className="test-video-panel" style={{width: 320, height: 240, display: 'inline-block'}}>
             <ZoomableVideoTile videoId={video.videoId} streamUrl={video.streamUrl} filename={video.filename}
                 showOverlays={false} hasError={false} setVideoRef={controller.setVideoRef}
                 setFrameOverlayRef={controller.setFrameOverlayRef}/>

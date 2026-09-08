@@ -42,18 +42,40 @@ Validation on Windows:
 
 ## Next checkpoints
 
-1. Preserve this prototype as a decision checkpoint before changing the app. User commits/pushes
-   SkellyCam and updates FreeMoCap's Git dependency before integration imports its new module.
-2. Implement explicit media capability selection: original file when supported, remux where sufficient,
-   transcode otherwise. Keep codec/media operations in SkellyCam and HTTP orchestration in FreeMoCap.
-3. Add production cancellation, request admission/resource limits, pre-header validation, mid-stream
-   failure reporting, and bounded client ahead/behind buffers. Long-recording backpressure and repeated
-   cancellation need integration tests; the short harness is not evidence for these properties.
-4. Wire one client playback controller for raw and annotated, preserving recording time on switch,
-   annotated-first selection, zoom, and 3D timeline. Translate source time to rebased media time when
-   restarting outside buffered content. Keep per-frame presentation out of React state updates.
-5. Validate sustained playback and seeking in the real Windows app, including realtime running
-   simultaneously, then Linux/macOS and packaged builds. Verify codec availability and bundled libraries.
-6. Remove superseded JPEG playback transport/cache/render paths once the replacement passes that
-   checkpoint. Realtime streaming is independent. Return to the media identity audit and Mocap posthoc
-   architecture/data model work; camera geometry matching remains a separate deferred step.
+### App integration — 2026-09-08
+
+FreeMoCap now imports the Git-installed SkellyCam browser stream. The playback controller uses
+native video elements for raw and annotated alike. Native source/decode rejection selects the HTTP
+compatibility stream. Converted media uses MediaSource with an eight-second ahead target and eviction
+of content more than two seconds behind. It is a time-window policy, not a guaranteed process RSS limit.
+Restarting outside that window cancels the previous fetch and starts at the requested recording time.
+HTTP disconnect closes the encoder iterator. Preparation failures are returned before streaming headers.
+
+The JPEG playback socket, range scheduler, bitmap lookahead and associated obsolete tests are removed.
+Realtime sockets and processing readers are unchanged. The green timeline represents browser-buffered
+video; there is no separately managed bitmap buffer. An explicit approximate-sync notice is visible.
+Direct playback uses the original resolution; conversion currently uses the prototype's 1280x720 bounds.
+Audio, rotated-source conversion, lossless remux selection, and platform packaging checks remain pending.
+
+Validation: eleven HTTP/media/bundle tests pass. Electron tests using the actual controller pass for
+both original-file playback and forced conversion, including play, seek, raw/annotated switching at the
+selected time, and reload. TypeScript passes. Sustained real-app performance is the next user checkpoint.
+
+App test: restart normally, open the MPEG-4 test recording, play and drag/step the timeline in both
+directions; switch raw/annotated at a paused frame; switch recordings and refresh; verify zoom and the
+3D timeline. Also test a longer recording through a full playback cycle and with realtime active.
+Report pauses, incorrect source-switch times, conversion errors, or accumulating resource use.
+
+Mount lifecycle: the controller waits for selected video elements to register before opening media.
+Element replacement triggers disposal and reattachment; stable tile ref callbacks avoid reopening media
+on ordinary renders. Electron coverage includes metadata available before tile mounting and tile
+unmount/remount for both direct and converted playback. This addresses the reported missing-element crash.
+
+1. Run the Windows app checkpoint above before further architecture changes.
+2. Exercise long-recording backpressure, repeated cancellation, and concurrent realtime workloads.
+   Establish global conversion resource admission without starving additional camera views.
+3. Add remux capability selection and resolve rotated-source conversion and desired inspection resolution.
+   Keep codec/media operations in SkellyCam and HTTP orchestration in FreeMoCap.
+4. Validate Linux/macOS and packaged builds, including codec availability and bundled libraries.
+5. Return to the media identity audit and Mocap posthoc architecture/data model work;
+   camera geometry matching remains a separate deferred step.

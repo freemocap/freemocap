@@ -48,12 +48,16 @@ def test_recorded_matching_feeds_triangulation_without_relabeling_models() -> No
     for frame in request.frames:
         for source, observation in frame.items():
             buffers[source].add_observation(observation)
-    values, names, _ = triangulate_observation_buffers(
+    triangulation = triangulate_observation_buffers(
         observation_buffers=buffers, camera_geometry=geometry, triangulation_config=None,
         max_reprojection_error_px=None, timing=PosthocTimingReport(),
     )
-    assert values.shape == (12, 10, 3)
-    assert len(names) == 10 and np.isfinite(values).all()
+    assert triangulation.reconstruction.points_3d.shape == (12, 10, 3)
+    assert len(triangulation.keypoint_names) == 10 and np.isfinite(triangulation.reconstruction.points_3d).all()
+    assert triangulation.sources == tuple(buffers)
+    assert triangulation.reconstruction.reprojection_error.shape == (3, 12, 10)
+    assert np.nanmax(triangulation.reconstruction.reprojection_error) < 1e-6
+    assert triangulation.reconstruction.per_camera_weights.shape == (12, 10, 3)
 
 
 def test_stop_policy_rejects_provisional_result_but_continue_retains_it() -> None:

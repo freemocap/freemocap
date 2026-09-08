@@ -46,14 +46,14 @@ class ObservationAlignmentTests(unittest.TestCase):
         buffer = ObservationBuffer()
         buffer.add_observation(observed_frame(frame_number=0, names=("a",), visibility=(1.,)))
         buffer.add_observation(observed_frame(frame_number=1, names=("b", "a"), visibility=(1., 1.)))
-        values, names, _ = triangulate_observation_buffers(
+        result = triangulate_observation_buffers(
             observation_buffers={"camera": buffer}, camera_geometry={}, triangulation_config=None,
             max_reprojection_error_px=None, timing=PosthocTimingReport(),
         )
-        self.assertEqual(names, ("a", "b"))
-        self.assertEqual(values.shape, (2, 2, 3))
-        self.assertTrue(np.isfinite(values[1]).all())
-        self.assertFalse(np.isfinite(values[0, 1]).all())
+        self.assertEqual(result.keypoint_names, ("a", "b"))
+        self.assertEqual(result.reconstruction.points_3d.shape, (2, 2, 3))
+        self.assertTrue(np.isfinite(result.reconstruction.points_3d[1]).all())
+        self.assertFalse(np.isfinite(result.reconstruction.points_3d[0, 1]).all())
 
     def test_incomplete_name_axis_fails_instead_of_dropping_measurements(self) -> None:
         buffer = ObservationBuffer()

@@ -229,3 +229,17 @@ Eleven FreeMoCap geometry/reconstruction/matching tests pass. These camera trans
 building blocks; automatic alignment and UI settings are not wired yet. The new Forge definition
 needs the normal commit/push/dependency update. Observation-quality propagation, evidence collection,
 result persistence and live/posthoc control wiring remain.
+
+Evidence checkpoint: SkellyTracker TrackerMapping/CompositeTrackerMapping now expose
+apply_with_quality, returning MappedLandmarkEvidence. Position calculation uses the existing
+mapping; quality takes the weakest required source, including anatomical-offset frame/origin/
+length dependencies. Missing measurements remain absent; invalid or mismatched quality fails.
+This is a conservative evidence score, not a calibrated probability or an anatomical accuracy claim.
+Nineteen mapping tests pass. The user must commit/push SkellyTracker and update FreeMoCap's Git
+dependency before the pipeline consumes this method.
+
+Posthoc triangulation now returns RecordingTriangulation with explicit source/name axes and the
+existing TriangulationResult, retaining camera contributions and reprojection errors. It does not
+copy the solver model or call those weights detection confidence. Nine affected FreeMoCap tests
+pass, including exact-error/source-order checks on the renamed-video fixture. Automatic alignment
+and UI controls are still pending; no app-testing request yet.

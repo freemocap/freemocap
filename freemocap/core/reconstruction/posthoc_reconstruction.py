@@ -2,6 +2,7 @@
 
 import logging
 import time
+from dataclasses import dataclass, replace
 from freemocap.core.reconstruction.coordinate_conventions import CALIBRATION_TO_RECONSTRUCTION
 from freemocap.core.reconstruction.recording_fit import FittedRecordingScale
 
@@ -32,10 +33,24 @@ from freemocap.core.tasks.triangulation.helpers.triangulation_config import (
     TriangulationConfig,
 )
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
+from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from skellycam.core.types.type_overloads import CameraIdString
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class RecordingTriangulation:
+    """Named recording axes and complete solver output, with positions in Blender axes.
+
+    Per-camera weights are solver contributions, not detector confidence. Single-camera
+    projection has synthetic zero reprojection errors and must not supply ground evidence.
+    """
+
+    sources: tuple[CameraIdString, ...]
+    keypoint_names: tuple[str, ...]
+    reconstruction: TriangulationResult
 
 
 def triangulate_observation_buffers(
@@ -47,11 +62,10 @@ def triangulate_observation_buffers(
     timing: PosthocTimingReport,
     stage_name: str | None = None,
     n_points: int | None = None,
-) -> tuple[np.ndarray, tuple[str, ...], np.ndarray | None]:
+) -> RecordingTriangulation:
     """Triangulate the whole recording 2D -> 3D in ONE batched call, Blender-converted.
 
-    Returns (keypoints_3d (T, P, 3) in Blender convention, unprefixed_names (P,),
-    per_camera_weights or None). Points whose mean reprojection error exceeds
+    Retains source/name axes, solver weights and reprojection errors. Points whose mean reprojection error exceeds
     `max_reprojection_error_px` are set to NaN.
 
     By default the WHOLE keypoint set is used (`Observation.to_keypoints()`). Pass
@@ -97,7 +111,6 @@ def triangulate_observation_buffers(
     if len(camera_ids) == 1:
         result = project_2d_batch_to_3d(data2d=data2d_by_camera[camera_ids[0]])
         points_3d = result.points_3d
-        per_camera_weights = None
         reprojection_error = None
     else:
         if set(camera_geometry) != set(camera_ids):
@@ -111,7 +124,6 @@ def triangulate_observation_buffers(
             config=triangulation_config,
         )
         points_3d = result.points_3d
-        per_camera_weights = result.per_camera_weights
         reprojection_error = result.reprojection_error
     timing.record(
         "triangulate",
@@ -130,7 +142,10 @@ def triangulate_observation_buffers(
     ).array
     unprefixed_names = tuple(_strip_stage_prefix(name) for name in prefixed_names)
     timing.record("reprojection_gate_and_blender", time.perf_counter() - t0)
-    return keypoints_blender, unprefixed_names, per_camera_weights
+    return RecordingTriangulation(
+        sources=tuple(camera_ids), keypoint_names=unprefixed_names,
+        reconstruction=replace(result, points_3d=keypoints_blender),
+    )
 
 
 def reconstruct_skeletons_for_recording(

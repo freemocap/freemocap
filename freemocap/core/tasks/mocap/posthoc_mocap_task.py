@@ -123,7 +123,7 @@ def run_posthoc_mocap_task(
         _reporter.report(stage=MocapStage.TRIANGULATING, detail=f"Camera matching: {matching_result.status}")
         logger.info("Camera matching: %s; source assignments: %s; fitness: %s",
                     matching_result.status, {source: camera.id for source, camera in camera_geometry.items()}, matching_result.fitness)
-    keypoints_blender, keypoint_names, _per_camera_weights = triangulate_observation_buffers(
+    triangulation = triangulate_observation_buffers(
         observation_buffers=observation_recorders,
         camera_geometry=camera_geometry,
         triangulation_config=task_config.triangulation_config,
@@ -136,8 +136,8 @@ def run_posthoc_mocap_task(
         bundles += (build_charuco_board_bundle(board=selected_board),)
     reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
         bundles=bundles,
-        keypoint_names=keypoint_names,
-        keypoints_3d=keypoints_blender,
+        keypoint_names=triangulation.keypoint_names,
+        keypoints_3d=triangulation.reconstruction.points_3d,
         compute_center_of_mass=True,
         timing=timing,
     ))
@@ -153,8 +153,8 @@ def run_posthoc_mocap_task(
         recording=recording_info,
         spatial_series=(SpatialPointSeries(
             definition=PointSeriesDefinition(sensor_group="mocap", source=str(PosthocPipelineType.MOCAP),
-                names=keypoint_names, reference=SpatialReference.for_camera_count(len(camera_ids))),
-            values=keypoints_blender,
+                names=triangulation.keypoint_names, reference=SpatialReference.for_camera_count(len(camera_ids))),
+            values=triangulation.reconstruction.points_3d,
         ),),
         group=ObservationGroup(name="mocap", frames=frame_observations, videos=video_metadata),
         tracker=TrackerRecordingDefinition(

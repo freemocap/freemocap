@@ -109,10 +109,10 @@ export function MocapCameraRenderer() {
     if (!loaded || loaded.cameras.length === 0) return null;
 
     return (
-        <>
+        <group rotation={[0, 0, Math.PI / 2]}>
             {loaded.cameras.map((cam) => (
                 <MocapCameraInstance key={cam.id} cam={cam} />
             ))}
-        </>
+        </group>
     );
 }

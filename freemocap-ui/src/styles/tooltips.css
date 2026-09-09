@@ -87,6 +87,11 @@
   background: var(--color-bg-primary);
  
 }
+.tooltip-help-content { color: var(--color-text-secondary); line-height: 1.4; font-weight: 400; }
+.tooltip-help-content p { margin: 0; }
+.tooltip-help-content p + p { margin-top: 8px; }
+.tooltip-help-content strong { color: var(--color-text-primary); font-weight: 600; }
+.tooltip-help-content em { color: var(--color-text-muted); }
 
 /* =========================================
    POSITION : BOTTOM

@@ -81,22 +81,18 @@
     background: var(--color-bg-elevated);
     border-radius: 8px;
 }
-.formalism-cards { display: flex; flex-direction: column; gap: 6px; }
-.formalism-card { padding: 5px 8px; border: 1px solid var(--color-border-primary); }
+.formalism-cards { display: flex; flex-direction: column; gap: 4px; }
+.formalism-card { padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--color-text-muted, #aaa) 20%, transparent); }
 .formalism-card h4 { margin: 0; }
-.formalism-fields { display: grid; gap: 5px; }
-.formalism-card .transform-matrix { gap: 4px; padding: 5px; }
+.formalism-fields { display: grid; gap: 4px; }
+.formalism-card .transform-matrix { gap: 4px; padding: 3px; border-color: color-mix(in srgb, var(--color-text-muted, #aaa) 35%, transparent); }
 .formalism-info.prompt-tooltip-container { position: relative; inset: auto; width: auto; max-width: 100%; transform: none; margin-bottom: 6px; }
 .formalism-rejected { border-color: var(--color-error, #ed5362); animation: formalism-reject 300ms ease-out; }
 @keyframes formalism-reject { from { background: #ed536233; } to { background: transparent; } }
 .position-units.transform-representation { margin-left: auto; margin-right: 6px; padding: 1px; }
 .position-units .segmented-control-button { flex: none; padding: 0 6px; }
 .position-units .segmented-control-button p { padding: 1px; }
-.formalism-card { padding: 3px 6px; border-color: color-mix(in srgb, var(--color-text-muted, #aaa) 20%, transparent); }
-.formalism-cards { gap: 4px; }
-.formalism-fields { gap: 4px; }
 .formalism-card .transform-field { gap: 1px; }
-.formalism-card .transform-matrix { padding: 3px; border-color: color-mix(in srgb, var(--color-text-muted, #aaa) 35%, transparent); }
 /* The dialog receives programmatic focus; its interactive controls carry focus outlines. */
 .modal-window[aria-label="Custom reference frame"]:focus { outline: none; }
 .reference-axis-label {

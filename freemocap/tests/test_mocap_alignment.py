@@ -6,6 +6,9 @@ import numpy as np
 import pytest
 
 from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
+from freemocap.core.reconstruction.reference_transform import ReferenceTransform
+from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
+from pydantic import ValidationError
 from freemocap.core.reconstruction.coordinate_conventions import RECONSTRUCTION_TO_CALIBRATION
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.posthoc_reconstruction import RecordingTriangulation
@@ -71,3 +74,53 @@ def test_posthoc_api_alignment_option_roundtrip() -> None:
     assert not config.body_alignment.enabled
     restored = PosthocMocapPipelineConfig.model_validate_json(config.model_dump_json(by_alias=True, round_trip=True))
     assert restored.body_alignment == config.body_alignment
+
+
+@pytest.mark.parametrize("enabled,explicit", [(True, False), (False, False), (True, True)])
+def test_custom_offset_follows_alignment_and_preserves_camera_projection(enabled: bool, explicit: bool) -> None:
+    request = replace(alignment_request(), has_explicit_ground=explicit, config=MocapAlignmentConfig(enabled=enabled))
+    base = align_mocap_recording(request=request)
+    offset = ReferenceTransform(matrix=(0., -1., 0., 125., 1., 0., 0., -80., 0., 0., 1., 42., 0., 0., 0., 1.))
+    config = PosthocMocapPipelineConfig.model_validate({
+        "bodyAlignment": {"enabled": enabled, "additional_transform": offset.model_dump(mode="json")},
+    })
+    restored = PosthocMocapPipelineConfig.model_validate_json(config.model_dump_json(by_alias=True, round_trip=True))
+    result = align_mocap_recording(request=replace(request, config=restored.body_alignment))
+    matrix = np.asarray(offset.matrix).reshape(4, 4)
+    np.testing.assert_allclose(result.triangulation.reconstruction.points_3d,
+        base.triangulation.reconstruction.points_3d @ matrix[:3, :3].T + matrix[:3, 3], atol=1e-8)
+    assert result.alignment.outcome == base.alignment.outcome
+    basis = RECONSTRUCTION_TO_CALIBRATION.matrix
+    original = request.triangulation.reconstruction.points_3d @ basis.T
+    transformed_points = result.triangulation.reconstruction.points_3d @ basis.T
+    for source, camera in request.camera_geometry.items():
+        transformed_camera = result.camera_geometry[source]
+        np.testing.assert_allclose(
+            original @ camera.extrinsics.rotation_matrix.T + camera.extrinsics.translation,
+            transformed_points @ transformed_camera.extrinsics.rotation_matrix.T + transformed_camera.extrinsics.translation,
+            atol=1e-8,
+        )
+        assert transformed_camera.id == camera.id
+        assert transformed_camera.index == camera.index
+        assert transformed_camera.intrinsics == camera.intrinsics
+    reference = SpatialReference.for_camera_count(2).model_copy(update={
+        "alignment": ReferenceAlignmentDescriptor.from_result(result=result.alignment),
+        "additional_transform": restored.body_alignment.additional_transform,
+    })
+    assert SpatialReference.model_validate_json(reference.model_dump_json()) == reference
+
+
+@pytest.mark.parametrize("index,value", [(0, 2.), (0, -1.), (1, .2), (12, 1.), (15, 0.), (3, float("nan")), (7, float("inf"))])
+def test_invalid_custom_offset_is_rejected(index: int, value: float) -> None:
+    matrix = np.eye(4).ravel().tolist()
+    matrix[index] = value
+    with pytest.raises(ValidationError):
+        PosthocMocapPipelineConfig.model_validate({"bodyAlignment": {"additional_transform": {"matrix": matrix}}})
+
+
+def test_custom_offset_requires_metric_geometry() -> None:
+    request = alignment_request()
+    config = MocapAlignmentConfig(additional_transform=ReferenceTransform(matrix=tuple(np.eye(4).ravel())))
+    with pytest.raises(ValueError, match="single-camera output is in pixels"):
+        align_mocap_recording(request=replace(request, config=config,
+            triangulation=replace(request.triangulation, sources=("first",))))

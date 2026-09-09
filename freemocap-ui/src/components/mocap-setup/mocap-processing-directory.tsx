@@ -3,12 +3,12 @@ import IconButton from "@/components/ui-components/IconButton";
 import { useMocap } from "@/hooks/useMocap";
 import { useElectronIPC } from "@/services";
 
-interface ProcessDirectoryModuleProps {
+interface RecordingDirectoryModuleProps {
   open: boolean;
   onClose: () => void;
 }
 
-const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
+const RecordingDirectoryModule: React.FC<RecordingDirectoryModuleProps> = ({
   open,
   onClose,
 }) => {
@@ -78,18 +78,13 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
       className="flex flex-col w-full br-2 reveal fadeIn gap-1"
     >
       <div className="gap-1 flex flex-col">
-        {/* Header */}
-        <div className="flex justify-content-space-between items-center">
-          <h2 className="mocap-settings-title">Process Directory</h2>
-        </div>
-
-        {/* Process directory selector */}
+        {/* Recording directory selector */}
         <div className="set-mocap-directory flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="icon icon-size-20 subcat-icon"></span>
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1 min-w-0 overflow-hidden"
             onClick={mocapRecordingPath ? handleOpenFolder : handleSelectDirectory}
-            title={mocapRecordingPath || "Select a processing directory"}
+            title={mocapRecordingPath || "Select a recording directory"}
             aria-label={mocapRecordingPath ? `Open recording folder: ${mocapRecordingPath}` : "Choose recording folder"}
             disabled={!isElectron}
 
@@ -154,4 +149,5 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
   );
 };
 
-export default ProcessDirectoryModule;
+export default RecordingDirectoryModule;
+

@@ -240,6 +240,51 @@
 
   --log-critical: var(--red-700);
   --log-critical-alpha: var(--red-700-alpha-10);
+
+  /* ========================================
+     SURFACE ELEVATION
+     ======================================== */
+
+  /* Three rungs, and only three. A raised surface is expressed by its top
+     light-lip and its shadow, not by picking a lighter grey — reaching down
+     the gray ramp for separation brightens the whole panel until every
+     level reads the same.
+
+     These sit deliberately outside the numbered gray ramp: the ramp is a
+     palette, this is a ladder, and the three values are chosen for how they
+     read against each other rather than for their position in a scale. */
+
+  --color-surface-ground: #111111;   /* app + modal ground                     */
+  --color-surface-raised: #191919;   /* a card sitting on the ground           */
+  --color-surface-control: #202020;  /* a control sitting inside a card        */
+
+  /* Separators. Decorative rules only — anything that marks the boundary of
+     an interactive component needs --color-border-control instead. */
+  --color-border-hairline: rgba(255, 255, 255, 0.07);
+  --color-border-hairline-strong: rgba(255, 255, 255, 0.12);
+
+  /* WCAG 1.4.11 requires 3:1 for the boundary of a UI component. Measured
+     at 3.45:1 against --color-surface-raised. */
+  --color-border-control: #6e6e6e;
+
+  --shadow-raised-lip: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  --shadow-raised-low: 0 1px 2px rgba(0, 0, 0, 0.55);
+  --shadow-raised-high: 0 2px 4px rgba(0, 0, 0, 0.5), 0 14px 32px -18px rgba(0, 0, 0, 0.95);
+  --shadow-elevated-sharp: 0 7px 15px rgba(0, 0, 0, 0.5);
+
+  /* ========================================
+     TEXT CONTRAST
+     ======================================== */
+
+  /* Secondary prose: help lines, group headings, empty states, summary
+     chips. Measured >= 4.5:1 (WCAG AA) on ground, raised and control alike.
+     --color-text-disabled is darker than this by design and must only ever
+     colour something that is genuinely disabled. */
+  --color-text-help: #949494;
+
+  /* A row whose governing switch is off: still real, still readable.
+     Measured >= 4.5:1 on all three surfaces. */
+  --color-text-inactive: #8a8a8a;
 }
 
 /* ========================================

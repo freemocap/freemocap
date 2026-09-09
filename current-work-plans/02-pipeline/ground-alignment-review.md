@@ -278,3 +278,41 @@ toggle on/off, then verify a board-ground-aligned recording stays unchanged. Che
 skeleton in saved playback. Head-only data should center on the head, not invent a physical floor.
 Realtime collection/freezing/reset and its UI control are NOT wired yet; verify posthoc before that
 next integration step. This checkpoint requires no subrepo dependency update.
+
+## Reference-frame controls: return to processing integration
+
+The Mocap setup order is Process directory, Detectors, Calibration & triangulation,
+Post-processing, Exports. The geometry group keeps camera calibration selection,
+triangulation/matching, and output reference-frame controls as distinct subsections.
+Exports contains the existing Blender controls; this reorganization does not add exports.
+
+Current implementation: automatic body alignment is connected to processing. The custom
+transform editor remains local UI state and does not affect a processing request.
+
+Next implementation contract:
+- Resolve the base frame from the supplied calibration, a selected calibration camera,
+  or body evidence. Preserve an explicitly ground-aligned calibration by default;
+  otherwise use the first camera geometry in calibration order, not video ordering.
+- Persist one canonical custom rigid transform in the Mocap configuration. The various
+  displayed formalisms and mm/m units are views of that transform.
+- Custom replacement uses T=C from the original calibration coordinates. Custom adjustment
+  uses T=C B, where B is the selected base transform (column-vector convention).
+- Apply the resolved transform consistently to all reconstructed entities and cameras.
+  Reuse SkellyForge's transform mathematics and the existing camera-model conversion.
+- Keep calibration solving a separate task. Never rewrite the supplied calibration TOML.
+- Offer explicit export of resolved camera geometry to a new calibration TOML. Body-based
+  export requires successfully resolved evidence. Preserve truthful ground-plane metadata.
+- Verify selected-camera, body, replacement and adjustment modes through the API before
+  claiming the custom editor is available for actual processing.
+
+### Confirmed reference-frame ordering
+
+Base selection and custom adjustment are separate stages. Default base selection should
+preserve ground-plane calibration when declared in the loaded geometry; otherwise select
+the first calibration camera. Body alignment and explicit camera selection are base choices.
+The custom transform is always an additional offset after that base, T = C B. Do not present
+custom replacement as a competing base mode.
+
+Current UI separates these stages and exposes the existing calibration/body behavior.
+Individual-camera selection and application of the custom offset still require API and
+processing implementation; do not claim these choices are operative until wired and tested.

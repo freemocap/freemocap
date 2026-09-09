@@ -70,8 +70,9 @@ interface DraggableState {
   currentTranslateY: number;
 }
 
-export default function useDraggableTooltips(): void {
+export default function useDraggableTooltips(selector: string | null = ".draggable"): void {
   useEffect(() => {
+    if (selector === null) return;
     const DRAG_THRESHOLD = 4; // px before drag starts
 
     const toggleUserSelect = (on: boolean): void => {
@@ -123,7 +124,7 @@ export default function useDraggableTooltips(): void {
         // Apply new drag relative to the accumulated offset
         state.currentTranslateX = accumulatedTranslateX + dx;
         state.currentTranslateY = accumulatedTranslateY + dy;
-        el.style.transform = `translate(${state.currentTranslateX}px, ${state.currentTranslateY}px)`;
+        el.style.translate = `${state.currentTranslateX}px ${state.currentTranslateY}px`;
       }
     };
 
@@ -229,7 +230,7 @@ export default function useDraggableTooltips(): void {
     window.addEventListener("pointerup", onGlobalPointerUp);
 
     // Initialize all existing draggable elements
-    document.querySelectorAll<HTMLElement>(".draggable").forEach(makeDraggable);
+    document.querySelectorAll<HTMLElement>(selector).forEach(makeDraggable);
 
     // Observe dynamically added/removed draggable elements so per-element
     // listeners are torn down when a tooltip leaves the DOM.
@@ -237,13 +238,13 @@ export default function useDraggableTooltips(): void {
       for (const m of mutations) {
         for (const node of m.addedNodes) {
           if (!(node instanceof HTMLElement)) continue;
-          if (node.classList.contains("draggable")) makeDraggable(node);
-          node.querySelectorAll<HTMLElement>(".draggable").forEach(makeDraggable);
+          if (node.matches(selector)) makeDraggable(node);
+          node.querySelectorAll<HTMLElement>(selector).forEach(makeDraggable);
         }
         for (const node of m.removedNodes) {
           if (!(node instanceof HTMLElement)) continue;
-          if (node.classList.contains("draggable")) removeDraggable(node);
-          node.querySelectorAll<HTMLElement>(".draggable").forEach(removeDraggable);
+          if (node.matches(selector)) removeDraggable(node);
+          node.querySelectorAll<HTMLElement>(selector).forEach(removeDraggable);
         }
       }
     });
@@ -260,5 +261,6 @@ export default function useDraggableTooltips(): void {
       states.clear();
       toggleUserSelect(true);
     };
-  }, []);
+  }, [selector]);
 }
+

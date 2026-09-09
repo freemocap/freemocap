@@ -115,6 +115,10 @@ export interface MocapConfig {
     mediapipeTrackingConfidence: number;
     mediapipeNumHands: number;
     mediapipeNumFaces: number;
+
+    /** Row-major rigid offset applied after posthoc alignment, with translation in mm. */
+    referenceTransform: number[] | null;
+    referenceTransformEnabled: boolean;
 }
 
 /** Realtime preset matching MEDIAPIPE_TRACKER_REALTIME_PRESET on the backend. */
@@ -262,6 +266,8 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     mediapipeTrackingConfidence: 0.5,
     mediapipeNumHands: 2,
     mediapipeNumFaces: 1,
+    referenceTransform: null,
+    referenceTransformEnabled: false,
 };
 
 // ==================== Initial State ====================
@@ -313,6 +319,14 @@ export const mocapSlice = createSlice({
     reducers: {
         bodyAlignmentUpdated: (state, action: PayloadAction<boolean>) => {
             state.config.bodyAlignmentEnabled = action.payload;
+        },
+        /** Row-major 4x4, or null when no additional transformation is defined. */
+        referenceTransformUpdated: (state, action: PayloadAction<number[] | null>) => {
+            state.config.referenceTransform = action.payload;
+            if (action.payload === null) state.config.referenceTransformEnabled = false;
+        },
+        referenceTransformEnabledUpdated: (state, action: PayloadAction<boolean>) => {
+            state.config.referenceTransformEnabled = action.payload;
         },
         cameraMatchingUpdated: (state, action: PayloadAction<CameraMatchingOptions>) => {
             state.config.cameraMatching = action.payload;
@@ -475,6 +489,8 @@ export const selectMocapDetectorConfig = (state: RootState) => state.mocap.confi
 export const selectMocapTriangulationConfig = (state: RootState) => state.mocap.config.triangulation;
 export const selectSkeletonFilterConfig = (state: RootState) => state.mocap.config.skeleton_filter;
 export const selectPosthocFilterConfig = (state: RootState) => state.mocap.config.posthoc_filter;
+export const selectReferenceTransform = (state: RootState) => state.mocap.config.referenceTransform;
+export const selectReferenceTransformEnabled = (state: RootState) => state.mocap.config.referenceTransformEnabled;
 export const selectMocapDetectorType = (state: RootState) => state.mocap.config.detectorType;
 export const selectMocapRtmPoseModelName = (state: RootState) => state.mocap.config.rtmPoseModelName;
 export const selectMocapRtmPoseConfidenceThreshold = (state: RootState) => state.mocap.config.rtmPoseConfidenceThreshold;
@@ -519,6 +535,8 @@ export const selectCanProcessMocapRecording = createSelector(
 
 export const {
     bodyAlignmentUpdated,
+    referenceTransformUpdated,
+    referenceTransformEnabledUpdated,
     cameraMatchingUpdated,
     mocapCharucoTrackingChanged,
     mocapDetectorTypeChanged,

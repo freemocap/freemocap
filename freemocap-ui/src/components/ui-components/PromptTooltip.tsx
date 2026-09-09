@@ -7,11 +7,12 @@ type TooltipPosition = "pos-top" | "pos-top-left" | "pos-top-right" | "pos-botto
 type TooltipVariant = "default" | "warning" | "boarding";
 
 interface PromptTooltipProps {
+  onClick?: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   show?: boolean;
   title?: string;
-  text: string;
+  text: React.ReactNode;
   image?: boolean;
   imageSrc?: string;
   button?: boolean;
@@ -28,6 +29,7 @@ interface PromptTooltipProps {
 }
 
 const PromptTooltip: React.FC<PromptTooltipProps> = ({
+  onClick,
   onMouseEnter,
   onMouseLeave,
   show = false,
@@ -69,6 +71,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
 
   return (
     <div
+      onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={clsx(
@@ -95,7 +98,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
         <div className="icon-button-holder flex flex-row pos-abs top-4 right-4 z-2">
           <IconButton
             icon="close-icon"
-            onClick={handleClose}
+            onClick={(event) => {event.stopPropagation(); handleClose();}}
             className="tertiary icon-size-20"
           />
         </div>
@@ -115,7 +118,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
         )}
 
         <div className="tooltip-description-holder flex flex-row pos-rel">
-          <p className="text-white text md" style={{ whiteSpace: "pre-line" }}>{text}</p>
+          <div className="tooltip-help-content text md" style={{ whiteSpace: "pre-line" }}>{text}</div>
         </div>
 
         {button && (

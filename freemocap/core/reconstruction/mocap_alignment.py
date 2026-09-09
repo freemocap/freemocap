@@ -9,7 +9,7 @@ from skellyforge.core.biomechanics.alignment_definition import AlignmentDefiniti
 from skellyforge.core.biomechanics.reference_alignment import (
     ReferenceAlignmentOutcome, ReferenceAlignmentRequest, ReferenceAlignmentResult, estimate_reference_alignment,
 )
-from skellyforge.core.math.geometry.spatial_vectors import Point
+from skellyforge.core.math.geometry.spatial_vectors import Displacement, Point
 from skellyforge.core.math.geometry.transform_math import Transform
 
 from freemocap.core.reconstruction.alignment_evidence import AlignmentEvidence, AlignmentEvidenceRequest
@@ -38,6 +38,8 @@ class AlignedMocapRecording:
 
 
 def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapRecording:
+    if request.config.additional_transform is not None and len(request.triangulation.sources) < 2:
+        raise ValueError("Custom transforms in millimeters require calibrated multicamera reconstruction; single-camera output is in pixels")
     body_tracks = ()
     foot_contacts = ()
     if request.config.enabled and not request.has_explicit_ground and len(request.triangulation.sources) > 1:
@@ -66,11 +68,22 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
         enabled=request.config.enabled, has_explicit_ground=request.has_explicit_ground,
         body_tracks=body_tracks, foot_contacts=foot_contacts, body_config=request.config.body, ground_config=request.config.ground,
     ))
-    if alignment.outcome not in (ReferenceAlignmentOutcome.BODY_REFERENCE, ReferenceAlignmentOutcome.FOOT_SUPPORT):
+    if request.config.additional_transform is None and alignment.outcome not in (
+        ReferenceAlignmentOutcome.BODY_REFERENCE, ReferenceAlignmentOutcome.FOOT_SUPPORT
+    ):
         return AlignedMocapRecording(
             triangulation=request.triangulation, camera_geometry=request.camera_geometry, alignment=alignment,
         )
     transform = alignment.transform
+    if request.config.additional_transform is not None:
+        offset = request.config.additional_transform.to_transform()
+        # One frozen scene transform: custom offset after the resolved base alignment.
+        transform = Transform(
+            rotation=offset.rotation * transform.rotation,
+            translation=Displacement.from_prevalidated_array(
+                array=offset.rotation.rotate_vector(vector=transform.translation.array) + offset.translation.array,
+            ),
+        )
     calibration_transform = Transform(
         rotation=RECONSTRUCTION_TO_CALIBRATION.convert_quaternion(quaternion=transform.rotation),
         translation=RECONSTRUCTION_TO_CALIBRATION.convert_displacement(displacement=transform.translation),

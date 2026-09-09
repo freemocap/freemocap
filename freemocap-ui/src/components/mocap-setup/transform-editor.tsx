@@ -8,10 +8,16 @@ import ButtonSm from '@/components/ui-components/ButtonSm';
 import FormalismCard from './formalism-card';
 import './transform-editor.css';
 import TransformPreview from './transform-preview';
-import {TransformRepresentation} from './reference-transform';
+import {TransformRepresentation, validateRigidTransform} from './reference-transform';
 
-export default function TransformEditor({onClose}: {onClose: () => void}) {
-    const [matrix, setMatrix] = useState(() => new Matrix4());
+interface TransformEditorProps {
+    initialMatrix: Matrix4;
+    onAccept: (matrix: Matrix4) => void;
+    onClose: () => void;
+}
+
+export default function TransformEditor({initialMatrix, onAccept, onClose}: TransformEditorProps) {
+    const [matrix, setMatrix] = useState(() => initialMatrix.clone());
     const dialog = useRef<HTMLDivElement>(null);
     useEffect(() => {
         const previous = document.activeElement as HTMLElement | null;
@@ -42,20 +48,26 @@ export default function TransformEditor({onClose}: {onClose: () => void}) {
                     <PanelResizeHandle className="transform-panel-divider"/>
                     <Panel defaultSize={38} minSize={25} className="transform-controls-panel">
                     <div className="formalism-cards">
-                        <FormalismCard title="Position" help="Translation of the custom origin. These same values occupy the last column of the matrix." representation={TransformRepresentation.Euler} indices={[0, 1, 2]} matrix={matrix} onChange={setMatrix}/>
-                        <FormalismCard title="Euler · XYZ" help="Intrinsic XYZ rotations in degrees. Near ±90° Y, equivalent angle values may jump: the orientation itself remains continuous." representation={TransformRepresentation.Euler} indices={[3, 4, 5]} matrix={matrix} onChange={setMatrix}/>
-                        <FormalismCard title="Quaternion · WXYZ" help="Four components describe one rotation. Edits are normalized to unit length; a zero quaternion is rejected. q and −q describe the same orientation." representation={TransformRepresentation.Quaternion} indices={[3, 4, 5, 6]} matrix={matrix} onChange={setMatrix}/>
-                        <FormalismCard title="Axis–angle" help="A unit direction and an angle in degrees. Axis edits are normalized; a zero axis is rejected. The axis is arbitrary at zero rotation." representation={TransformRepresentation.AxisAngle} indices={[3, 4, 5, 6]} matrix={matrix} onChange={setMatrix}/>
-                        <FormalismCard title="Transform · 4×4" help="Column-vector convention: p′ = R p + t. Translation is in millimetres. The rotation block must stay orthonormal with determinant +1; scaling, shear and reflection are rejected. Use the rotation controls to change coupled matrix entries together." representation={TransformRepresentation.Matrix} indices={Array.from({length: 16}, (_, index) => index)} matrix={matrix} onChange={setMatrix}/>
+                        <FormalismCard title="Position" help={<><p><strong>Translation</strong> moves the custom origin.</p><p>These values also appear in the <strong>last column</strong> of the matrix.</p></>} representation={TransformRepresentation.Euler} indices={[0, 1, 2]} matrix={matrix} onChange={setMatrix}/>
+                        <FormalismCard title="Euler · XYZ" help={<><p><strong>Intrinsic XYZ</strong> rotations, measured in degrees.</p><p><em>Near ±90° Y:</em> equivalent angles may jump while the orientation stays continuous.</p></>} representation={TransformRepresentation.Euler} indices={[3, 4, 5]} matrix={matrix} onChange={setMatrix}/>
+                        <FormalismCard title="Quaternion · WXYZ" help={<><p><strong>Four components, one rotation.</strong> Edits are normalized to unit length.</p><p>A <strong>zero quaternion</strong> is rejected.</p><p><em>q and −q describe the same orientation.</em></p></>} representation={TransformRepresentation.Quaternion} indices={[3, 4, 5, 6]} matrix={matrix} onChange={setMatrix}/>
+                        <FormalismCard title="Axis–angle" help={<><p><strong>Axis:</strong> a unit direction. Edits are normalized; a zero axis is rejected.</p><p><strong>Angle:</strong> rotation in degrees.</p><p><em>At zero rotation, any axis gives the same result.</em></p></>} representation={TransformRepresentation.AxisAngle} indices={[3, 4, 5, 6]} matrix={matrix} onChange={setMatrix}/>
+                        <FormalismCard title="Transform · 4×4" help={<><p><strong>Column vectors:</strong> <code>p′ = R p + t</code></p><p><strong>Translation:</strong> millimetres in the last column.</p><p><strong>Rotation:</strong> orthonormal, with determinant +1. Scaling, shear and reflection are rejected.</p><p><em>Use the rotation controls to change coupled entries together.</em></p></>} representation={TransformRepresentation.Matrix} indices={Array.from({length: 16}, (_, index) => index)} matrix={matrix} onChange={setMatrix}/>
                     </div></Panel></PanelGroup>
                 <div className="transform-footer flex gap-2 justify-content-space-between">
                     <ButtonSm className="transform-action" text="Reset to identity" onClick={() => {const identity = new Matrix4(); setMatrix(identity);}}/>
-                    <ButtonSm className="transform-action" text="Close" onClick={onClose}/>
+                    <div className="flex gap-2">
+                        <ButtonSm className="transform-action" text="Cancel" onClick={onClose}/>
+                        <ButtonSm className="transform-action" textColor="text-white" text="Accept transformation" onClick={() => onAccept(validateRigidTransform(matrix.clone()))}/>
+                    </div>
                 </div>
             </div>
         </div>
     </div>, document.body);
 }
+
+
+
 
 
 

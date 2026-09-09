@@ -23,8 +23,36 @@ test('formalism cards synchronize accepted edits and reject invalid transforms',
     await expect(invalid).toHaveValue('1');
     await expect(page.getByRole('alert')).toContainText('Not applied');
     await expect(translation).toHaveValue('2500');
-    await page.getByTitle('About Euler XYZ · degrees').click();
+    const help = page.getByRole('button', {name: 'About Euler XYZ · degrees', exact: true});
+    await help.hover();
+    await expect(help).not.toHaveAttribute('title');
+    await expect(page.getByText('Help text', {exact: true})).toBeVisible();
+    await expect(page.locator('.prompt-tooltip-reference-container')).toHaveCSS('z-index', '10000');
+    await page.mouse.move(1200, 700);
+    await expect(page.getByText('Help text', {exact: true})).toHaveCount(0);
+    await help.click();
+    await page.mouse.move(1200, 700);
     await expect(page.getByText('Help text',{exact:true})).toBeVisible();
+    await page.mouse.click(1200, 700);
+    const popup = page.locator('.prompt-tooltip-container');
+    await expect(popup).toBeVisible();
+    const heading = popup.locator('h3');
+    await expect(popup).toHaveCSS('cursor', 'grab');
+    await heading.hover();
+    const before = await heading.boundingBox();
+    if (!before) throw new Error('Pinned help heading has no bounds');
+    await page.mouse.move(before.x + 10, before.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(before.x + 90, before.y + 50, {steps: 5});
+    await page.mouse.up();
+    const after = await heading.boundingBox();
+    if (!after) throw new Error('Dragged help heading has no bounds');
+    expect(after.x - before.x).toBeCloseTo(80, 0);
+    expect(after.y - before.y).toBeCloseTo(40, 0);
+    await popup.locator('button').click();
+    await expect(popup).toHaveCount(0);
 });
+
+
 
 

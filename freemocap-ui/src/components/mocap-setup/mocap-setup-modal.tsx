@@ -1,301 +1,179 @@
+import React, {type ReactNode, useEffect, useMemo, useRef, useState} from "react";
+import CaptureVolumeSettings from './capture-volume-settings';
 import ModalWindowControls from '@/components/ui-components/ModalWindowControls';
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
+import SettingsSection from "@/components/common/settings-layout/settings-section";
+import SettingsSummaryChip from "@/components/common/settings-layout/settings-summary-chip";
 
 import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
-import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
-import {RecordingCalibrationOptions} from './RecordingCalibrationOptions';
 import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
-import MOCAPDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
+import MocapDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-settings";
-import { useMocap } from "@/hooks/useMocap";
+import {useMocap} from "@/hooks/useMocap";
+import {useAppSelector} from "@/store/hooks";
+import {RTMPOSE_MODELS} from "@/store/slices/mocap";
+
+enum SetupSection {
+    Directory = 'Recording directory',
+    Detectors = 'Detectors',
+    CaptureVolume = 'Capture volume',
+    Triangulation = 'Triangulation',
+    PostProcessing = 'Post-processing',
+    Exports = 'Exports',
+}
 
 type MocapMode = "recording" | "playback";
 
 interface MocapSetupModalProps {
-  onClose?: () => void;
-  mode?: MocapMode;
+    onClose?: () => void;
+    mode?: MocapMode;
 }
 
-const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
-  onClose,
-  mode = "playback",
-}) => {
-  const {
-    canProcessMocapRecording,
-    isLoading,
-    isRecording,
-    mocapRecordingPath,
-    dispatchProcessMocapRecording,
-    validateDirectory,
-  } = useMocap();
+const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playback"}) => {
+    const {
+        canProcessMocapRecording,
+        isLoading,
+        isRecording,
+        mocapRecordingPath,
+        dispatchProcessMocapRecording,
+        validateDirectory,
+    } = useMocap();
 
-  useEffect(() => {
-    if (mocapRecordingPath) {
-      validateDirectory(mocapRecordingPath);
-    }
-  }, [mocapRecordingPath, validateDirectory]);
+    const config = useAppSelector(state => state.mocap.config);
+    const calibration = useAppSelector(state => state.calibration.loadedCalibration);
 
-  const processBlockedReason = useMemo((): string | null => {
-    if (canProcessMocapRecording) return null;
-    if (isRecording) return "Stop recording before processing";
-    if (isLoading) return "Processing already in progress";
-    if (!mocapRecordingPath) return "Select a recording folder to process";
-    return null;
-  }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath]);
-  const [activeButton, setActiveButton] = useState<
-    "button1" | "button2" | "button3" | "button4" | "button5" | "button6"
-  >("button1");
+    useEffect(() => {
+        if (mocapRecordingPath) validateDirectory(mocapRecordingPath);
+    }, [mocapRecordingPath, validateDirectory]);
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const panel1Ref = useRef<HTMLDivElement>(null);
-  const panel2Ref = useRef<HTMLDivElement>(null);
-  const panel3Ref = useRef<HTMLDivElement>(null);
-  const panel4Ref = useRef<HTMLDivElement>(null);
-  const panel5Ref = useRef<HTMLDivElement>(null);
-  const panel6Ref = useRef<HTMLDivElement>(null);
+    const processBlockedReason = useMemo((): string | null => {
+        if (canProcessMocapRecording) return null;
+        if (isRecording) return "Stop recording before processing";
+        if (isLoading) return "Processing already in progress";
+        if (!mocapRecordingPath) return "Select a recording folder to process";
+        return null;
+    }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath]);
 
-  const scrollToPanel = useCallback((panelIndex: number) => {
-    const refs = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref, panel6Ref];
-    const targetRef = refs[panelIndex];
-    if (targetRef.current && scrollContainerRef.current) {
-      targetRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-        inline: "nearest",
-      });
-      setActiveButton(
-        ["button1", "button2", "button3", "button4", "button5", "button6"][panelIndex] as
-          | "button1"
-          | "button2"
-          | "button3"
-          | "button4"
-          | "button5"
-          | "button6",
-      );
-    }
-  }, []);
+    const [activeSection, setActiveSection] = useState(SetupSection.Directory);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const panels = useRef<Partial<Record<SetupSection, HTMLDivElement>>>({});
 
-  // IntersectionObserver to detect which panel is visible on scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const id = entry.target.getAttribute("data-panel");
-            if (id === "panel1") setActiveButton("button1");
-            else if (id === "panel2") setActiveButton("button2");
-            else if (id === "panel3") setActiveButton("button3");
-            else if (id === "panel4") setActiveButton("button4");
-            else if (id === "panel5") setActiveButton("button5");
-            else if (id === "panel6") setActiveButton("button6");
-          }
-        });
-      },
-      {
-        root: scrollContainerRef.current,
-        rootMargin: "0px 0px -50% 0px",
-        threshold: 0.5,
-      },
-    );
-
-    const panels = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref, panel6Ref];
-    panels.forEach((ref) => {
-      if (ref.current) observer.observe(ref.current);
-    });
-
-    return () => {
-      observer.disconnect();
+    /* Every summary states only what IS. A chip given nothing to say removes
+       itself rather than reporting an absence. */
+    const detectorSummary = (): ReactNode => {
+        if (config.detectorType === "mediapipe") {
+            return <SettingsSummaryChip>{`MediaPipe · ${config.mediapipeModelComplexity}`}</SettingsSummaryChip>;
+        }
+        const model = RTMPOSE_MODELS.find(entry => entry.value === config.rtmPoseModelName);
+        return <SettingsSummaryChip>{['RTMPose', model?.label].filter(Boolean).join(' · ')}</SettingsSummaryChip>;
     };
-  }, []);
 
-  return (
-    <>
-      {/* Backdrop overlay */}
-      <div
-        className="pos-fixed inset-0 bg-surface-overlay z-10"
-        onClick={onClose}
-      />
+    const recordingName = mocapRecordingPath?.split(/[\\/]/).filter(Boolean).pop() ?? '';
 
-      {/* Modal */}
-      <div ref={modalRef} role="dialog" aria-label="Mocap processing" aria-modal="true" className="mocap-settings-modal bg-primary border-1 border-black pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2">
-<ModalWindowControls title="Mocap processing"/>
-        
-        {/* Row 1 */}
-        <div className="inner-container-settings gap-1 flex flex-row flex-1 br-2">
-          {/* Column 1 - Buttons */}
-          <div
-            className="left-section-actions br-1 p-2 bg-tertiary flex flex-col flex-1 gap-2"
-            style={{ maxWidth: 146, flexShrink: 0 }}
-          >
-            <SubactionHeader text="Mocap setup" className="text-gray" />
-            <ButtonSm
-              text="Processing Directory"
-              buttonType={activeButton === "button1" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(0)}
-            />
-            <ButtonSm
-              text="Calibration"
-              buttonType={activeButton === "button2" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(1)}
-            />
-            <ButtonSm
-              text="Detector"
-              buttonType={activeButton === "button3" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(2)}
-            />
+    const sections: {name: SetupSection; summary?: ReactNode; content: ReactNode}[] = [
+        {
+            name: SetupSection.Directory,
+            summary: recordingName
+                ? <SettingsSummaryChip tone="path" title={mocapRecordingPath ?? ''}>{recordingName}</SettingsSummaryChip>
+                : undefined,
+            content: <ProcessingDirectorySettings open onClose={() => {}}/>,
+        },
+        {
+            name: SetupSection.Detectors,
+            summary: <>
+                {detectorSummary()}
+                <SettingsSummaryChip tone="quiet">{config.charucoTrackingEnabled ? '+ Charuco' : ''}</SettingsSummaryChip>
+            </>,
+            content: <MocapDetectorSettings/>,
+        },
+        {
+            name: SetupSection.CaptureVolume,
+            summary: calibration
+                ? <SettingsSummaryChip tone="positive">{calibration.cameras.length} cameras</SettingsSummaryChip>
+                : undefined,
+            content: <CaptureVolumeSettings mode={mode}/>,
+        },
+        {
+            name: SetupSection.Triangulation,
+            summary: <SettingsSummaryChip>
+                {config.triangulation.use_outlier_rejection
+                    ? `outlier rejection · ≥${config.triangulation.minimum_cameras_for_triangulation} cams`
+                    : ''}
+            </SettingsSummaryChip>,
+            content: <TriangulationSettings/>,
+        },
+        {
+            name: SetupSection.PostProcessing,
+            summary: <SettingsSummaryChip>
+                {`Butterworth · ${config.posthoc_filter.cutoff} Hz · order ${config.posthoc_filter.order}`}
+            </SettingsSummaryChip>,
+            content: <PosthocFilterSettings/>,
+        },
+        {
+            name: SetupSection.Exports,
+            content: <MOCAPBlenderSettings open onClose={() => {}}/>,
+        },
+    ];
 
-            <ButtonSm
-              text = "3D Triangulation"
-              buttonType = {activeButton === "button4" ? "activated" : "idle"}
-              className = "full-width quaternary"
-              onClick = {() => scrollToPanel(3)}
-            />
+    useEffect(() => {
+        const observer = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                const section = Object.values(SetupSection).find(name => panels.current[name] === entry.target);
+                if (section) setActiveSection(section);
+            }
+        }, {root: scrollContainerRef.current, rootMargin: '0px 0px -65% 0px', threshold: 0});
+        Object.values(panels.current).forEach(panel => observer.observe(panel));
+        return () => observer.disconnect();
+    }, []);
 
-            <ButtonSm
-              text="Post Processing"
-              buttonType={activeButton === "button5" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(4)}
-            />
-            <ButtonSm
-              text="Blender"
-              buttonType={activeButton === "button6" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(5)}
-            />
-          </div>
-
-          {/* Column 2 - Dynamic Content */}
-          <div
-            ref={scrollContainerRef}
-            className="right-side-settings-container bg-primary br-1 overflow-y flex-1 flex flex-col gap-1 w-full flex-row overflow-y-auto"
-          >
-            {/* <div className="flex flex-col gap-2 w-full"> */}
-            {/* Panel 1 - Processing Directory */}
-            <div
-              ref={panel1Ref}
-              data-panel="panel1"
-              className="mocap-settings-section"
-            >
-              <ProcessingDirectorySettings open={true} onClose={() => {}} />
+    return <>
+        <div className="pos-fixed inset-0 bg-surface-overlay z-10" onClick={onClose}/>
+        <div role="dialog" aria-label="Mocap processing" aria-modal="true"
+            className="mocap-settings-modal pos-fixed flex flex-col br-2">
+            <ModalWindowControls title="Mocap processing"/>
+            <div className="mocap-settings-layout flex flex-row flex-1">
+                <nav aria-label="Mocap setup sections" className="mocap-settings-navigation flex flex-col">
+                    <SubactionHeader text="Mocap setup" className="text-gray"/>
+                    {sections.map(section => <ButtonSm key={section.name} text={section.name}
+                        buttonType={activeSection === section.name ? 'activated' : 'idle'}
+                        className="full-width quaternary" textClass="mocap-section-link"
+                        onClick={() => {
+                            panels.current[section.name]?.scrollIntoView({behavior: 'smooth', block: 'start'});
+                            setActiveSection(section.name);
+                        }}/>)}
+                </nav>
+                <div ref={scrollContainerRef} className="mocap-settings-content settings-layout flex-1 overflow-y-auto">
+                    {sections.map(section => <div key={section.name}
+                        ref={element => {
+                            if (element) panels.current[section.name] = element;
+                            else delete panels.current[section.name];
+                        }}>
+                        <SettingsSection title={section.name} summary={section.summary}>
+                            {section.content}
+                        </SettingsSection>
+                    </div>)}
+                </div>
             </div>
-
-            {/* Panel 2 - Calibration */}
-            <div
-              ref={panel2Ref}
-              data-panel="panel2"
-              className="mocap-settings-section"
-            >
-              <h2 className="mocap-settings-title">Calibration</h2>
-              <CalibrationModule
-                appModeOverride={mode === "playback" ? "playback" : "streaming"}
-              />
-              <RecordingCalibrationOptions />
-            </div>
-
-            {/* Panel 3 - Detector */}
-            <div
-              ref={panel3Ref}
-              data-panel="panel3"
-              className="mocap-settings-section"
-            >
-              <MOCAPDetectorSettings open={true} onClose={() => {}} />
-            </div>
-
-            {/* Panel 4 - Triangulation */}
-            <div
-              ref={panel4Ref}
-              data-panel="panel4"
-              className="mocap-settings-section"
-            >
-              <TriangulationSettings />
-            </div>
-
-            {/* Panel 5 - Post Processing */}
-            <div
-              ref={panel5Ref}
-              data-panel="panel5"
-              className="mocap-settings-section"
-            >
-              <PosthocFilterSettings />
-            </div>
-
-            {/* Panel 6 - Blender */}
-            <div
-              ref={panel6Ref}
-              data-panel="panel6"
-              className="mocap-settings-section"
-            >
-              <MOCAPBlenderSettings open={true} onClose={() => {}} />
-            </div>
-
-            {/* Dummy div for extra scroll space */}
-            <div
-              className="bg-secondary p-2"
-              style={{ minHeight: "220px", transform: "translateY(-6px)" }}
-            ></div>
-            {/* </div> */}
-          </div>
+            <footer className="mocap-settings-footer flex flex-col align-end gap-2">
+                <div className="mocap-settings-actions flex flex-row gap-2">
+                    <ButtonSm text="Cancel" buttonType="quaternary" onClick={onClose}/>
+                    {mode === "playback" ? (
+                        <ButtonSm text="Process Mocap" textColor="text-white" iconClass="processmocap-icon"
+                            buttonType="" className="primary accent"
+                            onClick={() => {dispatchProcessMocapRecording(); onClose?.();}}
+                            disabled={!canProcessMocapRecording} tooltip tooltipPosition="pos-top"
+                            tooltipText={processBlockedReason ?? "Start mocap processing"}/>
+                    ) : (
+                        <ButtonSm text="Save" textColor="text-white" buttonType="" className="primary accent"
+                            onClick={onClose} tooltip tooltipPosition="pos-top" tooltipText="Save mocap settings"/>
+                    )}
+                </div>
+            </footer>
         </div>
-
-        {/* Row 2 */}
-        <div className="bottom-area-action-container p-2 br-2 flex flex-col align-end bottom-row gap-2 pt-0">
-          {/* Column 1 - Two buttons */}
-          <div className="flex flex-row gap-2 h-full">
-            <ButtonSm
-              text="Cancel"
-              buttonType="quaternary"
-              className=""
-              onClick={onClose}
-            />
-            {mode === "playback" ? (
-              <ButtonSm
-                text="Process Mocap"
-                textColor="text-white"
-                iconClass="processmocap-icon"
-                buttonType=""
-                className="primary accent"
-                onClick={() => {
-                  dispatchProcessMocapRecording();
-                  onClose?.();
-                }}
-                disabled={!canProcessMocapRecording}
-                tooltip={true}
-                tooltipPosition="pos-top"
-                tooltipText={processBlockedReason ?? "Start mocap processing"}
-              />
-            ) : (
-              <ButtonSm
-                text="Save"
-                textColor="text-white"
-                buttonType=""
-                className="primary accent"
-                onClick={onClose}
-                tooltip={true}
-                tooltipPosition="pos-top"
-                tooltipText="Save mocap settings"
-              />
-            )}
-          </div>
-          {mode === "playback" && (
-            <div className="flex flex-row gap-2 h-full">
-              <p className="text sm text-gray">
-                Processing may take hours, depending on your system, ideally avoid
-                using your computer.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
+    </>;
 };
 
 export default MocapSetupModal;

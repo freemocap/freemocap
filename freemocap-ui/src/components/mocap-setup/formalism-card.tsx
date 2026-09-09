@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import {type ReactNode, useEffect, useRef, useState} from 'react';
 import {Matrix4} from 'three';
 import FloatInput from '@/components/ui-components/FloatInput';
 import AnchoredInfo from '@/components/ui-components/AnchoredInfo';
@@ -9,7 +9,7 @@ enum PositionUnit { Millimetres = 'mm', Metres = 'm' }
 
 interface FormalismCardProps {
     title: string;
-    help: string;
+    help: ReactNode;
     representation: TransformRepresentation;
     indices: number[];
     matrix: Matrix4;
@@ -20,6 +20,11 @@ export default function FormalismCard({title, help, representation, indices, mat
     const [unit, setUnit] = useState(PositionUnit.Millimetres);
     const isPosition = indices.length === 3 && indices.every(index => index < 3);
     const unitScale = isPosition && unit === PositionUnit.Metres ? 1000 : 1;
+    /* Dragging moves one decimal place of the unit on screen: 0.1 mm per pixel
+       in millimetres, 0.001 m per pixel in metres. Choosing metres is choosing
+       a coarser scale to work at, so the step follows the unit rather than
+       holding the same physical rate in both. Shift still gives x0.1. */
+    const positionSensitivity = unit === PositionUnit.Metres ? .001 : .1;
     const label = (index: number) => isPosition ? ['X', 'Y', 'Z'][index] + ' ' + unit : fieldLabels(representation)[index];
     const [error, setError] = useState<string | null>(null);
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -55,7 +60,7 @@ export default function FormalismCard({title, help, representation, indices, mat
             {indices.map(index => <div className="transform-field" key={index}>
                 {representation !== TransformRepresentation.Matrix && <span className="text sm text-gray">{label(index)}</span>}
                 <FloatInput label={`${title}: ${label(index)}`} value={String(Number((values[index] / unitScale).toPrecision(12)))}
-                    sensitivity={isPosition ? .1 / unitScale : representation === TransformRepresentation.Matrix ? .001 : index < 3 || representation === TransformRepresentation.Euler ? .1 : .001}
+                    sensitivity={isPosition ? positionSensitivity : representation === TransformRepresentation.Matrix ? .001 : index < 3 || representation === TransformRepresentation.Euler ? .1 : .001}
                     onChange={text => edit(index, text)}/>
             </div>)}
         </div>

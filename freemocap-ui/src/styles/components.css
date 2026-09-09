@@ -5,6 +5,26 @@
   border-radius: 4px;
 }
 
+.collapsible-sidebar-header {
+  min-height: 40px;
+  padding-left: 12px;
+  background-color: var(--color-bg-elevated);
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-sidebar-chevron {
+  transform: rotate(-90deg);
+}
+
+.collapsible-sidebar-header[aria-expanded="true"] .collapsible-sidebar-chevron {
+  transform: rotate(0deg);
+}
+
+.collapsible-sidebar-summary {
+  margin-inline: 6px;
+}
+
 
 /* video tiles */
 .video-tile {
@@ -571,38 +591,6 @@
   background-image: url(../images/splashmodal_art.webp); 
   background-repeat: no-repeat;
   background-size: contain;
-}
-.mocap-settings-modal {
-  box-sizing: border-box;
-  width: min(900px, calc(100vw - 32px));
-  height: min(740px, calc(100dvh - 32px));
-  min-width: min(600px, calc(100vw - 32px));
-  min-height: min(420px, calc(100dvh - 32px));
-  max-width: calc(100vw - 32px);
-  max-height: calc(100dvh - 32px);
-  resize: none;
-  overflow: hidden;
-  top: 50%;
-  left: 50%;
-  bottom: auto;
-  transform: translate(-50%, -50%);
-  z-index: 1000;
-}
-.mocap-settings-modal > .inner-container-settings {
-  height: auto;
-  min-height: 0;
-  min-width: 0;
-}
-.mocap-settings-modal .right-side-settings-container {
-  min-width: 0;
-  min-height: 0;
-  overflow-x: hidden;
-}
-.mocap-settings-modal > .bottom-area-action-container {
-  height: auto;
-  flex-shrink: 0;
-  padding-right: 20px;
-  padding-bottom: 16px;
 }
 .inner-container-settings {
  height: 569px;

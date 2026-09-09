@@ -8,6 +8,7 @@ interface IconButtonProps {
   onMouseDown?: (e: React.MouseEvent) => void;
   disabled?: boolean;
   title?: string;
+  ariaLabel?: string;
   className?: string;
   iconSize?: string;
   style?: React.CSSProperties;
@@ -23,6 +24,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
   onMouseDown,
   disabled = false,
   title,
+  ariaLabel,
   className = "icon-size-25",
   iconSize = "icon-size-20",
   style,
@@ -49,7 +51,8 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
         style={{ opacity: 0.5, cursor: "not-allowed" }}
       >
         <button
-          ref={ref}
+          aria-label={ariaLabel}
+      ref={ref}
           disabled
           onMouseDown={onMouseDown}
           className={clsx("button icon-button icon-size-25 pos-rel br-1", className)}
@@ -64,6 +67,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
 
   return (
     <button
+      aria-label={ariaLabel}
       ref={ref}
       onClick={onClick}
       onMouseDown={onMouseDown}
@@ -81,3 +85,4 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
 IconButton.displayName = "IconButton";
 
 export default IconButton;
+

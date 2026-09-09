@@ -940,16 +940,12 @@ body,
     --color-scrollbar-thumb
     --color-scrollbar-thumb-hover
 
-    --color-shadow-elevated
-
     Recommended:
     --color-link: var(--color-info);
     --color-link-hover: var(--metric-min-dark);
 
     --color-scrollbar-thumb: var(--color-border-secondary);
     --color-scrollbar-thumb-hover: var(--color-bg-primary);
-
-    --shadow-elevated-sharp: 0px 7px 15px rgba(0,0,0,0.5);
 
     Also:
     Shadow rgba values should become tokenized if you want 100% semantic compliance.
@@ -985,7 +981,7 @@ body,
    ========================= */
 
 .elevated-sharp {
-  box-shadow: 0px 7px 15px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-elevated-sharp);
 }
 
 /* =========================

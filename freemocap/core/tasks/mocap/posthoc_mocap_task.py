@@ -156,6 +156,7 @@ def run_posthoc_mocap_task(
     if len(camera_ids) > 1:
         spatial_reference = spatial_reference.model_copy(update={
             "alignment": ReferenceAlignmentDescriptor.from_result(result=aligned.alignment),
+            "additional_transform": task_config.body_alignment.additional_transform,
         })
     if selected_board is not None:
         bundles += (build_charuco_board_bundle(board=selected_board),)

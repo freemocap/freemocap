@@ -43,6 +43,7 @@
   interface FloatingOnboardingProps {
     // CSS selector of target element
     target: string;
+    zIndex?: number;
 
     offsetTop?: number;
     offsetLeft?: number;
@@ -64,6 +65,7 @@
 
   export function FloatingOnboarding({
     target,
+    zIndex = 99,
     children,
     show = true,
 className,
@@ -123,7 +125,7 @@ const childShouldRender =
 
     // const OFFSET_Y = 0;
 
-    const Z_INDEX = 99;
+
 
     const POSITION_TRANSITION =
       "top 0.01s linear, left 0.01s linear";
@@ -487,7 +489,7 @@ const childShouldRender =
           top: position.top,
           left: position.left,
 
-          zIndex: Z_INDEX,
+          zIndex,
 
           boxSizing: "border-box",
 

@@ -8,6 +8,9 @@ interface CollapsibleSidebarSectionProps {
     secondaryControls?: ReactNode;
     children: ReactNode;
     defaultExpanded?: boolean;
+    keepMounted?: boolean;
+    expanded?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
 }
 
 export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps> = ({
@@ -18,28 +21,36 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
     secondaryControls,
     children,
     defaultExpanded = false,
+    keepMounted = false,
+    expanded: controlledExpanded,
+    onExpandedChange,
 }) => {
-    const [expanded, setExpanded] = useState(defaultExpanded);
+    const [internalExpanded, setExpanded] = useState(defaultExpanded);
+    const expanded = controlledExpanded ?? internalExpanded;
 
-    const handleToggle = useCallback(() => setExpanded((prev) => !prev), []);
+    const handleToggle = useCallback(() => {
+        setExpanded(!expanded);
+        onExpandedChange?.(!expanded);
+    }, [expanded, onExpandedChange]);
     const handleControlClick = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
     return (
-        <div className="bg-darkgray br-1 overflow-hidden hidden motion-caption-left-side-bar">
+        <div className="collapsible-sidebar-section bg-darkgray br-1 overflow-hidden hidden motion-caption-left-side-bar">
             {/* Header row */}
             <div
-                onClick={handleToggle}
-                className="flex flex-row items-center gap-1 p-1 pr-2"
-                style={{
-                    minHeight: 40,
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    backgroundColor: 'var(--color-bg-elevated)',
-                    paddingLeft: 12,
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded}
+                onKeyDown={event => {
+                    if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault(); handleToggle();
+                    }
                 }}
+                onClick={handleToggle}
+                className="collapsible-sidebar-header flex flex-row items-center gap-1 p-1 pr-2"
             >
                 {/* Chevron */}
-                <span className={`icon icon-size-20 flex-shrink-0 ${expanded ? 'collapse-icon' : 'expand-icon'}`} style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                <span className={`collapsible-sidebar-chevron icon icon-size-20 flex-shrink-0 ${expanded ? 'collapse-icon' : 'expand-icon'}`} />
 
                 {/* Section icon */}
                 <span className="flex items-center flex-shrink-0">{icon}</span>
@@ -49,7 +60,7 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
 
                 {/* Summary */}
                 {summaryContent && (
-                    <div className="flex-1 flex flex-row items-center flex-end overflow-hidden" style={{ margin: '0 6px' }}>
+                    <div className="collapsible-sidebar-summary flex-1 flex flex-row items-center flex-end overflow-hidden">
                         {summaryContent}
                     </div>
                 )}
@@ -70,8 +81,8 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
             </div>
 
             {/* Detail panel */}
-            {expanded && (
-                <div className="bg-darkgray">
+            {(expanded || keepMounted) && (
+                <div className="bg-darkgray" hidden={!expanded}>
                     {children}
                 </div>
             )}

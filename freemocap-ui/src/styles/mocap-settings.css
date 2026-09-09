@@ -1,72 +1,64 @@
-.mocap-settings-modal .mocap-settings-section {
-  padding: 8px 10px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border-muted);
-  border-left: 3px solid color-mix(in srgb, var(--color-info) 25%, var(--color-border-primary));
-  border-radius: 4px;
-  scroll-margin-top: 4px;
+.mocap-settings-modal {
+  box-sizing: border-box;
+  z-index: 1000;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-surface-ground);
+  border: 1px solid var(--color-border-hairline);
+  box-shadow: var(--shadow-raised-high);
+  width: min(900px, calc(100vw - 32px));
+  height: min(740px, calc(100dvh - 32px));
+  min-width: min(600px, calc(100vw - 32px));
+  min-height: min(420px, calc(100dvh - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-.mocap-settings-modal .mocap-settings-title {
-  margin: 0 0 6px;
-  padding: 5px 7px;
-  background: color-mix(in srgb, var(--color-info-surface) 45%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-info) 15%, var(--color-border-muted));
-  border-radius: 3px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.mocap-detector-card {
-  padding: 4px 0;
-}
-
-.mocap-board-card {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.mocap-board-toggle {
-  flex: 1;
+.mocap-settings-layout,
+.mocap-settings-content {
   min-width: 0;
+  min-height: 0;
 }
 
-.mocap-board-toggle .toggle-button .text {
-  white-space: normal;
+.mocap-settings-navigation {
+  width: 162px;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 12px 9px;
 }
 
-.mocap-skeleton-card {
-  border-top: 1px solid var(--color-border-muted);
+.mocap-settings-content {
+  overflow-x: hidden;
+  padding: 12px;
+  /* the last card fades rather than chopping flat against the footer */
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 22px), transparent 100%);
 }
 
-.mocap-detector-heading,
-.mocap-detector-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+.mocap-settings-content::-webkit-scrollbar {
+  width: 8px;
 }
 
-.mocap-settings-modal .mocap-settings-subtitle {
-  margin: 4px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+.mocap-settings-content::-webkit-scrollbar-thumb {
+  background: var(--color-border-hairline-strong);
+  border-radius: 4px;
 }
 
-.mocap-detector-description {
-  margin: 4px 0 6px;
-  max-width: 70ch;
-  line-height: 1.5;
+.mocap-settings-footer {
+  flex-shrink: 0;
+  padding: 11px 16px 14px;
+  border-top: 1px solid var(--color-border-hairline);
 }
 
-.mocap-detector-field {
-  padding: 4px 0;
-  color: var(--color-text-secondary);
+.mocap-settings-actions {
+  min-height: 25px;
+}
+
+.mocap-processing-note {
+  text-align: right;
 }
 
 .mocap-settings-info {
@@ -84,4 +76,138 @@
 .mocap-settings-info:focus-visible .tooltip-container {
   opacity: 1;
   visibility: visible;
+}
+.mocap-settings-modal .mocap-section-link {
+  white-space: normal;
+}
+
+/* The defined transformation and its editor are always on screen. The switch
+   changes how bright this block is, never whether it exists. */
+.reference-transform-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+  margin-top: 4px;
+  padding: 9px 11px;
+  background: var(--color-surface-control);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: 7px;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.reference-transform-block-inactive {
+  background: transparent;
+}
+
+.reference-transform-block-inactive .reference-transform-summary {
+  color: var(--color-text-inactive);
+}
+
+.reference-transform-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.reference-transform-summary > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-transform-term {
+  display: inline-block;
+  width: 82px;
+  color: var(--color-text-help);
+}
+
+.reference-transform-identity {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11.5px;
+  color: var(--color-text-help);
+}
+
+.reference-transform-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.reference-frame-edit {
+  border: 1px solid var(--color-border-muted);
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+}
+
+.reference-frame-edit:hover {
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
+}
+
+.reference-frame-edit:focus-visible {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+.reference-frame-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--color-surface-ground);
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.reference-frame-status-source {
+  color: var(--color-text-help);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reference-frame-status strong {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+.reference-frame-status-aligned strong {
+  color: var(--color-success);
+}
+
+.capture-geometry-options {
+  padding: 4px 6px;
+}
+
+@media (max-width: 680px) {
+  .mocap-settings-modal {
+    min-width: calc(100vw - 16px);
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+  }
+
+  .mocap-settings-layout {
+    flex-direction: column;
+  }
+
+  .mocap-settings-navigation {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .mocap-settings-navigation .subaction-header-container {
+    flex-basis: 100%;
+  }
+
+  .mocap-settings-navigation .button-sm-group {
+    min-width: auto;
+  }
 }

@@ -11,6 +11,7 @@ from pydantic import model_validator
 from skellyforge.core.biomechanics.reference_alignment import ReferenceAlignmentOutcome, ReferenceAlignmentResult
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
+from freemocap.core.reconstruction.reference_transform import ReferenceTransform
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
 from freemocap.core.recording.data_descriptors.recording_descriptor import Channel, Descriptor
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent, SampleUnit
@@ -46,6 +47,7 @@ class SpatialReference(Descriptor):
     basis: SpatialBasis = SpatialBasis.BLENDER
     units: SampleUnit
     alignment: ReferenceAlignmentDescriptor | None = None
+    additional_transform: ReferenceTransform | None = None
 
     @model_validator(mode="after")
     def validate_units(self) -> "SpatialReference":

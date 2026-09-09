@@ -1,0 +1,358 @@
+/* =========================================================
+   SETTINGS LAYOUT PRIMITIVES
+
+   One grammar for any settings surface: a section is a card, a
+   row is `label | help | control`, and every control in the app
+   lands on the same right-hand column.
+
+   Rank is expressed by weight, order and space. A parameter is
+   never folded out of sight; a switch changes how bright the
+   thing it governs is, and a collapsed section still states its
+   values in its header.
+   ========================================================= */
+
+/* Declared on the root so a row renders correctly wherever it is used, not
+   only inside a .settings-layout container. A nearer ancestor may override
+   them for its own subtree. */
+:root {
+  --settings-row-min-height: 30px;
+  --settings-row-inline-padding: 14px;
+  --settings-control-column: 224px;
+  --settings-dependent-indent: 18px;
+}
+
+.settings-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------
+   SECTION
+   --------------------------------------------------------- */
+
+.settings-section {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: 8px;
+  box-shadow: var(--shadow-raised-lip), var(--shadow-raised-low);
+  overflow: hidden;
+  scroll-margin-top: 4px;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--settings-row-inline-padding);
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-section-header:hover {
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.settings-section-header[aria-expanded="true"] {
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.settings-section-chevron {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-left: 1px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.5;
+  transform: rotate(-45deg);
+  transition: transform 0.16s ease;
+}
+
+.settings-section-header[aria-expanded="true"] .settings-section-chevron {
+  transform: rotate(45deg);
+}
+
+.settings-section-title {
+  flex: none;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* A collapsed section must still say what it is set to, or collapsing it
+   would be hiding rather than summarising. */
+.settings-section-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  padding-left: 12px;
+  overflow: hidden;
+}
+
+.settings-summary-chip {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-summary-chip-quiet {
+  color: var(--color-text-help);
+}
+
+.settings-summary-chip-positive {
+  color: var(--color-success);
+}
+
+.settings-summary-chip-path {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+}
+
+/* A summary with nothing true to say removes itself — it never
+   announces an absence. */
+.settings-summary-chip:empty {
+  display: none;
+}
+
+.settings-section-body {
+  padding: 4px var(--settings-row-inline-padding) 12px;
+}
+
+/* ---------------------------------------------------------
+   GROUP HEADING
+   --------------------------------------------------------- */
+
+.settings-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 0 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-text-help);
+}
+
+/* ---------------------------------------------------------
+   DEPENDENT GROUP
+   Rows governed by the control above them. The rail carries the
+   relationship; the rows stay on screen.
+   --------------------------------------------------------- */
+
+.settings-dependent-group {
+  margin-left: 1px;
+  padding-left: var(--settings-dependent-indent);
+  border-left: 1px solid var(--color-border-hairline);
+}
+
+/* ---------------------------------------------------------
+   ROW
+   --------------------------------------------------------- */
+
+.setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--settings-control-column);
+  align-items: center;
+  column-gap: 18px;
+  min-height: var(--settings-row-min-height);
+  padding: 3px 0;
+}
+
+.setting-row-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-text-secondary);
+}
+
+.setting-row-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
+/* The one leading decision in a section: the choice that reframes
+   every row beneath it. */
+.setting-row-promoted {
+  min-height: 40px;
+  margin-bottom: 5px;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.setting-row-promoted .setting-row-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.setting-row-promoted .setting-row-control {
+  align-items: stretch;
+}
+
+/* Inactive: the governing switch is off. Coloured rather than faded, so
+   the row stays readable — WCAG AA is met even here. */
+.setting-row-inactive .setting-row-label {
+  color: var(--color-text-inactive);
+}
+
+.setting-row-inactive .setting-row-control {
+  opacity: 0.72;
+}
+
+.setting-row-inactive .setting-row-control > * {
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------
+   TOGGLE SWITCH
+   The bare switch, for the control column of a row whose label
+   already names it.
+   --------------------------------------------------------- */
+
+.setting-toggle-switch {
+  flex: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.setting-toggle-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* The track and knob are sized and coloured entirely by toggle.css, exactly as
+   ToggleComponent renders them. The base .icon rule sets no display, so these
+   spans must be made block boxes or the track's width and height are ignored. */
+.setting-toggle-switch .toggle-container,
+.setting-toggle-switch .toggle-circle {
+  display: block;
+}
+
+/* The off state needs a boundary that reaches 3:1 against the card. */
+.setting-toggle-switch .toggle-container.off {
+  border-color: var(--color-border-control);
+}
+
+/* ---------------------------------------------------------
+   NARROW MODAL
+   The label column absorbs every pixel the control column does not,
+   so below this width the control moves under its label instead.
+   --------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  :root {
+    --settings-control-column: auto;
+  }
+
+  .setting-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+    padding: 7px 0;
+  }
+
+  .setting-row-control {
+    justify-content: flex-start;
+  }
+}
+
+/* ---------------------------------------------------------
+   SELECT INPUT
+   --------------------------------------------------------- */
+
+.setting-select-input {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-select-input::after {
+  content: "";
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1.5px solid var(--color-text-muted);
+  border-bottom: 1.5px solid var(--color-text-muted);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.setting-select-input select {
+  appearance: none;
+  width: 100%;
+  padding: 8px 30px 8px 11px;
+  background: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
+  border-radius: 6px;
+  box-shadow: var(--shadow-raised-lip);
+  color: var(--color-text-primary);
+  color-scheme: dark;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.setting-select-input select:hover {
+  border-color: var(--color-text-disabled);
+}
+
+.setting-select-input select:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-disabled);
+}
+
+/* ---------------------------------------------------------
+   NESTED SECTION
+   A section inside a section body sits one rung further up, so it
+   still reads as raised against its parent card.
+   --------------------------------------------------------- */
+
+.settings-section-nested {
+  margin-top: 6px;
+  background: var(--color-surface-control);
+  border-radius: 7px;
+  box-shadow: var(--shadow-raised-lip);
+}
+
+.settings-section-nested > .settings-section-header {
+  min-height: 32px;
+}
+
+.settings-section-nested .settings-section-title {
+  font-size: 12px;
+}

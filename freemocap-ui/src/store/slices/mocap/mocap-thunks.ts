@@ -1,8 +1,8 @@
 import {createAsyncThunk} from "@reduxjs/toolkit";
-import {RootState} from "@/store";
+import type {RootState} from "@/store";
 import {selectMocapRecordingPath} from "./mocap-slice";
 import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
-import {serverUrls} from "@/services";
+import {serverUrls} from "@/constants/server-urls";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 import {selectLoadedCalibration} from "@/store/slices/calibration";
 
@@ -17,7 +17,12 @@ function buildPosthocConfig(state: RootState) {
     // UI, so switching the detector away and back doesn't lose their selection.
     const blenderSupported = config.detectorType === "mediapipe";
     return {
-        bodyAlignment: {enabled: config.bodyAlignmentEnabled},
+        bodyAlignment: {
+            enabled: config.bodyAlignmentEnabled,
+            additional_transform: config.referenceTransformEnabled && config.referenceTransform
+                ? {matrix: config.referenceTransform}
+                : null,
+        },
         cameraMatching: config.cameraMatching,
         charucoTrackingEnabled: config.charucoTrackingEnabled,
         boardMode: state.calibration.config.boardMode,

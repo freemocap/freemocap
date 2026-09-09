@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mocap panel restyle — direction study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS
+   Mirrors src/styles/color.css — same names, same values — so the
+   study and the app speak one vocabulary.
+   ============================================================ */
+:root{
+  --gray-900:#141414; --gray-800:#212121; --gray-700:#2e2e2e; --gray-600:#3a3a3a;
+  --gray-500:#606060; --gray-400:#aaaaaa; --gray-300:#b4b4b4; --gray-200:#cdcdcd; --gray-100:#e4e4e4;
+  --blue-500:#2ba4ff; --blue-600:#0898ff; --green-100:#16dd12; --red-500:#d7184b; --warning-500:#e64900;
+
+  --color-bg-primary:var(--gray-900); --color-bg-secondary:var(--gray-800);
+  --color-bg-tertiary:var(--gray-700); --color-bg-elevated:var(--gray-600);
+  --color-text-primary:var(--gray-100); --color-text-secondary:var(--gray-200);
+  --color-text-muted:var(--gray-400); --color-text-disabled:var(--gray-500);
+  --color-border-muted:rgba(228,228,228,.1);
+  --color-info:var(--blue-500); --color-success:var(--green-100);
+
+  /* ---------- TEXT CONTRAST ----------
+     Secondary prose and inactive rows. Both measured >=4.5:1 (WCAG AA) on
+     all three surfaces. --color-text-disabled is darker than these by
+     design and only ever colours something genuinely disabled. */
+  --color-text-help:#949494;      /* help text, group headers, empty states */
+  --color-text-inactive:#8a8a8a;  /* a switched-off but still-real row      */
+  /* The boundary of an interactive component needs 3:1 (WCAG 1.4.11).
+     Measured 3.45:1 against --color-surface-raised. */
+  --color-border-control:#6e6e6e;
+
+  /* ---------- SURFACE ELEVATION ----------
+     Three rungs, and only three. Raised is expressed by a top light-lip
+     plus a shadow, never by reaching for a lighter grey. */
+  --color-surface-ground:#111111;   /* modal / app ground        */
+  --color-surface-raised:#191919;   /* a card on the ground      */
+  --color-surface-control:#202020;   /* a control inside a card   */
+  --color-border-hairline:rgba(255,255,255,.07);
+  --color-border-hairline-strong:rgba(255,255,255,.12);
+  --shadow-raised-lip:inset 0 1px 0 rgba(255,255,255,.055);
+  --shadow-raised-low:0 1px 2px rgba(0,0,0,.55);
+  --shadow-raised-high:0 2px 4px rgba(0,0,0,.5), 0 14px 32px -18px rgba(0,0,0,.95);
+  --focus:0 0 0 2px rgba(43,164,255,.55);
+
+  /* ONE row rhythm — the shared control column is what stops the ragged edge */
+  --row-h:30px; --row-pad-x:14px; --control-col:224px; --indent:18px;
+
+  /* ONE type scale. Hierarchy from weight + colour, never from a background chip. */
+  --t-section:13px; --t-group:10.5px; --t-label:12px; --t-help:11.5px;
+
+  /* axes, shared with the 3D viewport */
+  --axis-x:#ff5f6d; --axis-y:#5ddc6b; --axis-z:#4db0fb;
+}
+
+*{box-sizing:border-box}
+html{height:100%}
+body{
+  margin:0; min-height:100%; background:#0b0b0b; color:var(--color-text-primary);
+  font-family:Inter,system-ui,sans-serif; font-size:12px; -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; align-items:center; gap:14px; padding:14px;
+}
+:focus-visible{outline:none; box-shadow:var(--focus)}
+
+/* ---------------- study chrome (not part of the design) ---------------- */
+.study-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+.study-bar b{font-size:11px;color:var(--color-text-muted);font-weight:500}
+.study-tab{appearance:none;border:1px solid var(--color-border-hairline);background:var(--color-surface-raised);color:var(--color-text-muted);
+  font:inherit;font-size:11px;padding:5px 11px;border-radius:6px;cursor:pointer}
+.study-tab[aria-selected="true"]{background:var(--color-surface-control);color:#fff;border-color:var(--color-border-hairline-strong);box-shadow:var(--shadow-raised-lip)}
+.study-note{font-size:11px;color:var(--color-text-muted);max-width:900px;text-align:center;line-height:1.6;min-height:3.2em;margin:0}
+
+/* ============================================================
+   SHARED SKELETON — identical markup in both variants.
+   ============================================================ */
+.modal{
+  width:min(900px, calc(100vw - 32px));
+  height:min(740px, calc(100vh - 132px));
+  display:flex; flex-direction:column; border-radius:8px; overflow:hidden; flex:none;
+}
+.titlebar{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;flex:none}
+.titlebar .t{font-size:12px;font-weight:600}
+.titlebar .spacer{flex:1}
+.dot{width:11px;height:11px;border-radius:3px;border:1px solid var(--color-border-hairline-strong);opacity:.6}
+.body{display:flex;flex:1;min-height:0}
+
+.nav{width:162px;flex:none;display:flex;flex-direction:column;gap:1px;padding:12px 9px}
+.nav-h{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--color-text-help);font-weight:600;padding:0 9px 9px}
+.nav-i{appearance:none;border:0;background:transparent;color:var(--color-text-muted);font:inherit;font-size:11.5px;
+  text-align:left;padding:6px 10px;border-radius:5px;cursor:pointer;position:relative;transition:color .12s,background .12s}
+.nav-i:hover{color:var(--color-text-primary);background:rgba(255,255,255,.03)}
+.nav-i[aria-current="true"]{color:#fff;font-weight:600}
+
+.scroll{flex:1;min-width:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;
+  mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 22px),transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 22px),transparent 100%)}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:4px}
+.scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.24)}
+/* flex column: a section must never shrink, or its body gets sliced by overflow:hidden */
+.scroll > details{flex:0 0 auto;min-height:0;scroll-margin-top:4px}
+
+.footer{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:7px;padding:11px 16px 14px}
+.footer-row{display:flex;gap:8px;align-items:center}
+.footer-note{font-size:11px;color:var(--color-text-muted)}
+
+/* ---- section: <details>, so disclosure is markup rather than a CSS trick ---- */
+.sec{overflow:hidden}
+.sec-head{display:flex;align-items:center;gap:9px;padding:0 var(--row-pad-x);min-height:36px;cursor:pointer;list-style:none;user-select:none}
+.sec-head::-webkit-details-marker{display:none}
+.sec-head::marker{content:""}
+.chev{width:9px;height:9px;flex:none;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+  transform:rotate(-45deg);opacity:.5;transition:transform .16s ease}
+details[open] > .sec-head .chev{transform:rotate(45deg)}
+.sec-title{font-size:var(--t-section);font-weight:600;color:var(--color-text-primary);flex:none}
+.sec-sum{margin-left:auto;display:flex;align-items:center;gap:7px;min-width:0;flex:0 1 auto;overflow:hidden;padding-left:12px}
+.chip{font-size:10.5px;color:var(--color-text-muted);white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
+.chip.ok{color:var(--color-success)}
+.chip.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+.chip.dim{color:var(--color-text-help)}
+/* never announce an absence: a summary chip with nothing true to say vanishes */
+.chip:empty{display:none}
+.sec-body{padding:4px var(--row-pad-x) 12px}
+
+/* ---- group: a labelled cluster inside a section ---- */
+.grp{margin-top:8px}
+.grp-h{display:flex;align-items:center;gap:7px;font-size:var(--t-group);font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--color-text-help);padding:9px 0 3px}
+/* dependency rail — dependent rows are indented under the control that governs
+   them and stay VISIBLE. The rail carries the relationship, not a disclosure. */
+.grp-nest{padding-left:var(--indent);border-left:1px solid var(--color-border-hairline);margin-left:1px}
+
+/* ---- row: THE primitive. label | help | control, one shared control column ---- */
+.row{display:grid;grid-template-columns:minmax(0,1fr) var(--control-col);align-items:center;
+  column-gap:18px;min-height:var(--row-h);padding:3px 0}
+.row-l{display:flex;flex-direction:column;gap:1px;min-width:0}
+.row-lab{display:flex;align-items:center;gap:7px;font-size:var(--t-label);color:var(--color-text-secondary);line-height:1.35}
+.row-help{font-size:var(--t-help);color:var(--color-text-help);line-height:1.45}
+.row-c{display:flex;justify-content:flex-end;align-items:center;gap:7px;min-width:0}
+.row.off .row-lab{color:var(--color-text-inactive)}
+.row.off .row-help{color:var(--color-text-help)}
+.row.off .row-c{opacity:.72}
+/* an inactive control is exempt from AA, but "exempt" is not an excuse to
+   make it unreadable — lift the glyphs so the dimming still clears 4.5:1 */
+.row.off .step button,.row.off .seg button{color:var(--color-text-secondary)}
+.row.off .row-c > *{pointer-events:none}
+.row{transition:opacity .16s ease}
+.row.hidden{display:none}
+
+/* the ONE promoted row per section: the decision that reframes everything below it */
+.row.primary{min-height:48px;padding:10px 0 12px;margin-bottom:5px;border-bottom:1px solid var(--color-border-hairline)}
+.row.primary .row-lab{font-size:var(--t-section);font-weight:600;color:var(--color-text-primary)}
+.row.primary .row-help{max-width:54ch;padding-top:2px}
+.row.primary .row-c{align-items:stretch}
+
+.prose{font-size:var(--t-help);color:var(--color-text-muted);line-height:1.55;max-width:62ch;padding:2px 0 6px}
+
+/* ---------------- controls ---------------- */
+.toggle{width:34px;height:19px;border-radius:10px;background:#2b2b2b;border:1px solid var(--color-border-control);
+  position:relative;cursor:pointer;flex:none;transition:background .13s,border-color .13s}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;
+  background:var(--gray-400);transition:transform .14s cubic-bezier(.3,.8,.4,1),background .14s}
+.toggle[aria-checked="true"]{background:var(--color-info);border-color:transparent}
+.toggle[aria-checked="true"]::after{transform:translateX(15px);background:#fff}
+
+/* dropdown — for any choice whose option set is open-ended */
+.sel{position:relative;display:flex;flex:1;min-width:0}
+.sel::after{content:"";position:absolute;right:11px;top:50%;width:6px;height:6px;margin-top:-5px;
+  border-right:1.5px solid var(--color-text-muted);border-bottom:1.5px solid var(--color-text-muted);
+  transform:rotate(45deg);pointer-events:none}
+.sel select{appearance:none;-webkit-appearance:none;width:100%;color-scheme:dark;background:var(--color-surface-control);
+  border:1px solid var(--color-border-control);border-radius:6px;color:var(--color-text-primary);font:inherit;
+  font-size:12px;font-weight:500;padding:8px 30px 8px 11px;cursor:pointer;box-shadow:var(--shadow-raised-lip);text-overflow:ellipsis}
+.sel select:hover{border-color:var(--gray-500)}
+
+/* segmented — only for a CLOSED set of <=3 short options */
+.seg{display:inline-flex;background:var(--color-surface-control);border:1px solid var(--color-border-control);border-radius:6px;padding:2px;gap:2px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--color-text-muted);font:inherit;font-size:11px;
+  padding:3px 9px;border-radius:4px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--gray-600);color:#fff;box-shadow:var(--shadow-raised-lip)}
+
+.step{display:inline-flex;align-items:center;background:var(--color-surface-control);border:1px solid var(--color-border-control);border-radius:6px;overflow:hidden}
+.step button{appearance:none;border:0;background:transparent;color:var(--color-text-muted);font:inherit;font-size:13px;
+  width:25px;height:25px;cursor:pointer;line-height:1}
+.step button:hover{background:rgba(255,255,255,.06);color:#fff}
+.step .v{min-width:58px;text-align:center;font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--color-text-primary);padding:0 2px}
+
+.btn{appearance:none;border:1px solid var(--color-border-control);background:var(--color-surface-control);color:var(--color-text-secondary);
+  font:inherit;font-size:11.5px;padding:6px 13px;border-radius:6px;cursor:pointer;box-shadow:var(--shadow-raised-lip);white-space:nowrap}
+.btn:hover{color:#fff;border-color:var(--gray-500)}
+.btn.accent{background:var(--red-500);border-color:transparent;color:#fff;font-weight:600}
+.btn.accent:hover{background:#e8285a}
+.btn.ghost{background:transparent;border-color:transparent;box-shadow:none}
+.pill{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--color-text-help);
+  border:1px solid var(--color-border-control);border-radius:4px;padding:2px 6px;white-space:nowrap;flex:none}
+
+/* ---- info affordance. Anchored to a label, never clipped by the card ---- */
+.info{appearance:none;flex:none;width:15px;height:15px;padding:0;border-radius:50%;cursor:help;
+  border:1px solid var(--color-border-control);background:transparent;color:var(--color-text-secondary);
+  font:600 9.5px/1 Inter,sans-serif;display:grid;place-items:center;transition:color .12s,border-color .12s}
+.info:hover,.info[aria-expanded="true"]{color:#fff;border-color:var(--color-info);background:rgba(43,164,255,.14)}
+.grp-h .info{font-size:9px;letter-spacing:0;text-transform:none}
+.pop{position:fixed;z-index:200;width:300px;max-width:calc(100vw - 24px);display:none;
+  background:var(--color-surface-raised);border:1px solid var(--color-border-hairline-strong);border-radius:8px;
+  box-shadow:var(--shadow-raised-lip),var(--shadow-raised-high);padding:11px 13px;color:var(--color-text-secondary)}
+.pop[data-open="true"]{display:block}
+.pop h5{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-help)}
+.pop p{margin:0 0 7px;font-size:11.5px;line-height:1.55}
+.pop p:last-child{margin-bottom:0}
+.pop strong{color:var(--color-text-primary);font-weight:600}
+.pop em{color:var(--color-text-muted)}
+.pop code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:var(--color-info)}
+
+/* ---- the transform row: value is ALWAYS on screen, editor always reachable ---- */
+.xform{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:14px;
+  background:var(--color-surface-control);border:1px solid var(--color-border-hairline);border-radius:7px;padding:9px 11px;margin-top:4px;
+  transition:opacity .16s ease,border-color .16s ease}
+/* a switch changes how bright the thing it governs is — it never removes it,
+   and the editor stays clickable so the feature is always discoverable */
+.xform.off{background:transparent;border-color:var(--color-border-hairline)}
+.xform.off .xform-v{color:var(--color-text-inactive)}
+.xform.off .xform-v i{color:var(--color-text-help)}
+.xform-v{display:flex;flex-direction:column;gap:3px;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.xform-v span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xform-v i{font-style:normal;color:var(--color-text-help);display:inline-block;width:82px}
+.xform-empty{font-family:Inter,sans-serif;font-size:11.5px;color:var(--color-text-help)}
+.xform-actions{display:flex;align-items:center;gap:7px}
+
+/* ============================================================
+   VARIANT: BASELINE — faithful rebuild of what ships today,
+   kept purely as the before-picture.
+   ============================================================ */
+[data-v="base"] .modal{background:var(--color-bg-primary);border:1px solid #000;box-shadow:0 0 0 1px #000,0 10px 40px rgba(0,0,0,.6)}
+[data-v="base"] .nav{background:var(--color-bg-tertiary);border-radius:4px;margin:4px 0 4px 4px}
+[data-v="base"] .nav-i{background:var(--gray-600);border-radius:3px;margin-bottom:4px;color:var(--color-text-secondary)}
+[data-v="base"] .nav-i[aria-current="true"]{background:var(--gray-500);color:#fff}
+[data-v="base"] .scroll{background:var(--color-bg-primary);gap:4px;padding:4px;mask-image:none;-webkit-mask-image:none}
+[data-v="base"] .sec{background:var(--color-bg-secondary);border:1px solid var(--color-border-muted);border-radius:4px;padding:8px 10px}
+/* the core fault, made explicit: the heading is a LIGHTER full-bleed bar */
+[data-v="base"] .sec-head{background:var(--color-bg-tertiary);border-radius:4px;min-height:0;padding:4px;margin:0 0 6px;cursor:default}
+[data-v="base"] .sec-title{font-size:14px}
+[data-v="base"] .chev,[data-v="base"] .sec-sum{display:none}
+[data-v="base"] .sec-body{padding:0}
+[data-v="base"] .grp-h{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--color-text-primary);padding:4px 0}
+[data-v="base"] .grp-nest{padding-left:0;border-left:0;margin-left:0}
+[data-v="base"] .grp-nest .row-lab::before{content:"\2514 ";color:var(--gray-500)}
+[data-v="base"] .row{grid-template-columns:1fr auto;padding:4px 0;column-gap:12px}
+[data-v="base"] .row-help{display:none}
+[data-v="base"] .row.primary{min-height:0;padding:4px 0;margin-bottom:0;border-bottom:0}
+[data-v="base"] .row.primary .row-lab{font-size:12px;font-weight:400;color:var(--color-text-secondary)}
+[data-v="base"] .xform{background:transparent;border:0;border-radius:0;padding:2px 0}
+[data-v="base"] .xform-v{display:none}
+
+/* ============================================================
+   VARIANT: ELEVATED — the direction.
+   ============================================================ */
+[data-v="elev"] .modal{background:var(--color-surface-ground);border:1px solid var(--color-border-hairline);box-shadow:var(--shadow-raised-high)}
+[data-v="elev"] .titlebar{border-bottom:1px solid var(--color-border-hairline)}
+[data-v="elev"] .nav{padding:12px 10px}
+[data-v="elev"] .nav-i[aria-current="true"]{background:var(--color-surface-control);box-shadow:var(--shadow-raised-lip),var(--shadow-raised-low)}
+[data-v="elev"] .sec{background:var(--color-surface-raised);border:1px solid var(--color-border-hairline);border-radius:8px;box-shadow:var(--shadow-raised-lip),var(--shadow-raised-low)}
+[data-v="elev"] details[open] > .sec-head{border-bottom:1px solid var(--color-border-hairline)}
+[data-v="elev"] .sec-head:hover{background:rgba(255,255,255,.022)}
+[data-v="elev"] .footer{border-top:1px solid var(--color-border-hairline)}
+/* off-state only — must not out-specify .toggle[aria-checked="true"] */
+[data-v="elev"] .toggle[aria-checked="false"]{background:#2b2b2b}
+
+/* ============================================================
+   TRANSFORM EDITOR — the same design language, second surface.
+   Mirrors src/components/mocap-setup/transform-editor.tsx.
+   ============================================================ */
+.xf-scrim{position:fixed;inset:0;background:rgba(6,6,6,.72);z-index:100;display:none}
+.xf-scrim[data-open="true"]{display:block}
+.xf-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:101;
+  width:min(1000px,94vw);height:min(600px,85vh);display:none;flex-direction:column;
+  background:var(--color-surface-ground);border:1px solid var(--color-border-hairline);border-radius:9px;box-shadow:var(--shadow-raised-high);overflow:hidden}
+.xf-modal[data-open="true"]{display:flex}
+.xf-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) 1px minmax(0,1fr)}
+.xf-view{min-width:0;position:relative;background:radial-gradient(120% 90% at 50% 12%,#17191c 0%,#101113 62%,#0c0d0e 100%);
+  display:grid;place-items:center;padding:12px}
+.xf-view svg{width:100%;height:100%;max-height:100%}
+.xf-divider{background:var(--color-border-hairline)}
+.xf-side{min-width:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.xf-side::-webkit-scrollbar{width:8px}
+.xf-side::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:4px}
+.xf-card{background:var(--color-surface-raised);border:1px solid var(--color-border-hairline);border-radius:7px;box-shadow:var(--shadow-raised-lip),var(--shadow-raised-low);padding:9px 11px 11px}
+.xf-card h4{margin:0 0 7px;font-size:var(--t-group);font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--color-text-help)}
+.xf-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.xf-fields.q{grid-template-columns:repeat(4,minmax(0,1fr))}
+.xf-f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.xf-f label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-help)}
+.xf-f input{width:100%;background:var(--color-surface-control);border:1px solid var(--color-border-control);border-radius:5px;
+  color:var(--color-text-primary);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;
+  font-variant-numeric:tabular-nums;padding:5px 7px;text-align:right}
+.xf-f input:hover{border-color:var(--gray-500)}
+.xf-f.ax label{color:var(--axis-x)} .xf-f.ay label{color:var(--axis-y)} .xf-f.az label{color:var(--axis-z)}
+.xf-foot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 14px;border-top:1px solid var(--color-border-hairline)}
+.xf-hint{position:absolute;left:14px;bottom:12px;font-size:10.5px;color:var(--color-text-help);letter-spacing:.02em}
+.xf-legend{position:absolute;right:14px;bottom:12px;display:flex;gap:10px;font-size:10px;font-variant-numeric:tabular-nums}
+.xf-legend b{font-weight:600}
+</style>
+</head>
+<body data-v="elev">
+
+<div class="study-bar">
+  <b>Mocap processing panel —</b>
+  <button class="study-tab" data-set="base">Baseline (ships today)</button>
+  <button class="study-tab" data-set="elev" aria-selected="true">Elevated cards (the direction)</button>
+</div>
+<p class="study-note" id="note"></p>
+
+<div class="modal">
+  <div class="titlebar">
+    <span class="t">Mocap processing</span><span class="spacer"></span><span class="dot"></span>
+  </div>
+
+  <div class="body">
+    <nav class="nav">
+      <div class="nav-h">Mocap setup</div>
+      <button class="nav-i" data-goto="s-dir">Recording directory</button>
+      <button class="nav-i" data-goto="s-det" aria-current="true">Detectors</button>
+      <button class="nav-i" data-goto="s-vol">Capture volume</button>
+      <button class="nav-i" data-goto="s-tri">Triangulation</button>
+      <button class="nav-i" data-goto="s-post">Post-processing</button>
+      <button class="nav-i" data-goto="s-exp">Exports</button>
+    </nav>
+
+    <div class="scroll" id="scroll">
+
+      <!-- ================= RECORDING DIRECTORY ================= -->
+      <details class="sec" id="s-dir">
+        <summary class="sec-head">
+          <span class="chev"></span><span class="sec-title">Recording directory</span>
+          <span class="sec-sum">
+            <span class="chip ok">3 cameras · 412 frames</span>
+            <span class="chip mono">…/freemocap_test_data_vid_switch</span>
+          </span>
+        </summary>
+        <div class="sec-body">
+          <div class="row"><div class="row-l"><span class="row-lab">Folder</span>
+            <span class="row-help">Recording to process. Must contain synchronised videos.</span></div>
+            <div class="row-c"><button class="btn">Choose…</button></div></div>
+        </div>
+      </details>
+
+      <!-- ================= DETECTORS ================= -->
+      <details class="sec" id="s-det" open data-detector="rtmpose">
+        <summary class="sec-head">
+          <span class="chev"></span><span class="sec-title">Detectors</span>
+          <span class="sec-sum"><span class="chip" data-sum="det"></span><span class="chip dim" data-sum="board"></span></span>
+        </summary>
+        <div class="sec-body">
+
+          <!-- promoted: the decision that reframes every row beneath it -->
+          <div class="row primary">
+            <div class="row-l">
+              <span class="row-lab">Skeleton detector<button class="info" data-info="detector" aria-label="About the skeleton detector">i</button></span>
+              <span class="row-help" data-help="detector"></span>
+            </div>
+            <div class="row-c">
+              <span class="sel"><select id="detector" aria-label="Skeleton detector">
+                <option value="rtmpose" selected>RTMPose</option>
+                <option value="mediapipe">MediaPipe Holistic</option>
+              </select></span>
+            </div>
+          </div>
+
+          <!-- RTMPose parameters -->
+          <div class="row" data-when="rtmpose">
+            <div class="row-l"><span class="row-lab">Model</span>
+              <span class="row-help">Higher resolution costs runtime; Fast trades accuracy for speed.</span></div>
+            <div class="row-c"><span class="seg" data-seg="model">
+              <button value="Default">Default</button><button value="High Res" aria-pressed="true">High Res</button><button value="Fast">Fast</button>
+            </span></div>
+          </div>
+          <div class="row" data-when="rtmpose">
+            <div class="row-l"><span class="row-lab">Confidence threshold<button class="info" data-info="conf" aria-label="About the confidence threshold">i</button></span>
+              <span class="row-help">Keypoints below this are discarded before triangulation.</span></div>
+            <div class="row-c"><span class="step" data-value="0.004" data-step="0.001" data-min="0" data-max="1" data-dec="3" data-key="conf"></span></div>
+          </div>
+
+          <!-- MediaPipe parameters -->
+          <div class="row hidden" data-when="mediapipe">
+            <div class="row-l"><span class="row-lab">Pose model size</span>
+              <span class="row-help">Heavy is most accurate; Lite is fastest on CPU.</span></div>
+            <div class="row-c"><span class="seg" data-seg="complexity">
+              <button value="Heavy" aria-pressed="true">Heavy</button><button value="Full">Full</button><button value="Lite">Lite</button>
+            </span></div>
+          </div>
+          <div class="row hidden" data-when="mediapipe">
+            <div class="row-l"><span class="row-lab">Detection confidence</span></div>
+            <div class="row-c"><span class="step" data-value="0.5" data-step="0.05" data-min="0" data-max="1" data-dec="2" data-key="mpDet"></span></div>
+          </div>
+          <div class="row hidden" data-when="mediapipe">
+            <div class="row-l"><span class="row-lab">Presence confidence</span></div>
+            <div class="row-c"><span class="step" data-value="0.5" data-step="0.05" data-min="0" data-max="1" data-dec="2" data-key="mpPre"></span></div>
+          </div>
+          <div class="row hidden" data-when="mediapipe">
+            <div class="row-l"><span class="row-lab">Tracking confidence</span></div>
+            <div class="row-c"><span class="step" data-value="0.5" data-step="0.05" data-min="0" data-max="1" data-dec="2" data-key="mpTrk"></span></div>
+          </div>
+
+          <div class="grp">
+            <div class="grp-h">Board</div>
+            <div class="row">
+              <div class="row-l"><span class="row-lab">Detect and reconstruct Charuco board<button class="info" data-info="charuco" aria-label="About Charuco board detection">i</button></span>
+                <span class="row-help">Layout and square size come from Charuco Board Settings.</span></div>
+              <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="true" data-toggle="charuco"></span></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ================= CAPTURE VOLUME ================= -->
+      <details class="sec" id="s-vol" open>
+        <summary class="sec-head">
+          <span class="chev"></span><span class="sec-title">Capture volume</span>
+          <span class="sec-sum">
+            <span class="chip ok">3 cameras</span>
+            <span class="chip mono">freemocap_test_data_vid_switch_camera_calibration.toml</span>
+          </span>
+        </summary>
+        <div class="sec-body">
+          <div class="row primary">
+            <div class="row-l"><span class="row-lab">Camera geometry<button class="info" data-info="geometry" aria-label="About camera geometry">i</button></span>
+              <span class="row-help">Loaded from calibration TOML. Everything below is expressed in this volume.</span></div>
+            <div class="row-c"><button class="btn">Change calibration…</button></div>
+          </div>
+
+          <div class="grp">
+            <div class="grp-h">Reference frame<button class="info" data-info="refframe" aria-label="About the reference frame">i</button></div>
+            <div class="row">
+              <div class="row-l"><span class="row-lab">Ground plane<button class="info" data-info="ground" aria-label="About the ground plane">i</button></span>
+                <span class="row-help">Read from the calibration file; takes precedence when present.</span></div>
+              <div class="row-c"><span class="pill">Calibration</span><span class="chip">none saved</span></div>
+            </div>
+            <div class="row">
+              <div class="row-l"><span class="row-lab">Align to person<button class="info" data-info="align" aria-label="About aligning to the person">i</button></span>
+                <span class="row-help">Estimates upright from the body and the floor from foot contacts.</span></div>
+              <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="true" data-toggle="align"></span></div>
+            </div>
+
+            <!-- The custom transform is NOT gated behind a switch. Its value and
+                 its editor are on screen unconditionally; the switch only decides
+                 whether the defined transform is applied. -->
+            <div class="row">
+              <div class="row-l"><span class="row-lab">Custom transformation<button class="info" data-info="xform" aria-label="About the custom transformation">i</button></span>
+                <span class="row-help">An additional rigid transform applied after alignment.</span></div>
+              <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="false" data-toggle="xform"></span></div>
+            </div>
+            <div class="xform">
+              <div class="xform-v" id="xformValue"></div>
+              <div class="xform-actions">
+                <button class="btn" id="xformReset">Reset</button>
+                <button class="btn" id="xformEdit">Define transformation…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ================= TRIANGULATION ================= -->
+      <details class="sec" id="s-tri" open>
+        <summary class="sec-head">
+          <span class="chev"></span><span class="sec-title">Triangulation</span>
+          <span class="sec-sum"><span class="chip" data-sum="tri"></span></span>
+        </summary>
+        <div class="sec-body">
+          <div class="row">
+            <div class="row-l"><span class="row-lab">Automatically match cameras to calibration<button class="info" data-info="match" aria-label="About camera matching">i</button></span></div>
+            <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="true" data-toggle="match"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-l"><span class="row-lab">Continue when camera matching fitness is poor</span></div>
+            <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="true" data-toggle="poor"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-l"><span class="row-lab">Use outlier rejection<button class="info" data-info="outlier" aria-label="About outlier rejection">i</button></span>
+              <span class="row-help">Drops the worst-fitting camera rays until the reprojection target is met.</span></div>
+            <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="true" data-toggle="outlier"></span></div>
+          </div>
+          <div class="grp-nest">
+            <div class="row" data-gated-by="outlier"><div class="row-l"><span class="row-lab">Minimum cameras for triangulation</span></div>
+              <div class="row-c"><span class="step" data-value="2" data-step="1" data-min="2" data-max="100" data-dec="0" data-key="minCam"></span></div></div>
+            <div class="row" data-gated-by="outlier"><div class="row-l"><span class="row-lab">Maximum cameras to drop</span></div>
+              <div class="row-c"><span class="step" data-value="1" data-step="1" data-min="0" data-max="100" data-dec="0" data-key="maxDrop"></span></div></div>
+            <div class="row" data-gated-by="outlier"><div class="row-l"><span class="row-lab">Target reprojection error<button class="info" data-info="reproj" aria-label="About target reprojection error">i</button></span></div>
+              <div class="row-c"><span class="step" data-value="0.02" data-step="0.01" data-min="0.001" data-max="1" data-dec="2" data-key="reproj"></span></div></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ================= POST-PROCESSING ================= -->
+      <details class="sec" id="s-post">
+        <summary class="sec-head">
+          <span class="chev"></span><span class="sec-title">Post-processing</span>
+          <span class="sec-sum"><span class="chip" data-sum="post"></span></span>
+        </summary>
+        <div class="sec-body">
+          <div class="prose">Butterworth low-pass filter applied to the reconstructed 3D trajectories.</div>
+          <div class="row"><div class="row-l"><span class="row-lab">Sampling rate</span></div>
+            <div class="row-c"><span class="step" data-value="30" data-step="1" data-min="1" data-max="1200" data-dec="0" data-unit=" Hz" data-key="rate"></span></div></div>
+          <div class="row"><div class="row-l"><span class="row-lab">Cutoff</span></div>
+            <div class="row-c"><span class="step" data-value="7" data-step="1" data-min="0" data-max="600" data-dec="0" data-unit=" Hz" data-key="cutoff"></span></div></div>
+          <div class="row"><div class="row-l"><span class="row-lab">Order</span></div>
+            <div class="row-c"><span class="step" data-value="4" data-step="1" data-min="1" data-max="100" data-dec="0" data-key="order"></span></div></div>
+        </div>
+      </details>
+
+      <!-- ================= EXPORTS ================= -->
+      <details class="sec" id="s-exp">
+        <summary class="sec-head">
+          <span class="chev"></span><span class="sec-title">Exports</span>
+          <span class="sec-sum"><span class="chip dim" data-sum="exp"></span></span>
+        </summary>
+        <div class="sec-body">
+          <div class="row"><div class="row-l"><span class="row-lab">Generate Blender scene</span></div>
+            <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="true" data-toggle="blender"></span></div></div>
+          <div class="row"><div class="row-l"><span class="row-lab">Write CSV trajectories</span></div>
+            <div class="row-c"><span class="toggle" role="switch" tabindex="0" aria-checked="true" data-toggle="csv"></span></div></div>
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-row">
+      <button class="btn ghost">Cancel</button>
+      <button class="btn accent">Process Mocap</button>
+    </div>
+    <div class="footer-note">Processing may take hours depending on your system — ideally avoid using your computer.</div>
+  </footer>
+</div>
+
+<!-- ============ TRANSFORM EDITOR (second surface, same language) ============ -->
+<div class="xf-scrim" id="xfScrim"></div>
+<div class="xf-modal" id="xfModal" role="dialog" aria-modal="true" aria-label="Custom reference frame">
+  <div class="titlebar" style="border-bottom:1px solid var(--color-border-hairline)">
+    <span class="t">Custom reference frame</span><span class="spacer"></span><span class="dot"></span>
+  </div>
+  <div class="xf-body">
+    <div class="xf-view">
+      <svg id="gizmo" viewBox="0 0 420 320" aria-label="Reference frame preview"></svg>
+      <span class="xf-hint">Preview — drag values to rotate the frame</span>
+      <span class="xf-legend">
+        <span style="color:var(--axis-x)"><b>X</b></span>
+        <span style="color:var(--axis-y)"><b>Y</b></span>
+        <span style="color:var(--axis-z)"><b>Z</b></span>
+      </span>
+    </div>
+    <div class="xf-divider"></div>
+    <div class="xf-side">
+      <div class="xf-card">
+        <h4>Position · mm</h4>
+        <div class="xf-fields">
+          <div class="xf-f ax"><label>X</label><input data-f="tx" value="0"></div>
+          <div class="xf-f ay"><label>Y</label><input data-f="ty" value="0"></div>
+          <div class="xf-f az"><label>Z</label><input data-f="tz" value="0"></div>
+        </div>
+      </div>
+      <div class="xf-card">
+        <h4>Euler · XYZ · degrees</h4>
+        <div class="xf-fields">
+          <div class="xf-f ax"><label>rX</label><input data-f="rx" value="0"></div>
+          <div class="xf-f ay"><label>rY</label><input data-f="ry" value="0"></div>
+          <div class="xf-f az"><label>rZ</label><input data-f="rz" value="0"></div>
+        </div>
+      </div>
+      <div class="xf-card">
+        <h4>Quaternion · WXYZ</h4>
+        <div class="xf-fields q">
+          <div class="xf-f"><label>W</label><input data-q="w" value="1.000" readonly></div>
+          <div class="xf-f ax"><label>X</label><input data-q="x" value="0.000" readonly></div>
+          <div class="xf-f ay"><label>Y</label><input data-q="y" value="0.000" readonly></div>
+          <div class="xf-f az"><label>Z</label><input data-q="z" value="0.000" readonly></div>
+        </div>
+      </div>
+      <div class="xf-card">
+        <h4>Transform · 4×4</h4>
+        <div class="xf-fields" style="grid-template-columns:repeat(4,minmax(0,1fr))" id="mat4"></div>
+      </div>
+    </div>
+  </div>
+  <div class="xf-foot">
+    <button class="btn" id="xfIdentity">Reset to identity</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost" id="xfCancel">Cancel</button>
+      <button class="btn accent" id="xfAccept">Accept transformation</button>
+    </div>
+  </div>
+</div>
+
+<div class="pop" id="pop" role="tooltip"></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+
+/* ============================================================
+   INFO CONTENT — carried over from the AnchoredInfo calls in
+   mocap-detector-settings.tsx and reference-frame-settings.tsx.
+   A setting this consequential cannot ship without its explanation.
+   ============================================================ */
+const INFO={
+  detector:['Skeleton detector',
+    `<p><strong>RTMPose</strong> — 133 keypoints (body, hands, face) via YOLOX person detection followed by RTMPose estimation. Recommended for best accuracy.</p>
+     <p><strong>MediaPipe Holistic</strong> — body (33) + hands (21 each) + face (60) in a single pass. Faster on CPU, fewer total keypoints.</p>
+     <p><em>Changing the detector changes which parameters below apply.</em></p>`],
+  conf:['Confidence threshold',
+    `<p>Keypoints detected below this confidence are <strong>discarded before triangulation</strong>, so they never contribute to a 3D estimate.</p>
+     <p><em>Raise it to reject noisy detections; lower it to keep sparse ones and rely on outlier rejection instead.</em></p>`],
+  charuco:['Charuco board detection',
+    `<p><strong>Board layout and square size</strong> come from Charuco Board Settings.</p>
+     <p><strong>AUTO</strong> selects the layout. You must still enter the <em>measured square size.</em></p>`],
+  geometry:['Camera geometry',
+    `<p>The <strong>calibration TOML</strong> supplies each camera's intrinsics and its pose in the capture volume.</p>
+     <p>Every coordinate produced downstream — landmarks, centre of mass, the ground plane — is expressed in <strong>this volume's frame</strong>.</p>`],
+  refframe:['Define reference frame',
+    `<p><strong>Calibration status</strong> is read from the selected calibration TOML.</p>
+     <p>A saved <strong>ground plane</strong> takes precedence. Without one, <strong>Align to person</strong> is recommended.</p>
+     <p>An additional transformation comes <em>after</em> alignment.</p>`],
+  ground:['Ground plane',
+    `<p>Read from the calibration TOML. When one is <strong>saved</strong>, it is used automatically and takes precedence over person alignment.</p>
+     <p>When none is saved, the capture volume keeps the calibration's own reference frame unless you align to the person.</p>`],
+  align:['Align to person',
+    `<p><strong>Saved ground plane:</strong> used automatically when present in the calibration TOML. Person alignment is then unnecessary and disabled.</p>
+     <p><strong>No saved ground plane:</strong> person alignment is on by default. It estimates upright direction from the body, including the head and face, and uses reliable foot contacts to estimate the floor.</p>
+     <p><em>Turn it off to retain the calibration's reference frame.</em></p>`],
+  xform:['Custom transformation',
+    `<p>Define an <strong>additional rigid transformation</strong> applied after alignment.</p>
+     <p><strong>Accept transformation</strong> keeps your definition in this panel. Switching this option off retains it for later editing.</p>
+     <p><em>Preview only:</em> applying the transformation to processing is not connected yet.</p>`],
+  match:['Camera matching',
+    `<p>Matches the cameras in this recording to the cameras in the calibration file, so rays are triangulated with the right intrinsics and pose.</p>
+     <p><em>Turn it off only when the recording's camera order is already known to match the calibration.</em></p>`],
+  outlier:['Outlier rejection',
+    `<p>Drops the worst-fitting camera rays from a keypoint's triangulation until the <strong>target reprojection error</strong> is met.</p>
+     <p>It will never drop below <strong>minimum cameras</strong>, nor drop more than <strong>maximum cameras to drop</strong>.</p>`],
+  reproj:['Target reprojection error',
+    `<p>The error budget, in pixels, that outlier rejection tries to reach by dropping rays.</p>
+     <p><em>Tighter targets reject more aggressively and can leave more gaps; looser targets keep more data and more noise.</em></p>`],
+};
+
+/* popover: fixed-positioned and appended at body level, so a card's
+   overflow:hidden can never clip it */
+const pop=$('#pop'); let popAnchor=null;
+function showInfo(btn){
+  const [title,html]=INFO[btn.dataset.info];
+  pop.innerHTML=`<h5>${title}</h5>${html}`;
+  pop.dataset.open='true'; popAnchor=btn; btn.setAttribute('aria-expanded','true');
+  const b=btn.getBoundingClientRect(), r=pop.getBoundingClientRect();
+  let left=b.right+10, top=b.top+b.height/2-r.height/2;
+  if(left+r.width>innerWidth-10) left=b.left-r.width-10;
+  if(left<10) left=10;
+  top=Math.max(10,Math.min(top,innerHeight-r.height-10));
+  pop.style.left=left+'px'; pop.style.top=top+'px';
+}
+function hideInfo(){
+  pop.dataset.open='false';
+  popAnchor?.setAttribute('aria-expanded','false'); popAnchor=null;
+}
+$$('.info').forEach(b=>{
+  b.type='button';
+  b.onmouseenter=()=>showInfo(b); b.onmouseleave=hideInfo;
+  b.onfocus=()=>showInfo(b); b.onblur=hideInfo;
+  b.onclick=e=>{e.preventDefault(); e.stopPropagation(); popAnchor===b?hideInfo():showInfo(b);};
+});
+$('#scroll').addEventListener('scroll',hideInfo);
+addEventListener('pointerdown',e=>{if(!e.target.closest('.info')&&!e.target.closest('.pop')) hideInfo();});
+addEventListener('keydown',e=>{if(e.key==='Escape') hideInfo();});
+
+/* ---------------- steppers ---------------- */
+function stepValue(el){return parseFloat(el.dataset.value)}
+function paintStep(el){
+  const dec=+el.dataset.dec, unit=el.dataset.unit||'';
+  el.querySelector('.v').textContent=stepValue(el).toFixed(dec)+unit;
+}
+$$('.step').forEach(el=>{
+  el.innerHTML='<button type="button" aria-label="decrease">−</button><span class="v"></span><button type="button" aria-label="increase">+</button>';
+  const bump=d=>{
+    const step=+el.dataset.step, min=+el.dataset.min, max=+el.dataset.max, dec=+el.dataset.dec;
+    el.dataset.value=Math.min(max,Math.max(min,+(stepValue(el)+d*step).toFixed(dec+2))).toFixed(dec+2);
+    paintStep(el); render();
+  };
+  el.children[0].onclick=()=>bump(-1); el.children[2].onclick=()=>bump(1);
+  paintStep(el);
+});
+
+/* ---------------- toggles ---------------- */
+const T=k=>$(`[data-toggle="${k}"]`).getAttribute('aria-checked')==='true';
+$$('[data-toggle]').forEach(t=>{
+  const flip=()=>{t.setAttribute('aria-checked',String(!(t.getAttribute('aria-checked')==='true'))); render();};
+  t.onclick=flip;
+  t.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();flip();}};
+});
+
+/* ---------------- segmented ---------------- */
+const SEG=k=>$(`[data-seg="${k}"] [aria-pressed="true"]`).value;
+$$('[data-seg]').forEach(g=>$$('button',g).forEach(b=>b.onclick=()=>{
+  $$('button',g).forEach(x=>x.removeAttribute('aria-pressed')); b.setAttribute('aria-pressed','true'); render();}));
+
+/* ---------------- detector switching ---------------- */
+const DETECTOR_HELP={
+  rtmpose:'133 keypoints (body, hands, face) via YOLOX person detection + RTMPose estimation. Recommended for best accuracy.',
+  mediapipe:'Body (33) + hands (21 each) + face (60) in a single pass. Faster on CPU, fewer total keypoints than RTMPose.'
+};
+$('#detector').onchange=render;
+
+/* ---------------- transform state ---------------- */
+const XF={tx:0,ty:0,tz:0,rx:0,ry:0,rz:0};
+const isIdentity=()=>Object.values(XF).every(v=>Math.abs(v)<1e-9);
+const D2R=Math.PI/180;
+function quat(){ // intrinsic XYZ -> wxyz
+  const cx=Math.cos(XF.rx*D2R/2),sx=Math.sin(XF.rx*D2R/2),
+        cy=Math.cos(XF.ry*D2R/2),sy=Math.sin(XF.ry*D2R/2),
+        cz=Math.cos(XF.rz*D2R/2),sz=Math.sin(XF.rz*D2R/2);
+  return [cx*cy*cz-sx*sy*sz, sx*cy*cz+cx*sy*sz, cx*sy*cz-sx*cy*sz, cx*cy*sz+sx*sy*cz];
+}
+function rotMatrix(){
+  const [w,x,y,z]=quat();
+  return [[1-2*(y*y+z*z),2*(x*y-z*w),2*(x*z+y*w)],
+          [2*(x*y+z*w),1-2*(x*x+z*z),2*(y*z-x*w)],
+          [2*(x*z-y*w),2*(y*z+x*w),1-2*(x*x+y*y)]];
+}
+const f3=n=>(Math.abs(n)<1e-9?0:n).toFixed(3);
+
+function paintTransformRow(){
+  const box=$('#xformValue'), on=T('xform');
+  if(isIdentity()){
+    box.innerHTML='<span class="xform-empty">Identity — no additional transformation defined</span>';
+  }else{
+    const q=quat();
+    box.innerHTML=`<span><i>q (wxyz)</i>[${q.map(f3).join(', ')}]</span>`+
+                  `<span><i>t (xyz) mm</i>[${[XF.tx,XF.ty,XF.tz].map(f3).join(', ')}]</span>`;
+  }
+  // the switch drives how bright the thing it governs is
+  $('.xform').classList.toggle('off',!on);
+  // nothing to reset means no Reset button — never a greyed-out ghost of one
+  $('#xformReset').hidden=isIdentity();
+  $('#xformEdit').textContent=isIdentity()?'Define transformation…':'Edit transformation…';
+}
+
+/* ---------------- editor ---------------- */
+function paintEditor(){
+  $$('[data-f]').forEach(i=>{if(document.activeElement!==i) i.value=XF[i.dataset.f];});
+  const q=quat(); ['w','x','y','z'].forEach((k,i)=>$(`[data-q="${k}"]`).value=f3(q[i]));
+  const R=rotMatrix(), t=[XF.tx,XF.ty,XF.tz];
+  const rows=[[...R[0],t[0]],[...R[1],t[1]],[...R[2],t[2]],[0,0,0,1]];
+  $('#mat4').innerHTML=rows.flat().map(v=>
+    `<div class="xf-f"><input value="${f3(v)}" readonly></div>`).join('');
+  paintGizmo();
+}
+function paintGizmo(){
+  const R=rotMatrix(), cx=210, cy=176, L=92;
+  // simple isometric projection
+  const proj=(v)=>[cx + (v[0]-v[2])*0.866*1.0 + XF.tx*0.06,
+                   cy - v[1] + (v[0]+v[2])*0.5*0.55 - XF.ty*0.06];
+  const axis=i=>proj([R[0][i]*L,R[1][i]*L,R[2][i]*L]);
+  const grid=[];
+  for(let i=-4;i<=4;i++){
+    const a=proj([i*26,-46,-104]), b=proj([i*26,-46,104]);
+    const c=proj([-104,-46,i*26]), d=proj([104,-46,i*26]);
+    const w=i===0?.16:.075;
+    grid.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="rgba(255,255,255,${w})"/>`);
+    grid.push(`<line x1="${c[0]}" y1="${c[1]}" x2="${d[0]}" y2="${d[1]}" stroke="rgba(255,255,255,${w})"/>`);
+  }
+  const o=proj([0,0,0]);
+  const ax=[['--axis-x','X'],['--axis-y','Y'],['--axis-z','Z']].map(([tok,lab],i)=>{
+    const p=axis(i), col=getComputedStyle(document.documentElement).getPropertyValue(tok).trim();
+    return `<line x1="${o[0]}" y1="${o[1]}" x2="${p[0]}" y2="${p[1]}" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/>`+
+           `<circle cx="${p[0]}" cy="${p[1]}" r="3.4" fill="${col}"/>`+
+           `<text x="${p[0]+8}" y="${p[1]+4}" fill="${col}" font-size="11" font-family="Inter,sans-serif" font-weight="600">${lab}</text>`;
+  }).join('');
+  $('#gizmo').innerHTML=grid.join('')+
+    `<circle cx="${o[0]}" cy="${o[1]}" r="2.6" fill="rgba(255,255,255,.5)"/>`+ax;
+}
+$$('[data-f]').forEach(i=>i.oninput=()=>{
+  const v=parseFloat(i.value); if(Number.isFinite(v)){XF[i.dataset.f]=v; paintEditor();}});
+
+function openEditor(on){
+  $('#xfScrim').dataset.open=String(on); $('#xfModal').dataset.open=String(on);
+  if(on) paintEditor();
+}
+$('#xformEdit').onclick=()=>openEditor(true);
+$('#xfCancel').onclick=$('#xfScrim').onclick=()=>openEditor(false);
+$('#xfIdentity').onclick=()=>{Object.keys(XF).forEach(k=>XF[k]=0); paintEditor();};
+$('#xfAccept').onclick=()=>{openEditor(false); if(!isIdentity()) $('[data-toggle="xform"]').setAttribute('aria-checked','true'); render();};
+$('#xformReset').onclick=()=>{Object.keys(XF).forEach(k=>XF[k]=0); $('[data-toggle="xform"]').setAttribute('aria-checked','false'); render();};
+addEventListener('keydown',e=>{if(e.key==='Escape') openEditor(false);});
+
+/* ---------------- render: gating, visibility, live summaries ---------------- */
+function render(){
+  const det=$('#detector').value;
+  $('#s-det').dataset.detector=det;
+  $('[data-help="detector"]').textContent=DETECTOR_HELP[det];
+  $$('[data-when]').forEach(r=>r.classList.toggle('hidden',r.dataset.when!==det));
+
+  // dependent rows stay VISIBLE and go quiet — they are never removed
+  $$('[data-gated-by]').forEach(r=>r.classList.toggle('off',!T(r.dataset.gatedBy)));
+
+  const val=k=>stepValue($(`[data-key="${k}"]`));
+  $('[data-sum="det"]').textContent = det==='rtmpose'
+    ? `RTMPose · ${SEG('model')} · ${val('conf').toFixed(3)}`
+    : `MediaPipe · ${SEG('complexity')} · ${val('mpDet').toFixed(2)}`;
+  // a summary states what IS. It never names something that is switched off,
+  // and an empty chip removes itself rather than reading "none" / "no board".
+  $('[data-sum="board"]').textContent = T('charuco') ? '+ Charuco' : '';
+  $('[data-sum="tri"]').textContent = T('outlier')
+    ? `outlier rejection · ≥${val('minCam').toFixed(0)} cams · ${val('reproj').toFixed(2)} px` : '';
+  $('[data-sum="post"]').textContent = `Butterworth · ${val('rate').toFixed(0)} Hz · order ${val('order').toFixed(0)}`;
+  $('[data-sum="exp"]').textContent = [T('blender')&&'Blender',T('csv')&&'CSV'].filter(Boolean).join(' · ');
+
+  paintTransformRow();
+}
+
+/* ---------------- navigation: click-to-scroll + scroll spy ---------------- */
+$$('.nav-i').forEach(b=>b.onclick=()=>{
+  const target=$('#'+b.dataset.goto);
+  target.open=true;
+  target.scrollIntoView({behavior:'smooth',block:'start'});
+  $$('.nav-i').forEach(x=>x.removeAttribute('aria-current'));
+  b.setAttribute('aria-current','true');
+});
+const spy=new IntersectionObserver(entries=>{
+  for(const e of entries){
+    if(!e.isIntersecting) continue;
+    $$('.nav-i').forEach(x=>{
+      if(x.dataset.goto===e.target.id) x.setAttribute('aria-current','true'); else x.removeAttribute('aria-current');
+    });
+  }
+},{root:$('#scroll'),rootMargin:'0px 0px -65% 0px',threshold:0});
+$$('.scroll > details').forEach(d=>spy.observe(d));
+
+/* ---------------- variant switch ---------------- */
+const NOTES={
+  base:"Baseline — what ships today. Six identical light bars, each LIGHTER than the panel it heads, so the heading reads as a button and the section reads as background. H2 and H3 differ by 2px and a background chip. Nothing aligns down a column, and the custom transformation is reachable only after flipping a switch that gives no clue it exists.",
+  elev:"The direction. Separation from a 1px top light-lip plus a shadow — never another shade of grey. Each section leads with its one promoted decision; dependent parameters stay on screen and go quiet rather than disappearing; the custom transformation shows its value and its editor unconditionally. Everything here is live: change the detector, work the steppers, open the transform editor."
+};
+$$('.study-tab[data-set]').forEach(t=>t.onclick=()=>{
+  document.body.dataset.v=t.dataset.set;
+  $$('.study-tab[data-set]').forEach(x=>x.setAttribute('aria-selected',String(x===t)));
+  $('#note').textContent=NOTES[t.dataset.set];
+  if(t.dataset.set==='base') $$('.scroll > details').forEach(d=>d.open=true);
+});
+$('#note').textContent=NOTES.elev;
+render();
+</script>
+</body>
+</html>

@@ -243,3 +243,38 @@ existing TriangulationResult, retaining camera contributions and reprojection er
 copy the solver model or call those weights detection confidence. Nine affected FreeMoCap tests
 pass, including exact-error/source-order checks on the renamed-video fixture. Automatic alignment
 and UI controls are still pending; no app-testing request yet.
+
+Collector checkpoint: installed Tracker/Forge updates verified. FreeMoCap's
+`core/reconstruction/alignment_evidence.py` now integrates quality-bearing tracker mapping with
+Forge's declared anatomical regions and contact landmarks. It hydrates only selected regions,
+builds rest-corrected BodyReferenceTracks and measured FootContactTracks, and retains missing
+orientations as missing samples. Thirteen affected reconstruction/evidence tests pass, including
+the shipped human model with head-only input and low-quality rejection. The collector accepts
+explicit timestamps and measured 3D quality; it does not infer confidence from solver weights.
+No dependency update is needed for this checkpoint. Remaining work: compute reconstruction-quality
+scores from observation/reprojection evidence, connect shared recording timing, invoke the policy,
+persist/apply the scene transform, wire UI/API settings, and add live collection/reset lifecycle.
+
+## Posthoc app checkpoint
+
+Posthoc is wired through bodyAlignment in the API and "Automatically align from body" in
+Mocap triangulation settings (enabled by default). It estimates before model reconstruction,
+applies one transform to all triangulated points and camera geometry, and stores the additional
+transform/outcome/anchor in the Parquet spatial-reference descriptor, not recording_info.json.
+Explicit ground calibration, disabled alignment and insufficient evidence preserve input geometry;
+single-camera planar data supplies no automatic alignment evidence. The calibration TOML is unchanged.
+
+RecordingGroupTiming now serves both processing and publication via SkellyCam timing resolution;
+absent timestamps still use frame numbers/FPS. Geometric quality currently requires two positive-depth
+views with low pixel reprojection error, using 1/(1+(error/5px)^2), then the mapping's weakest-source
+rule. It is NOT calibrated detector confidence. Detector confidence was already used to admit
+observations; cross-detector confidence calibration and ray-conditioning gates remain refinement work.
+The distance/speed thresholds are provisional and need recording QA.
+
+Backend tests cover transform/projection invariance, explicit/disabled preservation, bad geometry,
+head-only evidence, API configuration serialization, publication and reprocessing. TypeScript checks
+pass. First app QA: restart backend normally, process an unaligned-calibration recording with the
+toggle on/off, then verify a board-ground-aligned recording stays unchanged. Check both cameras and
+skeleton in saved playback. Head-only data should center on the head, not invent a physical floor.
+Realtime collection/freezing/reset and its UI control are NOT wired yet; verify posthoc before that
+next integration step. This checkpoint requires no subrepo dependency update.

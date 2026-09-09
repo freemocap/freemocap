@@ -1,5 +1,6 @@
 """Publish posthoc observations with SkellyCam timing into the canonical store."""
 
+from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
 from collections.abc import Iterator
 from dataclasses import replace
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
@@ -10,10 +11,6 @@ from freemocap.core.recording.result_processing.reconstruction_completion import
 )
 
 import pyarrow as pa
-from skellycam.core.timestamps.recording_timing_reader import (
-    TimingMethod,
-    TimingFileKind,
-)
 from freemocap.core.recording.result_processing.observation_inputs import (
     ObservationRecordingRequest,
     CameraRecordingDefinition,
@@ -25,12 +22,6 @@ from freemocap.core.recording.result_processing.observation_inputs import (
 )
 
 
-from skellycam.core.timestamps.recording_timing_reader import (
-    read_recording_timing,
-    resolve_camera_timing,
-    recorded_camera_timing_path,
-    recorded_multiframe_timing_path,
-)
 
 
 from freemocap.core.pipeline.posthoc.processing_request import (
@@ -74,25 +65,18 @@ def publish_posthoc_observations(
     Numerical completion records are published atomically with their validated output rows.
     """
     frame_numbers = request.group.frame_numbers
+    resolved_timing = RecordingGroupTiming.resolve(
+        recording_folder=Path(request.recording.full_recording_path),
+        videos=request.group.videos, frame_numbers=frame_numbers,
+    )
     channels: list[Channel] = []
     sources = {request.tracker.name: request.tracker.to_source()}
     references: dict[str, dict[str, object]] = {}
     camera_times: dict[str, tuple[float, ...]] = {}
     camera_channels: dict[str, CameraObservationChannels] = {}
     for source_index, (camera, video) in enumerate(request.group.videos.items()):
-        if frame_numbers != tuple(range(video.start_frame, video.end_frame)):
-            raise ValueError("Observations must cover the selected video frame range")
-        timeline = resolve_camera_timing(
-            path=recorded_camera_timing_path(
-                recording_folder=Path(request.recording.full_recording_path), camera_id=camera,
-            ),
-            frame_count=video.frame_count,
-            fps=video.fps,
-            offset_s=0.0,
-        )
-        camera_times[camera] = tuple(
-            timeline.timestamps_s[frame] for frame in frame_numbers
-        )
+        timeline = resolved_timing.cameras[camera]
+        camera_times[camera] = timeline.timestamps_s
         camera_definition = CameraRecordingDefinition(
             camera_id=camera,
             video_filename=video.file_path.name,
@@ -119,20 +103,8 @@ def publish_posthoc_observations(
         channels.extend(
             (camera_channels[camera].overlay, camera_channels[camera].capture)
         )
-    group_path = recorded_multiframe_timing_path(recording_folder=Path(request.recording.full_recording_path))
-    if group_path is not None:
-        group_timing = read_recording_timing(
-            path=group_path, kind=TimingFileKind.MULTIFRAME
-        )
-        synchronized = tuple(group_timing[frame] for frame in frame_numbers)
-        group_method = TimingMethod.RECORDED
-    else:
-        synchronized = tuple(
-            sum(times[index] for times in camera_times.values())
-            / len(request.group.videos)
-            for index in range(len(frame_numbers))
-        )
-        group_method = TimingMethod.MEAN_CAMERA_TIMES
+    synchronized = resolved_timing.synchronized.timestamps_s
+    group_method = resolved_timing.synchronized.method
     group_source = f"timing:{request.group.name}"
     sources[group_source] = GroupTimingDefinition(method=group_method).to_source()
     group_channel = create_timing_channel(

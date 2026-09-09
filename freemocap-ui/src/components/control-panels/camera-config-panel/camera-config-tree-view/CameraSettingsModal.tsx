@@ -1,3 +1,4 @@
+import useDraggableTooltips from '@/hooks/useDraggableTooltips';
 import React, {useEffect, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
 import {useAppDispatch, useAppSelector} from '@/store';
@@ -18,7 +19,6 @@ import NameDropdownSelector from '@/components/ui-components/NameDropdownSelecto
 import {Row} from '@/components/ui-components/Row';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import ValueSelector from '@/components/ui-components/ValueSelector';
-import useDraggableTooltips from '@/hooks/useDraggableTooltips';
 interface CameraSettingsModalProps {
     camera: Camera;
     initialPos: {top: number; left: number};
@@ -46,6 +46,7 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
     const allCameras = useAppSelector(selectCameras);
     const otherCamerasCount = allCameras.length - 1;
     const [pos, setPos] = useState(initialPos);
+    useDraggableTooltips();
     const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -178,3 +179,5 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
         document.body,
     );
 };
+
+

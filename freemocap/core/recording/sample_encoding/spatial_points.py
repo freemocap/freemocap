@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 import pyarrow as pa
 from pydantic import model_validator
+from skellyforge.core.biomechanics.reference_alignment import ReferenceAlignmentOutcome, ReferenceAlignmentResult
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
@@ -25,10 +26,26 @@ class SpatialBasis(StrEnum):
     BLENDER = "blender_x_right_y_forward_z_up"
 
 
+class ReferenceAlignmentDescriptor(Descriptor):
+    outcome: ReferenceAlignmentOutcome
+    rotation_wxyz: tuple[float, float, float, float]
+    translation_mm: tuple[float, float, float]
+    anchor_segment: str | None
+
+    @classmethod
+    def from_result(cls, *, result: ReferenceAlignmentResult) -> "ReferenceAlignmentDescriptor":
+        return cls(
+            outcome=result.outcome, rotation_wxyz=tuple(result.transform.rotation.as_array()),
+            translation_mm=tuple(result.transform.translation.array),
+            anchor_segment=result.body_evidence.anchor_segment if result.body_evidence else None,
+        )
+
+
 class SpatialReference(Descriptor):
     name: SpatialReferenceName
     basis: SpatialBasis = SpatialBasis.BLENDER
     units: SampleUnit
+    alignment: ReferenceAlignmentDescriptor | None = None
 
     @model_validator(mode="after")
     def validate_units(self) -> "SpatialReference":

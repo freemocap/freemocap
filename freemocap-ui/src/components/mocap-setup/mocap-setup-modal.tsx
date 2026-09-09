@@ -1,7 +1,7 @@
+import ModalWindowControls from '@/components/ui-components/ModalWindowControls';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
-import {PanelResizeHandles} from "@/components/ui-components/PanelResizeHandles";
 
 import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
@@ -122,7 +122,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
 
       {/* Modal */}
       <div ref={modalRef} role="dialog" aria-label="Mocap processing" aria-modal="true" className="mocap-settings-modal bg-primary border-1 border-black pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2">
-        <PanelResizeHandles panelRef={modalRef} />
+<ModalWindowControls title="Mocap processing"/>
+        
         {/* Row 1 */}
         <div className="inner-container-settings gap-1 flex flex-row flex-1 br-2">
           {/* Column 1 - Buttons */}

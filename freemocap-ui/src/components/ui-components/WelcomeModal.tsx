@@ -201,3 +201,4 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
         </div>
     );
 };
+

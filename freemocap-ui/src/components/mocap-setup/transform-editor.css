@@ -1,0 +1,114 @@
+.transform-editor-layout {
+    flex: 1;
+    min-height: 180px;
+}
+.transform-controls-panel { overflow: auto !important; padding-left: 8px; }
+.transform-panel-divider { width: 7px; margin: 0 4px; background: var(--color-bg-elevated); border-radius: 4px; }
+.transform-panel-divider:hover { background: var(--color-border-primary); }
+.transform-preview { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.transform-preview-canvas { flex: 1; min-height: 100px; }
+
+.transform-representation.main-segmented-control {
+    position: static;
+    max-width: 100%;
+}
+
+.transform-representation .segmented-control-button {
+    min-width: 0;
+    flex: 1;
+    padding: 2px;
+}
+
+.transform-field-section {
+    padding: 8px;
+}
+
+.transform-field-section h4 {
+    margin: 0 0 6px;
+}
+
+.transform-field-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.transform-field {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.transform-matrix {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    padding: 8px;
+    border-inline: 2px solid var(--color-text-muted);
+    border-radius: 6px;
+}
+
+@media (max-width: 620px) {
+    .transform-editor-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.transform-footer {
+    border-top: 1px solid var(--color-border-primary);
+    padding-top: 10px;
+    margin-top: 4px;
+}
+.transform-footer .transform-action {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-primary);
+    padding: 6px 12px;
+}
+.transform-footer .transform-action:hover {
+    border-color: var(--color-text-muted);
+}
+.transform-matrix .float-input:nth-child(4n) {
+    border-color: var(--color-text-muted);
+}
+
+.normalization-chip {
+    align-self: flex-start;
+    width: 190px;
+    max-width: 100%;
+    margin: 6px;
+    padding: 2px 6px;
+    background: var(--color-bg-elevated);
+    border-radius: 8px;
+}
+.formalism-cards { display: flex; flex-direction: column; gap: 6px; }
+.formalism-card { padding: 5px 8px; border: 1px solid var(--color-border-primary); }
+.formalism-card h4 { margin: 0; }
+.formalism-fields { display: grid; gap: 5px; }
+.formalism-card .transform-matrix { gap: 4px; padding: 5px; }
+.formalism-info.prompt-tooltip-container { position: relative; inset: auto; width: auto; max-width: 100%; transform: none; margin-bottom: 6px; }
+.formalism-rejected { border-color: var(--color-error, #ed5362); animation: formalism-reject 300ms ease-out; }
+@keyframes formalism-reject { from { background: #ed536233; } to { background: transparent; } }
+.position-units.transform-representation { margin-left: auto; margin-right: 6px; padding: 1px; }
+.position-units .segmented-control-button { flex: none; padding: 0 6px; }
+.position-units .segmented-control-button p { padding: 1px; }
+.formalism-card { padding: 3px 6px; border-color: color-mix(in srgb, var(--color-text-muted, #aaa) 20%, transparent); }
+.formalism-cards { gap: 4px; }
+.formalism-fields { gap: 4px; }
+.formalism-card .transform-field { gap: 1px; }
+.formalism-card .transform-matrix { padding: 3px; border-color: color-mix(in srgb, var(--color-text-muted, #aaa) 35%, transparent); }
+/* The dialog receives programmatic focus; its interactive controls carry focus outlines. */
+.modal-window[aria-label="Custom reference frame"]:focus { outline: none; }
+.reference-axis-label {
+    display: inline-block;
+    padding: 1px 3px;
+    border-radius: 3px;
+    background: var(--color-bg-primary, #222);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    pointer-events: none;
+}
+.reference-axis-label-neutral { transform: translate(-16px, -13px); }
+.reference-axis-label-custom { transform: translate(16px, 13px); }
+.reference-preview-toggles { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; }
+.reference-preview-toggles .normalization-chip { margin: 0; width: 180px; }

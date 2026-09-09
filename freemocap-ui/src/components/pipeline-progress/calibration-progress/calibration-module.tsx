@@ -1,3 +1,4 @@
+import AnchoredInfo from '@/components/ui-components/AnchoredInfo';
 import {CalibrationBoardMode} from "@/store/slices/calibration/calibration-types";
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
@@ -6,15 +7,12 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
 import DropdownButton from "@/components/ui-components/DropdownButton";
 import CalibrationSettings from "./calibration-settings";
-import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
-import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import ImportVideosModal from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 import charucoBoardImage from "@/assets/images/charuco_board.webp";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useElectronIPC, useServer } from "@/services";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { loadFromStorage, saveToStorage } from "@/store/persistence";
 import {
   calibrationAutoLoadDismissed,
   calibrationLoadedFromBundle,
@@ -69,7 +67,6 @@ const CalibrationModule = ({
   } = useCalibration();
 
   const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
-  const [showCharucoInfo, setShowCharucoInfo] = useState(false);
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
   const [isStopping, setIsStopping] = useState(false);
@@ -77,34 +74,7 @@ const CalibrationModule = ({
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [showImportVideosModal, setShowImportVideosModal] = useState(false);
 
-  const hasAutoOpened = useRef(false);
-
-  // Derive app mode from the current route, unless overridden by props
   const location = useLocation();
-
-  useEffect(() => {
-    // Only auto-show the calibration tooltip when:
-    // - WebSocket is connected and not failed
-    // - On /streaming page
-    // - Cameras are connected (at least one)
-    // - Cameras are not still loading
-    if (!isConnected || isFailed) return;
-    if (location.pathname !== "/streaming") return;
-    if (connectedCameraIds.length === 0) return;
-    if (isCamerasLoading) return;
-    if (hasAutoOpened.current) return;
-    const dismissed = loadFromStorage<boolean>("calibration-tooltip-dismissed", false);
-    if (!dismissed) {
-      setShowCharucoInfo(true);
-    }
-    hasAutoOpened.current = true;
-  }, [connectedCameraIds.length, isConnected, isFailed, isCamerasLoading, location.pathname]);
-
-  const handleCloseCharucoInfo = useCallback(() => {
-    setShowCharucoInfo(false);
-    saveToStorage("calibration-tooltip-dismissed", true);
-  }, []);
-
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
 
   // Cycling calibration messages during recording
@@ -281,6 +251,8 @@ const CalibrationModule = ({
     </div>
   );
 
+  const calibrationHelp = <AnchoredInfo title="How to calibrate" text="Print a ChArUco board and enter its measured square size. Show it to every camera while recording; move and rotate it through the capture volume."
+    imageSrc={charucoBoardImage} link={{label: 'Download ChArUco board', url: 'https://docs.freemocap.org/documentation/multi-camera-calibration.html'}}/>;
   const importVideosModal = (
     <ImportVideosModal
       open={showImportVideosModal}
@@ -295,6 +267,7 @@ const CalibrationModule = ({
     return (
       <>
       {importVideosModal}
+    
       <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1 min-w-0 w-full">
         {errorBanner}
         <div className="flex flex-row items-center min-w-0 w-full">
@@ -314,14 +287,7 @@ const CalibrationModule = ({
                   {recordingProgress.toFixed(0)}%
                 </span>
                 */}
-                <IconButton
-                  icon="explainer-icon"
-                  className="button sm"
-                  onClick={() => {}} // shows onboarding tooltips
-                  tooltip
-                  tooltipText="How to calibrate"
-                  tooltipPosition="pos-left"
-                />
+                {calibrationHelp}
               </div>
             </div>
             {/* TODO: recordingProgress doesn't update during recording, fix and re-enable
@@ -377,6 +343,7 @@ const CalibrationModule = ({
     return (
       <>
       {importVideosModal}
+    
       <div
         className="calibration-module-calibarted z-4 flex flex-col p-1 bg-middark br-1 pos-rel"
         style={{ minWidth: 0 }}
@@ -399,14 +366,14 @@ const CalibrationModule = ({
                 className="recording-path-preview tooltip-wrapper pos-rel flex flex-row items-center flex-1 p-1"
                 style={{ minWidth: 0, overflow: "visible" }}
               >
-                <div className="recording-path-part">
+                <div className="recording-path-part" style={{minWidth: 0, maxWidth: "20%"}}>
                   <p className="text-gray text md">{calibrationPathDir}</p>
                 </div>
                 <p
                   className="text-gray text md text-nowrap text-align-left"
-                  style={{ flexShrink: 0 }}
+                  style={{ minWidth: 0, display: "flex", flex: 1 }}
                 >
-                  {calibrationPathFilename}
+                  <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0}}>{calibrationPathFilename.slice(0, Math.ceil(calibrationPathFilename.length / 2))}</span><span style={{flexShrink: 0}}>{calibrationPathFilename.slice(Math.ceil(calibrationPathFilename.length / 2))}</span>
                 </p>
                 {loadedCalibration?.path && (
                   <div
@@ -430,14 +397,7 @@ const CalibrationModule = ({
               </div>
             </div>
             <div className="flex flex-row gap-1 items-center">
-              <IconButton
-                icon="explainer-icon"
-                className="button sm"
-                onClick={() => {}} // shows onboarding tooltips
-                tooltip
-                tooltipText="How to calibrate"
-                tooltipPosition="pos-left"
-              />
+              {calibrationHelp}
             </div>
           </div>
         </div>
@@ -478,42 +438,15 @@ const CalibrationModule = ({
   return (
     <>
     {importVideosModal}
+    
     <div className="calibration-module-idle  flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
           <SubactionHeader text="Calibration" />
           <div data-onboarding="calibration:what-is-calibration" className="flex flex-row pos-rel gap-1 items-center">
-            <IconButton
-              icon="explainer-icon"
-              className="button sm"
-              onClick={() => setShowCharucoInfo(prev => !prev)}
-              tooltip
-              tooltipText="How to calibrate"
-              tooltipPosition="pos-left"
-            />
-            <FloatingOnboarding
-              target='[data-onboarding="calibration:what-is-calibration"]'
-            >
-              <PromptTooltip
-                show={showCharucoInfo}
-                title="How to Calibrate your cameras"
-                text="Print a ChArUco board and show it to each camera while recording, pan and rotate it so it can be captured from different angles for accurate 3D tracking."
-                image={true}
-                imageSrc={charucoBoardImage}
-                position="pos-right"
-                variant="default"
-                button={true}
-                buttonText="Download ChArUco Board"
-                onButtonClick={() =>
-                  window.open(
-                    "https://docs.freemocap.org/documentation/multi-camera-calibration.html",
-                    "_blank",
-                  )
-                }
-                onClose={handleCloseCharucoInfo}
-              />
-            </FloatingOnboarding>
+            {calibrationHelp}
+
           </div>
         </div>
       </div>
@@ -582,3 +515,7 @@ const CalibrationModule = ({
 };
 
 export default CalibrationModule;
+
+
+
+

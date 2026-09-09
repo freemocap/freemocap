@@ -1,4 +1,5 @@
 from typing import Literal
+from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from skellytracker.core import DetectionStageConfig, TrackerConfig
@@ -33,6 +34,7 @@ class PosthocMocapPipelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig, alias="cameraMatching")
+    body_alignment: MocapAlignmentConfig = Field(default_factory=MocapAlignmentConfig, alias="bodyAlignment")
 
     charuco_tracking_enabled: bool = Field(default=True, alias="charucoTrackingEnabled")
     board_mode: CharucoBoardMode = Field(default=CharucoBoardMode.AUTO, alias="boardMode")

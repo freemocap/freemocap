@@ -1,6 +1,8 @@
-import React from "react";
+import React, {useState} from "react";
+import TransformEditor from './transform-editor';
+import ButtonSm from '../ui-components/ButtonSm';
 import CameraMatchingSettings from './camera-matching-settings';
-import {cameraMatchingUpdated} from '@/store/slices/mocap';
+import {bodyAlignmentUpdated, cameraMatchingUpdated} from '@/store/slices/mocap';
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
     triangulationConfigUpdated,
@@ -11,13 +13,22 @@ import ValueSelector from "../ui-components/ValueSelector";
 import ToggleComponent from "../ui-components/ToggleComponent";
 
 const TriangulationSettings: React.FC = () => {
+    const [transformEditorOpen, setTransformEditorOpen] = useState(false);
     const dispatch = useAppDispatch();
     const config = useAppSelector(selectMocapTriangulationConfig);
+    const bodyAlignmentEnabled = useAppSelector(state => state.mocap.config.bodyAlignmentEnabled);
     const matching = useAppSelector(state => state.mocap.config.cameraMatching);
 
     return (
         <div className="flex flex-col gap-1">
             <h2 className="mocap-settings-title">Triangulation Settings</h2>
+            <section className="flex flex-col gap-1 bg-secondary p-2 br-1" aria-label="Reference frame">
+                <h3 className="text md text-white">Reference frame</h3>
+                <ToggleComponent text="Automatically align from body" isToggled={bodyAlignmentEnabled}
+                    onToggle={enabled => dispatch(bodyAlignmentUpdated(enabled))}/>
+                <ButtonSm text="Custom reference frame…" textColor="text-white" onClick={() => setTransformEditorOpen(true)}/>
+                {transformEditorOpen && <TransformEditor onClose={() => setTransformEditorOpen(false)}/>}
+            </section>
             <CameraMatchingSettings config={matching} showFailurePolicy={true}
                 onChange={value => dispatch(cameraMatchingUpdated(value))}/>
 

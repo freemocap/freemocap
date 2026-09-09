@@ -1,0 +1,25 @@
+.modal-window {
+    min-width: min(320px, calc(100vw - 16px)) !important;
+    min-height: min(200px, calc(100vh - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    resize: none !important;
+    animation: none !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+.modal-window-titlebar {
+    flex: 0 0 30px;
+    padding: 0 8px;
+    cursor: grab;
+    touch-action: none;
+    border-bottom: 1px solid var(--color-border-primary);
+}
+.modal-window-titlebar:active { cursor: grabbing; }
+.modal-window > div:not(.modal-window-titlebar):not([role=button]) {
+    min-height: 0;
+    overflow: auto;
+}
+.modal-window > .modal-window-body { flex: 1; min-height: 0; }
+

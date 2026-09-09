@@ -17,6 +17,7 @@ function buildPosthocConfig(state: RootState) {
     // UI, so switching the detector away and back doesn't lose their selection.
     const blenderSupported = config.detectorType === "mediapipe";
     return {
+        bodyAlignment: {enabled: config.bodyAlignmentEnabled},
         cameraMatching: config.cameraMatching,
         charucoTrackingEnabled: config.charucoTrackingEnabled,
         boardMode: state.calibration.config.boardMode,

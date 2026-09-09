@@ -227,3 +227,4 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
 };
 
 export default SettingsModal;
+

@@ -1,0 +1,25 @@
+.float-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 3px 5px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--color-text-muted, #aaa) 18%, transparent);
+    touch-action: none;
+}
+.float-input[readonly] { cursor: ew-resize; user-select: none; }
+.float-input:not([readonly]) { cursor: text; }
+.float-input:hover {
+    background: var(--color-bg-elevated);
+    border-color: color-mix(in srgb, var(--color-text-muted, #aaa) 45%, transparent);
+}
+.float-input:focus {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-text-primary);
+    outline: 2px solid var(--color-text-primary);
+    outline-offset: 1px;
+}
+

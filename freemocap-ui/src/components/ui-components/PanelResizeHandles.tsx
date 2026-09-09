@@ -30,8 +30,8 @@ export function PanelResizeHandles({panelRef}: {panelRef: RefObject<HTMLDivEleme
         const panel = panelRef.current;
         if (!panel) return;
         const margin = 16;
-        const minWidth = Math.min(600, window.innerWidth - margin * 2);
-        const minHeight = Math.min(420, window.innerHeight - margin * 2);
+        const minWidth = Math.min(320, window.innerWidth - margin * 2);
+        const minHeight = Math.min(200, window.innerHeight - margin * 2);
         const left = handle.horizontal < 0 ? Math.max(margin, Math.min(bounds.left + dx, bounds.right - minWidth)) : bounds.left;
         const right = handle.horizontal > 0 ? Math.min(window.innerWidth - margin, Math.max(bounds.right + dx, bounds.left + minWidth)) : bounds.right;
         const top = handle.vertical < 0 ? Math.max(margin, Math.min(bounds.top + dy, bounds.bottom - minHeight)) : bounds.top;

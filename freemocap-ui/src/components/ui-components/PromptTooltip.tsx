@@ -7,6 +7,8 @@ type TooltipPosition = "pos-top" | "pos-top-left" | "pos-top-right" | "pos-botto
 type TooltipVariant = "default" | "warning" | "boarding";
 
 interface PromptTooltipProps {
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   show?: boolean;
   title?: string;
   text: string;
@@ -26,6 +28,8 @@ interface PromptTooltipProps {
 }
 
 const PromptTooltip: React.FC<PromptTooltipProps> = ({
+  onMouseEnter,
+  onMouseLeave,
   show = false,
   title = "",
   text,
@@ -65,6 +69,8 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
 
   return (
     <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={clsx(
         "prompt-tooltip-container text-wrap border-1 border-solid border-mid-black tooltip-container elevated-sharp",
         position,

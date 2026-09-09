@@ -10,6 +10,11 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoard
 from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import logging
+import numpy as np
+from skellyforge.core.biomechanics.alignment_definition import AlignmentDefinition
+from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
+from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
+from freemocap.core.recording.sample_encoding.spatial_points import ReferenceAlignmentDescriptor
 import shutil
 from pathlib import Path
 
@@ -132,6 +137,26 @@ def run_posthoc_mocap_task(
     )
 
     bundles = (build_standard_human_bundle(detector_type=task_config.detector_type),)
+    _reporter.report(stage=MocapStage.TRIANGULATING, detail="Resolving Mocap reference alignment")
+    group_timing = RecordingGroupTiming.resolve(
+        recording_folder=recording_folder, videos=video_metadata,
+        frame_numbers=tuple(frame[camera_ids[0]].frame_number for frame in frame_observations),
+    )
+    aligned = align_mocap_recording(request=MocapAlignmentRequest(
+        triangulation=triangulation, camera_geometry=camera_geometry, bundle=bundles[0],
+        definition=AlignmentDefinition.from_default_human(skeleton=bundles[0].skeleton),
+        timestamps_seconds=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
+        has_explicit_ground=calibration.groundplane_aligned if calibration is not None else False,
+        config=task_config.body_alignment,
+    ))
+    triangulation = aligned.triangulation
+    camera_geometry = aligned.camera_geometry
+    logger.info("Mocap reference alignment: %s", aligned.alignment.outcome)
+    spatial_reference = SpatialReference.for_camera_count(len(camera_ids))
+    if len(camera_ids) > 1:
+        spatial_reference = spatial_reference.model_copy(update={
+            "alignment": ReferenceAlignmentDescriptor.from_result(result=aligned.alignment),
+        })
     if selected_board is not None:
         bundles += (build_charuco_board_bundle(board=selected_board),)
     reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
@@ -145,7 +170,7 @@ def run_posthoc_mocap_task(
     publication = ObservationRecordingRequest(
         models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
         reconstructions=tuple(ReconstructionRecording(
-            sensor_group="mocap", reference=SpatialReference.for_camera_count(len(camera_ids)),
+            sensor_group="mocap", reference=spatial_reference,
             definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=str(PosthocPipelineType.MOCAP)),
             result=reconstructions[bundle.model_id],
         ) for bundle in bundles),
@@ -153,7 +178,7 @@ def run_posthoc_mocap_task(
         recording=recording_info,
         spatial_series=(SpatialPointSeries(
             definition=PointSeriesDefinition(sensor_group="mocap", source=str(PosthocPipelineType.MOCAP),
-                names=triangulation.keypoint_names, reference=SpatialReference.for_camera_count(len(camera_ids))),
+                names=triangulation.keypoint_names, reference=spatial_reference),
             values=triangulation.reconstruction.points_3d,
         ),),
         group=ObservationGroup(name="mocap", frames=frame_observations, videos=video_metadata),

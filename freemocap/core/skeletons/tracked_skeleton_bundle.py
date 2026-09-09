@@ -24,7 +24,7 @@ import numpy as np
 from skellyforge.core.biomechanics.center_of_mass import CenterOfMassDefinitions
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
-from skellytracker.core.io.tracker_mapping import TrackerMappingSnapshot
+from skellytracker.core.io.tracker_mapping import MappedLandmarkEvidence, TrackerMappingSnapshot
 
 
 @runtime_checkable
@@ -50,6 +50,12 @@ class KeypointToLandmarkMapping(Protocol):
 
     def mapping_snapshots(self) -> tuple[TrackerMappingSnapshot, ...]:
         """The authored mapping definitions needed to reproduce this mapping."""
+        ...
+
+    def apply_with_quality(
+        self, *, tracker_positions: dict[str, np.ndarray], tracker_quality: dict[str, float],
+    ) -> MappedLandmarkEvidence:
+        """Map measured points and their conservative source-quality scores together."""
         ...
 
     @property

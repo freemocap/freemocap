@@ -139,36 +139,39 @@ export const calibrationSlice = createSlice({
         builder
             .addCase(loadCalibrationToml.pending, (state, action) => {
                 state.loadRequestId = action.meta.requestId;
+                state.error = null;
             })
             .addCase(loadCalibrationToml.fulfilled, (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
-                if (action.payload) {
-                    state.loadedCalibration = action.payload;
-                }
+                state.loadedCalibration = action.payload;
+                state.dismissedCalibrationPath = null;
             })
             .addCase(loadCalibrationToml.rejected, (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
                 if (action.meta.aborted) return;
                 state.loadedCalibration = null;
+                state.error = action.payload || action.error.message || 'Failed to load calibration';
             });
 
         builder
             .addCase(loadCalibrationForRecording.pending, (state, action) => {
                 state.loadRequestId = action.meta.requestId;
+                state.error = null;
             })
             .addCase(loadCalibrationForRecording.fulfilled, (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
-                if (action.payload) {
-                    state.loadedCalibration = action.payload;
-                }
+                state.loadedCalibration = action.payload;
+                state.dismissedCalibrationPath = null;
             })
             .addCase(loadCalibrationForRecording.rejected, (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
-                console.warn('[calibration] loadCalibrationForRecording rejected:', action.payload);
+                if (action.meta.aborted) return;
+                state.loadedCalibration = null;
+                state.error = action.payload || action.error.message || 'Failed to load recording calibration';
             });
 
         builder

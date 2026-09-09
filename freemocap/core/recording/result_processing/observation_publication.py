@@ -143,7 +143,8 @@ def publish_posthoc_observations(
         sources=sources,
         reference_frames=references,
         models={model.model_id: model for model in request.models},
-        processing={},
+        processing={request.group.name: {"filtering": request.filtering.model_dump(mode="json")}}
+            if request.filtering is not None else {},
         channels=tuple(channels),
     )
 
@@ -248,7 +249,8 @@ def publish_posthoc_observations(
             sources={**retained.sources, **sources},
             reference_frames={**retained.reference_frames, **references},
             models={**retained.models, **run.models},
-            processing=retained.processing,
+            processing={**{group: settings for group, settings in retained.processing.items()
+                if group != request.group.name}, **run.processing},
             channels=(*retained.channels, *channels),
             static_channels=retained.static_channels,
             checkpoints=(*retained.checkpoints, *run.checkpoints),

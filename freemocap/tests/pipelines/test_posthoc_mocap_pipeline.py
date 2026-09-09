@@ -2,6 +2,7 @@
 import csv
 import logging
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -36,7 +37,7 @@ def _run_mocap(posthoc_manager, recording_info, mocap_config) -> None:
 
 
 @pytest.mark.e2e
-def test_posthoc_mocap_most_recent_calibration_produces_3d(posthoc_mocap_output_dir):
+def test_posthoc_mocap_selected_calibration_produces_3d(posthoc_mocap_output_dir: Path) -> None:
     output_dir = posthoc_mocap_output_dir
     logger.info(f"Checking output_data: {output_dir}")
     assert output_dir.exists(), f"output_data/ not found at {output_dir}"

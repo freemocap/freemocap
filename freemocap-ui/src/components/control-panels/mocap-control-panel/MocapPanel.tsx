@@ -1,6 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {useMocap} from "@/hooks/useMocap";
-import {useCalibration} from "@/hooks/useCalibration";
 import {useDirectoryWatcher} from "@/hooks/useDirectoryWatcher";
 import {useElectronIPC} from "@/services";
 import {CalibrationTomlPicker} from "@/components/common/CalibrationTomlPicker";
@@ -41,9 +40,6 @@ export const MocapPanel: React.FC = () => {
         detectorType,
     } = useMocap();
 
-    const {
-        directoryInfo: calibrationDirectoryInfo,
-    } = useCalibration();
 
     // Effective path: actual activeRecording if any, otherwise the planned path
     const effectiveMocapPath = useAppSelector(selectEffectiveRecordingPath);
@@ -142,21 +138,9 @@ export const MocapPanel: React.FC = () => {
         }
     };
 
-    const effectiveCalibrationTomlPath = useMemo(() => {
-        if (calibrationTomlPath) return calibrationTomlPath;
-        if (directoryInfo?.cameraMocapTomlPath) return directoryInfo.cameraMocapTomlPath;
-        if (calibrationDirectoryInfo?.cameraCalibrationTomlPath) return calibrationDirectoryInfo.cameraCalibrationTomlPath;
-        if (directoryInfo?.lastSuccessfulCalibrationTomlPath) return directoryInfo.lastSuccessfulCalibrationTomlPath;
-        return null;
-    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath, directoryInfo?.lastSuccessfulCalibrationTomlPath]);
+    const effectiveCalibrationTomlPath = calibrationTomlPath;
 
-    const tomlSource = useMemo(() => {
-        if (calibrationTomlPath) return "manual" as const;
-        if (directoryInfo?.cameraMocapTomlPath) return "auto" as const;
-        if (calibrationDirectoryInfo?.cameraCalibrationTomlPath) return "calibration-panel" as const;
-        if (directoryInfo?.lastSuccessfulCalibrationTomlPath) return "last-successful" as const;
-        return "auto" as const;
-    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath, directoryInfo?.lastSuccessfulCalibrationTomlPath]);
+
 
     const displayError = error || localError || directoryInfo?.errorMessage;
 
@@ -293,9 +277,9 @@ export const MocapPanel: React.FC = () => {
                     {/* Calibration TOML — redesigned compact picker */}
                     <CalibrationTomlPicker
                         tomlPath={effectiveCalibrationTomlPath}
-                        source={tomlSource}
+                        
                         onSelect={handleSelectCalibrationToml}
-                        onUseAutoDetected={clearCalibrationTomlPath}
+                        onClear={clearCalibrationTomlPath}
                         disabled={!isElectron}
                     />
 

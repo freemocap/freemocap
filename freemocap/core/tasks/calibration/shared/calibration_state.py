@@ -10,6 +10,9 @@ import os
 import time
 from collections.abc import Mapping
 from pathlib import Path
+from freemocap.core.reconstruction.reference_transform import ReferenceTransform
+from freemocap.core.reconstruction.coordinate_conventions import RECONSTRUCTION_TO_CALIBRATION
+from skellyforge.core.math.geometry.transform_math import Transform
 
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 
@@ -20,7 +23,6 @@ from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingResult, CameraMatchingStatus
-from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.calibration_camera_binding import (
     CalibrationBinding,
     CalibrationMatchKind,
@@ -53,25 +55,26 @@ class CalibrationStateTracker:
     Uses the pure Triangulator (DLT from CameraModel) rather than AniposeCameraGroup.
 
     Lifecycle:
-      1. On creation, optimistically try to load the latest calibration.
+      1. On creation, load the explicitly selected calibration, if any.
       2. Triangulation requests go through try_triangulate(), which returns
          None if no valid calibration is loaded.
       3. If triangulation fails repeatedly (MAX_CONSECUTIVE_FAILURES), the
          calibration is invalidated. A single bad frame does not kill 3D.
       4. check_for_update() polls the calibration file mtime and reloads
-         if the file has changed. Existing calibration is preserved if the
-         file is unchanged or if loading the new file fails.
+         if the file has changed. Unreadable calibration invalidates geometry
+         and raises an error.
     """
 
     def __init__(self) -> None:
+        self._source_calibration: CalibrationResult | None = None
+        self._reference_transform: ReferenceTransform | None = None
         self._calibration: CalibrationResult | None = None
         self._triangulator: Triangulator | None = None
         self._is_valid: bool = False
         self._consecutive_failure_count: int = 0
         self._calibration_path: Path | None = None
         self._calibration_file_mtime: float | None = None
-        # Explicit calibration TOML to load from. None => use the canonical
-        # most-recent calibration (and hot-reload that file).
+        # None means no calibration is selected.
         self._configured_path: Path | None = None
         # Maps frozenset of active calibration-name strings -> pre-built sub-Triangulator.
         # Lazily populated on first frame with a given camera subset; reused thereafter.
@@ -96,21 +99,51 @@ class CalibrationStateTracker:
 
         Args:
             calibration_toml_path: Explicit calibration TOML to load from.
-                If None, the canonical most-recent calibration is used.
+                If None, no calibration is loaded.
         """
         tracker = cls()
         tracker._configured_path = calibration_toml_path
         tracker._try_load_latest()
         return tracker
 
+    def set_reference_transform(self, *, reference_transform: ReferenceTransform | None) -> bool:
+        """Replace the absolute offset from source geometry, without accumulating edits."""
+        if reference_transform == self._reference_transform:
+            return False
+        self._reference_transform = reference_transform
+        if self._source_calibration is None:
+            return False
+        calibration = self._transform_source(calibration=self._source_calibration)
+        triangulator = Triangulator(cameras=calibration.cameras)
+        self._calibration = calibration
+        self._triangulator = triangulator
+        self._calibration_generation += 1
+        self._subset_triangulator_cache.clear()
+        self._binding = None
+        self._binding_key = None
+        return True
+
+    def _transform_source(self, *, calibration: CalibrationResult) -> CalibrationResult:
+        if self._reference_transform is None:
+            return calibration
+        offset = self._reference_transform.to_transform()
+        transform = Transform(
+            rotation=RECONSTRUCTION_TO_CALIBRATION.convert_quaternion(quaternion=offset.rotation),
+            translation=RECONSTRUCTION_TO_CALIBRATION.convert_displacement(displacement=offset.translation),
+        )
+        return calibration.model_copy(update={
+            "cameras": [camera.in_world_frame(transform=transform) for camera in calibration.cameras],
+            "groundplane_aligned": False,
+        })
+
     def set_source_path(self, calibration_toml_path: Path | None) -> bool:
         """Re-point the tracker at a different calibration source (live update).
 
         If the configured path changed, reloads immediately from the new
-        source. None => fall back to the canonical most-recent calibration.
+        source. None clears the calibration.
 
         Returns:
-            True if a new calibration was loaded as a result.
+            True if the calibration source changed, including clearing it.
         """
         if calibration_toml_path == self._configured_path:
             return False
@@ -118,7 +151,10 @@ class CalibrationStateTracker:
             f"Calibration source path changed: {self._configured_path} -> {calibration_toml_path}"
         )
         self._configured_path = calibration_toml_path
-        return self._try_load_from_path(self._resolve_source_path())
+        self._invalidate()
+        if calibration_toml_path is not None:
+            self._try_load_from_path(path=calibration_toml_path)
+        return True
 
     @property
     def is_valid(self) -> bool:
@@ -237,73 +273,43 @@ class CalibrationStateTracker:
         return self._calibration
 
     def check_for_update(self) -> bool:
-        """Check if the calibration file on disk has changed, and reload if so.
-
-        Safe to call frequently (e.g. once per second). Does nothing if
-        the file is unchanged or missing. Preserves existing calibration
-        if the new file fails to load.
-
-        Returns:
-            True if a new calibration was loaded.
-        """
-        try:
-            path = self._resolve_source_path()
-            if not path.exists():
-                return False
-            mtime = os.path.getmtime(path)
-            if mtime == self._calibration_file_mtime:
-                return False
-            logger.info(
-                f"Calibration file changed on disk at {path} "
-                f"(mtime={mtime}, previous_mtime={self._calibration_file_mtime})"
-            )
-            return self._try_load_from_path(path)
-        except Exception as e:
-            logger.debug(f"Error checking calibration file: {e}")
+        """Reload the selected file when it changes; fail if it becomes unreadable."""
+        path = self._configured_path
+        if path is None:
             return False
-
-    def _resolve_source_path(self) -> Path:
-        """The calibration file to load/poll: the explicitly configured TOML
-        if set, else the canonical most-recent calibration."""
-        return self._configured_path or get_last_successful_calibration_toml_path()
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            self._invalidate()
+            raise
+        if mtime == self._calibration_file_mtime:
+            return False
+        return self._try_load_from_path(path=path)
 
     def _try_load_latest(self) -> bool:
-        """Try to load the calibration file from the configured/most-recent path.
-
-        Returns:
-            True if calibration was loaded successfully.
-        """
-        try:
-            path = self._resolve_source_path()
-            if path.exists():
-                logger.info(f"Found calibration file at {path}")
-                return self._try_load_from_path(path)
-            else:
-                logger.warning(
-                    f"No calibration file found at {path}. "
-                    f"Triangulation will be disabled until a calibration TOML is present at this path."
-                )
-                return False
-        except Exception as e:
-            logger.debug(f"No existing calibration found: {e}")
+        """Load the explicitly selected calibration, if any."""
+        if self._configured_path is None:
             return False
+        return self._try_load_from_path(path=self._configured_path)
 
     def _try_load_from_path(self, path: Path) -> bool:
         """Attempt to load calibration from an anipose-format TOML file.
 
         On success, replaces the current calibration state.
-        On failure, logs the error and leaves the existing state untouched.
+        On failure, invalidates calibration and propagates the error.
 
         Returns:
             True if calibration was loaded successfully.
         """
         try:
-            calibration = CalibrationResult.load_anipose_toml(path)
+            source_calibration = CalibrationResult.load_anipose_toml(path)
+            calibration = self._transform_source(calibration=source_calibration)
             cameras = calibration.cameras
             triangulator = Triangulator(cameras=cameras)
 
             # Only swap state after everything succeeded
             self._triangulator = triangulator
+            self._source_calibration = source_calibration
             self._calibration = calibration
             self._calibration_path = path
             self._is_valid = True
@@ -319,9 +325,9 @@ class CalibrationStateTracker:
             self._binding_key = None
 
             return True
-        except Exception as e:
-            logger.warning(f"Failed to load calibration from {path}: {e}", exc_info=True)
-            return False
+        except Exception:
+            self._invalidate()
+            raise
 
     def try_angulate(
         self,
@@ -342,6 +348,9 @@ class CalibrationStateTracker:
         path, where reprojection error is undefined) — or None if no valid
         calibration is loaded or triangulation failed.
         """
+        # A metric reference offset cannot be applied to pixel-space planar output.
+        if self._reference_transform is not None and len(frame_observations_by_camera) < 2:
+            return None
         if not self.is_valid:
             # Single-camera: projection doesn't need calibration
             if len(frame_observations_by_camera) == 1:
@@ -380,6 +389,8 @@ class CalibrationStateTracker:
             if len(matched_obs_by_cam) == 0:
                 return AngulationResult(points={}, errors_px={})
             if len(matched_obs_by_cam) == 1:
+                if self._reference_transform is not None:
+                    return None
                 obs = next(iter(matched_obs_by_cam.values()))
                 result = project_2d_observation_to_3d(observation=obs)
                 self._consecutive_failure_count = 0
@@ -490,6 +501,8 @@ class CalibrationStateTracker:
             return None
 
     def _invalidate(self) -> None:
+        self._calibration_generation += 1
+        self._source_calibration = None
         self._is_valid = False
         self._triangulator = None
         self._calibration = None

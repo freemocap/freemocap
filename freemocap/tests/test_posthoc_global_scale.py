@@ -113,12 +113,14 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
     publication = ReconstructionRecording(
         sensor_group="mocap",
         reference=SpatialReference.for_camera_count(2),
-        definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=bundle.detector_type),
+        definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=bundle.detector_type,
+            point_kind=ChannelKind.RAW_KEYPOINTS_3D),
         result=expected,
     )
     structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
     raw = SpatialPointSeries(
         definition=PointSeriesDefinition(
+            kind=ChannelKind.RAW_KEYPOINTS_3D,
             sensor_group="mocap",
             source=bundle.detector_type,
             names=request.keypoint_names,

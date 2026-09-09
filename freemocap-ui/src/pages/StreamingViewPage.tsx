@@ -5,6 +5,8 @@ import { CameraViewsGrid } from "@/components/camera-views/CameraViewsGrid";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { ThreeJsCanvas } from "@/components/viewport3d/ThreeJsCanvas";
 import { SettingsOverlay } from "@/components/ui-components/SettingsOverlay";
+import {useAppSelector} from '@/store';
+import {selectLoadedCalibration} from '@/store/slices/calibration';
 
 export type LayoutDirection = "vertical" | "horizontal";
 
@@ -15,6 +17,7 @@ export interface CameraSettings {
 }
 
 export const StreamingViewPage = () => {
+  const calibration = useAppSelector(selectLoadedCalibration);
   const [resetKey, setResetKey] = useState<number>(0);
   const [settings, setSettings] = useState<CameraSettings>({
     columns: null,
@@ -72,7 +75,7 @@ export const StreamingViewPage = () => {
 
               <Panel defaultSize={40} minSize={10}>
                 <div className="h-full 3d-viewport-master">
-                  <ThreeJsCanvas />
+                  <ThreeJsCanvas calibration={calibration}/>
                 </div>
               </Panel>
             </PanelGroup>

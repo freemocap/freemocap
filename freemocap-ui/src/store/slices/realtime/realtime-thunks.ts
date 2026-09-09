@@ -2,7 +2,7 @@ import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState, selectRealtimeEnabledCameraConfigs, selectSelectedCameraConfigs} from "@/store";
 import {serverUrls} from "@/services";
 import {PipelineApplyResponse, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
-import {selectCalibrationConfig, selectCalibrationDirectoryInfo} from "@/store/slices/calibration/calibration-slice";
+import {selectCalibrationConfig, selectLoadedCalibration} from "@/store/slices/calibration/calibration-slice";
 
 export const applyRealtimePipeline = createAsyncThunk<
     PipelineApplyResponse,
@@ -23,16 +23,8 @@ export const applyRealtimePipeline = createAsyncThunk<
         const realtimeEnabledIds = Object.keys(selectRealtimeEnabledCameraConfigs(getState()));
         const realtimeCameraIds = realtimeEnabledIds.length > 0 ? realtimeEnabledIds : null;
         const calibrationConfig = selectCalibrationConfig(getState());
-        const calibrationDirectoryInfo = selectCalibrationDirectoryInfo(getState());
-
-        // Auto-inject the last-successful calibration path when none is explicitly set.
-        // This ensures the realtime triangulation uses the same calibration the user
-        // ran most recently, rather than whatever happens to be on disk when the
-        // aggregator process starts.
-        const calibrationTomlPath =
-            realtimeConfig.aggregator_config.calibration_toml_path
-            ?? calibrationDirectoryInfo?.lastSuccessfulCalibrationTomlPath
-            ?? null;
+        if (getState().calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
+        const calibrationTomlPath = selectLoadedCalibration(getState())?.path ?? null;
 
         const configWithBoard: RealtimePipelineConfig = {
             ...realtimeConfig,

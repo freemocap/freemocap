@@ -17,18 +17,19 @@ import { loadCalibrationToml } from "@/store/slices/calibration/calibration-thun
  * "Clear calibration") until a new calibration is recorded/imported and
  * clears the dismissal.
  */
-export function useCalibrationTomlLoader() {
+export function useCalibrationTomlLoader(enabled: boolean) {
     const dispatch = useAppDispatch();
     const directoryInfo = useAppSelector(selectCalibrationDirectoryInfo);
     const loaded = useAppSelector(selectLoadedCalibration);
     const dismissedPath = useAppSelector(selectDismissedCalibrationPath);
+    const pending = useAppSelector(state => state.calibration.loadRequestId);
+    const error = useAppSelector(state => state.calibration.error);
 
     const path = directoryInfo?.lastSuccessfulCalibrationTomlPath ?? null;
 
     useEffect(() => {
-        if (!path) return;
-        if (path === dismissedPath) return;
-        if (loaded && loaded.path === path) return;
+        if (!enabled || !path) return;
+        if (dismissedPath || loaded || pending || error) return;
         dispatch(loadCalibrationToml({ path }));
-    }, [dispatch, path, loaded, dismissedPath]);
+    }, [dispatch, enabled, path, loaded, dismissedPath, pending, error]);
 }

@@ -179,7 +179,7 @@ const PlaybackPage: React.FC = () => {
                                                 reloadManifest={controller.reloadManifest}
                                                 onPlaybackRun={controller.setPlaybackRun}
                                             >
-                                                <ThreeJsCanvas/>
+                                                <ThreeJsCanvas calibration={bundle?.calibration ?? null}/>
                                             </RecordingPlaybackProvider>
                                         </div>
                                     </Panel>

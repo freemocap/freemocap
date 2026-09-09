@@ -19,13 +19,14 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
 )
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent, SampleUnit
-from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
+from freemocap.core.recording.sample_encoding.spatial_points import PointSeriesKind, SpatialReference
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.types.derived_point_name import DerivedPointName
 
 
 class ReconstructionSourceDefinition(Descriptor):
+    point_kind: PointSeriesKind
     model_id: str
     tracker: str
     scale_reference_name: str
@@ -53,9 +54,10 @@ class ReconstructionSourceDefinition(Descriptor):
 
     @classmethod
     def from_bundle(
-        cls, bundle: TrackedSkeletonBundle, *, tracker_source: str
+        cls, bundle: TrackedSkeletonBundle, *, tracker_source: str, point_kind: PointSeriesKind,
     ) -> "ReconstructionSourceDefinition":
         return cls(
+            point_kind=point_kind,
             model_id=bundle.model_id,
             tracker=tracker_source,
             scale_reference_name=bundle.scale_reference_name,

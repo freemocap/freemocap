@@ -4,9 +4,12 @@ import path from 'node:path';
 
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
-test('recording and processing requests send only the enabled custom offset', async ({page}) => {
+test('recording and processing requests carry custom offsets and filtering settings', async ({page}) => {
     page.on('pageerror', error => {throw error;});
-    const requests: {mocapTaskConfig: {bodyAlignment: {additional_transform: {matrix: number[]} | null}}}[] = [];
+    const requests: {mocapTaskConfig: {
+        bodyAlignment: {additional_transform: {matrix: number[]} | null};
+        filterConfig: {enabled: boolean; method: string; cutoff: number; order: number};
+    }}[] = [];
     await page.route('http://localhost:53117/**', async route => {
         requests.push(route.request().postDataJSON());
         await route.fulfill({json: {success: true}, headers: {'Access-Control-Allow-Origin': '*'}});
@@ -16,7 +19,7 @@ test('recording and processing requests send only the enabled custom offset', as
     const bundle = await build({
         stdin: {contents: `
             import {store} from './src/store/store';
-            import {referenceTransformUpdated, referenceTransformEnabledUpdated} from './src/store/slices/mocap/mocap-slice';
+            import {referenceTransformUpdated, referenceTransformEnabledUpdated, posthocFilterConfigUpdated} from './src/store/slices/mocap/mocap-slice';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {startMocapRecording, stopMocapRecording, processMocapRecording} from './src/store/slices/mocap/mocap-thunks';
             async function run(): Promise<void> {
@@ -24,6 +27,7 @@ test('recording and processing requests send only the enabled custom offset', as
                 store.dispatch(referenceTransformUpdated([0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]));
                 for (const enabled of [true, false]) {
                     store.dispatch(referenceTransformEnabledUpdated(enabled));
+                    store.dispatch(posthocFilterConfigUpdated({enabled, cutoff: 4.5, order: 3}));
                     await store.dispatch(startMocapRecording()).unwrap();
                     await store.dispatch(stopMocapRecording()).unwrap();
                     await store.dispatch(processMocapRecording()).unwrap();
@@ -43,9 +47,11 @@ test('recording and processing requests send only the enabled custom offset', as
     await expect(page.locator('#result')).toHaveText('done');
     expect(requests).toHaveLength(6);
     for (const request of requests.slice(0, 3)) {
+        expect(request.mocapTaskConfig.filterConfig).toEqual({enabled: true, method: 'butter_low_pass', cutoff: 4.5, order: 3});
         expect(request.mocapTaskConfig.bodyAlignment.additional_transform?.matrix).toEqual([0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]);
     }
     for (const request of requests.slice(3)) {
+        expect(request.mocapTaskConfig.filterConfig).toEqual({enabled: false, method: 'butter_low_pass', cutoff: 4.5, order: 3});
         expect(request.mocapTaskConfig.bodyAlignment.additional_transform).toBeNull();
     }
 });

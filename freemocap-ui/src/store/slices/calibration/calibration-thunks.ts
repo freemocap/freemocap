@@ -48,7 +48,6 @@ export const loadCalibrationForRecording = createAsyncThunk<
             const url = `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}/calibration${qs ? `?${qs}` : ''}`;
             const resp = await fetch(url);
             if (resp.status === 404) {
-                console.warn(`[calibration] No calibration found for recording: ${recordingId}`);
                 return null;
             }
             if (!resp.ok) {
@@ -70,7 +69,7 @@ export const loadCalibrationToml = createAsyncThunk<
     'calibration/loadCalibrationToml',
     async ({ path, force }, { getState, rejectWithValue }) => {
         try {
-            if (!electronIpc) return null;
+            if (!electronIpc) throw new Error('Calibration TOML loading requires the desktop file service.');
             const existing = getState().calibration.loadedCalibration;
             if (!force && existing && existing.path === path) {
                 return existing;

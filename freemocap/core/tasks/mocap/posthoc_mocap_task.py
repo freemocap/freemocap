@@ -14,6 +14,8 @@ import numpy as np
 from skellyforge.core.biomechanics.alignment_definition import AlignmentDefinition
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
+from freemocap.core.reconstruction.posthoc_filtering import filter_recording_points
+from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.recording.sample_encoding.spatial_points import ReferenceAlignmentDescriptor
 import shutil
 from pathlib import Path
@@ -35,7 +37,6 @@ from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
 from freemocap.core.skeletons.standard_human_skeleton import (
     build_standard_human_bundle,
 )
-from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration, get_last_successful_calibration_toml_path
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.core.recording.result_processing.observation_publication import publish_posthoc_observations
 from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
@@ -90,15 +91,10 @@ def run_posthoc_mocap_task(
             )
         logger.info(f"Using user-specified calibration TOML: {calibration_toml_path}")
     else:
-        calibration_toml_path = find_recording_calibration(recording_folder=recording_folder)
-        if calibration_toml_path is None:
-            calibration_toml_path = get_last_successful_calibration_toml_path()
-        if not calibration_toml_path.exists():
-            raise RuntimeError(
-                "Multicamera triangulation requires calibration geometry. "
-                "Select a calibration TOML or run the separate calibration task first."
-            )
-        logger.info(f"Using resolved calibration: {calibration_toml_path}")
+        raise ValueError(
+            "Multicamera triangulation requires an explicitly selected calibration TOML. "
+            "Select a calibration or run the separate calibration task first."
+        )
 
     # ---- Copy calibration file into recording folder ----
     if calibration_toml_path is not None:
@@ -160,28 +156,43 @@ def run_posthoc_mocap_task(
         })
     if selected_board is not None:
         bundles += (build_charuco_board_bundle(board=selected_board),)
+    _reporter.report(stage=MocapStage.FILTERING, detail="Filtering measured trajectories")
+    filtered = filter_recording_points(
+        points=triangulation.reconstruction.points_3d,
+        timestamps_s=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
+        config=task_config.filter_config,
+    )
+    _reporter.report(stage=MocapStage.RECONSTRUCTING, detail=(
+        f"Reconstructing skeletons; filtered {filtered.report.filtered_runs} trajectory runs, "
+        f"preserved {filtered.report.preserved_short_runs} short runs"
+    ))
     reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
         bundles=bundles,
         keypoint_names=triangulation.keypoint_names,
-        keypoints_3d=triangulation.reconstruction.points_3d,
+        keypoints_3d=filtered.points,
         compute_center_of_mass=True,
         timing=timing,
     ))
 
     publication = ObservationRecordingRequest(
+        filtering=filtered.report,
         models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
         reconstructions=tuple(ReconstructionRecording(
             sensor_group="mocap", reference=spatial_reference,
-            definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=str(PosthocPipelineType.MOCAP)),
+            definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=str(PosthocPipelineType.MOCAP),
+                point_kind=ChannelKind.KEYPOINTS_3D),
             result=reconstructions[bundle.model_id],
         ) for bundle in bundles),
         camera_geometry=tuple(camera_geometry[source] for source in camera_ids) if camera_geometry else (),
         recording=recording_info,
-        spatial_series=(SpatialPointSeries(
-            definition=PointSeriesDefinition(sensor_group="mocap", source=str(PosthocPipelineType.MOCAP),
+        spatial_series=tuple(SpatialPointSeries(
+            definition=PointSeriesDefinition(kind=kind, sensor_group="mocap", source=str(PosthocPipelineType.MOCAP),
                 names=triangulation.keypoint_names, reference=spatial_reference),
-            values=triangulation.reconstruction.points_3d,
-        ),),
+            values=values,
+        ) for kind, values in (
+            (ChannelKind.RAW_KEYPOINTS_3D, triangulation.reconstruction.points_3d),
+            (ChannelKind.KEYPOINTS_3D, filtered.points),
+        )),
         group=ObservationGroup(name="mocap", frames=frame_observations, videos=video_metadata),
         tracker=TrackerRecordingDefinition(
             name=str(PosthocPipelineType.MOCAP),

@@ -126,7 +126,7 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(metadata.runs[0].models), 2)
         saved = read_saved_reconstruction(SavedReconstructionRequest(
             structure=structure, run_id=0, sensor_group="mocap", point_source="mocap",
-            model_id=CHARUCO_BOARD_MODEL_ID, point_policy=SavedPointPolicy.IDENTITY,
+            model_id=CHARUCO_BOARD_MODEL_ID, point_policy=SavedPointPolicy.FILTERED,
             compute_center_of_mass=True,
         ))
         self.assertEqual(saved.numerical_input.frame_count, 4)

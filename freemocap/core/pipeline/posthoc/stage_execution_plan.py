@@ -95,6 +95,11 @@ def build_execution_plan(
 def retained_run(*, base: RunDescriptor, plan: StageExecutionPlan) -> RunDescriptor:
     """Remove invalid dynamic/static outputs and their completion records together."""
     data = base.model_dump()
+    if ProcessingStage.FILTERING in plan.invalidate:
+        for group in plan.sensor_groups:
+            settings = data["processing"].get(group)
+            if isinstance(settings, dict):
+                settings.pop("filtering", None)
     data["scale_fits"] = [
         fit.model_dump()
         for fit in base.scale_fits

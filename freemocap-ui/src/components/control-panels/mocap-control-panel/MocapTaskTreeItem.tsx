@@ -5,7 +5,6 @@ import {useMocap} from "@/hooks/useMocap";
 import {useElectronIPC} from "@/services";
 import {MediapipeConfigPanel} from "@/components/control-panels/mocap-control-panel/MediapipeConfigPanel";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
-import {useCalibration} from "@/hooks/useCalibration";
 import IconButton from "@/components/ui-components/IconButton";
 
 export const MocapTaskTreeItem: React.FC = () => {
@@ -35,10 +34,6 @@ export const MocapTaskTreeItem: React.FC = () => {
         clearError,
     } = useMocap();
 
-    // Get the most recent calibration recording path from calibration state
-    const {
-        directoryInfo: calibrationDirectoryInfo,
-    } = useCalibration();
 
     useEffect(() => {
         if (mocapRecordingPath) {
@@ -127,13 +122,8 @@ export const MocapTaskTreeItem: React.FC = () => {
         return "Using default recording directory";
     }, [isUsingManualPath]);
 
-    // Effective calibration path (considers all sources)
-    const effectiveCalibrationTomlPath = useMemo(() => {
-        if (calibrationTomlPath) return calibrationTomlPath;
-        if (directoryInfo?.cameraMocapTomlPath) return directoryInfo.cameraMocapTomlPath;
-        if (calibrationDirectoryInfo?.cameraCalibrationTomlPath) return calibrationDirectoryInfo.cameraCalibrationTomlPath;
-        return null;
-    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath]);
+    // The calibration selected in the shared panel.
+    const effectiveCalibrationTomlPath = calibrationTomlPath;
 
     // Mocap status derivation
     const mocapStatus: "ok" | "none" | "bad" = useMemo(() => {
@@ -334,7 +324,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                                     onClick={clearCalibrationTomlPath}
                                     disabled={!calibrationTomlPath}
                                 >
-                                    Use Most Recent
+                                    Clear calibration
                                 </button>
                                 <button
                                     className={`button sm flex-1 ${calibrationTomlPath ? "primary" : "secondary"}`}

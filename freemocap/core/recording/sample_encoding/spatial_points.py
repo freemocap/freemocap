@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,6 +17,8 @@ from freemocap.core.recording.sample_encoding.channel_series import ChannelSerie
 from freemocap.core.recording.data_descriptors.recording_descriptor import Channel, Descriptor
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent, SampleUnit
 from freemocap.core.types.channel_kind import ChannelKind
+
+PointSeriesKind = Literal[ChannelKind.RAW_KEYPOINTS_3D, ChannelKind.KEYPOINTS_3D]
 
 
 class SpatialReferenceName(StrEnum):
@@ -73,6 +76,7 @@ class SpatialReference(Descriptor):
 
 
 class PointSeriesDefinition(Descriptor):
+    kind: PointSeriesKind
     sensor_group: str
     source: str
     names: tuple[str, ...]
@@ -83,7 +87,7 @@ class PointSeriesDefinition(Descriptor):
             sensor_group=self.sensor_group,
             source=self.source,
             reference_frame=self.reference.name,
-            kind=ChannelKind.RAW_KEYPOINTS_3D,
+            kind=self.kind,
             names=self.names,
             components={
                 component: self.reference.units
@@ -93,7 +97,7 @@ class PointSeriesDefinition(Descriptor):
                     SampleComponent.Z,
                 )
             },
-            stage=ProcessingStage.TRIANGULATION,
+            stage=ProcessingStage.TRIANGULATION if self.kind == ChannelKind.RAW_KEYPOINTS_3D else ProcessingStage.FILTERING,
         )
 
 

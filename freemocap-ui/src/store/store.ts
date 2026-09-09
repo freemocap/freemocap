@@ -1,5 +1,6 @@
 import {configureStore} from "@reduxjs/toolkit";
 import {cameraConfigListenerMiddleware} from "@/store/camera-config-listener";
+import {calibrationSelectionListenerMiddleware} from './calibration-selection-listener';
 import {persistenceListenerMiddleware} from "@/store/persistence-listener";
 import {cameraSlice} from "@/store/slices/cameras";
 import {recordingSlice} from "@/store/slices/recording";
@@ -23,6 +24,7 @@ export const store = configureStore({
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware()
             .concat(cameraConfigListenerMiddleware.middleware)
+            .concat(calibrationSelectionListenerMiddleware.middleware)
             .concat(persistenceListenerMiddleware.middleware),
     reducer: {
         cameras: cameraSlice.reducer,

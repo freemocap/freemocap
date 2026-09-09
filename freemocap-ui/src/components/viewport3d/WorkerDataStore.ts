@@ -73,6 +73,7 @@ const modelsChan = makeChannel<ModelDefinition[] | null>(null, {replayOnSubscrib
 const calibChan = makeChannel<LoadedCalibration | null>(null, {replayOnSubscribe: true});
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG, {replayOnSubscribe: true});
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
+const referenceTransformChan = makeChannel<number[] | null>(null, {replayOnSubscribe: true});
 
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
@@ -91,6 +92,8 @@ const modelKey = (value: ResolvedModelFrame): string => JSON.stringify([value.mo
 export const workerDataStore: KeypointsSource & {
     subscribeToCalibration: (cb: Listener<LoadedCalibration | null>) => () => void;
     getCalibration: () => LoadedCalibration | null;
+    subscribeToReferenceTransform: (cb: Listener<number[] | null>) => () => void;
+    getReferenceTransform: () => number[] | null;
     subscribeToCalibrationConfig: (cb: Listener<CalibrationConfig>) => () => void;
     getCalibrationConfig: () => CalibrationConfig;
     subscribeToVisibility: (cb: Listener<ViewportVisibility>) => () => void;
@@ -124,6 +127,8 @@ export const workerDataStore: KeypointsSource & {
     // Loaded calibration (camera poses)
     subscribeToCalibration: calibChan.subscribe,
     getCalibration: calibChan.getLatest,
+    subscribeToReferenceTransform: referenceTransformChan.subscribe,
+    getReferenceTransform: referenceTransformChan.getLatest,
 
     // Calibration config (charuco board dims, etc.)
     subscribeToCalibrationConfig: calibConfigChan.subscribe,
@@ -169,6 +174,9 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "calibration":
                 calibChan.dispatch(data as LoadedCalibration | null);
+                break;
+            case "referenceTransform":
+                referenceTransformChan.dispatch(data as number[] | null);
                 break;
             case "calibrationConfig":
                 calibConfigChan.dispatch(data as CalibrationConfig);

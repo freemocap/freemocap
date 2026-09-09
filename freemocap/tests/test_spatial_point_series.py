@@ -5,6 +5,7 @@ from freemocap.core.recording.sample_encoding.channel_series import SeriesSampli
 import numpy as np
 import pyarrow as pa
 import pytest
+from freemocap.core.types.channel_kind import ChannelKind
 
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleUnit
 from freemocap.core.recording.sample_encoding.spatial_points import (
@@ -18,6 +19,7 @@ from freemocap.core.recording.sample_encoding.spatial_points import (
 def test_planar_points_are_pixels_and_batches_are_bounded() -> None:
     series = SpatialPointSeries(
         definition=PointSeriesDefinition(
+            kind=ChannelKind.RAW_KEYPOINTS_3D,
             sensor_group="mocap",
             source="tracker",
             names=("wrist",),

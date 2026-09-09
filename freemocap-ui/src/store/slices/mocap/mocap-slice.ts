@@ -54,9 +54,9 @@ export interface TriangulationConfig {
 }
 
 export interface PosthocFilterConfig {
+    enabled: boolean;
     method: "butter_low_pass";
     cutoff: number;
-    sampling_rate: number;
     order: number;
 }
 
@@ -214,9 +214,9 @@ export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
 };
 
 export const DEFAULT_POSTHOC_FILTER_CONFIG: PosthocFilterConfig ={
+    enabled: true,
     method: "butter_low_pass",
     cutoff: 6.0,
-    sampling_rate: 30.0,
     order: 4,
 };
 
@@ -241,8 +241,6 @@ export interface MocapState {
     isLoading: boolean;
     error: string | null;
     directoryInfo: MocapDirectoryInfo | null;
-    /** User-specified calibration TOML path override. null = use most recent (default). */
-    calibrationTomlPath: string | null;
     processingProgress: number;
     processingPhase: string;
 }
@@ -306,7 +304,6 @@ const initialState: MocapState = {
     isLoading: false,
     error: null,
     directoryInfo: null,
-    calibrationTomlPath: null,
     processingProgress: 0,
     processingPhase: "",
 };
@@ -412,13 +409,6 @@ export const mocapSlice = createSlice({
             state.directoryInfo = action.payload;
         },
 
-        calibrationTomlPathChanged: (state, action: PayloadAction<string>) => {
-            state.calibrationTomlPath = action.payload;
-        },
-
-        calibrationTomlPathCleared: (state) => {
-            state.calibrationTomlPath = null;
-        },
 
         posthocProgressReceived: (state, action: PayloadAction<{phase: string; progress_fraction: number; detail: string}>) => {
             state.processingPhase = action.payload.phase;
@@ -505,7 +495,6 @@ export const selectMocapIsRecording = (state: RootState) => state.mocap.isRecord
 export const selectMocapProgress = (state: RootState) => state.mocap.recordingProgress;
 export const selectMocapError = (state: RootState) => state.mocap.error;
 export const selectMocapDirectoryInfo = (state: RootState) => state.mocap.directoryInfo;
-export const selectCalibrationTomlPath = (state: RootState) => state.mocap.calibrationTomlPath;
 export const selectProcessingProgress = (state: RootState) => state.mocap.processingProgress;
 export const selectProcessingPhase = (state: RootState) => state.mocap.processingPhase;
 
@@ -557,8 +546,6 @@ export const {
     mocapProgressUpdated,
     mocapErrorCleared,
     mocapDirectoryInfoUpdated,
-    calibrationTomlPathChanged,
-    calibrationTomlPathCleared,
     posthocProgressReceived,
     resetMocapState
 } = mocapSlice.actions;

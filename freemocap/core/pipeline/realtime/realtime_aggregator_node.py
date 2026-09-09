@@ -423,6 +423,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             if _configured_calib_path
             else None,
         )
+        calibration.set_reference_transform(reference_transform=aggregator_config.reference_transform)
         # The live camera set this pipeline owns, with the structured index each
         # camera reports. Fixed for the pipeline's life, so binding is settled here.
         live_camera_indices = {
@@ -530,6 +531,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                     pipeline_config = msg.pipeline_config
                     aggregator_config = pipeline_config.aggregator_config
                     filter_config = aggregator_config.realtime_filter_config
+                    if calibration.set_reference_transform(reference_transform=aggregator_config.reference_transform):
+                        keypoint_filter.reset()
+                        point_gate.reset()
+                        skeleton_set.reset()
+                        skeleton_observability_logged.clear()
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] received config update"
                     )
@@ -538,6 +544,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                     if calibration.set_source_path(
                         Path(_updated_calib_path) if _updated_calib_path else None
                     ):
+                        keypoint_filter.reset()
+                        point_gate.reset()
+                        skeleton_set.reset()
+                        skeleton_observability_logged.clear()
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] reloaded "
                             f"calibration from {calibration.calibration_path}"

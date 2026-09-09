@@ -9,9 +9,8 @@ import {selectLoadedCalibration} from "@/store/slices/calibration";
 function buildPosthocConfig(state: RootState) {
     const { config } = state.mocap;
     const blender = state.blender;
-    // Explicit override wins; fall back to the calibration loaded in the calibration panel
-    const calibrationTomlPath =
-        state.mocap.calibrationTomlPath ?? selectLoadedCalibration(state)?.path ?? null;
+    if (state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
+    const calibrationTomlPath = selectLoadedCalibration(state)?.path ?? null;
     // The freemocap_blender_addon only understands MediaPipe output so far - gate the
     // request payload here rather than clobbering the user's toggle preference in the
     // UI, so switching the detector away and back doesn't lose their selection.
@@ -38,7 +37,12 @@ function buildPosthocConfig(state: RootState) {
         mediapipeNumFaces: config.mediapipeNumFaces,
         calibrationTomlPath,
         triangulationConfig: config.triangulation,
-        filterConfig: config.posthoc_filter,
+        filterConfig: {
+            enabled: config.posthoc_filter.enabled,
+            method: config.posthoc_filter.method,
+            cutoff: config.posthoc_filter.cutoff,
+            order: config.posthoc_filter.order,
+        },
         exportToBlender: blenderSupported && blender.exportToBlenderEnabled,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
         autoOpenBlendFile: blenderSupported && blender.autoOpenBlendFile,

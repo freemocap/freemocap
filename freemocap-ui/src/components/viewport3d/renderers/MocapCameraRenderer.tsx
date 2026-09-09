@@ -10,6 +10,7 @@ import {
 import type { CalibrationCameraData } from "@/store/slices/calibration/calibration-slice";
 import { useWorkerData } from "../WorkerDataContext";
 import { useViewportState } from "../scene/ViewportStateContext";
+import {useReferenceTransform} from '../scene/ReferenceFrame';
 
 const FRUSTUM_DEPTH_MM = 75;
 const BODY_SIZE_MM = 20;
@@ -99,6 +100,7 @@ function MocapCameraInstance({ cam }: { cam: CalibrationCameraData }) {
 }
 
 export function MocapCameraRenderer() {
+    const referenceTransform = useReferenceTransform();
     const { loadedCalibration: loaded } = useWorkerData();
     const { statsRef } = useViewportState();
 
@@ -109,10 +111,12 @@ export function MocapCameraRenderer() {
     if (!loaded || loaded.cameras.length === 0) return null;
 
     return (
+        <group matrix={referenceTransform ?? new Matrix4()} matrixAutoUpdate={false}>
         <group rotation={[0, 0, Math.PI / 2]}>
             {loaded.cameras.map((cam) => (
                 <MocapCameraInstance key={cam.id} cam={cam} />
             ))}
+        </group>
         </group>
     );
 }

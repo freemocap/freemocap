@@ -1,10 +1,9 @@
 import {useCallback} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {store} from '@/store';
+import {calibrationAutoLoadDismissed, calibrationLoadedFromBundle, loadCalibrationToml, selectLoadedCalibration} from '@/store/slices/calibration';
 import {useElectronIPC} from '@/services';
 import {
-    calibrationTomlPathChanged,
-    calibrationTomlPathCleared,
     DetectorType,
     MediapipeDetectorConfig,
     MediapipeModelComplexity,
@@ -25,7 +24,6 @@ import {
     processMocapRecording,
     RealtimeFilterConfig,
     RTMPoseModelName,
-    selectCalibrationTomlPath,
     selectCanProcessMocapRecording,
     selectCanStartMocapRecording,
     selectIsUsingManualMocapPath,
@@ -90,7 +88,7 @@ export function useMocap() {
     const mocapRecordingPath = useAppSelector(selectMocapRecordingPath);
     const directoryInfo = useAppSelector(selectMocapDirectoryInfo);
     const isUsingManualPath = useAppSelector(selectIsUsingManualMocapPath);
-    const calibrationTomlPath = useAppSelector(selectCalibrationTomlPath);
+    const calibrationTomlPath = useAppSelector(selectLoadedCalibration)?.path ?? null;
 
     const setDetectorType = useCallback(
         (type: DetectorType) => {
@@ -248,14 +246,15 @@ export function useMocap() {
 
     const setCalibrationTomlPath = useCallback(
         (path: string) => {
-            dispatch(calibrationTomlPathChanged(path));
+            void dispatch(loadCalibrationToml({path, force: true}));
         },
         [dispatch]
     );
 
     const clearCalibrationTomlPath = useCallback(() => {
-        dispatch(calibrationTomlPathCleared());
-    }, [dispatch]);
+        dispatch(calibrationAutoLoadDismissed(calibrationTomlPath));
+        dispatch(calibrationLoadedFromBundle(null));
+    }, [dispatch, calibrationTomlPath]);
 
     const clearError = useCallback(() => {
         dispatch(mocapErrorCleared());

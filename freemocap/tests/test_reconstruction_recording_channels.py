@@ -22,6 +22,7 @@ def test_partial_pose_preserves_world_orientation_and_missing_local_rotation() -
         sensor_group="mocap",
         reference=SpatialReference.for_camera_count(1),
         definition=ReconstructionSourceDefinition(
+            point_kind=ChannelKind.RAW_KEYPOINTS_3D,
             model_id="subject",
             tracker="tracker",
             scale_reference_name="size",

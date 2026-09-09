@@ -442,6 +442,8 @@ function handleProgress(message: ProgressMessage, dedupeRef: { current: Record<s
         collecting_camera_output: PipelinePhase.COLLECTING,
         building_recorders: PipelinePhase.AGGREGATING,
         triangulating: PipelinePhase.AGGREGATING,
+        filtering: PipelinePhase.AGGREGATING,
+        reconstructing: PipelinePhase.AGGREGATING,
         exporting_blender: PipelinePhase.FINALIZING,
         validating_observations: PipelinePhase.SOLVING,
         running_solver: PipelinePhase.SOLVING,

@@ -4,7 +4,7 @@ import SettingsSection from '@/components/common/settings-layout/settings-sectio
 import SettingsSummaryChip from '@/components/common/settings-layout/settings-summary-chip';
 import CalibrationModule from '@/components/pipeline-progress/calibration-progress/calibration-module';
 import {RecordingCalibrationOptions} from './RecordingCalibrationOptions';
-import ReferenceFrameSettings from './reference-frame-settings';
+// import ReferenceFrameSettings from './reference-frame-settings';
 
 export default function CaptureVolumeSettings({mode}: {mode: 'recording' | 'playback'}) {
     const calibration = useAppSelector(state => state.calibration.loadedCalibration);
@@ -26,6 +26,8 @@ export default function CaptureVolumeSettings({mode}: {mode: 'recording' | 'play
                 <RecordingCalibrationOptions/>
             </div>
         </SettingsSection>
+        {/* TODO: Revisit reference-frame controls once the core workflow is stable.
         <ReferenceFrameSettings/>
+        */}
     </>;
 }

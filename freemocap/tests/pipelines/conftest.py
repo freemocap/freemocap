@@ -291,10 +291,11 @@ def posthoc_mocap_output_dir(
     )
     t0 = time.perf_counter()
     config = PosthocMocapPipelineConfig(
+        calibration_toml_path=str(calibration_toml_path),
         export_to_blender=False,
         auto_open_blend_file=False,
     )
-    logger.info("MocapConfig: calibration_toml_path=None (most-recent fallback)  export_to_blender=False")
+    logger.info("MocapConfig: calibration_toml_path=%s export_to_blender=False", calibration_toml_path)
     pipeline = posthoc_manager.create_mocap_pipeline(
         recording_info=recording_info,
         mocap_config=config,

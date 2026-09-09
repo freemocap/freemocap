@@ -48,3 +48,11 @@
   animation-duration: 1.5s;
   animation-iteration-count: infinite;
 }
+
+.button.streaming-reference-button {
+    border: 1px solid var(--color-border-control);
+    padding: 6px 10px;
+    box-shadow: var(--shadow-raised-lip), var(--shadow-raised-low);
+    cursor: pointer;
+}
+.button.streaming-reference-button:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 2px; }

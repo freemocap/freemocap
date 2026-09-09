@@ -1,6 +1,7 @@
 """Typed construction inputs and descriptor factories for observation recordings."""
 
 from freemocap.core.types.channel_kind import ChannelKind
+from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording
@@ -56,6 +57,7 @@ class ObservationGroup:
 
 @dataclass(frozen=True, slots=True)
 class ObservationRecordingRequest:
+    filtering: PosthocFilterReport | None
     models: tuple[RecordedModel, ...]
     reconstructions: tuple[ReconstructionRecording, ...]
     recording: RecordingInfo

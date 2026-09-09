@@ -14,9 +14,10 @@ import type { ResolvedModelFrame } from "@/services/server/transport/frame-types
 import { useAppSelector } from "@/store";
 import {
   selectCalibrationConfig,
-  selectLoadedCalibration,
+  type LoadedCalibration,
 } from "@/store/slices/calibration/calibration-slice";
 import { useCalibrationTomlLoader } from "./hooks/useCalibrationTomlLoader";
+import {useReferenceFrameForwarder} from './hooks/useReferenceFrameForwarder';
 import { type InspectionTarget, type ViewportStats } from "./helpers/viewport3d-types";
 
 Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -171,9 +172,9 @@ function serializeWheelEvent(e: WheelEvent, rect: DOMRect) {
   };
 }
 
-export function ThreeJsCanvas() {
+export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | null}) {
   const calibrationConfig = useAppSelector(selectCalibrationConfig);
-  const loadedCalibration = useAppSelector(selectLoadedCalibration);
+  const loadedCalibration = calibration;
   const {
     isLive,
     subscribeToKeypoints,
@@ -185,7 +186,8 @@ export function ThreeJsCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useCalibrationTomlLoader();
+  useCalibrationTomlLoader(isLive);
+  useReferenceFrameForwarder(VIEWPORT_WORKER, isLive);
 
   useEffect(() => {
     const canvas = canvasRef.current;

@@ -18,6 +18,7 @@ from freemocap.core.recording.sample_encoding.spatial_points import (
 )
 import pyarrow as pa
 import pytest
+from freemocap.core.types.channel_kind import ChannelKind
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellytracker.core.data_primitives.observation import Observation, StageObservation
@@ -81,6 +82,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
     for iteration in range(2):
         points = SpatialPointSeries(
             definition=PointSeriesDefinition(
+                kind=ChannelKind.RAW_KEYPOINTS_3D,
                 sensor_group="mocap",
                 source="tracker",
                 names=("wrist",),
@@ -92,6 +94,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
         )
         metadata = publish_posthoc_observations(
             ObservationRecordingRequest(
+                filtering=None,
                 models=(),
                 reconstructions=(),
                 camera_geometry=(),
@@ -147,6 +150,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
     with pytest.raises(ValueError, match="Missing recording timing columns"):
         publish_posthoc_observations(
             ObservationRecordingRequest(
+                filtering=None,
                 models=(),
                 reconstructions=(),
                 camera_geometry=(),

@@ -8,6 +8,7 @@ import numpy as np
 from numpy import testing as npt
 import pyarrow.parquet as pq
 import pytest
+from freemocap.core.types.channel_kind import ChannelKind
 from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_board_definition import (
     CharucoBoardDefinition,
 )
@@ -53,6 +54,7 @@ def saved_request(tmp_path: Path) -> SavedReconstructionRequest:
     reference = SpatialReference.for_camera_count(1)
     series = SpatialPointSeries(
         definition=PointSeriesDefinition(
+            kind=ChannelKind.RAW_KEYPOINTS_3D,
             sensor_group="mocap",
             source=bundle.detector_type,
             names=bundle.tracker_keypoint_names,
@@ -76,7 +78,7 @@ def saved_request(tmp_path: Path) -> SavedReconstructionRequest:
                         kind=SourceKind.TRACKER, definition={}
                     ),
                     bundle.model_id: ReconstructionSourceDefinition.from_bundle(
-                        bundle, tracker_source=bundle.detector_type,
+                        bundle, tracker_source=bundle.detector_type, point_kind=ChannelKind.RAW_KEYPOINTS_3D,
                     ).to_source(),
                 },
                 reference_frames={reference.name: reference.model_dump(mode="json")},

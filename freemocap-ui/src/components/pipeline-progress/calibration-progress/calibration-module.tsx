@@ -7,6 +7,7 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
 import DropdownButton from "@/components/ui-components/DropdownButton";
 import CalibrationSettings from "./calibration-settings";
+// import CalibrationReferenceFrame from './calibration-reference-frame';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import ImportVideosModal from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 import charucoBoardImage from "@/assets/images/charuco_board.webp";
@@ -76,6 +77,11 @@ const CalibrationModule = ({
 
   const location = useLocation();
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
+  // TODO: Revisit reference-frame controls once the core workflow is stable.
+  // const referenceFrameControls = appMode === 'streaming' && appModeOverride === undefined
+  //   ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
+  //   : null;
+  const panelTitle = appModeOverride === undefined ? 'Capture volume' : 'Calibration';
 
   // Cycling calibration messages during recording
   const calibrationMessages = [
@@ -269,6 +275,7 @@ const CalibrationModule = ({
       {importVideosModal}
     
       <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1 min-w-0 w-full">
+        <SubactionHeader text={panelTitle}/>
         {errorBanner}
         <div className="flex flex-row items-center min-w-0 w-full">
           <div className="flex flex-col flex-1 justify-content-space-between items-center min-w-0 w-full">
@@ -360,6 +367,7 @@ const CalibrationModule = ({
             >
               <div className="calibrate-icon-group flex flex-row items-center">
                 <span className="icon calibrated-icon icon-size-20" />
+                <SubactionHeader text={panelTitle}/>
                 <p className="text md text-success p-1">Calibrated</p>
               </div>
               <div
@@ -429,6 +437,7 @@ const CalibrationModule = ({
             tooltipPosition="pos-left"
           />
         </div>
+        {/* {referenceFrameControls} */}
       </div>
       </>
     );
@@ -443,7 +452,7 @@ const CalibrationModule = ({
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
-          <SubactionHeader text="Calibration" />
+          <SubactionHeader text={panelTitle} />
           <div data-onboarding="calibration:what-is-calibration" className="flex flex-row pos-rel gap-1 items-center">
             {calibrationHelp}
 
@@ -509,6 +518,7 @@ const CalibrationModule = ({
         }
         disabled={isLoading}
       />
+      {/* {referenceFrameControls} */}
     </div>
     </>
   );

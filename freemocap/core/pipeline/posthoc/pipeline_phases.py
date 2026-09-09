@@ -33,6 +33,8 @@ class MocapStage(_StrValueEnum):
     """Stages within the posthoc mocap task function."""
     BUILDING_RECORDERS = "building_recorders"
     TRIANGULATING = "triangulating"
+    FILTERING = "filtering"
+    RECONSTRUCTING = "reconstructing"
     EXPORTING_BLENDER = "exporting_blender"
 
 

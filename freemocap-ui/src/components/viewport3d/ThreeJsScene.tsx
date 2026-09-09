@@ -7,6 +7,7 @@ import {RenderPass} from "three/examples/jsm/postprocessing/RenderPass.js";
 import {UnrealBloomPass} from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import {SceneCamera} from "./scene/SceneCamera";
 import {SceneEnvironment} from "./scene/SceneEnvironment";
+import {ReferenceFrame} from './scene/ReferenceFrame';
 import {KeypointsRenderer} from "./renderers/KeypointsRenderer";
 import {FaceRenderer} from "@/components/viewport3d/renderers/FaceRenderer";
 import {ModelConnectionRenderer} from "@/components/viewport3d/renderers/ModelConnectionRenderer";
@@ -35,6 +36,7 @@ function DataInvalidator() {
             subscribeToModelFrames(() => invalidate()),
             workerDataStore.subscribeToVisibility(() => invalidate()),
             workerDataStore.subscribeToCalibration(() => invalidate()),
+            workerDataStore.subscribeToReferenceTransform(() => invalidate()),
         ];
         return () => unsubs.forEach(fn => fn());
     }, [invalidate, subscribeToKeypoints, subscribeToModelFrames]);
@@ -112,6 +114,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             {import.meta.env.DEV && <FrameProfiler />}
             <SceneCamera controlsRef={cameraControlsRef} />
             <SceneEnvironment />
+            <ReferenceFrame />
             <KeypointsRenderer />
             {visibility.centerOfMass && <CenterOfMassRenderer />}
             {visibility.connections && <ModelConnectionRenderer />}

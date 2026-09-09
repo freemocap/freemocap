@@ -1,28 +1,19 @@
 import React from "react";
 import IconButton from "@/components/ui-components/IconButton";
 
-export type CalibrationTomlSource = "auto" | "calibration-panel" | "manual" | "last-successful";
 
 interface CalibrationTomlPickerProps {
     tomlPath: string | null;
-    source: CalibrationTomlSource;
     onSelect: () => void;
-    onUseAutoDetected: () => void;
+    onClear: () => void;
     disabled?: boolean;
 }
 
-const SOURCE_LABELS: Record<CalibrationTomlSource, string> = {
-    auto: "Auto-detected",
-    "calibration-panel": "From calibration panel",
-    manual: "Manually selected",
-    "last-successful": "Last successful calibration",
-};
 
 export const CalibrationTomlPicker: React.FC<CalibrationTomlPickerProps> = ({
     tomlPath,
-    source,
     onSelect,
-    onUseAutoDetected,
+    onClear,
     disabled = false,
 }) => {
     return (
@@ -32,7 +23,7 @@ export const CalibrationTomlPicker: React.FC<CalibrationTomlPickerProps> = ({
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {tomlPath ? (
                     <>
-                        <span className="tag text sm">{SOURCE_LABELS[source]}</span>
+                        <span className="tag text sm">Selected calibration</span>
                         <span
                             className="text sm"
                             title={tomlPath}
@@ -42,16 +33,16 @@ export const CalibrationTomlPicker: React.FC<CalibrationTomlPickerProps> = ({
                         </span>
                     </>
                 ) : (
-                    <span className="text sm text-gray">No calibration TOML found</span>
+                    <span className="text sm text-gray">No calibration selected</span>
                 )}
             </div>
 
-            {source !== "auto" && tomlPath && (
+            {tomlPath && (
                 <IconButton
                     icon="rotate-icon"
-                    onClick={onUseAutoDetected}
+                    onClick={onClear}
                     disabled={disabled}
-                    title="Use auto-detected calibration"
+                    title="Clear calibration"
                 />
             )}
 

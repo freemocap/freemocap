@@ -31,6 +31,11 @@ from freemocap.system.recording_structure.recording_structure import RecordingSt
 
 class SavedPointPolicy(StrEnum):
     IDENTITY = "identity"
+    FILTERED = "filtered"
+
+    @property
+    def channel_kind(self) -> ChannelKind:
+        return ChannelKind.RAW_KEYPOINTS_3D if self == SavedPointPolicy.IDENTITY else ChannelKind.KEYPOINTS_3D
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,13 +78,11 @@ class SavedReconstruction:
 def read_saved_reconstruction(
     request: SavedReconstructionRequest,
 ) -> SavedReconstruction:
-    """Identity policy explicitly consumes RAW_KEYPOINTS_3D; no filter or refit is inferred.
+    """Load the explicitly selected raw or filtered input stream without filtering it again.
 
     The fit must describe these exact numeric inputs and scientific model. Returned fingerprints
     identify the selection; worker-level completion reuse requires stage-planner validation.
     """
-    if request.point_policy != SavedPointPolicy.IDENTITY:
-        raise ValueError("Unsupported saved-point processing policy")
     with recording_write_lock(structure=request.structure):
         metadata = read_metadata(path=request.structure.data_parquet_path)
         if metadata.recording_id != request.structure.recording_name:
@@ -87,6 +90,8 @@ def read_saved_reconstruction(
         run = metadata.runs[request.run_id]
         model = run.models[request.model_id]
         reconstruction_source = ReconstructionSourceDefinition.model_validate(run.sources[request.model_id].definition)
+        if reconstruction_source.point_kind != request.point_policy.channel_kind:
+            raise ValueError("Requested point policy differs from the saved reconstruction input channel")
         if reconstruction_source.model_id != request.model_id or reconstruction_source.tracker != request.point_source:
             raise ValueError(
                 "Selected point source does not match the saved model's tracker"
@@ -96,11 +101,11 @@ def read_saved_reconstruction(
             for channel in run.channels
             if channel.sensor_group == request.sensor_group
             and channel.source == request.point_source
-            and channel.kind == ChannelKind.RAW_KEYPOINTS_3D
+            and channel.kind == request.point_policy.channel_kind
         )
         if len(channels) != 1:
             raise ValueError(
-                "Saved reconstruction requires exactly one selected raw point channel"
+                "Saved reconstruction requires exactly one selected point channel"
             )
         channel = channels[0]
         reference = SpatialReference.model_validate(

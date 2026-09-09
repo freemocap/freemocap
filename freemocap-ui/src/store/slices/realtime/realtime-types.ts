@@ -23,6 +23,7 @@ export interface CameraNodeConfig {
 }
 
 export interface RealtimeAggregatorNodeConfig {
+    reference_transform: {matrix: number[]} | null;
     camera_matching: CameraMatchingOptions;
     calibration_toml_path: string | null;
     triangulation_enabled: boolean;
@@ -52,6 +53,7 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         mediapipe_num_faces: 1,
     },
     aggregator_config: {
+        reference_transform: null,
         camera_matching: {...defaultCameraMatchingOptions},
         calibration_toml_path: null,
         triangulation_enabled: true,

@@ -81,6 +81,8 @@ const config: Config = {
       },
       items: [
         { type: 'docSidebar', sidebarId: 'docsSidebar', position: 'left', label: 'Docs' },
+        // AI-generated work-plan navigation: 2026-09-10. Human review pending.
+        { type: 'docSidebar', sidebarId: 'workPlansSidebar', position: 'left', label: 'Work plans' },
         { to: '/blog', label: 'Blog', position: 'left' },
         { to: '/download', label: 'Download', position: 'left' },
         { to: '/roadmap', label: 'Roadmap', position: 'left' },

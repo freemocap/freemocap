@@ -1,4 +1,7 @@
 import AnchoredInfo from '@/components/ui-components/AnchoredInfo';
+import {RecordingCalibrationOptions} from '@/components/mocap-setup/RecordingCalibrationOptions';
+import SettingRow from '@/components/common/settings-layout/setting-row';
+import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
 import {CalibrationBoardMode} from "@/store/slices/calibration/calibration-types";
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
@@ -37,6 +40,7 @@ const SOURCE_ICONS: Record<CalibrationSource, string> = {
 };
 
 interface CalibrationModuleProps {
+  presentation?: 'panel' | 'settings';
   isCalibrated?: boolean;
   /**
    * Optionally override the app mode detection.
@@ -46,6 +50,7 @@ interface CalibrationModuleProps {
 }
 
 const CalibrationModule = ({
+  presentation = 'panel',
   isCalibrated: isCalibratedProp,
   appModeOverride,
 }: CalibrationModuleProps) => {
@@ -221,6 +226,7 @@ const CalibrationModule = ({
    */
   const dropdownItems = (
     <div className="flex flex-col gap-1 calibrate-module-dropdown-list">
+      {appMode === 'playback' && <RecordingCalibrationOptions/>}
       <ButtonSm
         iconClass="tomlfile-icon"
         text="Load most recent calibration TOML (default)"
@@ -262,8 +268,9 @@ const CalibrationModule = ({
   );
 
   const calibrationDropdown = <DropdownButton
+    dropdownClassName="calibration-source-menu"
     buttonProps={{text: 'Set up calibration', rightSideIcon: 'dropdown', iconClass: 'calibrate-icon',
-      className: 'button sm min-w-full justify-center', buttonType: 'secondary'}}
+      className: presentation === 'settings' ? 'button sm' : 'button sm min-w-full justify-center', buttonType: 'secondary'}}
     dropdownItems={dropdownItems}/>;
 
   const errorBanner = error && (
@@ -359,6 +366,25 @@ const CalibrationModule = ({
       </div>
       </>
     );
+  }
+
+  if (presentation === 'settings') {
+    return <>
+      {importVideosModal}
+      {errorBanner}
+      <SettingRow label="Calibration source" info={{title: 'Calibration source',
+        text: 'Load the latest calibration, choose a TOML file, or create a calibration from videos.'}}
+        control={<>{calibrationDropdown}{loadedCalibration && <IconButton icon="cancelcalibrate-icon"
+          onClick={handleClearCalibration} tooltip tooltipText="Clear calibration"/>}</>}/>
+      <SettingRow label="Board and solver" info={{title: 'Board and solver',
+        text: 'Configure the ChArUco board dimensions, measured square size, and calibration solver. These settings apply when creating a calibration.'}}
+        control={<ButtonSm text="Configure board…" iconClass="settings-icon" buttonType="secondary" onClick={handleToggleSettings}/>}/>
+      {showCalibrationSettings && <CalibrationSettings onClose={handleCloseSettings}/>}
+      <SettingRow label="Use initial board as ground plane" info={{title: 'Calibration ground plane',
+        text: 'When creating a calibration, use the initial ChArUco board pose to define the ground plane. This does not change an already loaded calibration.'}}
+        control={<SettingToggleSwitch label="Use initial board as ground plane" isToggled={config.useGroundplane}
+          onToggle={useGroundplane => updateCalibrationConfig({useGroundplane})}/>}/>
+    </>;
   }
 
   // Calibrated

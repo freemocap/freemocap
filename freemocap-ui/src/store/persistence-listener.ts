@@ -4,6 +4,19 @@ import {saveToStorage} from './persistence';
 
 export const persistenceListenerMiddleware = createListenerMiddleware();
 
+persistenceListenerMiddleware.startListening({
+    predicate: (_, curr, prev) => {
+        const current = (curr as RootState).pipelines;
+        const previous = (prev as RootState).pipelines;
+        return current.serverInstanceId !== previous.serverInstanceId
+            || current.dismissedBasePipelineIds !== previous.dismissedBasePipelineIds;
+    },
+    effect: (_, api) => {
+        const {serverInstanceId, dismissedBasePipelineIds} = (api.getState() as RootState).pipelines;
+        saveToStorage('pipelines.dismissals', {serverInstanceId, dismissedBasePipelineIds});
+    },
+});
+
 // How long to wait after the last change before writing to localStorage.
 // Rapid sequential actions (e.g. dragging a slider) collapse into one write.
 const DEBOUNCE_MS = 300;

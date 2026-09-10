@@ -21,6 +21,8 @@ from enum import Enum, StrEnum
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
 import cbor2
+from pydantic import BaseModel
+from freemocap.core.pipeline.posthoc.task_snapshot import TaskRegistrySnapshot
 from freemocap.core.diagnostics.pipeline_diagnostics import PipelineDiagnostics
 from freemocap.core.types.channel_kind import ChannelKind
 from skellycam.core.types.type_overloads import (
@@ -42,7 +44,6 @@ from skellycam.core.recorders.framerate_tracker import CurrentFramerate
 from skellyforge.core.skeleton.components.color_palette import ColorPalette
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
-from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 CURRENT_VERSION: int = 0
 
@@ -636,28 +637,8 @@ class AppStateMessage:
 @dataclass(frozen=True, slots=True)
 class ProgressMessage:
     kind: ClassVar[MessageKind] = MessageKind.PROGRESS
+    snapshot: TaskRegistrySnapshot
     envelope: MessageEnvelope = field(default_factory=MessageEnvelope)
-    pipeline_id: str = ""
-    pipeline_type: str = ""
-    phase: str = ""
-    progress_fraction: float = 0.0
-    detail: str = ""
-    recording_name: str = ""
-    recording_path: str = ""
-    camera_id: CameraIdString | None = None
-
-    @classmethod
-    def from_pipeline_progress(cls, progress: PipelineProgressMessage) -> "ProgressMessage":
-        return cls(
-            pipeline_id=str(progress.pipeline_id),
-            pipeline_type=str(progress.pipeline_type),
-            phase=str(progress.phase),
-            progress_fraction=float(progress.progress_fraction),
-            detail=str(progress.detail),
-            recording_name=str(progress.recording_name),
-            recording_path=str(progress.recording_path),
-            camera_id=getattr(progress, "camera_id", None),
-        )
 
 
 # - Serialization -
@@ -667,6 +648,8 @@ def _cbor_value(value: Any) -> Any:
     dataclass's to_cbor_message() method where present."""
     if value is None:
         return None
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, (str, int, float, bool, bytes)):

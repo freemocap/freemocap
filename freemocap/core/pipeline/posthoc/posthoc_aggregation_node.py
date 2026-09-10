@@ -49,6 +49,27 @@ logger = logging.getLogger(__name__)
 PosthocAggregationNodeTaskFn = Callable[..., None]
 
 
+def describe_incomplete_collection(
+    *, outputs_by_frame: dict[int, dict[str, VideoNodeOutputMessage | None]],
+) -> str:
+    missing_by_camera: dict[str, int] = {}
+    incomplete_positions = 0
+    expected_outputs = sum(len(outputs) for outputs in outputs_by_frame.values())
+    for outputs in outputs_by_frame.values():
+        missing = [camera_id for camera_id, output in outputs.items() if output is None]
+        incomplete_positions += bool(missing)
+        for camera_id in missing:
+            missing_by_camera[camera_id] = missing_by_camera.get(camera_id, 0) + 1
+    missing_outputs = sum(missing_by_camera.values())
+    return (
+        f"Frame collection stopped before completion: {expected_outputs - missing_outputs}/{expected_outputs} "
+        f"camera/frame output messages received; {missing_outputs} messages missing across "
+        f"{incomplete_positions}/{len(outputs_by_frame)} frame positions. "
+        f"Missing messages by camera: {missing_by_camera}. "
+        "These counts describe undelivered processing outputs, not missing board detections."
+    )
+
+
 @dataclass
 class PosthocAggregationNode(AggregatorNode):
     progress_subscription: TopicSubscriptionQueue
@@ -205,8 +226,9 @@ class PosthocAggregationNode(AggregatorNode):
             missing_frames = [frame_number for frame_number, complete in got_all_by_frame.items() if not complete]
             if missing_frames:
                 raise RuntimeError(
-                    f"Pipeline {pipeline_id} ended with {len(missing_frames)} missing frames out of {total_expected}, "
-                    f"incomplete frames (shutdown_flag={shutdown_self_flag.value}, "
+                    f"Pipeline {pipeline_id}: "
+                    f"{describe_incomplete_collection(outputs_by_frame=video_outputs_by_frame)} "
+                    f"(shutdown_flag={shutdown_self_flag.value}, "
                     f"should_continue={ipc.should_continue})"
                 )
 

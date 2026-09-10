@@ -1,33 +1,23 @@
-import {useEffect, useState} from 'react';
-import {useAppSelector} from '@/store';
-import SettingsSection from '@/components/common/settings-layout/settings-section';
-import SettingsSummaryChip from '@/components/common/settings-layout/settings-summary-chip';
 import CalibrationModule from '@/components/pipeline-progress/calibration-progress/calibration-module';
-import {RecordingCalibrationOptions} from './RecordingCalibrationOptions';
-// import ReferenceFrameSettings from './reference-frame-settings';
+import {CalibrateRecordingButton} from '@/components/control-panels/calibration-actions/CalibrateRecordingButton';
+import {useAppSelector} from '@/store';
+import {selectMocapRecordingPath} from '@/store/slices/mocap/mocap-slice';
+import SettingRow from '@/components/common/settings-layout/setting-row';
+import ReferenceFrameSettings from './reference-frame-settings';
 
 export default function CaptureVolumeSettings({mode}: {mode: 'recording' | 'playback'}) {
-    const calibration = useAppSelector(state => state.calibration.loadedCalibration);
-    const [geometryExpanded, setGeometryExpanded] = useState(!calibration);
-    useEffect(() => {setGeometryExpanded(!calibration);}, [calibration?.path]);
-    const filename = calibration?.path.split(/[\/]/).pop() ?? '';
-
+    const directory = useAppSelector(selectMocapRecordingPath);
     return <>
-        <SettingsSection nested title="Camera geometry" expanded={geometryExpanded}
-            onExpandedChange={setGeometryExpanded}
-            summary={calibration
-                ? <>
-                    <SettingsSummaryChip tone="positive">{calibration.cameras.length} cameras</SettingsSummaryChip>
-                    <SettingsSummaryChip tone="path" title={calibration.path}>{filename}</SettingsSummaryChip>
-                </>
-                : <SettingsSummaryChip tone="quiet">Select or calibrate…</SettingsSummaryChip>}>
-            <div className="capture-geometry-options">
-                <CalibrationModule appModeOverride={mode === 'playback' ? 'playback' : 'streaming'}/>
-                <RecordingCalibrationOptions/>
+        <div className="capture-geometry-options">
+            <CalibrationModule presentation="settings" appModeOverride={mode === 'playback' ? 'playback' : 'streaming'}/>
+            <div className="recording-calibration-actions">
+                <SettingRow label="Create calibration from videos" info={{title: 'Create calibration',
+                    text: 'Starts a calibration pipeline using the active recording’s videos and configured board. This creates a calibration rather than loading an existing TOML.'}}
+                    control={<CalibrateRecordingButton recordingPath={directory}/>}/>
             </div>
-        </SettingsSection>
-        {/* TODO: Revisit reference-frame controls once the core workflow is stable.
-        <ReferenceFrameSettings/>
-        */}
+        </div>
+        {mode === 'playback' && <ReferenceFrameSettings/>}
     </>;
 }
+
+

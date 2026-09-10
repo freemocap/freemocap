@@ -1,4 +1,14 @@
 /* CALIBRATION PROGRESS COLUMNS */
+.dropdown-container.calibration-source-menu {
+  left: auto;
+  right: 0;
+  width: 320px;
+  max-width: min(360px, 80vw);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-control);
+  z-index: 111;
+}
+
 .calibration-progress-columns {
   height: 32px;
   background-color: var(--color-bg-darker);

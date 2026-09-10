@@ -1,5 +1,5 @@
 import type {PlaybackManifest, PlaybackMedia} from '@/services/recording/playback-data';
-import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
+import {createAsyncThunk, createSlice, type PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
 import type {RecordingStatusSummary} from '@/types/recording-status';
@@ -37,6 +37,7 @@ export interface PlaybackBundle {
 }
 
 export interface PerRecordingPlaybackData {
+    requestId: string | null;
     bundle: PlaybackBundle | null;
     isLoading: boolean;
     error: string | null;
@@ -56,6 +57,7 @@ const initialState: PlaybackDataState = {
 };
 
 const emptyEntry = (): PerRecordingPlaybackData => ({
+    requestId: null,
     bundle: null,
     isLoading: false,
     error: null,
@@ -76,7 +78,7 @@ export const fetchPlaybackBundle = createAsyncThunk<
     { state: RootState; rejectValue: string }
 >(
     'playbackData/fetchBundle',
-    async ({recordingId, recordingParentDirectory}, {rejectWithValue}) => {
+    async ({recordingId, recordingParentDirectory}, {rejectWithValue, signal}) => {
         try {
             const bundleUrl = serverUrls.endpoints.playbackBundle(recordingId);
             const params = new URLSearchParams();
@@ -85,7 +87,7 @@ export const fetchPlaybackBundle = createAsyncThunk<
             }
             const queryString = params.toString();
             const url = queryString ? `${bundleUrl}?${queryString}` : bundleUrl;
-            const response = await fetch(url);
+            const response = await fetch(url, {signal});
             if (!response.ok) {
                 throw new Error(`Bundle fetch failed: ${response.status}`);
             }
@@ -146,17 +148,24 @@ export const fetchPlaybackBundle = createAsyncThunk<
 export const playbackDataSlice = createSlice({
     name: 'playbackData',
     initialState,
-    reducers: {},
+    reducers: {
+        recordingPlaybackInvalidated: (state, action: PayloadAction<{recordingId: string; recordingParentDirectory: string}>) => {
+            const key = playbackLocationKey(action.payload.recordingId, action.payload.recordingParentDirectory);
+            state.byRecordingId[key] = emptyEntry();
+        },
+    },
     extraReducers: (builder) => {
         builder
             .addCase(fetchPlaybackBundle.pending, (state, action) => {
                 const id = playbackLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
                 const prev = state.byRecordingId[id] ?? emptyEntry();
-                state.byRecordingId[id] = {...prev, isLoading: true, error: null};
+                state.byRecordingId[id] = {...prev, requestId: action.meta.requestId, isLoading: true, error: null};
             })
             .addCase(fetchPlaybackBundle.fulfilled, (state, action) => {
                 const id = playbackLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
+                if (state.byRecordingId[id]?.requestId !== action.meta.requestId) return;
                 state.byRecordingId[id] = {
+                    requestId: null,
                     bundle: action.payload,
                     isLoading: false,
                     error: null,
@@ -165,9 +174,11 @@ export const playbackDataSlice = createSlice({
             })
             .addCase(fetchPlaybackBundle.rejected, (state, action) => {
                 const id = playbackLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
+                if (state.byRecordingId[id]?.requestId !== action.meta.requestId) return;
                 const prev = state.byRecordingId[id] ?? emptyEntry();
                 state.byRecordingId[id] = {
                     ...prev,
+                    requestId: null,
                     isLoading: false,
                     error: action.payload ?? 'Failed to fetch playback bundle',
                     fetchedAt: null,
@@ -192,4 +203,9 @@ export const selectPlaybackBundleIsLoading = (recordingId: string | null | undef
         return state.playbackData.byRecordingId[playbackLocationKey(recordingId, parent)]?.isLoading ?? false;
     };
 
+export const selectPlaybackBundleError = (recordingId: string | null, parent: string | null | undefined) =>
+    (state: RootState): string | null => recordingId
+        ? state.playbackData.byRecordingId[playbackLocationKey(recordingId, parent)]?.error ?? null : null;
+
 export default playbackDataSlice.reducer;
+export const {recordingPlaybackInvalidated} = playbackDataSlice.actions;

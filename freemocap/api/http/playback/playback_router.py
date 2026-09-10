@@ -26,7 +26,7 @@ from freemocap.core.playback.media_selection import (
 from typing import Any, Optional
 
 import tomllib
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata, probe_video_files
 from skellycam.core.timestamps.recording_timing_reader import resolve_camera_timing, recorded_camera_timing_path
@@ -59,7 +59,10 @@ from freemocap.api.http.playback.resource_loading import RecordingResource, Reso
 
 logger = logging.getLogger(__name__)
 
-playback_router = APIRouter(prefix="/playback", tags=["Playback"])
+from freemocap.api.http.playback.recording_access import RecordingPlaybackRoute
+from freemocap.core.recording.recording_access import RecordingBusyError
+
+playback_router = APIRouter(prefix="/playback", tags=["Playback"], route_class=RecordingPlaybackRoute)
 
 
 @playback_router.get("/{recording_id}/media")
@@ -113,6 +116,12 @@ TIMESTAMP_EXTENSIONS = {".csv"}
 # ---------------------------------------------------------------------------
 # Response models
 # ---------------------------------------------------------------------------
+
+def video_stream_url(*, recording_id: str, path: Path, parameters: dict[str, str]) -> str:
+    stat = path.stat()
+    query = {**parameters, "revision": f"{stat.st_ino:x}-{stat.st_mtime_ns:x}-{stat.st_size:x}"}
+    return f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.name, safe='')}?{urlencode(query)}"
+
 
 class VideoInfo(BaseModel):
     video_id: str
@@ -309,20 +318,15 @@ def _validate_video_source(
     if len(set(frame_counts.values())) != 1:
         raise HTTPException(status_code=422, detail={"message": "Video frame counts differ", "files": frame_counts})
 
-    parent_directory_suffix = (
-        f"&recording_parent_directory={recording_parent_directory}"
-        if recording_parent_directory
-        else ""
-    )
+    parameters = {"source": source_name}
+    if recording_parent_directory:
+        parameters["recording_parent_directory"] = recording_parent_directory
     videos = [
         VideoInfo(
             video_id=p.name,
             filename=p.name,
             size_bytes=p.stat().st_size,
-            stream_url=(
-                f'/freemocap/playback/{quote(recording_id, safe="")}/videos/{quote(p.name, safe="")}'
-                f"?source={source_name}{parent_directory_suffix}"
-            ),
+            stream_url=video_stream_url(recording_id=recording_id, path=p, parameters=parameters),
         )
         for p in video_paths
     ]
@@ -382,6 +386,7 @@ def serve_parquet(
 
 @playback_router.get("/recordings", summary="List available recordings")
 def list_recordings(
+    request: Request,
     recording_parent_directory: str | None = Query(
         default=None,
         description="Override the default recordings directory",
@@ -400,42 +405,45 @@ def list_recordings(
         if not child.is_dir():
             continue
         try:
-            video_folder = _find_video_folder(child)
-            video_count = sum(
-                1 for p in video_folder.iterdir()
-                if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
-            )
-            if video_count > 0:
-                total_size = _get_total_size(video_folder)
-                created_ts = _get_created_timestamp(child)
-                stats = _get_recording_stats(child, video_folder, use_cv2_fallback=False)
-                status = compute_recording_status(child)
-                layout_validation = RecordingStructure(
-                    base_directory=child.parent,
-                    recording_name=child.name,
-                ).validate_layout()
+            with request.app.state.recording_access.read(path=child, cancel=lambda: None):
+                video_folder = _find_video_folder(child)
+                video_count = sum(
+                    1 for p in video_folder.iterdir()
+                    if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+                )
+                if video_count > 0:
+                    total_size = _get_total_size(video_folder)
+                    created_ts = _get_created_timestamp(child)
+                    stats = _get_recording_stats(child, video_folder, use_cv2_fallback=False)
+                    status = compute_recording_status(child)
+                    layout_validation = RecordingStructure(
+                        base_directory=child.parent,
+                        recording_name=child.name,
+                    ).validate_layout()
 
-                stages_complete = sum(1 for s in status.stages if s.complete)
-                entries.append(RecordingListEntry(
-                    name=child.name,
-                    path=str(child),
-                    video_count=video_count,
-                    total_size_bytes=total_size,
-                    created_timestamp=created_ts,
-                    total_frames=stats.get("total_frames"),
-                    duration_seconds=stats.get("duration_seconds"),
-                    fps=stats.get("fps"),
-                    status_summary=RecordingStatusSummary(
-                        blender_export_ready=status.blender_export_ready,
-                        has_blend_file=status.has_blend_file,
-                        has_annotated_videos=status.has_annotated_videos,
-                        has_calibration_toml=status.has_calibration_toml,
-                        stages_complete=stages_complete,
-                        stages_total=len(status.stages),
-                    ),
-                    status=status,
-                    layout_validation=layout_validation,
-                ))
+                    stages_complete = sum(1 for s in status.stages if s.complete)
+                    entries.append(RecordingListEntry(
+                        name=child.name,
+                        path=str(child),
+                        video_count=video_count,
+                        total_size_bytes=total_size,
+                        created_timestamp=created_ts,
+                        total_frames=stats.get("total_frames"),
+                        duration_seconds=stats.get("duration_seconds"),
+                        fps=stats.get("fps"),
+                        status_summary=RecordingStatusSummary(
+                            blender_export_ready=status.blender_export_ready,
+                            has_blend_file=status.has_blend_file,
+                            has_annotated_videos=status.has_annotated_videos,
+                            has_calibration_toml=status.has_calibration_toml,
+                            stages_complete=stages_complete,
+                            stages_total=len(status.stages),
+                        ),
+                        status=status,
+                        layout_validation=layout_validation,
+                    ))
+        except RecordingBusyError:
+            entries.append(RecordingListEntry(name=child.name, path=str(child), video_count=0))
         except (FileNotFoundError, PermissionError):
             continue
 
@@ -481,17 +489,13 @@ def list_videos(
             video_folder = _find_video_folder(recording_path)
             videos = _discover_videos(video_folder)
             if videos:
-                parent_directory_suffix = (
-                    f"?recording_parent_directory={recording_parent_directory}"
-                    if recording_parent_directory
-                    else ""
-                )
+                parameters = {"recording_parent_directory": recording_parent_directory} if recording_parent_directory else {}
                 video_list = [
                     VideoInfo(
                         video_id=vid_id,
                         filename=path.name,
                         size_bytes=path.stat().st_size,
-                        stream_url=f"/freemocap/playback/{recording_id}/videos/{vid_id}{parent_directory_suffix}",
+                        stream_url=video_stream_url(recording_id=recording_id, path=path, parameters=parameters),
                     )
                     for vid_id, path in videos.items()
                 ]
@@ -600,7 +604,7 @@ def stream_video(
         path=str(video_path),
         media_type=media_type,
         filename=video_path.name,
-        headers={"Cache-Control": "no-cache"},
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -804,7 +808,7 @@ def get_recording_bundle(
                 if recording_parent_directory:
                     parameters["recording_parent_directory"] = recording_parent_directory
                 videos.append(VideoInfo(video_id=path.name, filename=path.name, size_bytes=path.stat().st_size,
-                    stream_url=f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.name, safe='')}?{urlencode(parameters)}"))
+                    stream_url=video_stream_url(recording_id=recording_id, path=path, parameters=parameters)))
                 frame_counts[path.name] = metadata.reported_frame_count
                 properties[path.name] = metadata
         valid = len(videos) == len(paths) and len(set(frame_counts.values())) == 1
@@ -889,3 +893,4 @@ def get_recording_bundle(
         recording_fps=stats.get("fps"), total_frames=stats.get("total_frames"), duration_seconds=stats.get("duration_seconds"),
         calibration=calibration, tracker_schema=tracker_schema, status_summary=status_summary,
     )
+

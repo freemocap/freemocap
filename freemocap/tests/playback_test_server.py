@@ -1,3 +1,4 @@
+from freemocap.core.recording.recording_access import RecordingAccess
 """HTTP playback endpoints used by the Electron controller integration test."""
 
 import multiprocessing
@@ -15,6 +16,7 @@ from freemocap.api.http.playback.playback_router import playback_router
 
 def main() -> None:
     app = FastAPI()
+    app.state.recording_access = RecordingAccess()
     app.state.worker_registry = WorkerRegistry(
         global_kill_flag=multiprocessing.Value("b", False), worker_mode=WorkerMode.THREAD)
     app.include_router(playback_router)
@@ -26,3 +28,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -134,6 +134,7 @@
 }
 
 .reference-transform-actions {
+  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -183,7 +184,34 @@
 }
 
 .capture-geometry-options {
-  padding: 4px 6px;
+  padding: 4px 0;
+}
+
+.camera-geometry-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px 0;
+}
+
+.camera-geometry-summary-values {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 12px;
+}
+
+.camera-geometry-summary > .settings-summary-chip-path {
+  max-width: 100%;
+  color: var(--color-text-muted);
+}
+
+.recording-calibration-actions {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-hairline);
 }
 
 @media (max-width: 680px) {

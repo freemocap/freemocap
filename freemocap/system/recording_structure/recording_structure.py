@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, computed_field
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 RecordingTypeTag = Literal["calibration", "mocap"]
 
@@ -73,6 +74,11 @@ class RecordingStructure(BaseModel):
 
     base_directory: Path
     recording_name: str
+
+    @classmethod
+    def from_recording_info(cls, *, recording: RecordingInfo) -> "RecordingStructure":
+        """Describe the recording layout without creating filesystem entries."""
+        return cls(base_directory=Path(recording.recording_directory), recording_name=recording.recording_name)
 
     @computed_field
     @property

@@ -30,6 +30,7 @@ from skellytracker.core.tracker.tracker_state import TrackerState
 
 from freemocap.core.pipeline.posthoc.mocap_detection import MocapDetectionRequest, detect_mocap_recording
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
+from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterConfig
 
 
 def body_batch(
@@ -45,6 +46,16 @@ def body_batch(
 
 
 class MocapGroupDetectionTests(unittest.TestCase):
+    def test_invalid_filter_fails_before_inference_or_video_writes(self) -> None:
+        self.write_recording(camera_count=3, board_at=None)
+        config = self.config.model_copy(update={"filter_config": PosthocFilterConfig(cutoff=30.0)})
+        with patch("freemocap.core.pipeline.posthoc.mocap_detection.MocapVideoNode") as node:
+            with self.assertRaisesRegex(ValueError, "disable filtering"):
+                list(detect_mocap_recording(replace(self.request, config=config)))
+            node.assert_not_called()
+        self.body.process_batch.assert_not_called()
+        self.assertFalse((self.folder / "annotated_videos").exists())
+
     def test_next_frame_decodes_while_inference_is_running(self) -> None:
         self.write_recording(camera_count=1, board_at=None, frame_count=3)
         next_decoded = Event()

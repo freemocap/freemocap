@@ -1,5 +1,6 @@
 import React, {type ReactNode, useEffect, useMemo, useRef, useState} from "react";
 import CaptureVolumeSettings from './capture-volume-settings';
+import CameraGeometrySummary from './camera-geometry-summary';
 import ModalWindowControls from '@/components/ui-components/ModalWindowControls';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
@@ -18,7 +19,7 @@ import {RTMPOSE_MODELS} from "@/store/slices/mocap";
 enum SetupSection {
     Directory = 'Recording directory',
     Detectors = 'Detectors',
-    CaptureVolume = 'Capture volume',
+    CameraGeometry = 'Camera geometry',
     Triangulation = 'Triangulation',
     PostProcessing = 'Post-processing',
     Exports = 'Exports',
@@ -42,7 +43,6 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     } = useMocap();
 
     const config = useAppSelector(state => state.mocap.config);
-    const calibration = useAppSelector(state => state.calibration.loadedCalibration);
 
     useEffect(() => {
         if (mocapRecordingPath) validateDirectory(mocapRecordingPath);
@@ -89,10 +89,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             content: <MocapDetectorSettings/>,
         },
         {
-            name: SetupSection.CaptureVolume,
-            summary: calibration
-                ? <SettingsSummaryChip tone="positive">{calibration.cameras.length} cameras</SettingsSummaryChip>
-                : undefined,
+            name: SetupSection.CameraGeometry,
+            summary: <CameraGeometrySummary/>,
             content: <CaptureVolumeSettings mode={mode}/>,
         },
         {

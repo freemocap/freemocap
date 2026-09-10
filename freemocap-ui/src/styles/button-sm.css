@@ -82,6 +82,20 @@ button.quaternary:hover,
 
 
 /* accent button */
+.button.accent-outline {
+  background-color: transparent;
+  border: 1px solid var(--color-danger);
+}
+
+.button.accent-outline:hover {
+  background-color: var(--color-danger-idle);
+}
+
+.button.accent-outline:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+
 .accent {
   background-color: var(--color-danger);
 }

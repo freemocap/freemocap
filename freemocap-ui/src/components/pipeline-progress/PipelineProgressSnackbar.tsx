@@ -90,7 +90,7 @@ export default function PipelineProgressSnackbar() {
                 const dy = e.clientY - dragRef.current.startMy;
                 setDragPos({
                     left: Math.max(0, dragRef.current.startLeft + dx),
-                    bottom: Math.max(0, dragRef.current.startBottom - dy),
+                    bottom: Math.min(window.innerHeight - MIN_HEIGHT, Math.max(0, dragRef.current.startBottom - dy)),
                 });
             }
             if (resizeRef.current) {
@@ -132,12 +132,7 @@ export default function PipelineProgressSnackbar() {
     const hasRunningVisible = visibleGroups.some(g => !g.isComplete && !g.isFailed);
 
     const summaryGroup = visibleGroups.find(g => g.isActive) ?? visibleGroups[0] ?? null;
-    const summaryProgress = summaryGroup
-        ? (summaryGroup.aggregator?.progress
-            ?? (summaryGroup.videoNodes.length > 0
-                ? Math.round(summaryGroup.videoNodes.reduce((s, n) => s + n.progress, 0) / summaryGroup.videoNodes.length)
-                : 0))
-        : 0;
+    const summaryProgress = summaryGroup?.aggregator?.progress ?? null;
     const summaryLabel = summaryGroup
         ? `${summaryGroup.recordingName || summaryGroup.basePipelineId}${visibleGroups.length > 1 ? ` +${visibleGroups.length - 1}` : ''}`
         : 'No active pipelines';
@@ -145,8 +140,10 @@ export default function PipelineProgressSnackbar() {
     if (!open) return null;
 
     const containerStyle: React.CSSProperties = dragPos
-        ? {left: dragPos.left, bottom: dragPos.bottom, width: size.width}
-        : {width: size.width};
+        ? {left: dragPos.left, bottom: dragPos.bottom, width: size.width, height: collapsed ? 'auto' : size.height,
+            maxHeight: `calc(100dvh - ${dragPos.bottom + 12}px)`, maxWidth: 'calc(100vw - 24px)'}
+        : {width: size.width, height: collapsed ? 'auto' : size.height,
+            maxHeight: 'calc(100dvh - 48px)', maxWidth: 'calc(100vw - 48px)'};
 
     return (
         <div
@@ -179,12 +176,12 @@ export default function PipelineProgressSnackbar() {
                                     {summaryLabel}
                                 </p>
                                 <p className="text  text-gray flex-shrink-0 m-0">
-                                    {summaryProgress}%
+                                    {summaryProgress === null ? "In progress" : `${summaryProgress ?? 0}%`}
                                 </p>
                             </div>
                             {summaryGroup?.isActive && (
                                 <div className="update-progress-track progress-track-sm">
-                                    <div className="update-progress-fill h-full progress-fill-sm" style={{width: `${summaryProgress}%`}}/>
+                                    <div className="update-progress-fill h-full progress-fill-sm" style={{width: `${summaryProgress === null ? "In progress" : `${summaryProgress ?? 0}%`}`}}/>
                                 </div>
                             )}
                         </div>
@@ -203,9 +200,10 @@ export default function PipelineProgressSnackbar() {
                         className="icon-size-25 p-01 mr-2"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(allPipelinesCleared())}
-                        disabled={visibleGroups.length === 0}
+                        disabled={!visibleGroups.some(group => !group.isActive)}
+                        ariaLabel="Dismiss finished pipelines"
                         tooltip={true}
-                        tooltipText="Clear all pipelines"
+                        tooltipText="Dismiss finished pipelines"
                         tooltipPosition="pos-bottom"
                     />
                     <IconButton
@@ -220,7 +218,8 @@ export default function PipelineProgressSnackbar() {
 
                     {hasRunningVisible && (
                         <IconButton
-                            icon="close-icon"
+                            icon="stop-alert-icon"
+                            ariaLabel="Stop all posthoc jobs"
                             className="icon-size-25 p-01 text-error"
                             onMouseDown={e => e.stopPropagation()}
                             onClick={() => dispatch(stopAllPipelines())}
@@ -233,18 +232,19 @@ export default function PipelineProgressSnackbar() {
 
                     <IconButton
                         icon="close-icon"
+                        ariaLabel="Close progress panel"
                         className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(pipelineSnackbarHidden())}
                         tooltip={true}
-                        tooltipText="Close"
+                        tooltipText="Close and dismiss finished pipelines"
                         tooltipPosition="pos-bottom"
                     />
 
                 </div>
 
                 {!collapsed && (
-                    <div className="overflow-y flex-1 min-h-0 inner-content">
+                    <div className="overflow-y-auto flex-1 min-h-0 inner-content">
                         {cancellationError && <p role="alert" className="text-error">{cancellationError}</p>}
                         {visibleGroups.length === 0 ? (
                             <div className="flex justify-center py-4">
@@ -265,3 +265,4 @@ export default function PipelineProgressSnackbar() {
         </div>
     );
 }
+

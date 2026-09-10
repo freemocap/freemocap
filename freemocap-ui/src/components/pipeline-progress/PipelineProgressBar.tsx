@@ -30,12 +30,12 @@ export default function PipelineProgressBar({pipeline}: PipelineProgressBarProps
                 <p className="text sm text-gray m-0 flex-shrink-0">
                     {isTerminal && pipeline.completedAt
                         ? `${phaseLabel} ${formatTimeAgo(pipeline.completedAt)}`
-                        : `${phaseLabel} ${pipeline.progress}%`
+                        : pipeline.progress === null ? phaseLabel : `${phaseLabel} ${pipeline.progress}%`
                     }
                 </p>
             </div>
             <div className="update-progress-track">
-                <div className="update-progress-fill" style={{width: `${pipeline.progress}%`, backgroundColor: progressColor}}/>
+                <div className="update-progress-fill" style={{width: `${pipeline.progress ?? 0}%`, backgroundColor: progressColor}}/>
             </div>
             {pipeline.detail && (
                 <p className="text sm text-gray block m-0" style={{marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
@@ -45,3 +45,4 @@ export default function PipelineProgressBar({pipeline}: PipelineProgressBarProps
         </div>
     );
 }
+

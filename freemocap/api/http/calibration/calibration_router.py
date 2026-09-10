@@ -1,3 +1,4 @@
+from freemocap.core.recording.recording_access import RecordingBusyError
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 import importlib.util
 import json
@@ -245,6 +246,8 @@ async def stop_calibration_recording(
             "recording_name": recording_info.recording_name,
             "recording_path": str(recording_info.full_recording_path),
         }
+    except RecordingBusyError as error:
+        raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
     except Exception as e:
         logger.exception(f"Error stopping calibration recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -279,6 +282,8 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
             results={},
             pipeline_id=pipeline.id,
         )
+    except RecordingBusyError as error:
+        raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
     except Exception as e:
         logger.exception(f"Error calibrating recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -294,3 +299,5 @@ def cancel_posthoc_pipeline(pipeline_id: str) -> None:
 @calibration_router.delete("/posthoc/pipelines")
 def cancel_posthoc_pipelines() -> None:
     get_freemocap_app().posthoc_pipeline_manager.stop_all_pipelines(pipeline_type=PosthocPipelineType.CALIBRATION)
+
+

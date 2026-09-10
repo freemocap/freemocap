@@ -2,11 +2,12 @@
 Consolidated FastAPI app factory with proper lifecycle management.
 """
 import logging
+import asyncio
 import multiprocessing
 import platform
 import subprocess
 import sys
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 from typing import AsyncGenerator
@@ -327,6 +328,18 @@ def _log_system_info() -> None:
     )
 
 
+async def collect_task_progress(app: FastAPI) -> None:
+    """Collect worker state even when no client is connected."""
+    try:
+        while not app.state.global_kill_flag.value:
+            await asyncio.to_thread(get_freemocap_app().posthoc_pipeline_manager.refresh_progress)
+            await asyncio.sleep(0.5)
+    except Exception as error:
+        app.state.fatal_error = error
+        app.state.global_kill_flag.value = True
+        raise
+
+
 @asynccontextmanager
 async def app_lifespan(
         app: FastAPI
@@ -356,7 +369,13 @@ async def app_lifespan(
             f"FreeMoCap API {freemocap.__version__} started successfully 💀✨\n"
             f"Swagger API docs: {app_url}/docs"
         )
-        yield
+        collector = asyncio.create_task(collect_task_progress(app), name="PosthocProgressCollector")
+        try:
+            yield
+        finally:
+            collector.cancel()
+            with suppress(asyncio.CancelledError):
+                await collector
     except Exception as error:
         app.state.fatal_error = error
         raise

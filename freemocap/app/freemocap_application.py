@@ -6,6 +6,7 @@ calibration/mocap pipeline operations.
 """
 import logging
 import multiprocessing
+from freemocap.core.recording.recording_access import RecordingAccess
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
 
@@ -48,6 +49,8 @@ class FreemocapApplication:
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
         global_kill_flag = fastapi_app.state.global_kill_flag
         worker_registry = fastapi_app.state.worker_registry
+        access = RecordingAccess()
+        fastapi_app.state.recording_access = access
 
         inference_service = InferenceService(worker_registry=worker_registry)
         inference_service.start()
@@ -59,6 +62,7 @@ class FreemocapApplication:
                 inference_service=inference_service,                worker_registry=worker_registry,
             ),
             posthoc_pipeline_manager=PosthocPipelineManager(
+                access=access,
                 inference_service=inference_service,                global_kill_flag=global_kill_flag,
                 worker_registry=worker_registry,
             ),

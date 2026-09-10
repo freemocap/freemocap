@@ -39,6 +39,21 @@ class FilteredRecording:
     report: PosthocFilterReport
 
 
+def validate_filter_timing(*, timestamps_s: NDArray[np.float64], config: PosthocFilterConfig) -> float:
+    if timestamps_s.ndim != 1 or not np.isfinite(timestamps_s).all():
+        raise ValueError("Filtering requires a finite timestamp vector")
+    intervals = np.diff(timestamps_s)
+    if intervals.size == 0 or np.any(intervals <= 0):
+        raise ValueError("Enabled filtering requires at least two strictly increasing recording timestamps")
+    rate = 1.0 / float(np.median(intervals))
+    if config.enabled and (config.cutoff >= rate / 2 or np.isclose(config.cutoff, rate / 2, rtol=1e-12, atol=0)):
+        raise ValueError(
+            f"Filter cutoff {config.cutoff:g} Hz must be below recording Nyquist frequency {rate / 2:g} Hz "
+            f"({rate:g} frames/s). Set the low-pass cutoff below {rate / 2:g} Hz or disable filtering, then run processing again."
+        )
+    return rate
+
+
 def filter_recording_points(
     *, points: NDArray[np.float64], timestamps_s: NDArray[np.float64], config: PosthocFilterConfig,
 ) -> FilteredRecording:
@@ -58,12 +73,8 @@ def filter_recording_points(
         return FilteredRecording(points=points, report=PosthocFilterReport(
             config=config, sampling_rate_hz=None, filtered_runs=0, preserved_short_runs=0,
         ))
-    if intervals.size == 0:
-        raise ValueError("Enabled filtering requires at least two recording timestamps")
-    interval = float(np.median(intervals))
-    rate = 1.0 / interval
-    if config.cutoff >= rate / 2 or np.isclose(config.cutoff, rate / 2, rtol=1e-12, atol=0):
-        raise ValueError(f"Filter cutoff {config.cutoff:g} Hz must be below recording Nyquist frequency {rate / 2:g} Hz")
+    rate = validate_filter_timing(timestamps_s=timestamps_s, config=config)
+    interval = 1.0 / rate
     # Match the SOS forward/backward filter's odd-padding length for a Butterworth design.
     pad_length = 3 * (config.order + 1)
     output = points.copy()

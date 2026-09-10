@@ -1,6 +1,23 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {stopAllPipelines, stopPipeline} from './pipelines-thunks';
+import type {TaskRegistrySnapshot} from '@/services/server/transport/message-contract';
+import {loadFromStorage} from '@/store/persistence';
+
+export function phaseForTask(phase: string): PipelinePhase {
+    const phases: Record<string, PipelinePhase> = {
+        queued: PipelinePhase.QUEUED, setting_up: PipelinePhase.SETTING_UP,
+        processing_images: PipelinePhase.PROCESSING_VIDEOS, collecting_camera_output: PipelinePhase.COLLECTING,
+        building_recorders: PipelinePhase.AGGREGATING, triangulating: PipelinePhase.AGGREGATING,
+        filtering: PipelinePhase.AGGREGATING, reconstructing: PipelinePhase.AGGREGATING,
+        exporting_blender: PipelinePhase.FINALIZING, validating_observations: PipelinePhase.SOLVING,
+        running_solver: PipelinePhase.SOLVING, saving_calibration: PipelinePhase.SAVING,
+        complete: PipelinePhase.COMPLETE, failed: PipelinePhase.FAILED,
+    };
+    const value = phases[phase];
+    if (!value) throw new Error(`Unknown task phase: ${phase}`);
+    return value;
+}
 
 // ==================== Pipeline Types ====================
 
@@ -54,10 +71,12 @@ export const CALIBRATION_STAGES: readonly PipelinePhase[] = [
 ];
 
 export interface PipelineProgress {
+    basePipelineId: string;
+    cameraId: string | null;
     pipelineId: string;
     pipelineType: PipelineType;
     phase: PipelinePhase;
-    progress: number; // 0-100
+    progress: number | null; // 0-100; null means unmeasured
     detail: string;
     recordingName: string;
     recordingPath: string;
@@ -68,6 +87,9 @@ export interface PipelineProgress {
 // ==================== State ====================
 
 interface PipelinesState {
+    recordingOwners: TaskRegistrySnapshot['recording_owners'];
+    serverInstanceId: string | null;
+    registryRevision: number;
     cancellationError: string | null;
     activePipelines: Record<string, PipelineProgress>;
     dismissedBasePipelineIds: string[];
@@ -76,10 +98,16 @@ interface PipelinesState {
     snackbarVisible: boolean;
 }
 
+const dismissedTasks = loadFromStorage<{serverInstanceId: string | null; dismissedBasePipelineIds: string[]}>(
+    'pipelines.dismissals', {serverInstanceId: null, dismissedBasePipelineIds: []});
+
 const initialState: PipelinesState = {
+    recordingOwners: [],
+    serverInstanceId: dismissedTasks.serverInstanceId,
+    registryRevision: -1,
     cancellationError: null,
     activePipelines: {},
-    dismissedBasePipelineIds: [],
+    dismissedBasePipelineIds: dismissedTasks.dismissedBasePipelineIds,
     showCompleted: false,
     filterText: '',
     snackbarVisible: false,
@@ -87,45 +115,52 @@ const initialState: PipelinesState = {
 
 // ==================== Slice ====================
 
-function forceBasePipelineFailed(state: PipelinesState, baseId: string, detail: string) {
-    const now = Date.now();
-    for (const [id, p] of Object.entries(state.activePipelines)) {
-        const colonIdx = id.indexOf(':');
-        const thisBase = colonIdx !== -1 ? id.slice(0, colonIdx) : id;
-        if (thisBase === baseId && p.phase !== PipelinePhase.COMPLETE && p.phase !== PipelinePhase.FAILED) {
-            state.activePipelines[id] = {...p, phase: PipelinePhase.FAILED, detail, completedAt: now};
-        }
-    }
+function dismissCompletedTasks(state: PipelinesState): void {
+    state.dismissedBasePipelineIds = [...new Set([
+        ...state.dismissedBasePipelineIds,
+        ...Object.values(state.activePipelines)
+            .filter(pipeline => pipeline.cameraId === null && pipeline.completedAt !== undefined)
+            .map(pipeline => pipeline.basePipelineId),
+    ])];
 }
 
 export const pipelinesSlice = createSlice({
     name: 'pipelines',
     initialState,
     reducers: {
-        pipelineProgressUpdated: (state, action: PayloadAction<PipelineProgress>) => {
-            const incoming = action.payload;
-            const existing = state.activePipelines[incoming.pipelineId];
-            if (existing && (existing.phase === PipelinePhase.COMPLETE || existing.phase === PipelinePhase.FAILED)
-                && incoming.phase !== PipelinePhase.COMPLETE && incoming.phase !== PipelinePhase.FAILED) return;
-            const isTerminal = incoming.phase === PipelinePhase.COMPLETE || incoming.phase === PipelinePhase.FAILED;
-            // Derive base pipeline ID (everything before the first colon)
-            const colonIdx = incoming.pipelineId.indexOf(':');
-            const baseId = colonIdx !== -1 ? incoming.pipelineId.slice(0, colonIdx) : incoming.pipelineId;
-            // Only active pipeline updates open the snackbar; terminal history remains inspectable.
-            const baseIsNew = !Object.keys(state.activePipelines).some(id => {
-                const c = id.indexOf(':');
-                return (c !== -1 ? id.slice(0, c) : id) === baseId;
-            });
-            state.activePipelines[incoming.pipelineId] = {
-                ...incoming,
-                calibrationStage: incoming.pipelineType === PipelineType.CALIBRATION
-                    ? CALIBRATION_STAGES.includes(incoming.phase) ? incoming.phase : existing?.calibrationStage
-                    : undefined,
-                completedAt: isTerminal ? existing?.completedAt ?? Date.now() : undefined,
-            };
-            if (baseIsNew && !isTerminal) {
-                state.snackbarVisible = true;
-                state.dismissedBasePipelineIds = state.dismissedBasePipelineIds.filter(id => id !== baseId);
+        taskSnapshotReceived: (state, action: PayloadAction<TaskRegistrySnapshot>) => {
+            const snapshot = action.payload;
+            if (state.serverInstanceId === snapshot.server_instance_id && snapshot.revision <= state.registryRevision) return;
+            const sameServer = state.serverInstanceId === snapshot.server_instance_id;
+            const previous = sameServer ? state.activePipelines : {};
+            state.serverInstanceId = snapshot.server_instance_id;
+            state.registryRevision = snapshot.revision;
+            state.recordingOwners = snapshot.recording_owners;
+            if (!sameServer) state.dismissedBasePipelineIds = [];
+            const newTaskStarted = snapshot.tasks.some(task => task.status === 'running' && !previous[task.task_id]);
+            if (newTaskStarted) {
+                state.dismissedBasePipelineIds = [...new Set([
+                    ...state.dismissedBasePipelineIds,
+                    ...snapshot.tasks.filter(task => task.status !== 'running').map(task => task.task_id),
+                ])];
+            }
+            state.activePipelines = {};
+            for (const task of snapshot.tasks) {
+                const common = {pipelineType: task.task_type, recordingName: task.recording.recording_name,
+                    recordingPath: task.recording.full_path, basePipelineId: task.task_id};
+                const phase = phaseForTask(task.progress.phase);
+                const terminal = task.status !== 'running';
+                state.activePipelines[task.task_id] = {...common, pipelineId: task.task_id, cameraId: null,
+                    phase, progress: task.progress.progress_fraction === null ? null : Math.round(task.progress.progress_fraction * 100),
+                    detail: task.progress.detail, completedAt: terminal ? Date.parse(task.updated_at) : undefined,
+                    calibrationStage: CALIBRATION_STAGES.includes(phase) ? phase : undefined};
+                for (const camera of task.cameras) {
+                    state.activePipelines[camera.node_id] = {...common, pipelineId: camera.node_id, cameraId: camera.camera_id,
+                        phase: phaseForTask(camera.progress.phase),
+                        progress: camera.progress.progress_fraction === null ? null : Math.round(camera.progress.progress_fraction * 100),
+                        detail: camera.progress.detail};
+                }
+                if (!previous[task.task_id] && !terminal) state.snackbarVisible = true;
             }
         },
         toggleShowCompleted: (state) => {
@@ -138,6 +173,7 @@ export const pipelinesSlice = createSlice({
             state.snackbarVisible = true;
         },
         pipelineSnackbarHidden: (state) => {
+            dismissCompletedTasks(state);
             state.snackbarVisible = false;
         },
         pipelineDismissed: (state, action: PayloadAction<string>) => {
@@ -146,8 +182,7 @@ export const pipelinesSlice = createSlice({
             }
         },
         allPipelinesCleared: (state) => {
-            state.activePipelines = {};
-            state.dismissedBasePipelineIds = [];
+            dismissCompletedTasks(state);
             // snackbarVisible intentionally unchanged — panel stays open/closed as-is
         },
     },
@@ -156,9 +191,7 @@ export const pipelinesSlice = createSlice({
             .addCase(stopPipeline.pending, (state) => {
                 state.cancellationError = null;
             })
-            .addCase(stopPipeline.fulfilled, (state, action) => {
-                forceBasePipelineFailed(state, action.payload, 'Stopped by user');
-            })
+
             .addCase(stopPipeline.rejected, (state, action) => {
                 state.cancellationError = action.error.message ?? 'Pipeline cancellation failed';
             })
@@ -234,8 +267,8 @@ const selectAllGroupsUnfiltered = createSelector(
         const groups = new Map<string, PipelineGroup>();
 
         for (const p of Object.values(pipelines)) {
-            const colonIdx = p.pipelineId.indexOf(':');
-            const basePipelineId = colonIdx !== -1 ? p.pipelineId.slice(0, colonIdx) : p.pipelineId;
+            const basePipelineId = p.basePipelineId;
+
 
             if (!groups.has(basePipelineId)) {
                 groups.set(basePipelineId, {
@@ -251,7 +284,7 @@ const selectAllGroupsUnfiltered = createSelector(
                 });
             }
             const group = groups.get(basePipelineId)!;
-            if (colonIdx !== -1) {
+            if (p.cameraId !== null) {
                 group.videoNodes.push(p);
             } else {
                 group.aggregator = p;
@@ -317,8 +350,8 @@ export const selectActiveBasePipelineCount = createSelector(
         for (const p of Object.values(pipelines)) {
             const isTerminal = p.phase === PipelinePhase.COMPLETE || p.phase === PipelinePhase.FAILED;
             if (!isTerminal) {
-                const colonIdx = p.pipelineId.indexOf(':');
-                activeBaseIds.add(colonIdx !== -1 ? p.pipelineId.slice(0, colonIdx) : p.pipelineId);
+                const basePipelineId = p.basePipelineId;
+                activeBaseIds.add(basePipelineId);
             }
         }
         return activeBaseIds.size;
@@ -330,6 +363,7 @@ export const selectActiveBasePipelineCount = createSelector(
 export const selectSnackbarVisible = (state: RootState) => state.pipelines.snackbarVisible;
 export const selectDismissedBasePipelineIds = (state: RootState) => state.pipelines.dismissedBasePipelineIds;
 
-export const {pipelineProgressUpdated, toggleShowCompleted, filterTextChanged, pipelineSnackbarShown, pipelineSnackbarHidden, pipelineDismissed, allPipelinesCleared} = pipelinesSlice.actions;
+export const {taskSnapshotReceived, toggleShowCompleted, filterTextChanged, pipelineSnackbarShown, pipelineSnackbarHidden, pipelineDismissed, allPipelinesCleared} = pipelinesSlice.actions;
 
 export default pipelinesSlice.reducer;
+

@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from queue import Queue
 from typing import TypeVar
+import numpy as np
+from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
+from freemocap.core.reconstruction.posthoc_filtering import validate_filter_timing
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.core.data_primitives.observation import Observation
@@ -71,6 +74,11 @@ def detect_mocap_recording(request: MocapDetectionRequest) -> Iterator[MocapDete
         frame_count = group.frame_count
     finally:
         group.close()
+    if request.config.filter_config.enabled:
+        timing = RecordingGroupTiming.resolve(recording_folder=request.recording_path, videos=metadata,
+            frame_numbers=tuple(range(frame_count)))
+        validate_filter_timing(timestamps_s=np.asarray(timing.synchronized.timestamps_s, dtype=np.float64),
+            config=request.config.filter_config)
     nodes = request.video_nodes
     client = request.inference_service.register(InferenceRegistration(
         pipeline_id=request.ipc.pipeline_id, mode=InferenceMode.POSTHOC,

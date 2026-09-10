@@ -1,3 +1,4 @@
+from freemocap.core.recording.recording_access import RecordingBusyError
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 import logging
 import shutil
@@ -214,6 +215,8 @@ async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, 
             "recording_name": recording_info.recording_name,
             "recording_path": str(recording_info.full_recording_path),
         }
+    except RecordingBusyError as error:
+        raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
     except Exception as e:
         logger.exception(f"Error stopping mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -405,6 +408,8 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
             results={},
             pipeline_id=pipeline.id,
         )
+    except RecordingBusyError as error:
+        raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
     except Exception as e:
         logger.exception(f"Error processing mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -436,3 +441,5 @@ def cancel_realtime_pipelines() -> None:
 def cancel_synchronization_job(job_id: str) -> None:
     if not get_freemocap_app().sync_job_manager.stop_job(job_id=job_id):
         raise HTTPException(status_code=404, detail="Synchronization job not found")
+
+

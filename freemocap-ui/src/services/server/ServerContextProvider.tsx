@@ -1,6 +1,6 @@
 import type {DiagnosticsFrame, DiagnosticsCallback} from './transport/TransportService';
-import {fetchPlaybackBundle} from "@/store/slices/playback-data/playback-data-slice";
-import {splitParentAndName} from "@/store/slices/active-recording/active-recording-slice";
+import {applyTaskSnapshot} from './task-progress';
+
 // ServerContextProvider.tsx
 //
 // Thin consumer of TransportService. TransportService owns the WebSocket, the
@@ -26,12 +26,12 @@ import {
     ModelFramesCallback,
 } from "@/components/viewport3d/KeypointsSourceContext";
 import {store} from "@/store";
-import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
+
 import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/store/slices/connection/connection-slice";
 import {modelsReceived} from "@/store/slices/model";
 import {conventionReceived} from "@/store/slices/convention";
 import {camerasReceived} from "@/store/slices/camera-layout";
-import {loadCalibrationForRecording} from "@/store/slices/calibration";
+
 import {TransportService} from "@/services/server/transport/TransportService";
 import {
     OverlayLayer,
@@ -60,6 +60,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     // Service instances
     const transportRef = useRef<TransportService | null>(null);
+    const connectionRequestedRef = useRef(false);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
@@ -67,7 +68,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const logStoreRef = useRef<LogStore>(logStore);
 
     const serverFpsRef = useRef<number | null>(null);
-    const lastPipelineProgressRef = useRef<Record<string, string>>({});
+
 
     // Held model/cameras (for overlay image sizes + connections).
     const modelsRef = useRef<ModelDefinition[] | null>(null);
@@ -176,7 +177,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subs.push(transport.subscribeToAppState((message) => {
             store.dispatch(serverStateReceived(message));
         }));
-        subs.push(transport.subscribeToProgress((message) => handleProgress(message, lastPipelineProgressRef)));
+        subs.push(transport.subscribeToProgress((message) => handleProgress(message)));
 
         const handleBeforeUnload = (): void => {
             logStoreRef.current?.persistNow();
@@ -190,6 +191,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             setIsFailed(newState === ConnectionState.FAILED);
 
             if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
+
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
                 serverFpsRef.current = null;
@@ -289,6 +291,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         frameLoopRef.current = requestAnimationFrame(processFrameLoop);
 
         transport.on('state-change', handleStateChange);
+        if (connectionRequestedRef.current) transport.connect();
 
         return () => {
             disposed = true;
@@ -312,10 +315,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     }, []);
 
     const connect = useCallback((): void => {
+        connectionRequestedRef.current = true;
         transportRef.current?.connect();
     }, []);
 
     const disconnect = useCallback((): void => {
+        connectionRequestedRef.current = false;
         transportRef.current?.disconnect();
     }, []);
 
@@ -398,6 +403,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         if (transport && newUrl !== currentUrl) {
             transport.updateUrl(newUrl);
             transport.disconnect();
+            if (connectionRequestedRef.current) transport.connect();
         }
     }, []);
 
@@ -433,78 +439,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     );
 };
 
-// Progress → pipeline slices (moved here from the old JSON if/else chain).
-function handleProgress(message: ProgressMessage, dedupeRef: { current: Record<string, string> }): void {
-    const PIPELINE_TYPE_MAP: Record<string, PipelineType> = {
-        calibration: PipelineType.CALIBRATION,
-        mocap: PipelineType.MOCAP,
-    };
-    const pipelineType = PIPELINE_TYPE_MAP[message.pipeline_type];
-    if (!pipelineType) {
-        console.error('[WS] Unknown pipeline_type in progress message:', message.pipeline_type, message);
-        return;
-    }
-    const progress = Math.round(message.progress_fraction * 100);
-    const dedupeKey = message.phase + ':' + progress;
-    if (dedupeRef.current[message.pipeline_id] === dedupeKey) return;
-    dedupeRef.current[message.pipeline_id] = dedupeKey;
-
-    const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
-        queued: PipelinePhase.QUEUED,
-        setting_up: PipelinePhase.SETTING_UP,
-        processing_images: PipelinePhase.PROCESSING_VIDEOS,
-        collecting_camera_output: PipelinePhase.COLLECTING,
-        building_recorders: PipelinePhase.AGGREGATING,
-        triangulating: PipelinePhase.AGGREGATING,
-        filtering: PipelinePhase.AGGREGATING,
-        reconstructing: PipelinePhase.AGGREGATING,
-        exporting_blender: PipelinePhase.FINALIZING,
-        validating_observations: PipelinePhase.SOLVING,
-        running_solver: PipelinePhase.SOLVING,
-        saving_calibration: PipelinePhase.SAVING,
-        complete: PipelinePhase.COMPLETE,
-        failed: PipelinePhase.FAILED,
-    };
-    store.dispatch(pipelineProgressUpdated({
-        pipelineId: message.pipeline_id,
-        pipelineType,
-        phase: BACKEND_PHASE_MAP[message.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
-        progress,
-        detail: message.detail,
-        recordingName: message.recording_name,
-        recordingPath: message.recording_path,
-    }));
-    if (!message.pipeline_id.includes(':')) {
-        if ((message.phase === PipelinePhase.COMPLETE || message.phase === PipelinePhase.FAILED) && message.recording_path) {
-            const recording = splitParentAndName(message.recording_path);
-            if (recording) {
-                void store.dispatch(fetchPlaybackBundle({
-                    recordingId: recording.recordingName,
-                    recordingParentDirectory: recording.baseDirectory,
-                }));
-            }
-        }
-        if (pipelineType === PipelineType.MOCAP) {
-            store.dispatch({
-                type: 'mocap/posthocProgressReceived',
-                payload: {phase: message.phase, progress_fraction: message.progress_fraction, detail: message.detail},
-            });
-        } else {
-            store.dispatch({
-                type: 'calibration/calibrationPipelineProgressReceived',
-                payload: {phase: message.phase, detail: message.detail},
-            });
-            if (message.phase === 'complete' && message.recording_name) {
-                const recordingPath: string = message.recording_path ?? '';
-                const recordingName: string = message.recording_name;
-                const parentDir = recordingPath.endsWith(recordingName)
-                    ? recordingPath.slice(0, recordingPath.length - recordingName.length - 1)
-                    : null;
-                store.dispatch(loadCalibrationForRecording({
-                    recordingId: recordingName,
-                    recordingParentDirectory: parentDir,
-                }));
-            }
-        }
-    }
+function handleProgress(message: ProgressMessage): void {
+    applyTaskSnapshot(message.snapshot, store.getState().pipelines, store.dispatch);
 }
+

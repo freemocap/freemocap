@@ -1,7 +1,9 @@
-# Client playback design
+# Historical client playback design notes
 
-Status: normal-app integration ready for Windows user testing, 2026-09-06. Precedes media identity cleanup and posthoc refactoring.
-Implementation approved in checkpoints. Dependency/source changes still require the agreed workflow.
+These checkpoint notes describe earlier experiments and are not the current playback specification.
+The authoritative implementation summary is [browser video playback](../03-transport/browser-video-playback.md).
+Current playback uses HTTP endpoints, native video elements and an HTTP codec-compatibility stream.
+There is no playback WebSocket, JPEG range scheduler, or client bitmap lookahead cache.
 
 ## Current mocap contract — synchronized video groups
 

@@ -273,19 +273,25 @@ export const AppStateMessageSchema = z.object({
   }),
 });
 
-export const ProgressMessageSchema = z.object({
-  kind: z.literal("progress"),
-  ...ENVELOPE,
-  pipeline_id: z.string(),
-  pipeline_type: z.string(),
-  phase: z.string(),
-  progress_fraction: z.number().min(0).max(1),
-  detail: z.string(),
-  recording_name: z.string(),
-  recording_path: z.string(),
-  camera_id: z.string().optional(),
+const TaskProgressSchema = z.object({
+  phase: z.string().min(1), progress_fraction: z.number().min(0).max(1).nullable(), detail: z.string(),
 });
-
+export const TaskRegistrySnapshotSchema = z.object({
+  server_instance_id: z.string().uuid(), revision: z.number().int().nonnegative(),
+  recording_owners: z.array(z.object({task_id: z.string(), recording: z.object({
+    base_directory: z.string(), recording_name: z.string(), full_path: z.string(),
+  })})),
+  tasks: z.array(z.object({
+    task_id: z.string().min(1), revision: z.number().int().positive(),
+    task_type: z.enum(['calibration', 'mocap']),
+    recording: z.object({base_directory: z.string(), recording_name: z.string(), full_path: z.string()}),
+    status: z.enum(['running', 'complete', 'failed', 'cancelled']), progress: TaskProgressSchema,
+    cameras: z.array(z.object({node_id: z.string(), camera_id: z.string(), progress: TaskProgressSchema})),
+    created_at: z.string().datetime({offset: true}), updated_at: z.string().datetime({offset: true}),
+  })),
+});
+export type TaskRegistrySnapshot = z.infer<typeof TaskRegistrySnapshotSchema>;
+export const ProgressMessageSchema = z.object({kind: z.literal('progress'), ...ENVELOPE, snapshot: TaskRegistrySnapshotSchema});
 export type CoordinateConvention = z.infer<typeof CoordinateConventionSchema>;
 export type CameraIntrinsics = z.infer<typeof CameraIntrinsicsSchema>;
 export type CameraExtrinsics = z.infer<typeof CameraExtrinsicsSchema>;
@@ -329,3 +335,4 @@ export function parseMessage(raw: unknown): Message | null {
   if (typeof version !== "number" || version !== CURRENT_VERSION) return null;
   return MessageSchema.parse(raw);
 }
+

@@ -2,7 +2,7 @@
 Enum definitions for all posthoc pipeline phase strings.
 
 These values are sent over the WebSocket to the frontend as-is, so the string
-values must stay in sync with the BACKEND_PHASE_MAP in ServerContextProvider.tsx.
+values must stay in sync with phaseForTask in pipelines-slice.ts.
 """
 from enum import Enum
 

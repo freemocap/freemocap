@@ -1,5 +1,6 @@
 from skellycam.api.http.cameras.camera_router import camera_router
 from freemocap.api.http.playback.playback_router import playback_router
+from freemocap.api.http.posthoc.tasks_router import tasks_router
 
 from freemocap.api.http.app.health import health_router
 from freemocap.api.http.app.shutdown import shutdown_router
@@ -17,7 +18,7 @@ SKELLYCAM_ROUTERS = [
     camera_router,
 ]
 
-FREEMOCAP_ROUTERS = [realtime_router,
+FREEMOCAP_ROUTERS = [tasks_router, realtime_router,
                      calibration_router,
                      mocap_router,
                      blender_router,

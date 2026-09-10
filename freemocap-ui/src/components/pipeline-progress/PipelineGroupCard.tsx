@@ -36,14 +36,14 @@ function SubProgressBar({
   const isComplete = pipeline.phase === PipelinePhase.COMPLETE;
   const isTerminal = isComplete || isFailed;
   const isIndeterminate =
-    isAggregator && !isTerminal && pipeline.phase !== PipelinePhase.SETTING_UP && pipeline.phase !== PipelinePhase.COLLECTING && pipeline.phase !== PipelinePhase.QUEUED;
+    !isTerminal && pipeline.progress === null;
 
   const rightText =
     isTerminal && pipeline.completedAt
       ? formatTimeAgo(pipeline.completedAt)
       : isIndeterminate
         ? pipeline.detail || PHASE_LABELS[pipeline.phase]
-        : `${pipeline.progress}%`;
+        : `${pipeline.progress ?? 0}%`;
 
   const progressColor = isFailed
     ? "var(--color-error)"
@@ -64,7 +64,7 @@ function SubProgressBar({
           <div
             className="update-progress-fill h-full sub-progress-fill"
             style={{
-              width: `${pipeline.progress}%`,
+              width: `${pipeline.progress ?? 0}%`,
               backgroundColor: progressColor,
             }}
           />
@@ -99,14 +99,7 @@ export default function PipelineGroupCard({
   const navigate = useNavigate();
   const { api } = useElectronIPC();
 
-  const overallProgress =
-    group.aggregator?.progress ??
-    (group.videoNodes.length > 0
-      ? Math.round(
-          group.videoNodes.reduce((sum, n) => sum + n.progress, 0) /
-            group.videoNodes.length,
-        )
-      : 0);
+  const overallProgress = group.aggregator?.progress ?? null;
 
   const borderColor = group.isFailed
     ? "var(--color-error)"
@@ -181,7 +174,7 @@ export default function PipelineGroupCard({
         
         <div className="flex flex-row gap-2 items-center">
             <p className="text bg text-white flex-shrink-0 m-0 mr-2">
-          {overallProgress}%
+          {overallProgress === null ? "In progress" : `${overallProgress}%`}
                 </p>
             <IconButton
               title="Open folder"
@@ -213,6 +206,7 @@ export default function PipelineGroupCard({
             )}
             {onDismiss && (
               <IconButton
+                ariaLabel="Dismiss pipeline"
                 icon="close-icon"
                 className="icon-size-25 p-01"
                 onClick={onDismiss}
@@ -233,9 +227,7 @@ export default function PipelineGroupCard({
           className={`flex flex-col gap-2 pl-2 pipeline-group-card__border-left ${group.aggregator ? "pipeline-group-card__border-left-aggregator" : "pipeline-group-card__border-left-no-aggregator"}`}
         >
           {group.videoNodes.map((node) => {
-            const cameraId = node.pipelineId.includes(":")
-              ? node.pipelineId.split(":").slice(1).join(":")
-              : node.pipelineId;
+            const cameraId = node.cameraId;
             return (
               <SubProgressBar
                 key={node.pipelineId}
@@ -282,3 +274,4 @@ export default function PipelineGroupCard({
     </div>
   );
 }
+

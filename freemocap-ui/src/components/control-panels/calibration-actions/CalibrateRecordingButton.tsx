@@ -19,12 +19,11 @@ export function CalibrateRecordingButton({recordingPath}: {recordingPath: string
         catch (failure) {setError(String(failure));}
     };
     return <div className="flex flex-col gap-1">
-        <ButtonSm iconClass="calibrate-icon" buttonType="secondary" className="full-width"
-            text={busy ? 'Calibration in progress' : 'Calibrate active recording'}
+        <ButtonSm iconClass="calibrate-icon" buttonType="accent-outline" textColor="text-white" className="full-width"
+            text={busy ? 'Calibration in progress' : 'Calibrate from active recording'}
             disabled={!recordingPath || busy} title={recordingPath ?? 'Select a recording in Playback'}
             onClick={() => void startCalibration()}/>
 
-        <span className="text sm">Uses the configured calibration board and existing recording videos.</span>
         {error && <p role="alert" className="text-error text sm">{error}</p>}
     </div>;
 }

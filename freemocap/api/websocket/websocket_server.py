@@ -482,26 +482,13 @@ class WebsocketServer:
             self._websocket_should_continue = False
             raise
 
-    async def _posthoc_progress_sender(self):
-        """Drain posthoc pipeline progress and forward it to the client.
-
-        The posthoc pipelines publish progress into per-pipeline
-        subscriptions; this task is the single drainer that moves them onto
-        the websocket as ``posthoc_progress`` messages (the frontend's
-        progress panel consumes these). The manager's queue is drained each
-        tick — a progress message is never lost, and the sender idles when
-        there is nothing to forward.
-        """
+    async def _posthoc_progress_sender(self) -> None:
+        """Deliver complete retained task snapshots without consuming worker queues."""
         logger.info("Starting posthoc-progress sender task...")
         try:
             while self.should_continue:
-                updates = self._app.posthoc_pipeline_manager.get_progress_updates()
-                updates.extend(
-                    self._app.posthoc_pipeline_manager.evict_completed()
-                )
-                for update in updates:
-                    message = ProgressMessage.from_pipeline_progress(update)
-                    await self._serializer.send_message(encode_message(message))
+                snapshot = self._app.posthoc_pipeline_manager.task_snapshot()
+                await self._serializer.send_message(encode_message(ProgressMessage(snapshot=snapshot)))
                 await asyncio.sleep(0.5)
         except asyncio.CancelledError:
             pass

@@ -1,3 +1,4 @@
+from freemocap.core.recording.recording_access import RecordingAccess
 """Playback projects canonical samples without executing the scientific pipeline."""
 
 from pathlib import Path
@@ -6,6 +7,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from freemocap.api.http.playback.playback_router import playback_router
+from freemocap.api.http.playback.playback_router import video_stream_url
+from urllib.parse import parse_qs, urlsplit
 from freemocap.core.recording.parquet_storage.parquet_writer import (
     publish_recording,
     recording_write_lock,
@@ -28,6 +31,23 @@ from freemocap.core.recording.result_processing.observation_inputs import (
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.tests.test_reconstruction_checkpoints import publication
+
+
+def test_replacing_video_changes_playback_url_without_adding_output_files(tmp_path: Path) -> None:
+    video = tmp_path / "camera video.mp4"
+    video.write_bytes(b"first")
+    parameters = {"source": "annotated", "recording_parent_directory": str(tmp_path)}
+    before = video_stream_url(recording_id="recording name", path=video, parameters=parameters)
+    assert video_stream_url(recording_id="recording name", path=video, parameters=parameters) == before
+    temporary = tmp_path / "temporary.mp4"
+    temporary.write_bytes(b"other")
+    temporary.replace(video)
+    after = video_stream_url(recording_id="recording name", path=video, parameters=parameters)
+    assert before != after
+    query = parse_qs(urlsplit(after).query)
+    assert query["source"] == ["annotated"]
+    assert query["recording_parent_directory"] == [str(tmp_path)]
+    assert list(tmp_path.iterdir()) == [video]
 
 
 def test_playback_manifest_and_bounded_samples(
@@ -118,6 +138,7 @@ def test_playback_api_revision_and_validation(
 ) -> None:
     publish_posthoc_observations(publication)
     app = FastAPI()
+    app.state.recording_access = RecordingAccess()
     app.include_router(playback_router)
     with TestClient(app) as client:
         params = dict(recording_parent_directory=str(tmp_path))
@@ -150,3 +171,4 @@ def test_playback_api_revision_and_validation(
             ).status_code
             == 422
         )
+

@@ -1,3 +1,4 @@
+from freemocap.core.recording.recording_access import RecordingAccess
 from freemocap.core.pipeline.inference_service import InferenceService
 """Invalid saved output must fail before mocap workers are created."""
 
@@ -35,9 +36,11 @@ def test_invalid_metadata_blocks_workers_and_reports_file(tmp_path: Path) -> Non
             )
         create.assert_not_called()
     app = FastAPI()
+    app.state.recording_access = RecordingAccess()
     app.include_router(playback_router)
     with TestClient(app) as client:
         response = client.get("/playback/recording/manifest", params={"recording_parent_directory": str(tmp_path)})
         assert response.status_code == 422
         assert str(path) in response.json()["detail"]
     assert path.read_bytes() == original
+

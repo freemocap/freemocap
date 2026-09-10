@@ -5,7 +5,7 @@ import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/services";
 import {electronIpc} from "@/services/electron-ipc/electron-ipc";
 import type {LoadedCalibration} from "./calibration-slice";
-import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
+import {fetchTaskSnapshot} from "@/store/slices/pipelines/pipelines-thunks";
 import {getTimestampString} from "@/store/slices/recording/getTimestampString";
 import {pipelineConfigUpdated} from '@/store/slices/realtime/realtime-slice';
 import type {RealtimePipelineConfig} from '@/store/slices/realtime/realtime-types';
@@ -213,15 +213,7 @@ export const stopCalibrationRecording = createAsyncThunk<
             const result = await response.json();
             console.log('✅ Stopped calibration recording:', result);
             if (result.pipeline_id) {
-                dispatch(pipelineProgressUpdated({
-                    pipelineId: result.pipeline_id,
-                    pipelineType: PipelineType.CALIBRATION,
-                    phase: PipelinePhase.QUEUED,
-                    progress: 0,
-                    detail: 'Pipeline queued, starting workers...',
-                    recordingName: result.recording_name ?? '',
-                    recordingPath: result.recording_path ?? '',
-                }));
+                void dispatch(fetchTaskSnapshot());
             }
             return result;
         } catch (error) {
@@ -268,15 +260,7 @@ export const calibrateRecording = createAsyncThunk<
             const result = await response.json();
             console.log('✅ Calibration completed:', result);
             if (result.pipeline_id) {
-                dispatch(pipelineProgressUpdated({
-                    pipelineId: result.pipeline_id,
-                    pipelineType: PipelineType.CALIBRATION,
-                    phase: PipelinePhase.QUEUED,
-                    progress: 0,
-                    detail: 'Pipeline queued, starting workers...',
-                    recordingName: calibrationRecordingDirectory?.split(/[/\\]/).pop() ?? '',
-                    recordingPath: calibrationRecordingDirectory ?? '',
-                }));
+                void dispatch(fetchTaskSnapshot());
             }
             return result;
         } catch (error) {
@@ -286,3 +270,4 @@ export const calibrateRecording = createAsyncThunk<
         }
     }
 );
+

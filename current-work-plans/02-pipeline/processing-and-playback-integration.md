@@ -18,10 +18,11 @@ The default video output is an annotated synchronized grid; per-camera annotated
 default outputs. The raw grid is optional. Annotation is independent of detector execution.
 
 Video seeking must decode incrementally. SkellyCam owns sequential decoding for posthoc processing.
-Playback owns client workers, compressed-byte and decoded-frame caches, and bounded lookahead.
-Both raw and annotated files use the same client decoder. The server frame endpoint is removed.
-A synchronized video group has equal frame counts and one shared ordinal; FPS estimates are not
-compared. Backward cache misses restart sequential decoding. See the client playback plan for QA.
+Playback uses browser-native video elements for raw and annotated files, with an HTTP fragmented-MP4
+compatibility stream when native decoding fails. Browser buffering owns media lookahead. Playback
+data is fetched through HTTP time-window requests; there is no playback WebSocket. Display synchronization
+is approximate, while processing retains its synchronized frame contract.
+See [browser video playback](../03-transport/browser-video-playback.md) for implementation and QA.
 
 The mocap setup panel discovers recording-local calibration, offers the last-successful artifact,
 and can launch the existing calibration task on the selected recording's videos. That task must

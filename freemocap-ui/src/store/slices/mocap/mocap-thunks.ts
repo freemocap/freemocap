@@ -3,7 +3,7 @@ import type {RootState} from "@/store";
 import {selectMocapRecordingPath} from "./mocap-slice";
 import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/constants/server-urls";
-import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
+import {fetchTaskSnapshot} from "@/store/slices/pipelines/pipelines-thunks";
 import {selectLoadedCalibration} from "@/store/slices/calibration";
 
 function buildPosthocConfig(state: RootState) {
@@ -123,15 +123,7 @@ export const stopMocapRecording = createAsyncThunk<
             const result = await response.json();
             console.log('✅ Stopped mocap recording:', result);
             if (result.pipeline_id) {
-                dispatch(pipelineProgressUpdated({
-                    pipelineId: result.pipeline_id,
-                    pipelineType: PipelineType.MOCAP,
-                    phase: PipelinePhase.QUEUED,
-                    progress: 0,
-                    detail: 'Pipeline queued, starting workers...',
-                    recordingName: result.recording_name ?? '',
-                    recordingPath: result.recording_path ?? '',
-                }));
+                void dispatch(fetchTaskSnapshot());
             }
             return result;
         } catch (error) {
@@ -351,15 +343,7 @@ export const processMocapRecording = createAsyncThunk<
             const result = await response.json();
             console.log('✅ Mocap completed:', result);
             if (result.pipeline_id) {
-                dispatch(pipelineProgressUpdated({
-                    pipelineId: result.pipeline_id,
-                    pipelineType: PipelineType.MOCAP,
-                    phase: PipelinePhase.QUEUED,
-                    progress: 0,
-                    detail: 'Pipeline queued, starting workers...',
-                    recordingName: mocapRecordingDirectory?.split(/[/\\]/).pop() ?? '',
-                    recordingPath: mocapRecordingDirectory ?? '',
-                }));
+                void dispatch(fetchTaskSnapshot());
             }
             return result;
         } catch (error) {
@@ -369,3 +353,4 @@ export const processMocapRecording = createAsyncThunk<
         }
     }
 );
+

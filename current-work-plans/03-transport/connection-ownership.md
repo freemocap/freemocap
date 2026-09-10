@@ -1,15 +1,19 @@
 # WebSocket connection ownership
 
-## Agreed target
+## Current transport ownership
 
-One application connection per app window carries state, logs, progress and task failures.
-One realtime connection per window carries camera-only images or images with matching mocap
-observations and reconstructions. One playback connection per selected recording session carries
-client-requested raw and annotated frame ranges and recording playback data. Closing a viewer
-does not cancel a pipeline. Pipeline cancellation remains an explicit task operation.
+One `/websocket/connect` connection per app window carries application state, logs, progress,
+framerate and realtime frames/images. Independent sender tasks share one serialized writer.
+Playback uses HTTP metadata/data endpoints and browser-native video delivery; it has no WebSocket.
+See [browser video playback](browser-video-playback.md) for the current playback implementation.
+Closing a viewer does not cancel a pipeline. Pipeline cancellation remains an explicit task operation.
 
-Reuse typed messages, encoding, decoding, rendering and connection lifecycle machinery. Live delivery
-selects fresh frames with bounded pending work; playback follows client requests and caches.
+Reuse typed messages, encoding, decoding and rendering where applicable. Live delivery selects fresh
+frames with bounded pending work; playback follows HTTP requests and browser media buffering.
+
+## Boundary work under discussion
+
+Application/realtime connection separation is a proposal, not the implemented topology.
 Application-owned producers broadcast events; individual connections must not drain shared event
 queues independently. Connection failures must not set the application kill flag.
 
@@ -56,11 +60,10 @@ are not part of this grace period.
 1. Confirm lifecycle behavior in the app. Resolve any duplicate connections using the identifiers.
 2. Extract realtime delivery from application events. Establish shared event ownership for logs and
    progress, scoped failure handling, and deterministic cancellation/awaiting of connection tasks.
-3. Consolidate playback sources under one recording session connection; separate cache ownership
-   from socket ownership while retaining client-driven ranges and deterministic decoding.
+3. Verify playback HTTP request cancellation and media disposal during recording changes and seeks.
 4. Measure camera-only, realtime mocap and playback performance again, including simultaneous use.
 
-Current application/realtime traffic still shares `/websocket/connect`; playback still opens per-source
-connections. Endpoint separation and failure-isolation changes have not landed in checkpoint 1.
+Application/realtime traffic shares `/websocket/connect`; playback media and data use HTTP.
+WebSocket endpoint separation and failure-isolation changes have not landed in checkpoint 1.
 The pipeline's roughly 15 FPS processing rate remains an unresolved performance issue independently
 of the corrected destructive multi-consumer output reads. Geometry matching remains deferred.

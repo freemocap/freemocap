@@ -2,6 +2,24 @@
 
 ## Decision and scope
 
+### Active routes and callers
+
+All paths below are under `/freemocap/playback`.
+
+| Route | Current caller / purpose |
+|---|---|
+| `GET /{recording_id}/bundle` | `fetchPlaybackBundle`: recording metadata, video URLs, manifest and media bindings |
+| `POST /{recording_id}/window` | `RecordingPlaybackProvider`: bounded 3D/skeleton data windows |
+| `GET /{recording_id}/videos/{video_id}` | `BrowserVideo`: original file in a native video element, including HTTP range seeking |
+| `GET /{recording_id}/videos/{video_id}/browser` | `BrowserVideo`: fragmented-MP4 HTTP compatibility stream consumed through MediaSource |
+
+Standalone manifest/media routes also exist; the main recording-open flow obtains them through the
+bundle. They are HTTP query interfaces, not playback socket remnants.
+
+`app.py` registers only `/websocket/connect`, for application/realtime traffic. Playback components
+do not create sockets. The application connection can trigger an HTTP bundle refresh after processing
+finishes, but it does not deliver recorded video or recording data windows.
+
 Use browser-native video presentation with approximate visual synchronization. Warn users
 that views can differ by a few frames and that embossed frame numbers identify the displayed
 frames. This concession applies to viewing only; processing retains its synchronized frame contract.

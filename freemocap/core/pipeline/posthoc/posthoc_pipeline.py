@@ -31,7 +31,7 @@ from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from freemocap.core.pipeline.posthoc.video_node import VideoNode
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
-from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage, VideoNodeProgressMessage
 from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase
 
@@ -215,12 +215,17 @@ class PosthocPipeline(PipelineABC):
 
         failures = [node.worker for node in [*self.video_nodes.values(), self.aggregation_node]
                     if node.worker.failure_exitcode is not None]
-        if failures:
+        video_errors = [message for message in self._latest_progress_by_id.values()
+                        if isinstance(message, VideoNodeProgressMessage) and message.phase == AggregatorPhase.FAILED]
+        if failures or video_errors:
             self.ipc.shutdown_pipeline()
             self._latest_progress_by_id[self.id] = AggregatorNodeProgressMessage(
                 pipeline_id=self.id, pipeline_type=str(self.pipeline_type),
                 phase=AggregatorPhase.FAILED, progress_fraction=0.0,
-                detail="; ".join(f"{worker.name} exited with code {worker.failure_exitcode}" for worker in failures),
+                detail="; ".join(
+                    [f"Camera {message.camera_id} failed: {message.detail}" for message in video_errors]
+                    + [f"{worker.name} exited with code {worker.failure_exitcode}" for worker in failures]
+                ),
                 recording_name=self.recording_info.recording_name,
                 recording_path=str(self.recording_info.full_recording_path),
             )

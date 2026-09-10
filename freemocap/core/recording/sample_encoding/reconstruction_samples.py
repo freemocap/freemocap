@@ -130,6 +130,13 @@ class ReconstructionRecording:
 
     def channels(self) -> Iterator[Channel]:
         """Declare channel layouts without allocating recording-sized arrays."""
+        yield Channel(
+            sensor_group=self.sensor_group, source=self.definition.model_id,
+            reference_frame=self.reference.name, kind=ChannelKind.RIGID_BODY_RESIDUALS,
+            names=tuple(self.definition.segment_origins),
+            components={"measured_length": self.reference.units, "residual": self.reference.units},
+            stage=ProcessingStage.RECONSTRUCTION,
+        )
         for kind, names, components in (
             (
                 ChannelKind.LANDMARKS_3D,
@@ -223,6 +230,17 @@ class ReconstructionRecording:
                 if frame is None:
                     continue
                 match channel.kind:
+                    case ChannelKind.RIGID_BODY_RESIDUALS:
+                        positions = {}
+                        for name, reading in frame.rigid_body_residuals.items():
+                            fit = self.result.scale_fit
+                            reference = fit.segment_lengths[name] if fit is not None else None
+                            if reading.reference_kind != "recording_fit" or reading.reference_length != reference:
+                                raise ValueError("Rigid-body diagnostic reference must match the recorded scale fit")
+                            positions[name] = np.array([
+                                reading.measured_length if reading.measured_length is not None else np.nan,
+                                reading.residual if reading.residual is not None else np.nan,
+                            ], dtype=np.float64)
                     case ChannelKind.ROTATIONS_WORLD:
                         positions = frame.segment_rotations_world
                     case ChannelKind.ROTATIONS_LOCAL:

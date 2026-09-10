@@ -60,22 +60,42 @@ SkellyForge residuals → SkeletonReconstruction → aggregator output
 
 Each diagnostic delivery includes its frame number. Reprojection blocks carry source IDs, qualified point names, units, column names, and little-endian float32 bytes. Columns are `error`, `observed`, `reconstructed`, and `weight`.
 
+Diagnostics are an optional field of the existing frame message on the existing connection. Client subscriptions are local listeners for that field, not separate network subscriptions or streams.
+
 Rigid-body records are keyed by model ID and segment name. The payload declares millimeter or pixel length units. Unavailable scalar fields are omitted on the wire.
 
 The client validates byte lengths against the declared axes. It retains the latest diagnostic delivery, replays it through the server-context subscription, and clears diagnostic state on disconnect.
 
 ## Posthoc persistence
 
-Completed posthoc mocap processing writes **`diagnostics.npz` in the recording folder**.
+Diagnostic measurements are required channels in the canonical **`{recording_name}_data.parquet`**. Every canonical publication also generates **`output/diagnostics.yaml`** from that Parquet, covering all retained runs and identifying the selected run.
 
-The archive contains:
+### Physical Parquet columns
 
-- Frame numbers.
-- Full reprojection error, observation, reconstruction, and solver-weight arrays when available.
-- Per-model frame × segment arrays with measured length, reference length, and residual columns.
-- JSON metadata naming all axes, units, reference kinds, and per-camera/per-segment summaries.
+The existing scalar-row schema is unchanged: `timestamp_s`, `sensor_group`, `frame_number`, `source`, `reference_frame`, `channel`, `name`, `component`, `value`, `units`, `run_id`.
 
-The archive loads with `numpy.load(path, allow_pickle=False)`. Missing numeric values are NaN; unavailable summary values are JSON null. Live summaries can use the same `ResidualAccumulator`; the transport exposes frame measurements without selecting a display window.
+| Channel | Source / name | Components | Units | Owning stage |
+|---|---|---|---|---|
+| `REPROJECTION_ERROR` | Camera / qualified tracker keypoint | `error` | `px` or `1` for normalized coordinates | Triangulation |
+| `RECONSTRUCTION_COVERAGE` | Camera / qualified tracker keypoint | `observed`, `reconstructed` | `1` (0 or 1) | Triangulation |
+| `TRIANGULATION_WEIGHTS` | Camera / qualified tracker keypoint | `weight` | `1` | Triangulation |
+| `RIGID_BODY_RESIDUALS` | Model instance / segment | `measured_length`, `residual` | `mm` or `px` | Reconstruction |
+
+All rows use the synchronized recording grid. Missing numeric measurements are Parquet nulls. Observation presence and finite 3D reconstruction remain distinct flags: a reconstructed point may lack an observation in a particular camera. Solver weights are not detector confidence. Full arrays are retained without diagnostic sampling.
+
+Fixed segment references are stored once in the run's existing scale-fit descriptor. Rigid-body channels identify that fit by run, group, source, and spatial reference; publication checks each reading against the stored fit. Stage invalidation removes the corresponding diagnostic channels and rows while preserving other runs.
+
+### YAML report
+
+The frozen Pydantic `RecordingHealthReport` declares its schema version, recording identity, exact Parquet SHA-256, selected run, run descriptors' hashes, source/model identities, scale fits, and assessment criteria.
+
+Each camera/keypoint/component or model/segment/component entry records frame and time bounds, units, finite and unavailable counts, mean, RMS, population standard deviation, minimum, maximum, and an assessment. For coverage flags, the mean is the fraction of frames for which the flag is true; the finite count is the number of stored flags, not the number of successful observations.
+
+Assessments are `not_assessed` without configured quality criteria, `insufficient_data` without enough finite samples, or `pass`/`fail` against explicitly supplied RMS and availability criteria. Automatic publication supplies no quality thresholds. No overall calibration-health verdict is inferred.
+
+`build_recording_health_report(path=..., criteria=...)` regenerates and reassesses solely from Parquet. `write_recording_health_report(structure=..., criteria=...)` writes YAML; its caller holds the recording write lock. Report output errors propagate. Parquet replacement is atomic; YAML replacement is atomic separately. A report failure after Parquet publication leaves the current data and no prior report rather than a stale report presented as current.
+
+`MeasurementAccumulator` and `assess_measurement` are shared building blocks for live windows. The live transport currently exposes frame measurements; a running assessment window and display policy have not been selected.
 
 ## Validation
 
@@ -85,7 +105,10 @@ The archive loads with `numpy.load(path, allow_pickle=False)`. Missing numeric v
 - Single-camera output has no reprojection diagnostics.
 - Live residuals use the previous fit and clear their reference on reset.
 - Posthoc residuals use the frozen recording fit.
-- Saved arrays round-trip without pickle.
+- Diagnostic channels round-trip through the canonical scalar Parquet schema, preserving nulls and identities.
+- YAML validates against the report model and regenerates from saved measurements.
+- Stage invalidation removes dependent diagnostics while preserving other runs.
+- Mismatched residual references fail before replacing either output.
 - A browser decodes a backend-generated diagnostic frame without earlier frames, then clears it on disconnect.
 - Existing triangulation, reconstruction, recording-checkpoint, and message tests pass.
 

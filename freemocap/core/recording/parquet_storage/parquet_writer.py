@@ -19,6 +19,7 @@ from freemocap.core.recording.sample_encoding.arrow_schema import (
 from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata
 from freemocap.core.recording.parquet_storage.shared_file import replace_recording_file
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
+from freemocap.core.diagnostics.recording_health_report import write_recording_health_report
 
 
 @contextmanager
@@ -39,23 +40,38 @@ def publish_recording(
     if metadata.recording_id != structure.recording_name:
         raise ValueError("Recording descriptor ID must match its directory name")
     validator = SampleValidator(metadata=metadata)
+
+    def validated_batches() -> Iterator[pa.RecordBatch]:
+        for batch in batches:
+            validator.accept(batch=batch)
+            yield batch
+        validator.finish()
+
+    publish_parquet(
+        path=structure.data_parquet_path,
+        schema=SAMPLE_SCHEMA.with_metadata(
+            {DESCRIPTOR_KEY: metadata.model_dump_json().encode("utf-8")}
+        ),
+        batches=validated_batches(),
+    )
+    structure.diagnostics_report_path.unlink(missing_ok=True)
+    write_recording_health_report(structure=structure, criteria=())
+
+
+def publish_parquet(*, path: Path, schema: pa.Schema, batches: Iterable[pa.RecordBatch]) -> None:
+    """Write compressed batches and replace the destination only after completion."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
-        dir=structure.full_path, suffix=".parquet.tmp"
+        dir=path.parent, suffix=".parquet.tmp"
     )
     os.close(descriptor)
     temporary = Path(temporary_name)
     try:
-        schema = SAMPLE_SCHEMA.with_metadata(
-            {DESCRIPTOR_KEY: metadata.model_dump_json().encode("utf-8")}
-        )
         with pq.ParquetWriter(temporary, schema=schema, compression="zstd") as writer:
             for batch in batches:
-                validator.accept(batch=batch)
                 writer.write_batch(batch=batch)
-            validator.finish()
         with temporary.open("rb+") as completed:
             os.fsync(completed.fileno())
-        replace_recording_file(source=temporary, destination=structure.data_parquet_path)
+        replace_recording_file(source=temporary, destination=path)
     finally:
         temporary.unlink(missing_ok=True)
-

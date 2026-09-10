@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from dataclasses import replace
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from freemocap.core.recording.sample_encoding.channel_series import SeriesSampling
+from freemocap.core.recording.sample_encoding.diagnostic_samples import reprojection_series
 from pathlib import Path
 from freemocap.core.recording.result_processing.reconstruction_completion import (
     reconstruction_checkpoints,
@@ -113,6 +114,8 @@ def publish_posthoc_observations(
         name=TimingSampleName.SYNCHRONIZED,
     )
     channels.append(group_channel)
+    diagnostics = tuple(reprojection_series(diagnostics=request.reprojection, sensor_group=request.group.name)) if request.reprojection is not None else ()
+    channels.extend(series.channel for series in diagnostics)
     for series in request.spatial_series:
         channels.append(series.definition.to_channel())
         references[series.definition.reference.name] = (
@@ -149,6 +152,8 @@ def publish_posthoc_observations(
     )
 
     def batches() -> Iterator[pa.RecordBatch]:
+        for series in diagnostics:
+            yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=0))
         for reconstruction in request.reconstructions:
             for series in reconstruction.series():
                 yield from series.batches(
@@ -220,7 +225,7 @@ def publish_posthoc_observations(
             metadata=metadata,
             signatures={request.group.name: {}},
         )
-        if request.spatial_series:
+        if request.spatial_series or diagnostics:
             plan = replace(plan, execute=(*plan.execute, ProcessingStage.TRIANGULATION))
         if request.reconstructions:
             plan = replace(

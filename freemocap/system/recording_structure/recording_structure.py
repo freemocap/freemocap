@@ -96,6 +96,11 @@ class RecordingStructure(BaseModel):
 
     @computed_field
     @property
+    def diagnostics_report_path(self) -> Path:
+        return self.output_dir / "diagnostics.yaml"
+
+    @computed_field
+    @property
     def logs_dir(self) -> Path:
         return self.full_path / "logs"
 

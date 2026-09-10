@@ -7,6 +7,7 @@ from freemocap.core.recording.sample_encoding.spatial_points import SpatialPoint
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from dataclasses import dataclass
+from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 from freemocap.core.recording.data_descriptors.sample_conventions import (
     SampleComponent,
     SampleUnit,
@@ -57,6 +58,7 @@ class ObservationGroup:
 
 @dataclass(frozen=True, slots=True)
 class ObservationRecordingRequest:
+    reprojection: NamedReprojectionDiagnostics | None
     filtering: PosthocFilterReport | None
     models: tuple[RecordedModel, ...]
     reconstructions: tuple[ReconstructionRecording, ...]
@@ -67,6 +69,13 @@ class ObservationRecordingRequest:
     camera_geometry: tuple[CameraModel, ...]
 
     def __post_init__(self) -> None:
+        if self.reprojection is not None:
+            if self.reprojection.source_ids != tuple(self.group.videos):
+                raise ValueError("Diagnostic sources must match recording camera order")
+            if self.reprojection.values.errors.shape != (
+                len(self.group.videos), len(self.group.frames), len(self.reprojection.point_names)
+            ):
+                raise ValueError("Diagnostics must cover the recording camera/frame/point grid")
         if self.camera_geometry and len(self.camera_geometry) != len(self.group.videos):
             raise ValueError("Published geometry must cover every source in video order")
         if len({model.model_id for model in self.models}) != len(self.models):

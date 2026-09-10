@@ -47,6 +47,7 @@ export interface RecordingStructure {
     videosSynchronizedDir: string;
     videosAnnotatedDir: string;
     outputDir: string;
+    diagnosticsReportPath: string;
     logsDir: string;
     calibrationTomlPath: string;
     recordingInfoPath: string;
@@ -91,6 +92,7 @@ export const buildRecordingStructure = (
         fullPath,
         layoutPreset: preset,
         ...resolved,
+        diagnosticsReportPath: joinPath(resolved.outputDir, 'diagnostics.yaml'),
     };
 };
 

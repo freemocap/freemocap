@@ -1,17 +1,17 @@
 """Diagnostics retain rejected evidence and use independent length references."""
 
-import json
-from pathlib import Path
-
 import cbor2
 import numpy as np
+import pyarrow as pa
 import pytest
 from skellyforge.core.skeleton.pose.rigid_body_diagnostics import ResidualAccumulator
 from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellytracker.core.data_primitives.observation import Observation, StageObservation
 
 from freemocap.core.diagnostics.pipeline_diagnostics import frame_diagnostics
-from freemocap.core.diagnostics.recording_diagnostics import write_recording_diagnostics
+from freemocap.core.recording.sample_encoding.diagnostic_samples import reprojection_series
+from freemocap.core.recording.sample_encoding.channel_series import SeriesSampling
+from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 from freemocap.core.reconstruction.posthoc_reconstruction import triangulate_observation_buffers, reconstruct_skeletons_for_recording
 from freemocap.core.reconstruction.recording_reconstruction import RecordingReconstructionInput
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
@@ -99,7 +99,7 @@ def test_rigid_residual_uses_reference_before_live_fit_update() -> None:
     assert reset is not None and all(reading.reference_length is None for reading in reset.rigid_body_residuals.values())
 
 
-def test_recording_archive_retains_full_diagnostic_arrays(tmp_path: Path) -> None:
+def test_recording_channels_retain_full_diagnostic_arrays() -> None:
     request = recorded_request()
     buffers = {source: ObservationBuffer() for source in request.videos}
     for frame in request.frames:
@@ -108,15 +108,17 @@ def test_recording_archive_retains_full_diagnostic_arrays(tmp_path: Path) -> Non
     geometry = request.resolve(result=request.evaluate())
     result = triangulate_observation_buffers(observation_buffers=buffers, camera_geometry=geometry,
         triangulation_config=TriangulationConfig(use_outlier_rejection=False), max_reprojection_error_px=None, timing=PosthocTimingReport())
-    destination = tmp_path / 'diagnostics.npz'
-    write_recording_diagnostics(path=destination, triangulation=result, reconstructions={},
-                                frame_numbers=tuple(range(len(request.frames))), length_units='millimeters')
-    with np.load(destination, allow_pickle=False) as archive:
-        metadata = json.loads(str(archive['metadata']))
-        assert metadata['point_names'] == list(result.diagnostic_point_names)
-        assert metadata['source_ids'] == list(request.videos)
-        assert metadata['reprojection']['units'] == 'pixels'
-        np.testing.assert_allclose(archive['reprojection_error'], result.reconstruction.reprojection_error)
+    assert result.reconstruction.diagnostics is not None
+    diagnostics = NamedReprojectionDiagnostics(source_ids=result.sources, point_names=result.diagnostic_point_names,
+        values=result.reconstruction.diagnostics)
+    series = tuple(reprojection_series(diagnostics=diagnostics, sensor_group='mocap'))
+    for camera_index, camera in enumerate(result.sources):
+        error_series = series[camera_index * 3]
+        assert error_series.channel.source == f'camera:{camera}'
+        assert error_series.channel.names == result.diagnostic_point_names
+        table = pa.Table.from_batches(list(error_series.batches(SeriesSampling(
+            frame_numbers=tuple(range(len(request.frames))), timestamps_s=tuple(index / 30 for index in range(len(request.frames))), run_id=0))))
+        np.testing.assert_allclose(table['value'].to_numpy().reshape(error_series.values.shape)[..., 0], result.reconstruction.reprojection_error[camera_index])
 
 
 def test_online_residual_statistics_preserve_missing_measurements() -> None:

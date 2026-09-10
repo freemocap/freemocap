@@ -94,6 +94,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
         )
         metadata = publish_posthoc_observations(
             ObservationRecordingRequest(
+        reprojection=None,
                 filtering=None,
                 models=(),
                 reconstructions=(),
@@ -150,6 +151,7 @@ def test_ingestion_and_overwrite(tmp_path: Path, recorded: bool) -> None:
     with pytest.raises(ValueError, match="Missing recording timing columns"):
         publish_posthoc_observations(
             ObservationRecordingRequest(
+        reprojection=None,
                 filtering=None,
                 models=(),
                 reconstructions=(),

@@ -96,6 +96,7 @@ def publication(tmp_path: Path) -> ObservationRecordingRequest:
         for index in range(2)
     ]
     return ObservationRecordingRequest(
+        reprojection=None,
         filtering=None,
         models=(RecordedModel.from_bundle(bundle),),
         reconstructions=(

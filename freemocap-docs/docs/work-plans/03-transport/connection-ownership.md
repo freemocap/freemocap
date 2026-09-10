@@ -7,6 +7,11 @@ plan_migrated: "2026-09-10"
 
 # WebSocket connection ownership
 
+The source-audited [communication reference](../../architecture/frontend-backend-communication.mdx)
+and [architecture review](../architecture-review.md) are the entry points for the
+2026-09-10 ownership discussion. The checkpoints below remain working notes;
+their test claims were not re-run as part of the documentation audit.
+
 ## Current transport ownership
 
 One `/websocket/connect` connection per app window carries application state, logs, progress,

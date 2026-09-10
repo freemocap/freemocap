@@ -9,6 +9,12 @@ plan_generated: "2026-09-10"
 
 # Documentation transition
 
+## Review checkpoint — 2026-09-10
+
+The [ownership and streaming review](architecture-review.md) is ready for a focused
+content review. Its companion communication reference is grounded in named source
+files. The endpoint-wide idempotence audit and broader SDK documentation remain pending.
+
 ## Scope
 
 Organize the documentation before changing application behavior. Use the docs to

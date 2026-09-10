@@ -13,7 +13,8 @@ Plans are public working material for the branch you are viewing. They capture
 investigations, proposals, checkpoints, and unresolved questions. Inclusion here
 does not promise implementation or establish an SDK contract.
 
-- **Start here:** [Documentation transition](documentation-transition.md).
+- **Ready for content review:** [Architecture review: ownership and streaming](architecture-review.md).
+- **Transition plan:** [Documentation transition](documentation-transition.md).
 - **Page inventory:** [Disposition register](disposition.md).
 - **History:** use **Archive — historical work** in the sidebar. Archived pages
   retain their reasoning and context, without acting as current guidance.

@@ -1,3 +1,4 @@
+import type {DiagnosticsFrame, DiagnosticsCallback} from './transport/TransportService';
 import {fetchPlaybackBundle} from "@/store/slices/playback-data/playback-data-slice";
 import {splitParentAndName} from "@/store/slices/active-recording/active-recording-slice";
 // ServerContextProvider.tsx
@@ -75,6 +76,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // 3D data refs and subscriber sets (backed by TransportService below).
     const keypointsRef = useRef<KeypointsFrame | null>(null);
     const keypointsSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
+    const diagnosticsRef = useRef<DiagnosticsFrame | null>(null);
+    const diagnosticsSubscribersRef = useRef<Set<DiagnosticsCallback>>(new Set());
     const modelFramesRef = useRef<ResolvedModelFrame[] | null>(null);
     const modelFramesSubscribersRef = useRef<Set<ModelFramesCallback>>(new Set());
 
@@ -98,6 +101,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
         const subs: (() => void)[] = [];
         const transport = transportRef.current;
+        subs.push(transport.subscribeToDiagnostics((frame) => {
+            diagnosticsRef.current = frame;
+            for (const cb of diagnosticsSubscribersRef.current) cb(frame);
+        }));
 
         subs.push(transport.subscribeToKeypoints((frame) => {
             const kf: KeypointsFrame = { pointNames: frame.names, interleaved: frame.data };
@@ -350,6 +357,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return () => { modelFramesSubscribersRef.current.delete(cb); };
     }, []);
 
+    const subscribeToDiagnostics = useCallback((cb: DiagnosticsCallback): () => void => {
+        diagnosticsSubscribersRef.current.add(cb);
+        cb(diagnosticsRef.current);
+        return () => {diagnosticsSubscribersRef.current.delete(cb);};
+    }, []);
+    const getLatestDiagnostics = useCallback((): DiagnosticsFrame | null => diagnosticsRef.current, []);
+
     const getLatestModelFrames = useCallback((): ResolvedModelFrame[] | null => {
         return modelFramesRef.current;
     }, []);
@@ -406,11 +420,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToModels,
         getModels,
         subscribeToModelFrames,
-        getLatestModelFrames,
+        getLatestModelFrames, subscribeToDiagnostics, getLatestDiagnostics,
     }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage,
         setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore,
         updateServerConnection, subscribeToKeypoints, getLatestKeypoints, setOverlayVisibility,
-        subscribeToModels, getModels, subscribeToModelFrames, getLatestModelFrames]);
+        subscribeToModels, getModels, subscribeToModelFrames, getLatestModelFrames, subscribeToDiagnostics, getLatestDiagnostics]);
 
     return (
         <ServerContext.Provider value={contextValue}>

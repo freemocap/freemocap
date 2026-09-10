@@ -23,6 +23,7 @@ export class WebSocketConnection {
     private reconnectAttempts: number = 0;
     private reconnectTimer: number | null = null;
     private heartbeatTimer: number | null = null;
+    private stabilityTimer: number | null = null;
     private state: ConnectionState = ConnectionState.DISCONNECTED;
     /** Set by disconnect() — the only close that must NOT trigger reconnection. */
     private disconnectRequested: boolean = false;
@@ -62,11 +63,12 @@ export class WebSocketConnection {
     }
 
     public connect(): void {
-        if (this.state === ConnectionState.CONNECTING || this.state === ConnectionState.CONNECTED) {
+        if (this.state === ConnectionState.CONNECTING || this.state === ConnectionState.CONNECTED || this.state === ConnectionState.RECONNECTING) {
             return;
         }
         this.clearTimers();
         this.disconnectRequested = false;
+        if (this.state === ConnectionState.FAILED) this.reconnectAttempts = 0;
 
         this.setState(ConnectionState.CONNECTING);
 
@@ -143,7 +145,11 @@ export class WebSocketConnection {
 
     private handleOpen(): void {
         console.log('WebSocket connected');
-        this.reconnectAttempts = 0;
+        // A handshake alone does not establish a healthy server connection.
+        this.stabilityTimer = window.setTimeout(() => {
+            this.stabilityTimer = null;
+            this.reconnectAttempts = 0;
+        }, 10000);
         this.setState(ConnectionState.CONNECTED);
         this.startHeartbeat();
         this.emit('open');
@@ -153,10 +159,10 @@ export class WebSocketConnection {
         console.log(`WebSocket closed: code=${event.code}, reason=${event.reason}`);
         this.clearTimers();
 
-        // A drop (from CONNECTED) or a failed retry (from CONNECTING while
-        // RECONNECTING) both count toward the attempt budget — only a clean
-        // client-side disconnect ends up here with no attempts left to spend.
-        if (!this.disconnectRequested && this.reconnectAttempts < this.config.maxReconnectAttempts) {
+        if (event.code === 1011) {
+            this.setState(ConnectionState.FAILED);
+            this.emit('error', new Error(`Server failure: ${event.reason}`));
+        } else if (!this.disconnectRequested && this.reconnectAttempts < this.config.maxReconnectAttempts) {
             this.scheduleReconnect();
         } else if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
             this.setState(ConnectionState.FAILED);
@@ -191,6 +197,7 @@ export class WebSocketConnection {
         this.reconnectTimer = window.setTimeout(() => {
             this.reconnectTimer = null;
             this.reconnectAttempts++;
+            this.setState(ConnectionState.DISCONNECTED);
             this.connect();
         }, delay);
     }
@@ -221,6 +228,10 @@ export class WebSocketConnection {
     }
 
     private clearTimers(): void {
+        if (this.stabilityTimer !== null) {
+            clearTimeout(this.stabilityTimer);
+            this.stabilityTimer = null;
+        }
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;

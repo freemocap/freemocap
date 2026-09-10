@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
+from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import ReprojectionDiagnostics
 
 
 @dataclass(slots=True, frozen=True)
@@ -33,3 +34,4 @@ class TriangulationResult:
     points_3d: NDArray[np.float64]
     per_camera_weights: NDArray[np.float64]
     reprojection_error: NDArray[np.float64]
+    diagnostics: ReprojectionDiagnostics | None

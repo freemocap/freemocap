@@ -16,7 +16,6 @@ import {
   selectCalibrationConfig,
   type LoadedCalibration,
 } from "@/store/slices/calibration/calibration-slice";
-import { useCalibrationTomlLoader } from "./hooks/useCalibrationTomlLoader";
 import {useReferenceFrameForwarder} from './hooks/useReferenceFrameForwarder';
 import { type InspectionTarget, type ViewportStats } from "./helpers/viewport3d-types";
 
@@ -186,7 +185,6 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useCalibrationTomlLoader(isLive);
   useReferenceFrameForwarder(VIEWPORT_WORKER, isLive);
 
   useEffect(() => {

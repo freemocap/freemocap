@@ -18,6 +18,15 @@ logger = logging.getLogger(__name__)
 realtime_router = APIRouter(prefix="/realtime", tags=["Realtime Processing Pipeline"])
 
 
+@realtime_router.get("/config", response_model_by_alias=False)
+def running_pipeline_config() -> RealtimePipelineConfig | None:
+    """Read the running configuration without applying client defaults."""
+    pipelines = [pipeline for pipeline in get_freemocap_app().realtime_pipeline_manager.pipelines.values() if pipeline.alive]
+    if len(pipelines) > 1:
+        raise HTTPException(status_code=409, detail="Multiple running pipelines require an explicit pipeline selection")
+    return pipelines[0].config if pipelines else None
+
+
 class RealtimePipelineConnectRequest(BaseModel):
     camera_configs: CameraConfigs|None = Field(default=None,
                                                alias="cameraConfigs",

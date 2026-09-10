@@ -1,3 +1,4 @@
+import type {DiagnosticsFrame, DiagnosticsCallback} from './transport/TransportService';
 import { createContext, useContext } from 'react';
 import type { FramerateStore } from './server-helpers/framerate-store';
 import type { LogStore } from './server-helpers/log-store';
@@ -6,6 +7,8 @@ import type { ResolvedModelFrame } from './transport/frame-types';
 import type { ModelDefinition } from './transport/message-contract';
 
 export interface ServerContextValue {
+    subscribeToDiagnostics: (cb: DiagnosticsCallback) => () => void;
+    getLatestDiagnostics: () => DiagnosticsFrame | null;
     isConnected: boolean;
     isFailed: boolean;
     connect: () => void;

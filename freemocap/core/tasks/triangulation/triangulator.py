@@ -25,6 +25,7 @@ from freemocap.core.tasks.triangulation.helpers.outlier_rejection import (
 from freemocap.core.tasks.triangulation.helpers.triangulate_simple import triangulate_simple, triangulate_simple_batch
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
+from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import ReprojectionDiagnostics
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +323,13 @@ class Triangulator(BaseModel):
             points_3d=points_3d,
             per_camera_weights=per_camera_weights,
             reprojection_error=reprojection_error,
+            diagnostics=ReprojectionDiagnostics(
+                errors=reprojection_error.copy(),
+                observed=np.isfinite(stacked).all(axis=-1).reshape(reprojection_error.shape),
+                reconstructed=np.broadcast_to(np.isfinite(points_3d).all(axis=-1), reprojection_error.shape).copy(),
+                weights=np.moveaxis(per_camera_weights, -1, 0).copy(),
+                units='normalized' if assume_undistorted_normalized else 'pixels',
+            ),
         )
 
     # =========================================================================

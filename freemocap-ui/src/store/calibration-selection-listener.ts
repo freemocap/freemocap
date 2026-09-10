@@ -1,12 +1,15 @@
 import {createListenerMiddleware} from '@reduxjs/toolkit';
 import type {RootState} from './root-state-types';
 import {applyRealtimePipeline} from './slices/realtime/realtime-thunks';
+import {restoreCalibrationSelection} from './slices/calibration/calibration-thunks';
 
 export const calibrationSelectionListenerMiddleware = createListenerMiddleware();
 
 const startListening = calibrationSelectionListenerMiddleware.startListening.withTypes<RootState>();
 startListening({
-    predicate: (_, current, previous) => current.calibration.loadedCalibration !== previous.calibration.loadedCalibration,
+    predicate: (action, current, previous) => !restoreCalibrationSelection.fulfilled.match(action)
+        && !restoreCalibrationSelection.rejected.match(action)
+        && current.calibration.loadedCalibration !== previous.calibration.loadedCalibration,
     effect: (_, api) => {
         const state = api.getState();
         if (!state.realtime.isConnected || state.calibration.loadRequestId) return;

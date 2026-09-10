@@ -23,7 +23,7 @@ def frame(number: int) -> dict[str, Observation]:
 
 
 def layout() -> MatchingSampleLayout:
-    return MatchingSampleLayout(source_ids=("left", "right"), point_names=("board.a", "board.b"), image_sizes=((640, 480), (640, 480)))
+    return MatchingSampleLayout(source_ids=("left", "right"), point_names=("board.a", "board.b"), image_sizes=((640, 480), (640, 480)), minimum_visibility=0.5)
 
 
 def test_names_and_visibility_define_point_axis() -> None:

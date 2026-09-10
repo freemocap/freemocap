@@ -22,13 +22,14 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingResult, CameraMatchingStatus
+from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingResult, CameraMatchingStatus, MatchingFailurePolicy
 from freemocap.core.tasks.calibration.shared.calibration_camera_binding import (
     CalibrationBinding,
     CalibrationMatchKind,
     bind_calibration_to_live_cameras,
 )
 from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
+from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
@@ -173,26 +174,30 @@ class CalibrationStateTracker:
         self._binding_key = None
         self.bind_live_cameras(live_camera_indices=camera_indices)
 
-    def apply_matching(self, *, source_ids: tuple[str, ...], result: CameraMatchingResult) -> None:
+    def apply_matching(self, *, source_ids: tuple[str, ...], result: CameraMatchingResult, failure_policy: MatchingFailurePolicy) -> None:
         if self._calibration is None:
             raise ValueError("Cannot install camera matching without calibration")
         if result.status is CameraMatchingStatus.INSUFFICIENT:
             return
         accepted = result.status in (CameraMatchingStatus.INITIAL_ACCEPTED, CameraMatchingStatus.MATCHED)
-        if accepted and result.assignment is None:
+        if not accepted:
+            if failure_policy is MatchingFailurePolicy.STOP:
+                raise ValueError(f"Camera matching stopped by configured failure policy: {result.status}")
+            logger.info(f"Camera geometry matching: {result.status}; retaining the current camera binding (continue policy)")
+            return
+        if result.assignment is None:
             raise ValueError("Accepted camera matching requires an assignment")
         self._binding = CalibrationBinding(
-            by_live_id={source: self._calibration.cameras[result.assignment[index]] if accepted else None
+            by_live_id={source: self._calibration.cameras[result.assignment[index]]
                         for index, source in enumerate(source_ids)},
-            kind=CalibrationMatchKind.GEOMETRY if accepted else CalibrationMatchKind.UNMATCHED,
-            applicable=accepted, reason=f"Camera geometry matching: {result.status}",
+            kind=CalibrationMatchKind.GEOMETRY,
+            applicable=True, reason=f"Camera geometry matching: {result.status}",
             live_camera_ids=source_ids, calibration_camera_ids=tuple(camera.id for camera in self._calibration.cameras),
         )
         self._subset_triangulator_cache.clear()
         logger.info(self._binding.reason)
-        if accepted:
-            self._is_valid = True
-            self._consecutive_failure_count = 0
+        self._is_valid = True
+        self._consecutive_failure_count = 0
 
     def is_applicable(self) -> bool:
         """Whether the loaded calibration actually describes the current camera set.
@@ -358,7 +363,7 @@ class CalibrationStateTracker:
                 self._consecutive_failure_count = 0
                 return AngulationResult(
                     points=project_2d_observation_to_3d(observation=obs),
-                    errors_px=None,
+                    errors_px=None, diagnostics=None,
                 )
             return None
 
@@ -387,14 +392,14 @@ class CalibrationStateTracker:
                 matched_obs_by_cam[camera_model.id] = obs
 
             if len(matched_obs_by_cam) == 0:
-                return AngulationResult(points={}, errors_px={})
+                return AngulationResult(points={}, errors_px={}, diagnostics=None)
             if len(matched_obs_by_cam) == 1:
                 if self._reference_transform is not None:
                     return None
                 obs = next(iter(matched_obs_by_cam.values()))
                 result = project_2d_observation_to_3d(observation=obs)
                 self._consecutive_failure_count = 0
-                return AngulationResult(points=result, errors_px=None)
+                return AngulationResult(points=result, errors_px=None, diagnostics=None)
 
             # Reuse a cached sub-triangulator for this camera subset; only build
             # a new one when we see a novel active-camera combination.
@@ -414,32 +419,21 @@ class CalibrationStateTracker:
             ordered_cam_names: list[str] = sub_triangulator.camera_ids
             n_cameras = len(ordered_cam_names)
 
-            # All observations are now the same Observation type; use to_keypoints()
-            # uniformly. Stack (n_cameras, n_points, 2) then filter to ≥2-camera points.
+            # Align all observed names across cameras; the solver reports unavailable
+            # reconstructions when too few cameras observed a point.
             ordered_obs: list[Observation] = [
                 matched_obs_by_cam[c] for c in ordered_cam_names
             ]
-            first_kpts = ordered_obs[0].to_keypoints()
-            canonical_names: tuple[str, ...] = first_kpts.names
-
-            _t0 = time.perf_counter()
-            stacked = np.stack(
-                [np.ascontiguousarray(obs.to_keypoints().xyz[:, :2], dtype=np.float64)
-                 for obs in ordered_obs]
-            )
-            point_names_seq: tuple[str, ...] = canonical_names
-            # Filter to points visible in ≥2 cameras
-            visible_per_point = (~np.isnan(stacked[..., 0])).sum(axis=0)
-            keep_mask = visible_per_point >= 2
-            if not bool(keep_mask.any()):
-                return AngulationResult(points={}, errors_px={})
-            if not bool(keep_mask.all()):
-                stacked = stacked[:, keep_mask, :]
-                point_names_seq = tuple(
-                    n for n, k in zip(canonical_names, keep_mask.tolist()) if k
-                )
-            # self._timer.record("build_stacked", (time.perf_counter() - _t0) * 1e3)
-
+            keypoints = [observation.to_keypoints() for observation in ordered_obs]
+            point_names_seq = tuple(dict.fromkeys(name for points in keypoints for name in points.names))
+            stacked = np.full((n_cameras, len(point_names_seq), 2), np.nan, dtype=np.float64)
+            for camera_index, points in enumerate(keypoints):
+                indices = {name: index for index, name in enumerate(points.names)}
+                if len(indices) != len(points.names):
+                    raise ValueError('Triangulation point names must be unique within each camera')
+                for point_index, name in enumerate(point_names_seq):
+                    if name in indices:
+                        stacked[camera_index, point_index] = points.xy[indices[name]]
             # Triangulate the single frame
             _t0 = time.perf_counter()
             triangulation_result = sub_triangulator.triangulate(
@@ -451,10 +445,10 @@ class CalibrationStateTracker:
 
             # Reprojection error gate (in pixels, mean across valid cameras)
             _t0 = time.perf_counter()
-            mean_reproj_error = sub_triangulator.mean_reprojection_error(
-                points_3d=points_3d,
-                points_2d_pixel=stacked,
-            )  # (n_points,)
+            errors = triangulation_result.reprojection_error
+            counts = np.isfinite(errors).sum(axis=0)
+            mean_reproj_error = np.divide(np.nansum(errors, axis=0), counts,
+                                         out=np.full(errors.shape[1:], np.nan), where=counts > 0)
             bad_mask = mean_reproj_error > max_reprojection_error_px
             if np.any(bad_mask):
                 n_bad = int(np.sum(bad_mask))
@@ -480,7 +474,10 @@ class CalibrationStateTracker:
 
             # Triangulation succeeded — reset failure counter
             self._consecutive_failure_count = 0
-            return AngulationResult(points=points, errors_px=errors_px)
+            return AngulationResult(points=points, errors_px=errors_px, diagnostics=NamedReprojectionDiagnostics(
+                source_ids=tuple(binding.live_id_for_calibration_id[name] for name in ordered_cam_names),
+                point_names=point_names_seq, values=triangulation_result.diagnostics,
+            ))
 
         except (ValueError, IndexError, np.linalg.LinAlgError) as e:
             # NUMERICAL failure only. Camera-identity mismatch is settled up front by

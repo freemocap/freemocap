@@ -227,7 +227,6 @@ export interface MocapDirectoryInfo {
     canRecord: boolean;
     canCalibrate: boolean;
     cameraMocapTomlPath: string | null;
-    lastSuccessfulCalibrationTomlPath: string | null;
     hasSynchronizedVideos: boolean;
     hasVideos: boolean;
     cameraCount: number;

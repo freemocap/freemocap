@@ -198,6 +198,12 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         break
 
                     requested_frame_number = latest_frame_msg.frame_number
+                    if not pipeline_config.camera_node_config.skeleton_tracking_enabled:
+                        skeleton_result_pub.put(SkeletonInferenceResultMessage(
+                            frame_number=requested_frame_number,
+                            per_camera_skeleton={cam_id: None for cam_id in camera_ids},
+                        ))
+                        continue
 
                     # ---- Read N images from per-camera ring buffers ----
                     t_read = time.perf_counter() if timer is not None else 0.0

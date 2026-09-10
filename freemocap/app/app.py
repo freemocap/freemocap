@@ -25,7 +25,9 @@ from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS, APP_ROUTERS
 from freemocap.api.server_constants import PROTOCOL, HOSTNAME
 from freemocap.api.websocket.websocket_connect import websocket_router
-from freemocap.app.freemocap_application import create_freemocap_app
+from freemocap.app.freemocap_application import create_freemocap_app, get_freemocap_app
+from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
+from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
 )
@@ -333,36 +335,44 @@ async def app_lifespan(
     Manage the application lifecycle.
     All startup and shutdown logic goes here.
     """
-    # ===== STARTUP =====
-    logger.api("FreeMoCap API starting...")
-    _log_system_info()
+    try:
+        # ===== STARTUP =====
+        logger.api("FreeMoCap API starting...")
+        # Required stream resources must be usable before accepting connections.
+        build_tracked_skeletons(camera_node_config=CameraNodeConfig())
+        _log_system_info()
 
-    # Ensure base folder exists
-    base_path = Path(get_default_freemocap_base_folder_path())
-    base_path.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Base folder: {base_path}")
+        # Ensure base folder exists
+        base_path = Path(get_default_freemocap_base_folder_path())
+        base_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Base folder: {base_path}")
 
-    # Start anonymous usage telemetry (no-op if the user opted out)
-    initialize_telemetry()
+        # Start anonymous usage telemetry (no-op if the user opted out)
+        initialize_telemetry()
 
-    app_url = f"{PROTOCOL}://{HOSTNAME}:{app.state.port}"
+        app_url = f"{PROTOCOL}://{HOSTNAME}:{app.state.port}"
 
-    logger.success(
-        f"FreeMoCap API {freemocap.__version__} started successfully 💀✨\n"
-        f"Swagger API docs: {app_url}/docs"
-    )
-
-    yield
-
-    # ===== SHUTDOWN =====
-    logger.api("FreeMoCap API shutting down...")
-
-    # Flush any buffered telemetry before we tear the app down
-    shutdown_telemetry()
-
-    app.state.global_kill_flag.value = True
-
-    logger.success("FreeMoCap API shutdown complete - Goodbye! 👋")
+        logger.success(
+            f"FreeMoCap API {freemocap.__version__} started successfully 💀✨\n"
+            f"Swagger API docs: {app_url}/docs"
+        )
+        yield
+    except Exception as error:
+        app.state.fatal_error = error
+        raise
+    finally:
+        logger.api("FreeMoCap API shutting down...")
+        app.state.global_kill_flag.value = True
+        try:
+            try:
+                get_freemocap_app().close()
+            finally:
+                shutdown_telemetry()
+        except Exception as error:
+            if app.state.fatal_error is None:
+                app.state.fatal_error = error
+            raise
+        logger.info("FreeMoCap API shutdown complete")
 
 
 def create_fastapi_app(
@@ -377,6 +387,7 @@ def create_fastapi_app(
     app = FastAPI(lifespan=app_lifespan)
 
     app.state.global_kill_flag = global_kill_flag
+    app.state.fatal_error = None
     app.state.worker_registry = worker_registry
     app.state.port = port
     create_freemocap_app(fastapi_app=app)

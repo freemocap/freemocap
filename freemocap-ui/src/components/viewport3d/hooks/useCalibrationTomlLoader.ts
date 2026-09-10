@@ -1,35 +1,14 @@
-import { useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "@/store";
-import {
-    selectCalibrationDirectoryInfo,
-    selectDismissedCalibrationPath,
-    selectLoadedCalibration,
-} from "@/store/slices/calibration/calibration-slice";
-import { loadCalibrationToml } from "@/store/slices/calibration/calibration-thunks";
+import {useEffect} from 'react';
+import {useAppDispatch, useAppSelector} from '@/store';
+import {restoreCalibrationSelection} from '@/store/slices/calibration';
 
-/**
- * Reactively (re)load the parsed calibration TOML whenever the directory
- * watcher surfaces a new `lastSuccessfulCalibrationTomlPath`. Loads the file
- * through the Electron tRPC endpoint which parses the TOML in the main
- * process and returns structured camera data.
- *
- * Skips reloading a path the user has explicitly dismissed (e.g. via
- * "Clear calibration") until a new calibration is recorded/imported and
- * clears the dismissal.
- */
-export function useCalibrationTomlLoader(enabled: boolean) {
+/** Restore the running selection, or the default when no pipeline is running. This only reads server state. */
+export function useCalibrationTomlLoader(enabled: boolean): void {
     const dispatch = useAppDispatch();
-    const directoryInfo = useAppSelector(selectCalibrationDirectoryInfo);
-    const loaded = useAppSelector(selectLoadedCalibration);
-    const dismissedPath = useAppSelector(selectDismissedCalibrationPath);
-    const pending = useAppSelector(state => state.calibration.loadRequestId);
-    const error = useAppSelector(state => state.calibration.error);
-
-    const path = directoryInfo?.lastSuccessfulCalibrationTomlPath ?? null;
-
+    const connected = useAppSelector(state => state.connection.isConnected);
+    const {loadedCalibration, dismissedCalibrationPath, loadRequestId, error, mostRecentLoadAttempted} = useAppSelector(state => state.calibration);
     useEffect(() => {
-        if (!enabled || !path) return;
-        if (dismissedPath || loaded || pending || error) return;
-        dispatch(loadCalibrationToml({ path }));
-    }, [dispatch, enabled, path, loaded, dismissedPath, pending, error]);
+        if (!enabled || !connected || loadedCalibration || dismissedCalibrationPath || loadRequestId || error || mostRecentLoadAttempted) return;
+        void dispatch(restoreCalibrationSelection());
+    }, [dispatch, enabled, connected, loadedCalibration, dismissedCalibrationPath, loadRequestId, error, mostRecentLoadAttempted]);
 }

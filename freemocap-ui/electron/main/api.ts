@@ -79,19 +79,6 @@ function findCameraCalibrationToml(dirPath: string): string | null {
     }
 }
 
-function getLastSuccessfulCalibrationPath(): string {
-    return path.join(getBaseDataFolder(), 'calibrations', 'last_successful_camera_calibration.toml');
-}
-
-function findLastSuccessfulCalibrationToml(): string | null {
-    try {
-        const calibrationPath = getLastSuccessfulCalibrationPath();
-        return fs.existsSync(calibrationPath) ? calibrationPath : null;
-    } catch {
-        return null;
-    }
-}
-
 // Telemetry config lives inside the base data folder (default ~/freemocap_data/telemetry_config.json)
 function getTelemetryConfigPath(): string {
     return path.join(getBaseDataFolder(), 'telemetry_config.json');
@@ -338,7 +325,6 @@ export const api = t.router({
                     canRecord: false,
                     canCalibrate: false,
                     cameraCalibrationTomlPath: null as string | null,
-                    lastSuccessfulCalibrationTomlPath: null as string | null,
                     hasSynchronizedVideos: false,
                     hasVideos: false,
                     errorMessage: null as string | null,
@@ -350,7 +336,6 @@ export const api = t.router({
                     if (!result.exists) {
                         result.canRecord = true;
                         result.canCalibrate = false;
-                        result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
                         return result;
                     }
 
@@ -379,7 +364,6 @@ export const api = t.router({
                     result.canCalibrate = result.hasVideos;
 
                     result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
-                    result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
 
                     return result;
 
@@ -397,9 +381,7 @@ export const api = t.router({
                     exists: false,
                     canRecord: false,
                     canCalibrate: false,
-                    canProcess: false,
                     cameraMocapTomlPath: null as string | null,
-                    lastSuccessfulCalibrationTomlPath: null as string | null,
                     hasSynchronizedVideos: false,
                     hasVideos: false,
                     cameraCount: 0,
@@ -411,8 +393,6 @@ export const api = t.router({
 
                     if (!result.exists) {
                         result.canRecord = true;
-                        result.canProcess = false;
-                        result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
                         return result;
                     }
 
@@ -440,14 +420,8 @@ export const api = t.router({
                     const entries = fs.readdirSync(input.directoryPath);
                     result.canRecord = !result.hasVideos;
                     result.cameraMocapTomlPath = findCameraCalibrationToml(input.directoryPath);
-                    result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
 
                     result.canCalibrate = result.hasVideos && result.cameraMocapTomlPath !== null;
-
-                    // Single-camera recordings use a planar-projection fallback and never need
-                    // a calibration TOML; multi-camera recordings still require one for triangulation.
-                    const hasCalibration = result.cameraMocapTomlPath !== null || result.lastSuccessfulCalibrationTomlPath !== null;
-                    result.canProcess = result.hasVideos && (result.cameraCount === 1 || hasCalibration);
 
                     return result;
 

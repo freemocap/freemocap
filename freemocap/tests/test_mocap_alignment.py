@@ -32,8 +32,8 @@ def alignment_request() -> MocapAlignmentRequest:
     ) for index, name in enumerate(sources)}
     count, points, _ = evidence.positions.shape
     return MocapAlignmentRequest(
-        triangulation=RecordingTriangulation(sources=sources, keypoint_names=evidence.keypoint_names,
-            reconstruction=TriangulationResult(points_3d=evidence.positions,
+        triangulation=RecordingTriangulation(sources=sources, keypoint_names=evidence.keypoint_names, diagnostic_point_names=evidence.keypoint_names,
+            reconstruction=TriangulationResult(points_3d=evidence.positions, diagnostics=None,
                 reprojection_error=np.zeros((2,count,points)), per_camera_weights=np.full((count,points,2), .5))),
         camera_geometry=geometry, bundle=evidence.bundle, definition=evidence.definition,
         timestamps_seconds=evidence.timestamps_seconds, has_explicit_ground=False, config=MocapAlignmentConfig(),

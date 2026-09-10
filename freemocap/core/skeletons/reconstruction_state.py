@@ -111,6 +111,7 @@ class SkeletonReconstructionState:
     scale_source: ModelScaleSource
     roll_resolver: ContinuousRollResolver | None = None
     previous_center_of_mass: tuple[np.ndarray, float] | None = None
+    diagnostic_reference_fit: ModelScaleFit | None = None
 
     def reset(self) -> None:
         """Forget everything measured so far.
@@ -124,6 +125,7 @@ class SkeletonReconstructionState:
         if self.roll_resolver is not None:
             self.roll_resolver.reset()
         self.previous_center_of_mass = None
+        self.diagnostic_reference_fit = None
 
 
 def streaming_model_scale_source(

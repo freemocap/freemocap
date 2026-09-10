@@ -44,7 +44,10 @@ test('reconnect and disposal retain a single owned socket and reject stale callb
         first.onclose!({code: 1006, reason: ''} as CloseEvent);
         assert.equal(timers.size, 1);
         connection.connect();
-        assert.equal(timers.size, 0, 'manual connect cancels the scheduled retry');
+        assert.equal(timers.size, 1, 'connect cannot bypass retry backoff');
+        const retry = timers.values().next().value!;
+        timers.clear();
+        retry();
         const second = SocketStub.instances[1];
         staleOpen();
         staleClose({code: 1006, reason: ''} as CloseEvent);
@@ -54,12 +57,38 @@ test('reconnect and disposal retain a single owned socket and reject stale callb
         assert.notEqual(first.url.searchParams.get('connection_id'), second.url.searchParams.get('connection_id'));
         second.readyState = SocketStub.OPEN;
         second.onopen!();
-        assert.equal(timers.size, 1);
+        assert.equal(timers.size, 2);
         connection.disconnect();
         assert.equal(timers.size, 0);
         assert.equal(second.onopen, null);
         assert.equal(second.onmessage, null);
         assert.equal(connection.getState(), ConnectionState.DISCONNECTED);
+
+        // Each connection opens, then fails before it becomes stable.
+        connection.connect();
+        for (let attempt = 0; attempt <= 5; attempt++) {
+            const socket = SocketStub.instances.at(-1)!;
+            socket.readyState = SocketStub.OPEN;
+            socket.onopen!();
+            socket.onclose!({code: 1006, reason: ''} as CloseEvent);
+            if (attempt < 5) {
+                assert.equal(connection.getState(), ConnectionState.RECONNECTING);
+                assert.equal(timers.size, 1);
+                const retryCallback = timers.values().next().value!;
+                timers.clear();
+                retryCallback();
+            }
+        }
+        assert.equal(connection.getState(), ConnectionState.FAILED);
+        assert.equal(timers.size, 0, 'short-lived handshakes must exhaust retries');
+
+        connection.connect();
+        const fatalSocket = SocketStub.instances.at(-1)!;
+        fatalSocket.readyState = SocketStub.OPEN;
+        fatalSocket.onopen!();
+        fatalSocket.onclose!({code: 1011, reason: 'Fatal server error'} as CloseEvent);
+        assert.equal(connection.getState(), ConnectionState.FAILED);
+        assert.equal(timers.size, 0, 'fatal server errors must not reconnect');
     } finally {
         connection.disconnect();
         Object.defineProperty(globalThis, 'WebSocket', {value: originalSocket});

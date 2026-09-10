@@ -20,6 +20,7 @@ class CameraMatchingConfig(BaseModel):
 
     automatically_match: bool = True
     failure_policy: MatchingFailurePolicy = MatchingFailurePolicy.CONTINUE
+    minimum_point_visibility: float = Field(default=0.5, gt=0.0, le=1.0)
     minimum_frames: int = Field(default=6, ge=2)
     minimum_points_per_frame: int = Field(default=6, ge=2)
     minimum_valid_fraction: float = Field(default=0.9, gt=0.0, le=1.0)

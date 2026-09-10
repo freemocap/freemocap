@@ -7,6 +7,7 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
 import DropdownButton from "@/components/ui-components/DropdownButton";
 import CalibrationSettings from "./calibration-settings";
+import {useCalibrationTomlLoader} from '@/components/viewport3d/hooks/useCalibrationTomlLoader';
 // import CalibrationReferenceFrame from './calibration-reference-frame';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import ImportVideosModal from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
@@ -18,6 +19,7 @@ import {
   calibrationAutoLoadDismissed,
   calibrationLoadedFromBundle,
   loadCalibrationToml,
+  loadMostRecentCalibration,
   selectLoadedCalibration,
 } from "@/store/slices/calibration";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
@@ -77,6 +79,7 @@ const CalibrationModule = ({
 
   const location = useLocation();
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
+  useCalibrationTomlLoader(appMode === 'streaming' && appModeOverride === undefined);
   // TODO: Revisit reference-frame controls once the core workflow is stable.
   // const referenceFrameControls = appMode === 'streaming' && appModeOverride === undefined
   //   ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
@@ -218,6 +221,14 @@ const CalibrationModule = ({
    */
   const dropdownItems = (
     <div className="flex flex-col gap-1 calibrate-module-dropdown-list">
+      <ButtonSm
+        iconClass="tomlfile-icon"
+        text="Load most recent calibration TOML (default)"
+        buttonType="secondary"
+        className="full-width"
+        onClick={() => {void dispatch(loadMostRecentCalibration());}}
+        disabled={!isConnected || isLoading}
+      />
       {/* 
         "Record and Calibrate" is only available in streaming mode.
         In playback mode, this option is hidden since recording doesn't make sense.
@@ -249,6 +260,11 @@ const CalibrationModule = ({
       />
     </div>
   );
+
+  const calibrationDropdown = <DropdownButton
+    buttonProps={{text: 'Set up calibration', rightSideIcon: 'dropdown', iconClass: 'calibrate-icon',
+      className: 'button sm min-w-full justify-center', buttonType: 'secondary'}}
+    dropdownItems={dropdownItems}/>;
 
   const errorBanner = error && (
     <div className="toast-notification gap-4 error flex items-center justify-content-space-between elevated-sharp">
@@ -437,6 +453,7 @@ const CalibrationModule = ({
             tooltipPosition="pos-left"
           />
         </div>
+        {calibrationDropdown}
         {/* {referenceFrameControls} */}
       </div>
       </>
@@ -496,17 +513,7 @@ const CalibrationModule = ({
           The calibration dropdown is always visible.
           However, the "Record and Calibrate" option inside it is hidden in playback mode.
         */}
-        <DropdownButton
-          buttonProps={{
-            text: "Set up calibration",
-            rightSideIcon: "dropdown",
-            iconClass: "calibrate-icon",
-            className: "button sm min-w-full justify-center",
-            buttonType: "secondary",
-          }}
-          dropdownItems={dropdownItems}
-          dropdownClassName=""
-        />
+        {calibrationDropdown}
       </div>
       
       <ToggleComponent

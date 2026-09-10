@@ -39,6 +39,9 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
       <p className={clsx(textColor, "text-nowrap text bg text-align-left", textClass)}>
         {text}
       </p>
+      {rightSideIcon === 'dropdown' && <svg aria-hidden="true" className="text-white" width="14" height="14" viewBox="0 0 16 16" style={{marginLeft: 'auto', flexShrink: 0}}>
+        <path d="M3 6L8 11L13 6" fill="none" stroke="currentColor" strokeWidth="2"/>
+      </svg>}
     </>
   );
 
@@ -59,7 +62,7 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
         <button
           disabled
           title={title}
-          className={clsx("gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black", buttonType, rightSideIcon, className)}
+          className={clsx("gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black", buttonType, rightSideIcon === 'dropdown' ? '' : rightSideIcon, className)}
           style={{ pointerEvents: "none" }}
         >
           {innerContent}
@@ -74,7 +77,7 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
       onClick={onClick}
       title={title}
       disabled={disabled}
-      className={clsx("button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black", buttonType, rightSideIcon, className)}
+      className={clsx("button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black", buttonType, rightSideIcon === 'dropdown' ? '' : rightSideIcon, className)}
     >
       {innerContent}
       {tooltipEl}

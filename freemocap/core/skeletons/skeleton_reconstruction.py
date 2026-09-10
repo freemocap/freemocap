@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
+from skellyforge.core.skeleton.pose.rigid_body_diagnostics import RigidBodyResidual
 
 
 @dataclass
@@ -40,6 +41,7 @@ class SkeletonReconstruction:
     """
 
     model_id: str
+    rigid_body_residuals: dict[str, RigidBodyResidual] = field(default_factory=dict)
     landmarks: dict[str, np.ndarray] = field(default_factory=dict)
     segment_rotations_world: dict[str, np.ndarray] = field(default_factory=dict)
     segment_rotations_local: dict[str, np.ndarray] = field(default_factory=dict)

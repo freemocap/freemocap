@@ -181,6 +181,25 @@ export type TrackerObservation = z.infer<typeof TrackerObservationSchema>;
 
 // ── Frame kind ──────────────────────────────────────────────────────────
 
+export const PipelineDiagnosticsSchema = z.object({
+  length_units: z.enum(['millimeters', 'pixels']),
+  reprojection: z.array(z.object({
+    source_ids: z.array(z.string()), point_names: z.array(z.string()),
+    units: z.enum(['pixels', 'normalized']), columns: z.tuple([z.literal('error'), z.literal('observed'), z.literal('reconstructed'), z.literal('weight')]),
+    dtype: z.literal('float32_le'), data: z.instanceof(Uint8Array),
+  }).superRefine((block, context) => {
+    if (block.data.byteLength !== block.source_ids.length * block.point_names.length * 4 * 4) {
+      context.addIssue({code: z.ZodIssueCode.custom, message: 'Diagnostic byte length does not match its axes'});
+    }
+  })),
+  rigid_body: z.record(z.string(), z.record(z.string(), z.object({
+    measured_length: z.number().finite().nonnegative().optional(),
+    reference_length: z.number().finite().nonnegative().optional(),
+    residual: z.number().finite().optional(), reference_kind: z.string(),
+  }))),
+});
+export type PipelineDiagnostics = z.infer<typeof PipelineDiagnosticsSchema>;
+
 export const FrameMessageSchema = z.object({
   kind: z.literal("frame"),
   ...ENVELOPE,
@@ -194,6 +213,7 @@ export const FrameMessageSchema = z.object({
   // Opaque multi-camera JPEG blob (the SkellyCam frontend payload). Absent on
   // an image-less frame.
   image: z.instanceof(Uint8Array).optional(),
+  diagnostics: PipelineDiagnosticsSchema.optional(),
 });
 export type FrameMessage = z.infer<typeof FrameMessageSchema>;
 

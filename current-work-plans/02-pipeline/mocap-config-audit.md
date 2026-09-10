@@ -189,3 +189,52 @@ Validation: 14 backend calibration tests, 4 browser regression tests (request
 payloads, selection changes, clearing, load races, options remounting, and viewport
 transforms), and TypeScript compilation passed. Hardware recording is being tested
 by the user; this pass does not start cameras or recording.
+
+## Calibration recording / realtime inference — 2026-09-10
+
+The 05:44–05:46 recording log shows skeleton restoration failing at 05:45:09,
+followed by repeated two-second skeleton-result waits and 0.7 FPS delivery.
+The resume path omitted the required shared inference service and published an
+enabled configuration before creating the worker.
+
+RealtimePipeline retains the shared inference service. Calibration pauses reuse
+the inference worker and its subscriptions; paused frame requests receive empty
+skeleton results without image reads or inference submissions. Missing workers
+are created with the selected camera subset before an enabled config is published.
+Failed restore retains the paused configuration and restore marker, and the route
+propagates the failure. Inference execution mode changes require pipeline restart.
+
+Validation: 14 tests and 2 subtests passed across pause/resume, the actual inference
+adapter loop, the shared inference service, and calibration recording routes.
+A backend restart and live recording retest are required to verify the running app.
+
+## Default calibration loading — 2026-09-10
+
+The streaming Capture volume controller resolves the most-recent TOML directly
+from the server on connection, once per session, without requiring a selected
+recording or a mounted 3D viewport. Explicit selections and clearing are respected.
+The calibration dropdown is available in both idle and calibrated states and
+includes Load most recent calibration TOML (default). Its chevron is inline SVG,
+using existing text colors. Loaded geometry and live requests share the resolved
+file through the calibration selection listener. Discovery/load races use the same
+request-id guards as other calibration loads.
+
+Validation: 3 backend discovery tests, 3 browser tests including startup, explicit
+reload, live request propagation, selection preservation, and TypeScript compilation.
+
+### Most-recent calibration lookup consolidation (2026-09-10)
+
+- The shared Python `get_last_successful_calibration_toml_path()` is the path authority for both `save_calibration_copies()` and `GET /calibration/most-recent`. It respects the configured base data folder. Most recent means the last successful saved calibration copy.
+- Startup and both explicit most-recent UI actions use `loadMostRecentCalibration`. Recording options query this endpoint on click; `/calibration/files` reports only recording-local discovery.
+- Removed Electron's duplicate most-recent path construction, directory-info fields, and unused processing-eligibility calculation based on unselected files.
+- Triangulation status displays the selected calibration. Removed the stale override action that only changed pipeline config without changing calibration selection.
+- Verified: TypeScript compilation; 7 Python discovery/selection tests, including save-to-discovery consistency under a custom base folder; 3 isolated browser tests covering startup, explicit reload, recording options, and selection propagation.
+- The reported live reconstruction drop remains a separate investigation. Hardware was not exercised during this cleanup.
+
+### Refresh and live matching regression (2026-09-10)
+
+- Supplied log: exact camera binding at 06:27:58; geometry matching reported poor at 06:28:07 while the client was disconnected; client reconnection at 06:28:10 triggered a pipeline apply.
+- Live matching now honors failure_policy: continue retains the current binding when matching is rejected; stop raises an explicit error. Successful geometry assignments still install normally.
+- GET /realtime/config reads the running pipeline configuration. Startup restores that configuration and its selected calibration (including explicit null); only a stopped pipeline uses the most-recent default. Restoration actions never dispatch a pipeline apply.
+- Frame transport continues to carry model definitions and reconstruction channels in each self-contained frame. This incident exposed processing-state and startup-write behavior, rather than evidence of a missing model handshake.
+- Verified: 13 Python tests for policy, matching, read-only config, websocket lifetime and message encoding; 5 browser tests including actual reloads and explicit selection; TypeScript compilation passed. Physical camera reproduction remains to be checked after backend/app restart.

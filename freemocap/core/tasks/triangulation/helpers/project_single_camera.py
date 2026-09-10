@@ -71,4 +71,5 @@ def project_2d_batch_to_3d(
         points_3d=points_3d,
         per_camera_weights=np.ones((n_frames, n_points, 1), dtype=np.float64),
         reprojection_error=np.zeros((1, n_frames, n_points), dtype=np.float64),
+        diagnostics=None,
     )

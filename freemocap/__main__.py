@@ -5,6 +5,8 @@ import os
 import signal
 import sys
 
+from freemocap.app.serve_application import serve_application
+
 # Ensure sys.stdout/sys.stderr are valid — PyInstaller frozen subprocesses
 # may set them to None, which breaks libraries like tqdm that write to stderr.
 if sys.stdout is None:
@@ -97,7 +99,7 @@ async def main(force_preferred_port:bool=True) -> None:
         server = uvicorn.Server(config)
 
         logger.info(f"Starting server on {HOSTNAME}:{port}")
-        await server.serve()
+        await serve_application(server=server, app=app)
 
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received")
@@ -111,7 +113,7 @@ async def main(force_preferred_port:bool=True) -> None:
             await await_1s()
 
         worker_registry.shutdown_all()
-        logger.success("Done! Thank you for using FreeMocap")
+        logger.info("FreeMoCap workers shut down")
 
 def run_main() -> None:
     asyncio.run(main())

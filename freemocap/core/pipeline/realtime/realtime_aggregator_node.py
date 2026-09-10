@@ -20,6 +20,7 @@ mapping that feeds it, the fitter that sizes it and the roll convention it opted
 The reset signal clears every skeleton's fit windows so the next ~window frames re-fit.
 """
 
+from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 import logging
 import multiprocessing.synchronize
 import queue
@@ -309,12 +310,15 @@ def _merge_angulation(
     angulation: AngulationResult | None,
     into_points: dict[str, np.ndarray],
     into_errors: dict[str, float],
+    into_diagnostics: list[NamedReprojectionDiagnostics],
 ) -> None:
     """Merge one frame's triangulated points and their reprojection errors into
     the output dicts, skipping NaN entries. Error-less results (single-camera
     planar projection) merge points only."""
     if angulation is None:
         return
+    if angulation.diagnostics is not None:
+        into_diagnostics.append(angulation.diagnostics)
     for point_name, coords in angulation.points.items():
         if not isinstance(coords, np.ndarray):
             raise TypeError(
@@ -851,6 +855,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # conversion to Point3d for the output message.
                 raw_keypoints: dict[str, np.ndarray] = {}
                 raw_errors_px: dict[str, float] = {}
+                reprojection_diagnostics: list[NamedReprojectionDiagnostics] = []
                 filtered_keypoints: dict[str, np.ndarray] = {}
                 measured_keypoints: dict[str, np.ndarray] = {}
                 skeleton_keypoints: dict[str, np.ndarray] = {}
@@ -879,6 +884,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             ),
                             into_points=raw_keypoints,
                             into_errors=raw_errors_px,
+                            into_diagnostics=reprojection_diagnostics,
                         )
                         if timer is not None:
                             timer.record(
@@ -904,6 +910,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             ),
                             into_points=raw_keypoints,
                             into_errors=raw_errors_px,
+                            into_diagnostics=reprojection_diagnostics,
                         )
                         if timer is not None:
                             timer.record(
@@ -1030,6 +1037,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         camera_node_outputs=frame_n_outputs,
                         keypoints_arrays=filtered_keypoints,
                         reconstructions=reconstructions,
+                        reprojection_diagnostics=tuple(reprojection_diagnostics),
                         calibration_bindings=_publishable_calibration_bindings(
                             calibration=calibration,
                             live_camera_indices=live_camera_indices,

@@ -9,6 +9,23 @@ from numpy.typing import NDArray
 from skellytracker.core.data_primitives.observation import Observation
 
 
+def select_matching_point_names(*, frames: list[dict[str, Observation]], minimum_visibility: float) -> tuple[str, ...]:
+    """Prefer confidently observed cross-view points within the matching budget."""
+    scores: dict[str, float] = {}
+    for observations in frames:
+        shared: dict[str, list[float]] = {}
+        for observation in observations.values():
+            points = observation.to_keypoints()
+            for index, name in enumerate(points.names):
+                visibility = float(points.visibility[index])
+                if np.isfinite(visibility) and visibility >= minimum_visibility and np.isfinite(points.xy[index]).all():
+                    shared.setdefault(name, []).append(visibility)
+        for name, visibility in shared.items():
+            if len(visibility) >= 2:
+                scores[name] = scores.get(name, 0.0) + min(visibility)
+    return tuple(sorted(scores, key=lambda name: (-scores[name], name)))[:64]
+
+
 @dataclass(frozen=True, slots=True)
 class MatchingSampleLayout:
     """Point names must identify the same instance and landmark across sources."""
@@ -16,8 +33,11 @@ class MatchingSampleLayout:
     source_ids: tuple[str, ...]
     point_names: tuple[str, ...]
     image_sizes: tuple[tuple[int, int], ...]
+    minimum_visibility: float
 
     def __post_init__(self) -> None:
+        if not 0.0 < self.minimum_visibility <= 1.0:
+            raise ValueError("Matching visibility threshold must be in (0, 1]")
         if len(self.source_ids) < 2 or len(set(self.source_ids)) != len(self.source_ids):
             raise ValueError("Matching samples require distinct sources")
         if not self.point_names or len(set(self.point_names)) != len(self.point_names):
@@ -41,7 +61,7 @@ class MatchingSampleLayout:
             indices = {name: index for index, name in enumerate(points.names)}
             for target, name in enumerate(self.point_names):
                 index = indices.get(name)
-                if index is not None and np.isfinite(points.visibility[index]) and points.visibility[index] > 0.0:
+                if index is not None and np.isfinite(points.visibility[index]) and points.visibility[index] >= self.minimum_visibility:
                     if np.isfinite(points.xy[index]).all():
                         pixels[source_index, target] = points.xy[index]
         return pixels

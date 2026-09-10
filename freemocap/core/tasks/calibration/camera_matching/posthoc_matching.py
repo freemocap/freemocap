@@ -10,7 +10,7 @@ from freemocap.core.tasks.calibration.camera_matching.matching_evaluation import
 from freemocap.core.tasks.calibration.camera_matching.matching_models import (
     CameraMatchingConfig, CameraMatchingRequest, CameraMatchingResult, CameraMatchingStatus, MatchingFailurePolicy,
 )
-from freemocap.core.tasks.calibration.camera_matching.observation_sampling import MatchingSampleLayout, sample_recorded_observations
+from freemocap.core.tasks.calibration.camera_matching.observation_sampling import MatchingSampleLayout, sample_recorded_observations, select_matching_point_names
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 
 
@@ -28,10 +28,7 @@ class PosthocMatchingRequest:
         sample_count = min(len(self.frames), max(24, 2 * self.config.minimum_frames))
         frame_indices = np.linspace(0, len(self.frames) - 1, sample_count, dtype=int)
         sampled = [self.frames[index] for index in frame_indices]
-        names = tuple(dict.fromkeys(
-            name for frame in sampled for observation in frame.values()
-            for name in observation.to_keypoints().names
-        ))[:64]
+        names = select_matching_point_names(frames=sampled, minimum_visibility=self.config.minimum_point_visibility)
         by_id = {camera.id: index for index, camera in enumerate(self.cameras)}
         initial = tuple(by_id[source] for source in source_ids) if all(source in by_id for source in source_ids) else None
         if not names:
@@ -39,6 +36,7 @@ class PosthocMatchingRequest:
         layout = MatchingSampleLayout(
             source_ids=source_ids, point_names=names,
             image_sizes=tuple((video.width, video.height) for video in self.videos.values()),
+            minimum_visibility=self.config.minimum_point_visibility,
         )
         pixels = sample_recorded_observations(layout=layout, frames=sampled, maximum_frames=max(2, sample_count))
         # A detector-local instance ordering cannot establish cross-view identity.

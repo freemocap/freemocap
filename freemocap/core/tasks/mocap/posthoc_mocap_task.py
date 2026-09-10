@@ -19,6 +19,7 @@ from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.recording.sample_encoding.spatial_points import ReferenceAlignmentDescriptor
 import shutil
 from pathlib import Path
+from freemocap.core.diagnostics.recording_diagnostics import write_recording_diagnostics
 
 from freemocap.core.reconstruction.recording_reconstruction import RecordingReconstructionInput
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording, ReconstructionSourceDefinition
@@ -204,4 +205,10 @@ def run_posthoc_mocap_task(
         ),
     )
     publish_posthoc_observations(publication)
+    write_recording_diagnostics(
+        path=recording_folder / 'diagnostics.npz', triangulation=triangulation,
+        reconstructions=reconstructions,
+        frame_numbers=tuple(frame[camera_ids[0]].frame_number for frame in frame_observations),
+        length_units='millimeters' if len(camera_ids) > 1 else 'pixels',
+    )
     logger.info("Posthoc mocap complete: canonical Parquet published")

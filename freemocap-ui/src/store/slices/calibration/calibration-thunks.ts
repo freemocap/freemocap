@@ -7,6 +7,8 @@ import {electronIpc} from "@/services/electron-ipc/electron-ipc";
 import type {LoadedCalibration} from "./calibration-slice";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 import {getTimestampString} from "@/store/slices/recording/getTimestampString";
+import {pipelineConfigUpdated} from '@/store/slices/realtime/realtime-slice';
+import type {RealtimePipelineConfig} from '@/store/slices/realtime/realtime-types';
 
 export const checkPyceresAvailability = createAsyncThunk<
     { available: boolean; message?: string | null },
@@ -82,6 +84,51 @@ export const loadCalibrationToml = createAsyncThunk<
             return rejectWithValue(msg);
         }
     }
+);
+
+async function readMostRecentCalibration(): Promise<LoadedCalibration | null> {
+    const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/calibration/most-recent`);
+    if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
+    const path: unknown = await response.json();
+    if (path === null) return null;
+    if (typeof path !== 'string' || !path) throw new Error('Invalid most-recent calibration path');
+    if (!electronIpc) throw new Error('Calibration TOML loading requires the desktop file service.');
+    return await electronIpc.fileSystem.readCalibrationToml.query({path}) as LoadedCalibration;
+}
+
+export const restoreCalibrationSelection = createAsyncThunk<
+    LoadedCalibration | null, void, {state: RootState; rejectValue: string}
+>(
+    'calibration/restoreSelection',
+    async (_, {dispatch, getState, requestId, rejectWithValue}) => {
+        try {
+            const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/realtime/config`);
+            if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
+            const config: RealtimePipelineConfig | null = await response.json();
+            if (config === null) return await readMostRecentCalibration();
+            if (getState().calibration.loadRequestId !== requestId) return null;
+            dispatch(pipelineConfigUpdated(config));
+            const path = config.aggregator_config.calibration_toml_path;
+            if (path === null) return null;
+            if (!electronIpc) throw new Error('Calibration TOML loading requires the desktop file service.');
+            return await electronIpc.fileSystem.readCalibrationToml.query({path}) as LoadedCalibration;
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : String(error));
+        }
+    },
+);
+
+export const loadMostRecentCalibration = createAsyncThunk<
+    LoadedCalibration | null, void, {state: RootState; rejectValue: string}
+>(
+    'calibration/loadMostRecent',
+    async (_, {rejectWithValue}) => {
+        try {
+            return await readMostRecentCalibration();
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : String(error));
+        }
+    },
 );
 
 export const startCalibrationRecording = createAsyncThunk<

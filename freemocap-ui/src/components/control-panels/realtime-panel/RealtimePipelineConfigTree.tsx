@@ -7,7 +7,7 @@ import {DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS, RealtimeFilterCo
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {pipelineConfigUpdated, resetSkeletonFitter} from "@/store/slices/realtime";
 import ValueSelector from "@/components/ui-components/ValueSelector";
-import {selectCalibrationDirectoryInfo} from "@/store/slices/calibration/calibration-slice";
+import {selectLoadedCalibration} from "@/store/slices/calibration/calibration-slice";
 
 export type PipelineContext = "realtime" | "posthoc";
 
@@ -67,7 +67,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     } = useMocap();
 
     const {triggerRealtimeApply} = useRealtimePipelineSync();
-    const calibrationDirectoryInfo = useAppSelector(selectCalibrationDirectoryInfo);
+    const calibration = useAppSelector(selectLoadedCalibration);
 
     // ── Active detector type unified across contexts ───────────────────────────
     const activeDetectorType: DetectorType =
@@ -325,13 +325,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Triangulate"
                     checked={triangulateEnabled}
                     onToggle={onTriangulateToggle}
-                    summaryWhenCollapsed={
-                        pipelineConfig.aggregator_config.calibration_toml_path
-                            ? "Custom calibration"
-                            : calibrationDirectoryInfo?.lastSuccessfulCalibrationTomlPath
-                                ? "Auto (last calibration)"
-                                : "No calibration"
-                    }
+                    summaryWhenCollapsed={calibration ? "Selected calibration" : "No calibration"}
                 >
                     <div className="p-1 pl-4 flex flex-col gap-1" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
                         <p className="text-sm text-gray">
@@ -340,30 +334,8 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         </p>
                         <div className="flex flex-col gap-1">
                             <span className="text-sm" style={{wordBreak: 'break-all', color: 'var(--color-text-secondary)'}}>
-                                {pipelineConfig.aggregator_config.calibration_toml_path
-                                    ? `Override: ${pipelineConfig.aggregator_config.calibration_toml_path.split('/').pop()}`
-                                    : calibrationDirectoryInfo?.lastSuccessfulCalibrationTomlPath
-                                        ? `Auto: ${calibrationDirectoryInfo.lastSuccessfulCalibrationTomlPath.split('/').pop()}`
-                                        : "No calibration found — run calibration first"
-                                }
+                                {calibration?.path ?? "No calibration selected"}
                             </span>
-                            {pipelineConfig.aggregator_config.calibration_toml_path && (
-                                <button
-                                    className="button sm"
-                                    onClick={() => {
-                                        dispatch(pipelineConfigUpdated({
-                                            ...pipelineConfig,
-                                            aggregator_config: {
-                                                ...pipelineConfig.aggregator_config,
-                                                calibration_toml_path: null,
-                                            },
-                                        }));
-                                        triggerRealtimeApply();
-                                    }}
-                                >
-                                    Clear override (use latest)
-                                </button>
-                            )}
                         </div>
                     </div>
                 </RealtimePipelineStageTreeItem>

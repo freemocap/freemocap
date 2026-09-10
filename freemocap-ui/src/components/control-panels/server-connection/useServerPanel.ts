@@ -3,12 +3,13 @@ import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from 'react-i18next';
 import {useElectronIPC} from '@/services';
 import {DEFAULT_HOST, DEFAULT_PORT} from '@/constants/server-urls';
-import {ExecutableCandidate, WS_RECONNECT_INTERVAL_MS} from './server-connection-types';
+import {ExecutableCandidate} from './server-connection-types';
 import {STORAGE_KEYS, loadFromStorage, saveToStorage} from './storage';
 
 export interface ServerPanelState {
     // server context
     isConnected: boolean;
+    isFailed: boolean;
     connectedCameraIds: string[];
     // electron
     isElectron: boolean;
@@ -56,7 +57,7 @@ export interface ServerPanelState {
 }
 
 export function useServerPanel(): ServerPanelState {
-    const {isConnected, connect, disconnect, connectedCameraIds, updateServerConnection} = useServer();
+    const {isConnected, isFailed, connect, disconnect, connectedCameraIds, updateServerConnection} = useServer();
     const {t} = useTranslation();
     const {isElectron, api} = useElectronIPC();
 
@@ -258,16 +259,8 @@ export function useServerPanel(): ServerPanelState {
 
     useEffect(() => {
         if (!autoConnectWs) return;
-        if (isConnected) return;
-
         connect();
-
-        const interval = setInterval(() => {
-            if (!isConnected) connect();
-        }, WS_RECONNECT_INTERVAL_MS);
-
-        return () => clearInterval(interval);
-    }, [autoConnectWs, isConnected, connect]);
+    }, [autoConnectWs, serverHost, serverPort, connect]);
 
     // ── Toggle handlers ──
 
@@ -278,7 +271,8 @@ export function useServerPanel(): ServerPanelState {
     const handleToggleAutoConnectWs = useCallback((newState: boolean) => {
         setAutoConnectWs(newState);
         if (!newState) disconnect();
-    }, [disconnect]);
+        else connect();
+    }, [connect, disconnect]);
 
     const handleToggleServerRunning = useCallback(() => {
         if (serverRunning) stopServer();
@@ -320,6 +314,7 @@ export function useServerPanel(): ServerPanelState {
 
     return {
         isConnected,
+        isFailed,
         connectedCameraIds,
         isElectron,
         expanded,

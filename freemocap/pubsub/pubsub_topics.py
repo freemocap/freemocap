@@ -4,6 +4,7 @@ PubSub topic definitions for the pipeline system.
 Each Message + Topic pair defines a typed channel. Topics auto-register
 via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
+from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -142,6 +143,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     reconstructions: dict[str, SkeletonReconstruction] = field(default_factory=dict)
     # The aggregator is the ONLY owner of calibration state; everything downstream
     # forwards this rather than loading and judging the calibration a second time.
+    reprojection_diagnostics: tuple[NamedReprojectionDiagnostics, ...] = ()
     calibration_bindings: tuple[LiveCameraCalibrationBinding, ...] = ()
     calibration_applicable: bool = False
     """Whether the loaded calibration describes this camera set. False is a normal,

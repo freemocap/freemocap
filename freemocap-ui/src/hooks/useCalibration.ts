@@ -28,7 +28,6 @@ function calibrationDirectoryInfoEqual(a: CalibrationDirectoryInfo | null, b: Ca
         a.hasSynchronizedVideos === b.hasSynchronizedVideos &&
         a.hasVideos === b.hasVideos &&
         a.cameraCalibrationTomlPath === b.cameraCalibrationTomlPath &&
-        a.lastSuccessfulCalibrationTomlPath === b.lastSuccessfulCalibrationTomlPath &&
         a.errorMessage === b.errorMessage
     );
 }

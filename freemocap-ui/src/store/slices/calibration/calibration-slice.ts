@@ -1,5 +1,5 @@
 import {CalibrationBoardMode} from "./calibration-types";
-import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {createSelector, createSlice, isAnyOf, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
 import {
@@ -7,6 +7,7 @@ import {
     checkPyceresAvailability,
     loadCalibrationForRecording,
     loadCalibrationToml,
+    loadMostRecentCalibration, restoreCalibrationSelection,
     startCalibrationRecording,
     stopCalibrationRecording,
 } from '@/store/slices/calibration/calibration-thunks';
@@ -29,7 +30,6 @@ export interface CalibrationDirectoryInfo {
     canRecord: boolean;
     canCalibrate: boolean;
     cameraCalibrationTomlPath: string | null;
-    lastSuccessfulCalibrationTomlPath: string | null;
     hasSynchronizedVideos: boolean;
     hasVideos: boolean;
     errorMessage: string | null;
@@ -44,6 +44,7 @@ export interface CalibrationState {
     directoryInfo: CalibrationDirectoryInfo | null;
     loadedCalibration: LoadedCalibration | null;
     loadRequestId: string | null;
+    mostRecentLoadAttempted: boolean;
     dismissedCalibrationPath: string | null;
     pyceresAvailable: boolean | null;
     isCheckingPyceresAvailability: boolean;
@@ -69,6 +70,7 @@ const initialState: CalibrationState = {
     directoryInfo: null,
     loadedCalibration: null,
     loadRequestId: null,
+    mostRecentLoadAttempted: false,
     dismissedCalibrationPath: null,
     pyceresAvailable: null,
     isCheckingPyceresAvailability: false,
@@ -137,44 +139,6 @@ export const calibrationSlice = createSlice({
             });
 
         builder
-            .addCase(loadCalibrationToml.pending, (state, action) => {
-                state.loadRequestId = action.meta.requestId;
-                state.error = null;
-            })
-            .addCase(loadCalibrationToml.fulfilled, (state, action) => {
-                if (state.loadRequestId !== action.meta.requestId) return;
-                state.loadRequestId = null;
-                state.loadedCalibration = action.payload;
-                state.dismissedCalibrationPath = null;
-            })
-            .addCase(loadCalibrationToml.rejected, (state, action) => {
-                if (state.loadRequestId !== action.meta.requestId) return;
-                state.loadRequestId = null;
-                if (action.meta.aborted) return;
-                state.loadedCalibration = null;
-                state.error = action.payload || action.error.message || 'Failed to load calibration';
-            });
-
-        builder
-            .addCase(loadCalibrationForRecording.pending, (state, action) => {
-                state.loadRequestId = action.meta.requestId;
-                state.error = null;
-            })
-            .addCase(loadCalibrationForRecording.fulfilled, (state, action) => {
-                if (state.loadRequestId !== action.meta.requestId) return;
-                state.loadRequestId = null;
-                state.loadedCalibration = action.payload;
-                state.dismissedCalibrationPath = null;
-            })
-            .addCase(loadCalibrationForRecording.rejected, (state, action) => {
-                if (state.loadRequestId !== action.meta.requestId) return;
-                state.loadRequestId = null;
-                if (action.meta.aborted) return;
-                state.loadedCalibration = null;
-                state.error = action.payload || action.error.message || 'Failed to load recording calibration';
-            });
-
-        builder
             .addCase(calibrateRecording.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -201,6 +165,25 @@ export const calibrationSlice = createSlice({
             .addCase(checkPyceresAvailability.rejected, (state) => {
                 state.isCheckingPyceresAvailability = false;
                 state.pyceresAvailable = false;
+            });
+        builder
+            .addMatcher(isAnyOf(loadCalibrationToml.pending, loadCalibrationForRecording.pending, loadMostRecentCalibration.pending, restoreCalibrationSelection.pending), (state, action) => {
+                state.loadRequestId = action.meta.requestId;
+                state.error = null;
+                if (isAnyOf(loadMostRecentCalibration.pending, restoreCalibrationSelection.pending)(action)) state.mostRecentLoadAttempted = true;
+            })
+            .addMatcher(isAnyOf(loadCalibrationToml.fulfilled, loadCalibrationForRecording.fulfilled, loadMostRecentCalibration.fulfilled, restoreCalibrationSelection.fulfilled), (state, action) => {
+                if (state.loadRequestId !== action.meta.requestId) return;
+                state.loadRequestId = null;
+                state.loadedCalibration = action.payload;
+                state.dismissedCalibrationPath = null;
+            })
+            .addMatcher(isAnyOf(loadCalibrationToml.rejected, loadCalibrationForRecording.rejected, loadMostRecentCalibration.rejected, restoreCalibrationSelection.rejected), (state, action) => {
+                if (state.loadRequestId !== action.meta.requestId) return;
+                state.loadRequestId = null;
+                if (action.meta.aborted) return;
+                state.loadedCalibration = null;
+                state.error = action.payload || action.error.message || 'Failed to load calibration';
             });
     },
 });

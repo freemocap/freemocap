@@ -69,6 +69,7 @@ class RealtimePipeline:
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
     worker_registry: WorkerRegistry
+    inference_service: InferenceService
     started: bool = False
     _latest_aggregation_output: AggregationNodeOutputMessage | None = None
     # Config stashed while a calibration recording temporarily forces Charuco-only
@@ -228,6 +229,7 @@ class RealtimePipeline:
             ipc=ipc,
             pubsub=pubsub,
             worker_registry=worker_registry,
+            inference_service=inference_service,
         )
 
     def start(self) -> None:
@@ -301,76 +303,39 @@ class RealtimePipeline:
         logger.debug(f"RealtimePipeline [{self.id}] shut down")
 
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
-        """Push a config update to all pipeline workers via pubsub.
+        """Keep inference subscribed while paused; create its worker before enabling it."""
+        if new_config.use_centralized_inference != self.config.use_centralized_inference:
+            raise ValueError("Changing inference execution mode requires restarting the pipeline")
 
-        Also manages SkeletonInferenceNode lifecycle when skeleton_tracking_enabled
-        transitions between True and False, or when detector_type changes while
-        skeleton tracking stays enabled (the centralized inference node holds its
-        tracker/session for its whole lifetime, so a detector swap requires a
-        fresh node rather than an in-place config update).
-        """
-        old_skeleton = self.config.camera_node_config.skeleton_tracking_enabled
-        new_skeleton = new_config.camera_node_config.skeleton_tracking_enabled
         old_detector = self.config.camera_node_config.detector_type
         new_detector = new_config.camera_node_config.detector_type
+        node = self.skeleton_inference_node
+        if node is not None and old_detector != new_detector:
+            node.shutdown()
+            self.skeleton_inference_node = None
+            node = None
 
-        self.config = new_config
-        logger.trace(f"Pushing new config to realtime pipeline: {self.id} \n {new_config.model_dump_json(indent=4)}")
+        if (new_config.use_centralized_inference
+                and new_config.camera_node_config.skeleton_tracking_enabled
+                and (node is None or not node.is_alive)):
+            node = RealtimeSkeletonInferenceNode.create(
+                inference_service=self.inference_service,
+                camera_group_id=self.camera_group.id,
+                camera_ids=list(self.camera_nodes),
+                worker_registry=self.worker_registry,
+                camera_group_shm_dto=self.camera_group.shm.to_dto(),
+                config=new_config,
+                ipc=self.ipc,
+                pubsub=self.pubsub,
+            )
+            node.start()
+            self.skeleton_inference_node = node
+
         self.pubsub.publish(
             topic_type=PipelineConfigUpdateTopic,
             message=PipelineConfigUpdateMessage(pipeline_config=new_config),
         )
-
-        if old_skeleton and not new_skeleton:
-            # Skeleton tracking disabled: shut down the centralized inference node.
-            if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
-                logger.info(f"RealtimePipeline [{self.id}]: skeleton tracking disabled — shutting down SkeletonInferenceNode")
-                self.skeleton_inference_node.shutdown()
-            self.skeleton_inference_node = None
-
-        elif not old_skeleton and new_skeleton and new_config.use_centralized_inference:
-            # Skeleton tracking re-enabled: create and start a fresh inference node.
-            logger.info(
-                f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
-                f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
-            )
-            self.skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
-                camera_group_id=self.camera_group.id,
-                camera_ids=self.camera_group.camera_ids,
-                worker_registry=self.worker_registry,
-                camera_group_shm_dto=self.camera_group.shm.to_dto(),
-                config=new_config,
-                ipc=self.ipc,
-                pubsub=self.pubsub,
-            )
-            self.skeleton_inference_node.start()
-
-        elif (
-            old_skeleton
-            and new_skeleton
-            and old_detector != new_detector
-            and new_config.use_centralized_inference
-        ):
-            # Detector swapped while tracking stayed on: the centralized inference
-            # node's tracker/session are built once at startup and never rebuilt
-            # from a config update, so it must be torn down and recreated to pick
-            # up the new detector.
-            logger.info(
-                f"RealtimePipeline [{self.id}]: detector_type changed ({old_detector} -> {new_detector}) — "
-                f"restarting SkeletonInferenceNode"
-            )
-            if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
-                self.skeleton_inference_node.shutdown()
-            self.skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
-                camera_group_id=self.camera_group.id,
-                camera_ids=self.camera_group.camera_ids,
-                worker_registry=self.worker_registry,
-                camera_group_shm_dto=self.camera_group.shm.to_dto(),
-                config=new_config,
-                ipc=self.ipc,
-                pubsub=self.pubsub,
-            )
-            self.skeleton_inference_node.start()
+        self.config = new_config
 
     def enter_calibration_charuco_only_mode(self) -> None:
         """Pause skeleton inference for the duration of a calibration recording.
@@ -414,8 +379,8 @@ class RealtimePipeline:
             f"restoring skeleton inference"
         )
         restored_config = self._pre_calibration_config
-        self._pre_calibration_config = None
         self.update_config(restored_config)
+        self._pre_calibration_config = None
 
     async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return await self.camera_group.update_camera_settings(

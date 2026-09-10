@@ -13,6 +13,7 @@ observations (routed to trackers); everything else is model reconstruction
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from freemocap.core.diagnostics.pipeline_diagnostics import frame_diagnostics
 
 from freemocap.core.streaming.message_model import (
     CalibratedCamera,
@@ -85,6 +86,12 @@ class MessageComposition:
                         channels=tracker_blocks,
                     )
                 )
+        aggregation = frame_ctx.aggregator_output
+        diagnostics = frame_diagnostics(
+            reprojection=aggregation.reprojection_diagnostics,
+            reconstructions=aggregation.reconstructions,
+            length_units='millimeters' if aggregation.calibration_applicable and len(aggregation.camera_node_outputs) > 1 else 'pixels',
+        ) if aggregation is not None else None
         return FrameMessage(
             envelope=MessageEnvelope(
                 timestamp=float(frame_ctx.timestamp),
@@ -98,6 +105,7 @@ class MessageComposition:
             instances=tuple(instances),
             trackers=tuple(trackers),
             image=frame_ctx.image_payload,
+            diagnostics=diagnostics,
         )
 
 

@@ -26,7 +26,12 @@ calibration_router = APIRouter(prefix="/calibration", tags=["Capture Volume Cali
 
 class CalibrationFileOptions(BaseModel):
     recording_path: str | None
-    most_recent_path: str | None
+
+
+@calibration_router.get("/most-recent")
+def most_recent_calibration_path() -> str | None:
+    path = get_last_successful_calibration_toml_path()
+    return str(path) if path.is_file() else None
 
 
 @calibration_router.get("/files")
@@ -35,9 +40,7 @@ def calibration_file_options(recording_directory: str) -> CalibrationFileOptions
         local = find_recording_calibration(recording_folder=Path(recording_directory).expanduser())
     except (NotADirectoryError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    recent = get_last_successful_calibration_toml_path()
-    return CalibrationFileOptions(recording_path=str(local) if local else None,
-                                  most_recent_path=str(recent) if recent.is_file() else None)
+    return CalibrationFileOptions(recording_path=str(local) if local else None)
 
 
 # ==================== Request/Response Models ====================
@@ -228,13 +231,7 @@ async def stop_calibration_recording(
                     f"to pipeline [{pipeline.id}]"
                 )
                 # Restore skeleton inference paused at recording start.
-                try:
-                    pipeline.exit_calibration_charuco_only_mode()
-                except Exception:
-                    logger.exception(
-                        f"Failed to restore skeleton inference for pipeline "
-                        f"[{pipeline.id}]"
-                    )
+                pipeline.exit_calibration_charuco_only_mode()
 
         logger.info(f"Recording stopped - saved to: {recording_info.full_recording_path}")
         pipeline = await app.create_posthoc_calibration_pipeline(

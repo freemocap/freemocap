@@ -24,8 +24,10 @@ from skellyforge.core.biomechanics.composite_inertia import whole_body_center_of
 from skellyforge.core.math.geometry.spatial_vectors import Point
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
+from skellyforge.core.skeleton.pose.model_scale_fitting import scale_voting_segment_names
+from skellyforge.core.skeleton.pose.rigid_body_diagnostics import measure_rigid_body_residuals
 
-from freemocap.core.skeletons.reconstruction_state import SkeletonReconstructionState
+from freemocap.core.skeletons.reconstruction_state import SkeletonReconstructionState, FrozenModelScale
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 
@@ -82,6 +84,19 @@ def reconstruct_skeleton(
             continue
         landmarks[segment.frame_definition.origin_point_name] = segment_pose.origin.array
 
+    reference_fit = (
+        state.scale_source.current_fit() if isinstance(state.scale_source, FrozenModelScale) and state.scale_source.has_model_scale
+        else state.diagnostic_reference_fit
+    )
+    residuals = measure_rigid_body_residuals(
+        skeleton=bundle.skeleton, pose=resolved_pose,
+        measured_segment_names=frozenset(scale_voting_segment_names(
+            skeleton=bundle.skeleton,
+            measured_landmark_names=bundle.landmark_mapping.directly_measured_landmark_names,
+        )),
+        reference_lengths=reference_fit.segment_lengths if reference_fit is not None else {},
+        reference_kind='recording_fit' if isinstance(state.scale_source, FrozenModelScale) else 'prior_live_fit',
+    )
     state.scale_source.observe_pose(pose=resolved_pose)
     scale_fit: ModelScaleFit | None = (
         state.scale_source.current_fit()
@@ -89,8 +104,10 @@ def reconstruct_skeleton(
         else None
     )
 
+    state.diagnostic_reference_fit = scale_fit
     reconstruction = SkeletonReconstruction(
         model_id=bundle.model_id,
+        rigid_body_residuals=residuals,
         landmarks=landmarks,
         segment_rotations_world={
             name: segment_pose.orientation.as_array()

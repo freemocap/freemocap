@@ -16,7 +16,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     const { t } = useTranslation();
     const panel = useServerPanel();
     const {
-        isConnected, connectedCameraIds, isElectron,
+        isConnected, isFailed, connectedCameraIds, isElectron,
         autoConnectWs, autoLaunchServer,
         serverRunning, serverLoading, currentExePath,
         candidates, candidatesLoading, processInfo, error,
@@ -32,11 +32,12 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     const serverPid = useAppSelector(selectServerPid);
 
 
-    const wsState = isConnected ? STATES.CONNECTED : autoConnectWs ? STATES.CONNECTING : STATES.DISCONNECTED;
+    const wsState = isConnected ? STATES.CONNECTED : isFailed ? STATES.DISCONNECTED : autoConnectWs ? STATES.CONNECTING : STATES.DISCONNECTED;
 
     // Connectedness is the websocket, full stop — the server is reachable iff the
     // websocket is open. The launched-process state never feeds this.
     const getOverallStatus = () => {
+        if (isFailed) return { text: 'Connection failed — check server log', iconClass: 'warning-icon' };
         if (wsState === STATES.CONNECTED) return { text: t('connected'), iconClass: 'connected-icon' };
         if (wsState === STATES.CONNECTING) return { text: t('connecting'), iconClass: 'loader-icon' };
         return { text: 'Not Connected', iconClass: 'warning-icon' };

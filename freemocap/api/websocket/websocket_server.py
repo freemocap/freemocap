@@ -21,6 +21,7 @@ import logging
 import os
 import time
 from queue import Empty
+from types import TracebackType
 
 from fastapi import FastAPI
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
@@ -403,13 +404,21 @@ class WebsocketServer:
         self._websocket_should_continue = True
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         logger.debug("WebsocketRunner context manager exiting...")
         self._websocket_should_continue = False
-        if self.websocket.client_state == WebSocketState.CONNECTED:
+        if self.websocket.application_state == WebSocketState.CONNECTED:
             try:
-                await self.websocket.close()
-            except RuntimeError:
+                await self.websocket.close(
+                    code=1011 if exc_val is not None else 1000,
+                    reason="Fatal server error; see server log" if exc_val is not None else "",
+                )
+            except WebSocketDisconnect:
                 pass
         for task in self.ws_tasks:
             if not task.done():

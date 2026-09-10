@@ -3,10 +3,10 @@ import {CalibrateRecordingButton} from '@/components/control-panels/calibration-
 import {useEffect, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store';
 import {serverUrls} from '@/constants/server-urls';
-import {loadCalibrationToml} from '@/store/slices/calibration';
+import {loadCalibrationToml, loadMostRecentCalibration} from '@/store/slices/calibration';
 import {selectMocapRecordingPath} from '@/store/slices/mocap/mocap-slice';
 
-interface CalibrationFileOptions {recording_path: string | null; most_recent_path: string | null}
+interface CalibrationFileOptions {recording_path: string | null}
 
 export function RecordingCalibrationOptions(): React.ReactElement {
     const dispatch = useAppDispatch();
@@ -41,6 +41,14 @@ export function RecordingCalibrationOptions(): React.ReactElement {
         } catch (failure) {setError(String(failure));}
         finally {setBusy(false);}
     };
+    const loadRecent = async (): Promise<void> => {
+        setBusy(true); setError(null);
+        try {
+            const calibration = await dispatch(loadMostRecentCalibration()).unwrap();
+            if (!calibration) setError('No successful calibration is available.');
+        } catch (failure) {setError(String(failure));}
+        finally {setBusy(false);}
+    };
     return <div className="flex flex-col gap-1 p-1">
         <span className="text sm" title={options?.recording_path ?? undefined}>
             {options?.recording_path ? 'Calibration found in this recording' : 'No calibration file in this folder'}
@@ -48,7 +56,7 @@ export function RecordingCalibrationOptions(): React.ReactElement {
         <ButtonSm iconClass="tomlfile-icon" text="Use this recording's calibration" className="full-width"
             disabled={busy || !options?.recording_path} onClick={() => void loadSelection(options?.recording_path ?? null)}/>
         <ButtonSm iconClass="tomlfile-icon" text="Use most recent calibration" className="full-width"
-            disabled={busy || !options?.most_recent_path} onClick={() => void loadSelection(options?.most_recent_path ?? null)}/>
+            disabled={busy} onClick={() => void loadRecent()}/>
         <CalibrateRecordingButton recordingPath={directory}/>
         <span className="text sm">Runs the calibration task separately. Videos must contain the configured calibration board.</span>
         {error && <p role="alert" className="text-error">{error}</p>}

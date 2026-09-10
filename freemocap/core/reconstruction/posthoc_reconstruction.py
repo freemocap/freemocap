@@ -51,6 +51,7 @@ class RecordingTriangulation:
     sources: tuple[CameraIdString, ...]
     keypoint_names: tuple[str, ...]
     reconstruction: TriangulationResult
+    diagnostic_point_names: tuple[str, ...]
 
 
 def triangulate_observation_buffers(
@@ -145,6 +146,7 @@ def triangulate_observation_buffers(
     return RecordingTriangulation(
         sources=tuple(camera_ids), keypoint_names=unprefixed_names,
         reconstruction=replace(result, points_3d=keypoints_blender),
+        diagnostic_point_names=prefixed_names,
     )
 
 

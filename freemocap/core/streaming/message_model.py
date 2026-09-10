@@ -21,6 +21,7 @@ from enum import Enum, StrEnum
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
 import cbor2
+from freemocap.core.diagnostics.pipeline_diagnostics import PipelineDiagnostics
 from freemocap.core.types.channel_kind import ChannelKind
 from skellycam.core.types.type_overloads import (
     CameraGroupIdString,
@@ -481,6 +482,7 @@ class FrameMessage:
     instances: tuple[ModelInstance, ...] = ()
     trackers: tuple[TrackerObservation, ...] = ()
     image: bytes | bytearray | memoryview | None = None
+    diagnostics: PipelineDiagnostics | None = None
 
 
 # - Append / telemetry kinds -

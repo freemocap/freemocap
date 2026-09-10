@@ -2,14 +2,17 @@
 
 from concurrent.futures import Future, ThreadPoolExecutor
 from collections.abc import Mapping
+import logging
 
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.camera_matching.matching_evaluation import match_camera_geometry
 from freemocap.core.tasks.calibration.camera_matching.matching_lifecycle import MatchingAttempt, MatchingLifecycle, MatchingLifecycleState
 from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingConfig, CameraMatchingRequest, CameraMatchingResult, CameraMatchingStatus
-from freemocap.core.tasks.calibration.camera_matching.observation_sampling import MatchingSampleLayout, MatchingSampleWindow
+from freemocap.core.tasks.calibration.camera_matching.observation_sampling import MatchingSampleLayout, MatchingSampleWindow, select_matching_point_names
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
+
+logger = logging.getLogger(__name__)
 
 
 class LiveGeometryMatcher:
@@ -38,7 +41,8 @@ class LiveGeometryMatcher:
             if self._attempt is None:
                 raise ValueError("Matching worker completed without an owned attempt")
             if self._lifecycle.finish(attempt=self._attempt, result=result):
-                self._calibration.apply_matching(source_ids=tuple(self._camera_indices), result=result)
+                logger.info("Camera matching result: status=%s assignment=%s fitness=%s thresholds=%s", result.status, result.assignment, result.fitness, config.model_dump())
+                self._calibration.apply_matching(source_ids=tuple(self._camera_indices), result=result, failure_policy=config.failure_policy)
                 changed = result.assignment is not None and result.search is not None
             self._future = None
             self._attempt = None
@@ -49,13 +53,14 @@ class LiveGeometryMatcher:
         if any(len(stage.bounding_boxes) > 1 for observation in observations.values() for stage in observation.stages.values()):
             return changed
         if self._window is None:
-            names = tuple(dict.fromkeys(name for observation in observations.values() for name in observation.to_keypoints().names))[:64]
+            names = select_matching_point_names(frames=[observations], minimum_visibility=config.minimum_point_visibility)
             if not names:
                 return changed
             self._window = MatchingSampleWindow(
                 layout=MatchingSampleLayout(
                     source_ids=tuple(self._camera_indices), point_names=names,
                     image_sizes=tuple(observations[source].image_size[::-1] for source in self._camera_indices),
+                    minimum_visibility=config.minimum_point_visibility,
                 ),
                 capacity=max(24, config.minimum_frames * 2), interval_seconds=0.2,
             )
@@ -68,7 +73,7 @@ class LiveGeometryMatcher:
         if len(cameras) < len(self._camera_indices):
             result = CameraMatchingResult(status=CameraMatchingStatus.POOR, assignment=None, fitness=None, search=None)
             self._lifecycle.finish(attempt=self._lifecycle.begin(), result=result)
-            self._calibration.apply_matching(source_ids=tuple(self._camera_indices), result=result)
+            self._calibration.apply_matching(source_ids=tuple(self._camera_indices), result=result, failure_policy=config.failure_policy)
             return True
         by_id = {camera.id: index for index, camera in enumerate(cameras)}
         binding = self._calibration.binding
@@ -78,6 +83,7 @@ class LiveGeometryMatcher:
             cameras=cameras, pixels=pixels, initial_assignment=initial, config=config,
         )
         self._attempt = self._lifecycle.begin()
+        logger.info("Camera matching sample: sources=%s cameras=%s initial_assignment=%s points=%s frames=%s", tuple(self._camera_indices), tuple(camera.id for camera in cameras), initial, self._window.layout.point_names, pixels.shape[1])
         self._future = self._executor.submit(match_camera_geometry, request=request)
         self._window.clear()
         return changed

@@ -16,7 +16,7 @@ test('displayed calibration owns recording and live requests, including clearing
     const bundle = await build({
         stdin: {contents: `
             import {store} from './src/store/store';
-            import {calibrationLoadedFromBundle, calibrationDirectoryInfoUpdated, loadCalibrationToml, loadCalibrationForRecording} from './src/store/slices/calibration';
+            import {calibrationLoadedFromBundle, loadCalibrationToml, loadCalibrationForRecording} from './src/store/slices/calibration';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {startMocapRecording, stopMocapRecording, processMocapRecording} from './src/store/slices/mocap/mocap-thunks';
             import {applyRealtimePipeline, closePipeline} from './src/store/slices/realtime/realtime-thunks';
@@ -32,7 +32,6 @@ test('displayed calibration owns recording and live requests, including clearing
             async function run(): Promise<void> {
                 const selected = {path: 'C:/selected.toml', cameras: [], metadata: null, mtimeMs: 1};
                 store.dispatch(calibrationLoadedFromBundle(selected));
-                store.dispatch(calibrationDirectoryInfoUpdated({lastSuccessfulCalibrationTomlPath: 'C:/recent.toml'}));
                 store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
                 for (const thunk of [startMocapRecording, stopMocapRecording, processMocapRecording]) await store.dispatch(thunk()).unwrap();
                 const config = store.getState().realtime.pipelineConfig;
@@ -75,8 +74,9 @@ test('displayed calibration owns recording and live requests, including clearing
 test('opening calibration options and automatic discovery preserve the selected file', async ({page}) => {
     page.on('pageerror', error => {throw error;});
     await page.route('http://localhost:53117/**', route => route.fulfill({json: {
-        recording_path: 'C:/folder.toml', most_recent_path: 'C:/recent.toml',
+        recording_path: 'C:/folder.toml',
     }}));
+    await page.route('**/calibration/most-recent', route => route.fulfill({json: 'C:/recent.toml'}));
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<div id="root"></div>'}));
     await page.goto('http://localhost:53117/');
     const bundle = await build({
@@ -85,12 +85,11 @@ test('opening calibration options and automatic discovery preserve the selected 
             import {createRoot} from 'react-dom/client';
             import {Provider} from 'react-redux';
             import {store, useAppSelector} from './src/store';
-            import {calibrationLoadedFromBundle, calibrationDirectoryInfoUpdated} from './src/store/slices/calibration';
+            import {calibrationLoadedFromBundle} from './src/store/slices/calibration';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {RecordingCalibrationOptions} from './src/components/mocap-setup/RecordingCalibrationOptions';
             import {useCalibrationTomlLoader} from './src/components/viewport3d/hooks/useCalibrationTomlLoader';
             store.dispatch(calibrationLoadedFromBundle({path: 'C:/selected.toml', cameras: [], metadata: null, mtimeMs: 1}));
-            store.dispatch(calibrationDirectoryInfoUpdated({lastSuccessfulCalibrationTomlPath: 'C:/recent.toml'}));
             store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
             function Harness() {
                 const [open, setOpen] = useState(true);

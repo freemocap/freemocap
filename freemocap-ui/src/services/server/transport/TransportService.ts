@@ -70,7 +70,21 @@ function fanOut<T>(subscribers: Set<(value: T) => void>, value: T): void {
     }
 }
 
+export interface DiagnosticsFrame {frameNumber: number; values: FrameMessage['diagnostics']} 
+export type DiagnosticsCallback = (frame: DiagnosticsFrame | null) => void;
+
 export class TransportService {
+    private diagnosticsLatest: DiagnosticsFrame | null = null;
+    private diagnosticsSubscribers = new Set<DiagnosticsCallback>();
+
+    getLatestDiagnostics(): DiagnosticsFrame | null {
+        return this.diagnosticsLatest;
+    }
+
+    subscribeToDiagnostics(cb: DiagnosticsCallback): () => void {
+        this.diagnosticsSubscribers.add(cb);
+        return () => this.diagnosticsSubscribers.delete(cb);
+    }
     private readonly connection: WebSocketConnection;
 
     // Latest-frame refs.
@@ -146,6 +160,8 @@ export class TransportService {
     }
 
     private handleFrame(frame: FrameMessage): void {
+        this.diagnosticsLatest = {frameNumber: frame.frame_number, values: frame.diagnostics};
+        fanOut(this.diagnosticsSubscribers, this.diagnosticsLatest);
         this.updateStaticModel(frame);
         const resolved = resolveFrameChannels(frame);
 
@@ -305,6 +321,8 @@ export class TransportService {
 
     /** Reset caches on disconnect. */
     reset(): void {
+        this.diagnosticsLatest = null;
+        fanOut(this.diagnosticsSubscribers, null);
         this.keypointsLatest = null;
         this.modelFramesLatest = null;
         this.modelsLatest = null;

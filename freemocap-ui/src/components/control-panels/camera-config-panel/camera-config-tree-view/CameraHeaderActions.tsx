@@ -7,7 +7,7 @@ import {
     detectCameras,
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
-import {recommendExposureForAll, selectConnectedCameras, selectIsLoading, selectIsPaused} from "@/store/slices/cameras";
+import {recommendExposureForAll, selectConnectedCameras, selectFilterVirtualCameras, selectIsLoading, selectIsPaused} from "@/store/slices/cameras";
 import {selectIsAnyRecording} from "@/store/slices/recording/recording-slice";
 import {useTranslation} from 'react-i18next';
 import IconButton from "@/components/ui-components/IconButton";
@@ -22,6 +22,7 @@ export const CameraHeaderActions: React.FC = () => {
     const isPaused = useAppSelector(selectIsPaused);
     const connectedCameras = useAppSelector(selectConnectedCameras);
     const isRecording = useAppSelector(selectIsAnyRecording);
+    const filterVirtualCameras = useAppSelector(selectFilterVirtualCameras);
 
     useEffect(() => {
         if (isStoppingCameras && connectedCameras.length === 0) {
@@ -30,8 +31,8 @@ export const CameraHeaderActions: React.FC = () => {
     }, [isStoppingCameras, connectedCameras.length]);
 
     const handleDetect = useCallback(() => {
-        dispatch(detectCameras({filterVirtual: true}));
-    }, [dispatch]);
+        dispatch(detectCameras({filterVirtual: filterVirtualCameras}));
+    }, [dispatch, filterVirtualCameras]);
 
     const handleUpdate = useCallback(() => {
         dispatch(camerasConnectOrUpdate());

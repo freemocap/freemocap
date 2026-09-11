@@ -16,6 +16,7 @@ import {
     PersistedCameraSettingsMap,
     savePersistedCameraSettings,
 } from './camera-settings-storage';
+import {loadFromStorage} from '../../persistence';
 
 // Persist all current camera desired configs + selection to localStorage
 function persistAllCameraSettings(state: CamerasState): void {
@@ -31,6 +32,7 @@ const initialState: CamerasState = {
     isPaused: false,
     isLoading: false,
     autoApply: true,
+    filterVirtualCameras: loadFromStorage('cameras.filterVirtualCameras', true),
     error: null,
 };
 
@@ -109,6 +111,10 @@ export const cameraSlice = createSlice({
 
         autoApplyToggled: (state) => {
             state.autoApply = !state.autoApply;
+        },
+
+        filterVirtualCamerasToggled: (state) => {
+            state.filterVirtualCameras = !state.filterVirtualCameras;
         },
 
         savedSettingsCleared: (state) => {
@@ -237,5 +243,6 @@ export const {
     configCopiedToAll,
     recommendExposureForAll,
     autoApplyToggled,
+    filterVirtualCamerasToggled,
     savedSettingsCleared,
 } = cameraSlice.actions;

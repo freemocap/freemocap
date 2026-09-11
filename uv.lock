@@ -564,7 +564,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "scipy-stubs", specifier = "~=1.17.1" },
     { name = "skelly-synchronize", git = "https://github.com/freemocap/skellysync?branch=philip%2Frewrite" },
-    { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=philip%2Fimprove_filter_virtual" },
+    { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=main" },
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=main" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
@@ -2165,7 +2165,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=philip%2Fimprove_filter_virtual#6247c9c78fed5f71d1e77329d1b9673c56ef4bb3" }
+source = { git = "https://github.com/freemocap/skellycam?branch=main#524e5fc513c99c72f20f76be0eccf7199b200dfb" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },

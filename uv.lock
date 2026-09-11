@@ -568,15 +568,15 @@ requires-dist = [
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=main" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", git = "https://github.com/freemocap/skellytracker?branch=main" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", git = "https://github.com/freemocap/skellytracker?branch=main" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Fhand_cropping" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Fhand_cropping" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 provides-extras = ["cuda", "cpu"]
 
 [package.metadata.requires-dev]
-cpu = [{ name = "skellytracker", extras = ["all-cpu"], git = "https://github.com/freemocap/skellytracker?branch=main" }]
-cuda = [{ name = "skellytracker", extras = ["all-cuda"], git = "https://github.com/freemocap/skellytracker?branch=main" }]
+cpu = [{ name = "skellytracker", extras = ["all-cpu"], git = "https://github.com/freemocap/skellytracker?branch=philip%2Fhand_cropping" }]
+cuda = [{ name = "skellytracker", extras = ["all-cuda"], git = "https://github.com/freemocap/skellytracker?branch=philip%2Fhand_cropping" }]
 dev = [
     { name = "bumpver" },
     { name = "httpx", specifier = ">=0.28.0" },
@@ -590,8 +590,8 @@ dev = [
 ]
 pyceres = [{ name = "pyceres", specifier = ">=2.5" }]
 tracker-default = [
-    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=main" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=main" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Fhand_cropping" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Fhand_cropping" },
 ]
 
 [[package]]
@@ -2223,7 +2223,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=main#cb739aa5d059c90ba9c92ab5fbd987096423a638" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=philip%2Fhand_cropping#0aace81ef969cf7ce9b9cdbeba1d94aaa9301cff" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

@@ -7,6 +7,7 @@ demux.
 """
 from __future__ import annotations
 
+from freemocap.core.streaming.producers.box_producer import BoxProducer
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.derived_producer import DerivedProducer
 from freemocap.core.streaming.producers.joint_angles_producer import JointAnglesProducer
@@ -17,6 +18,7 @@ ALL_PRODUCERS: tuple[ChannelProducer, ...] = (
     KeypointsProducer(),
     SegmentProducer(),
     OverlayProducer(),
+    BoxProducer(),
     DerivedProducer(),
     JointAnglesProducer(),
 )

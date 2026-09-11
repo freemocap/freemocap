@@ -29,8 +29,11 @@ const ROTATIONS_LOCAL = "ROTATIONS_LOCAL";
 const ROTATIONS_WORLD = "ROTATIONS_WORLD";
 const DERIVED_POINTS = "DERIVED_POINTS";
 const OVERLAY_2D = "OVERLAY_2D";
+const BOXES_2D = "BOXES_2D";
 const SEGMENT_LENGTHS = "SEGMENT_LENGTHS";
 const OVERLAY_REPROJECTIONS = "OVERLAY_REPROJECTIONS";
+/** [x1, y1, x2, y2, confidence, detector_ran] — see BoxProducer.BOX_COLUMNS. */
+const BOX_STRIDE = 6;
 
 function channelByKind(channels: ChannelBlock[], kind: string): ChannelBlock | undefined {
     return channels.find((c) => c.kind === kind);
@@ -184,6 +187,19 @@ export function resolveFrameChannels(frame: FrameMessage): ResolvedFrameChannels
                     frameNumber: frame.frame_number,
                     names: c.names,
                     data: float32(c.data),
+                    imageSize: c.image_size,
+                });
+            }
+            // The detector's crop for this camera. Named by detection stage, so a
+            // tracker running several stages reports one row each.
+            if (c.kind === BOXES_2D && c.camera_id && c.names) {
+                overlays.push({
+                    cameraId: c.camera_id,
+                    layer: OverlayLayer.BOXES,
+                    frameNumber: frame.frame_number,
+                    names: c.names,
+                    data: float32(c.data),
+                    stride: BOX_STRIDE,
                     imageSize: c.image_size,
                 });
             }

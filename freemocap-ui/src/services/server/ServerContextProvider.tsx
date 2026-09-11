@@ -117,7 +117,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             for (const cb of modelFramesSubscribersRef.current) cb(models);
         }));
         subs.push(transport.subscribeToOverlay((overlay) => {
-            if (overlay.layer !== OverlayLayer.DETECTIONS && overlay.layer !== OverlayLayer.REPROJECTIONS) return;
+            if (overlay.layer !== OverlayLayer.DETECTIONS
+                && overlay.layer !== OverlayLayer.REPROJECTIONS
+                && overlay.layer !== OverlayLayer.BOXES) return;
             const dims = overlay.imageSize
                 ?? camerasRef.current?.find((c) => c.id === overlay.cameraId)?.image_size;
             const frameOverlays = pendingOverlaysRef.current.get(overlay.frameNumber)
@@ -129,27 +131,42 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 image_height: dims?.[1] ?? 0,
                 points: [],
             };
-            const points = overlay.names.map((name, i) => ({
-                name,
-                x: overlay.data[i * 3],
-                y: overlay.data[i * 3 + 1],
-                z: 0,
-                visibility: overlay.data[i * 3 + 2],
-            }));
             // Appended, not assigned: several detectors overlay the SAME camera in one
             // frame (a pose detector and a charuco detector), and assigning let whichever
             // arrived last erase the other. Rows are name-keyed, so the union is lossless.
-            if (overlay.layer === OverlayLayer.DETECTIONS) {
-                observation.points = [...observation.points, ...points];
+            if (overlay.layer === OverlayLayer.BOXES) {
+                // Wider rows than the point layers — the detector crop plus its provenance.
+                const stride = overlay.stride ?? 6;
+                const boxes = overlay.names.map((name, i) => ({
+                    name,
+                    x1: overlay.data[i * stride],
+                    y1: overlay.data[i * stride + 1],
+                    x2: overlay.data[i * stride + 2],
+                    y2: overlay.data[i * stride + 3],
+                    confidence: overlay.data[i * stride + 4],
+                    fromDetector: overlay.data[i * stride + 5] >= 0.5,
+                }));
+                observation.boxes = [...(observation.boxes ?? []), ...boxes];
             } else {
-                observation.landmarks = [...(observation.landmarks ?? []), ...points];
-                // This overlay's OWN model's segment edges. Reading models[0] drew a
-                // board reprojection wearing the human model's connection list.
-                const overlayModel = modelsRef.current?.find((m) => m.model_id === overlay.modelId);
-                observation.connections = [
-                    ...(observation.connections ?? []),
-                    ...(overlayModel?.connections ?? []),
-                ];
+                const points = overlay.names.map((name, i) => ({
+                    name,
+                    x: overlay.data[i * 3],
+                    y: overlay.data[i * 3 + 1],
+                    z: 0,
+                    visibility: overlay.data[i * 3 + 2],
+                }));
+                if (overlay.layer === OverlayLayer.DETECTIONS) {
+                    observation.points = [...observation.points, ...points];
+                } else {
+                    observation.landmarks = [...(observation.landmarks ?? []), ...points];
+                    // This overlay's OWN model's segment edges. Reading models[0] drew a
+                    // board reprojection wearing the human model's connection list.
+                    const overlayModel = modelsRef.current?.find((m) => m.model_id === overlay.modelId);
+                    observation.connections = [
+                        ...(observation.connections ?? []),
+                        ...(overlayModel?.connections ?? []),
+                    ];
+                }
             }
             frameOverlays.set(overlay.cameraId, observation);
             pendingOverlaysRef.current.set(overlay.frameNumber, frameOverlays);

@@ -6,7 +6,7 @@ the tracker observations, and the image. The convention + cameras + models are
 composed once per data model (from the StreamContext); the instances + trackers
 + image are composed per frame from the active producers.
 
-Channel routing is by kind: KEYPOINTS_3D / OVERLAY_2D are tracker keypoint
+Channel routing is by kind: KEYPOINTS_3D / OVERLAY_2D / BOXES_2D are tracker
 observations (routed to trackers); everything else is model reconstruction
 (routed to instances).
 """
@@ -31,7 +31,9 @@ from freemocap.core.streaming.producers import ALL_PRODUCERS
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 
-_TRACKER_KINDS = frozenset((ChannelKind.KEYPOINTS_3D, ChannelKind.OVERLAY_2D))
+_TRACKER_KINDS = frozenset(
+    (ChannelKind.KEYPOINTS_3D, ChannelKind.OVERLAY_2D, ChannelKind.BOXES_2D)
+)
 
 
 @dataclass(frozen=True, slots=True)

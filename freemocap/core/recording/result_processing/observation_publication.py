@@ -36,6 +36,7 @@ from freemocap.core.pipeline.posthoc.stage_execution_plan import (
 
 from freemocap.core.recording.sample_encoding.observation_samples import (
     TimedObservation,
+    box_batches,
     observation_batches,
     timing_batches,
 )
@@ -72,6 +73,8 @@ def publish_posthoc_observations(
     )
     channels: list[Channel] = []
     sources = {request.tracker.name: request.tracker.to_source()}
+    if request.detector is not None:
+        sources[request.detector.name] = request.detector.to_source()
     references: dict[str, dict[str, object]] = {}
     camera_times: dict[str, tuple[float, ...]] = {}
     camera_channels: dict[str, CameraObservationChannels] = {}
@@ -102,7 +105,11 @@ def publish_posthoc_observations(
             request=request, image=image
         )
         channels.extend(
-            (camera_channels[camera].overlay, camera_channels[camera].capture)
+            channel for channel in (
+                camera_channels[camera].overlay,
+                camera_channels[camera].capture,
+                camera_channels[camera].boxes,
+            ) if channel is not None
         )
     synchronized = resolved_timing.synchronized.timestamps_s
     group_method = resolved_timing.synchronized.method
@@ -122,11 +129,11 @@ def publish_posthoc_observations(
             series.definition.reference.model_dump(mode="json")
         )
     for reconstruction in request.reconstructions:
-        if reconstruction.definition.model_id in sources:
+        if reconstruction.definition.source_name in sources:
             raise ValueError(
                 "Reconstruction source collides with another recording source"
             )
-        sources[reconstruction.definition.model_id] = (
+        sources[reconstruction.definition.source_name] = (
             reconstruction.definition.to_source()
         )
         references.update(reconstruction.reference_frames())
@@ -183,6 +190,21 @@ def publish_posthoc_observations(
                 run_id=0,
                 batch_size=65536,
             )
+            box_channel = camera_channels[camera].boxes
+            if box_channel is not None:
+                yield from box_batches(
+                    samples=(
+                        TimedObservation(
+                            observation=frame[camera], capture_timestamp_s=timestamp
+                        )
+                        for frame, timestamp in zip(
+                            request.group.frames, camera_times[camera], strict=True
+                        )
+                    ),
+                    channel=box_channel,
+                    run_id=0,
+                    batch_size=65536,
+                )
             yield from timing_batches(
                 samples=zip(frame_numbers, camera_times[camera], strict=True),
                 channel=camera_channels[camera].capture,

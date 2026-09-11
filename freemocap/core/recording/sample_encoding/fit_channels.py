@@ -9,6 +9,9 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
     StaticChannel,
 )
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
+from freemocap.core.recording.sample_encoding.reconstruction_samples import (
+    model_id_from_source,
+)
 from freemocap.core.types.channel_kind import ChannelKind
 
 
@@ -20,7 +23,12 @@ def scale_fit_channels(run: RunDescriptor) -> Iterator[StaticChannel]:
             (
                 ChannelKind.MODEL_SCALE,
                 SampleComponent.SCALE,
-                {run.models[saved.source].scale_reference_name: saved.fit.fitted_scale},
+                # `models` is keyed by raw model id; `saved.source` is the namespaced
+                # recording source that id is filed under.
+                {
+                    run.models[model_id_from_source(saved.source)].scale_reference_name:
+                        saved.fit.fitted_scale
+                },
             ),
             (
                 ChannelKind.SEGMENT_SCALES,

@@ -1,7 +1,14 @@
 """Triangulate recording observations and reconstruct the selected tracked models."""
 from __future__ import annotations
 
-from freemocap.core.recording.result_processing.observation_inputs import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
+from freemocap.core.recording.result_processing.observation_inputs import (
+    DetectorRecordingDefinition,
+    ObservationGroup,
+    ObservationRecordingRequest,
+    TrackerRecordingDefinition,
+    camera_group_name,
+)
+from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
@@ -25,10 +32,11 @@ from freemocap.core.reconstruction.recording_reconstruction import RecordingReco
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording, ReconstructionSourceDefinition
 
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig  # noqa: TC001
+from freemocap.core.tracking.tracker_definitions import MEDIAPIPE_WHOLEBODY_DEFINITION
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
 from skellycam.core.recorders.videos.recording_info import RecordingInfo  # noqa: TC002
 
-from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage, PosthocPipelineType
+from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.reconstruction.posthoc_reconstruction import (
     reconstruct_skeletons_for_recording,
@@ -44,6 +52,19 @@ from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # noqa: TC001
 logger = logging.getLogger(__name__)
+
+
+def _keypoint_model_name(task_config: PosthocMocapPipelineConfig) -> str:
+    """What to call the model that measured the keypoints, in the recording.
+
+    RTMPose reports its weights variant, because which weights ran is what a reader
+    needs to reproduce the numbers. MediaPipe has no single weights name — it is three
+    detectors in one stage — so it reports the composite tracker definition instead.
+    Either way the full configuration rides in the Source definition blob.
+    """
+    if task_config.detector_type == "rtmpose":
+        return task_config.rtmpose_model_name
+    return MEDIAPIPE_WHOLEBODY_DEFINITION.name
 
 
 def run_posthoc_mocap_task(
@@ -175,6 +196,17 @@ def run_posthoc_mocap_task(
         timing=timing,
     ))
 
+    # Recording vocabulary: the sensor group names the sampling grid (which cameras
+    # share this clock), and every source names the model that produced the numbers.
+    # Neither is the pipeline's name — "mocap" describes why the run happened, not what
+    # measured anything, and told a reader nothing when it appeared in both columns.
+    group_name = camera_group_name(camera_ids)
+    keypoint_source = f"keypoint_model:{_keypoint_model_name(task_config)}"
+    detector_source = (
+        f"object_detector:{YoloxPersonDetectorConfig().model_name}"
+        if task_config.detector_type == "rtmpose" else None
+    )
+
     publication = ObservationRecordingRequest(
         reprojection=NamedReprojectionDiagnostics(
             source_ids=triangulation.sources, point_names=triangulation.diagnostic_point_names,
@@ -183,30 +215,38 @@ def run_posthoc_mocap_task(
         filtering=filtered.report,
         models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
         reconstructions=tuple(ReconstructionRecording(
-            sensor_group="mocap", reference=spatial_reference,
-            definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=str(PosthocPipelineType.MOCAP),
+            sensor_group=group_name, reference=spatial_reference,
+            definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=keypoint_source,
                 point_kind=ChannelKind.KEYPOINTS_3D),
             result=reconstructions[bundle.model_id],
         ) for bundle in bundles),
         camera_geometry=tuple(camera_geometry[source] for source in camera_ids) if camera_geometry else (),
         recording=recording_info,
         spatial_series=tuple(SpatialPointSeries(
-            definition=PointSeriesDefinition(kind=kind, sensor_group="mocap", source=str(PosthocPipelineType.MOCAP),
+            definition=PointSeriesDefinition(kind=kind, sensor_group=group_name, source=keypoint_source,
                 names=triangulation.keypoint_names, reference=spatial_reference),
             values=values,
         ) for kind, values in (
             (ChannelKind.RAW_KEYPOINTS_3D, triangulation.reconstruction.points_3d),
             (ChannelKind.KEYPOINTS_3D, filtered.points),
         )),
-        group=ObservationGroup(name="mocap", frames=frame_observations, videos=video_metadata),
+        group=ObservationGroup(name=group_name, frames=frame_observations, videos=video_metadata),
         tracker=TrackerRecordingDefinition(
-            name=str(PosthocPipelineType.MOCAP),
+            name=keypoint_source,
             configuration=task_config.model_dump(mode="json"),
             point_names=tuple(dict.fromkeys(
                 name for frame in frame_observations for observation in frame.values()
                 for name in observation.to_keypoints().names
             )),
         ),
+        detector=DetectorRecordingDefinition(
+            name=detector_source,
+            configuration=task_config.model_dump(mode="json"),
+            box_names=tuple(dict.fromkeys(
+                stage.name for frame in frame_observations
+                for observation in frame.values() for stage in observation.stages.values()
+            )),
+        ) if detector_source is not None else None,
     )
     publish_posthoc_observations(publication)
     logger.info("Posthoc mocap complete: canonical Parquet published")

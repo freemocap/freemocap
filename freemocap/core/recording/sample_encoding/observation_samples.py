@@ -167,3 +167,124 @@ def observation_batches(
                     rows.clear()
     if rows:
         yield pa.RecordBatch.from_pylist(rows, schema=SAMPLE_SCHEMA)
+
+
+def box_batches(
+    *,
+    samples: Iterable[TimedObservation],
+    channel: Channel,
+    run_id: int,
+    batch_size: int,
+) -> Iterator[pa.RecordBatch]:
+    """Store each detection stage's bounding box beside the points measured inside it.
+
+    Walks the stage tree directly rather than going through `Observation.to_keypoints()`:
+    that flattening keeps only keypoints, which is exactly where boxes were being lost.
+
+    The channel declares the complete stage set, so a stage that detected nothing on a
+    frame still emits its row with a null value — the same complete-coverage contract
+    every other channel holds to.
+    """
+    if batch_size < 1 or run_id < 0:
+        raise ValueError("batch_size must be positive and run_id nonnegative")
+    if (
+        channel.kind != ChannelKind.BOXES_2D
+        or channel.stage != ProcessingStage.OBSERVATIONS
+        or channel.reference_frame is None
+        or set(channel.components) != {
+            SampleComponent.X1, SampleComponent.Y1,
+            SampleComponent.X2, SampleComponent.Y2,
+            SampleComponent.CONFIDENCE, SampleComponent.DETECTOR_RAN,
+        }
+    ):
+        raise ValueError("Expected an image-frame BOXES_2D observation channel")
+    rows: list[dict[str, str | int | float | None]] = []
+    last_frame = -1
+    last_timestamp = -math.inf
+    declared = set(channel.names)
+    for sample in samples:
+        observation = sample.observation
+        timestamp = sample.capture_timestamp_s
+        if not math.isfinite(timestamp) or timestamp <= last_timestamp:
+            raise ValueError(
+                "Capture timestamps must be finite and strictly increasing"
+            )
+        if observation.frame_number <= last_frame:
+            raise ValueError(
+                "Observation frame numbers must be nonnegative and strictly increasing"
+            )
+        last_frame, last_timestamp = observation.frame_number, timestamp
+        boxes = _stage_boxes(observation)
+        if set(boxes) - declared:
+            raise ValueError("Observation contains undeclared bounding-box stage names")
+        for name in channel.names:
+            values: dict[str, float | None] = {
+                component: None for component in channel.components
+            }
+            box = boxes.get(name)
+            if box is not None:
+                corners = (box.x1, box.y1, box.x2, box.y2)
+                if any(math.isinf(float(corner)) for corner in corners):
+                    raise ValueError(f"Infinite bounding-box coordinate for {name}")
+                for component, corner in zip(
+                    (SampleComponent.X1, SampleComponent.Y1,
+                     SampleComponent.X2, SampleComponent.Y2),
+                    corners,
+                    strict=True,
+                ):
+                    coordinate = float(corner)
+                    values[component] = None if math.isnan(coordinate) else coordinate
+                confidence = float(box.confidence)
+                if not math.isfinite(confidence):
+                    raise ValueError(f"Invalid bounding-box confidence for {name}")
+                values[SampleComponent.CONFIDENCE] = confidence
+                values[SampleComponent.DETECTOR_RAN] = (
+                    1.0 if _stage_detector_ran(observation, name) else 0.0
+                )
+            for component, units in channel.components.items():
+                rows.append(
+                    dict(
+                        timestamp_s=timestamp,
+                        sensor_group=channel.sensor_group,
+                        frame_number=observation.frame_number,
+                        source=channel.source,
+                        reference_frame=channel.reference_frame,
+                        channel=channel.kind,
+                        name=name,
+                        component=component,
+                        value=values[component],
+                        units=units,
+                        run_id=run_id,
+                    )
+                )
+                if len(rows) == batch_size:
+                    yield pa.RecordBatch.from_pylist(rows, schema=SAMPLE_SCHEMA)
+                    rows.clear()
+    if rows:
+        yield pa.RecordBatch.from_pylist(rows, schema=SAMPLE_SCHEMA)
+
+
+def _walk_stages(observation: Observation) -> Iterator[tuple[str, object]]:
+    """Every stage in the tree, keyed by its own name."""
+    pending = list(observation.stages.values())
+    while pending:
+        stage = pending.pop()
+        pending.extend(stage.children.values())
+        yield stage.name, stage
+
+
+def _stage_boxes(observation: Observation) -> dict[str, object]:
+    """One box per stage. freemocap runs no multi-person tracker, so a second entry
+    would mean the stage contract changed rather than that two subjects are in view."""
+    return {
+        name: stage.bounding_boxes[0]
+        for name, stage in _walk_stages(observation)
+        if stage.bounding_boxes
+    }
+
+
+def _stage_detector_ran(observation: Observation, name: str) -> bool:
+    return any(
+        stage.detector_ran for stage_name, stage in _walk_stages(observation)
+        if stage_name == name
+    )

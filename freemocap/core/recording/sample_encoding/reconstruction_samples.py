@@ -25,6 +25,30 @@ from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.types.derived_point_name import DerivedPointName
 
 
+MODEL_SOURCE_PREFIX = "model:"
+
+
+def model_source_name(model_id: str) -> str:
+    """The recording source a model's channels are filed under.
+
+    Sources are namespaced (`camera:`, `timing:`, `keypoint_model:`, `object_detector:`)
+    so a reader can tell what produced a row by splitting on the first colon. Model ids
+    stay bare wherever they are an IDENTITY rather than a producer — the descriptor's
+    model table, instance cross-references — so the two forms are converted through here
+    rather than by f-strings scattered across the recording modules.
+    """
+    return f"{MODEL_SOURCE_PREFIX}{model_id}"
+
+
+def model_id_from_source(source: str) -> str:
+    """Inverse of `model_source_name`, for the tables still keyed by raw model id."""
+    if not source.startswith(MODEL_SOURCE_PREFIX):
+        raise ValueError(
+            f"{source!r} is not a model source; expected a {MODEL_SOURCE_PREFIX!r} prefix"
+        )
+    return source[len(MODEL_SOURCE_PREFIX):]
+
+
 class ReconstructionSourceDefinition(Descriptor):
     point_kind: PointSeriesKind
     model_id: str
@@ -34,6 +58,17 @@ class ReconstructionSourceDefinition(Descriptor):
     segment_origins: dict[str, str]
     segment_parents: dict[str, str | None]
     joint_angle_names: dict[str, tuple[str, str, str]]
+
+    @property
+    def source_name(self) -> str:
+        """This reconstruction's recording source, e.g. `model:standard_human`.
+
+        Namespaced like every other source (`camera:`, `timing:`, `keypoint_model:`) so
+        a reader can tell what produced a row by splitting on the first colon, rather
+        than by recognising a bare model name. `model_id` stays the raw identity used to
+        key the descriptor's model table and to cross-reference instances.
+        """
+        return model_source_name(self.model_id)
 
     @model_validator(mode="after")
     def validate_layout(self) -> "ReconstructionSourceDefinition":
@@ -121,7 +156,7 @@ class ReconstructionRecording:
     def to_scale_fit(self) -> RecordingScaleFit:
         return RecordingScaleFit(
             sensor_group=self.sensor_group,
-            source=self.definition.model_id,
+            source=self.definition.source_name,
             reference_frame=self.reference.name,
             units=self.reference.units,
             fit=self.result.scale_fit,
@@ -131,7 +166,7 @@ class ReconstructionRecording:
     def channels(self) -> Iterator[Channel]:
         """Declare channel layouts without allocating recording-sized arrays."""
         yield Channel(
-            sensor_group=self.sensor_group, source=self.definition.model_id,
+            sensor_group=self.sensor_group, source=self.definition.source_name,
             reference_frame=self.reference.name, kind=ChannelKind.RIGID_BODY_RESIDUALS,
             names=tuple(self.definition.segment_origins),
             components={"measured_length": self.reference.units, "residual": self.reference.units},
@@ -171,7 +206,7 @@ class ReconstructionRecording:
         ):
             yield Channel(
                 sensor_group=self.sensor_group,
-                source=self.definition.model_id,
+                source=self.definition.source_name,
                 reference_frame=self.parent_reference_name
                 if kind == ChannelKind.ROTATIONS_LOCAL
                 else self.reference.name,
@@ -189,7 +224,7 @@ class ReconstructionRecording:
         if self.definition.joint_angle_names:
             yield Channel(
                 sensor_group=self.sensor_group,
-                source=self.definition.model_id,
+                source=self.definition.source_name,
                 reference_frame=self.parent_reference_name,
                 kind=ChannelKind.JOINT_ANGLES,
                 names=tuple(
@@ -203,7 +238,7 @@ class ReconstructionRecording:
         if self.result.compute_center_of_mass:
             yield Channel(
                 sensor_group=self.sensor_group,
-                source=self.definition.model_id,
+                source=self.definition.source_name,
                 reference_frame=self.reference.name,
                 kind=ChannelKind.DERIVED_POINTS,
                 names=(DerivedPointName.CENTER_OF_MASS,),

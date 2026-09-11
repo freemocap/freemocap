@@ -139,7 +139,7 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
                     )
                 },
                 sources={
-                    bundle.model_id: publication.definition.to_source(),
+                    publication.definition.source_name: publication.definition.to_source(),
                     bundle.detector_type: Source(
                         kind=SourceKind.TRACKER, definition={}
                     ),

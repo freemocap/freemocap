@@ -1,5 +1,8 @@
 """Typed construction inputs and descriptor factories for observation recordings."""
 
+import hashlib
+from collections.abc import Iterable
+
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
@@ -29,9 +32,51 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
 )
 
 
+def camera_group_name(camera_ids: Iterable[str]) -> str:
+    """The sampling grid these cameras share, as `camera_group:{digest}`.
+
+    A sensor group names a clock, not a pipeline, so it is derived from the camera set
+    rather than from what the run was for. The digest is over the SORTED ids, so every
+    recording from the same rig lands in the same group and runs stay comparable;
+    swapping a camera is a different rig and correctly gets a different group.
+    """
+    ids = sorted(camera_ids)
+    if not ids:
+        raise ValueError("A camera group needs at least one camera")
+    digest = hashlib.sha256("|".join(ids).encode("utf-8")).hexdigest()[:6]
+    return f"camera_group:{digest}"
+
+
 class TrackerRecordingDefinition(Descriptor):
+    """The keypoint model that measured the points, e.g. `keypoint_model:rtmw-x-l_256x192`.
+
+    `name` is the recording's source identity, so it names the MODEL rather than the
+    pipeline that ran it — the exact weights are what a reader needs to reproduce the
+    numbers. The full configuration rides in the Source definition blob.
+    """
+
     name: str
     point_names: tuple[str, ...]
+    configuration: dict[str, JsonValue]
+
+    def to_source(self) -> Source:
+        return Source(kind=SourceKind.TRACKER, definition=self.configuration)
+
+
+class DetectorRecordingDefinition(Descriptor):
+    """The object detector that produced the bounding boxes, e.g. `object_detector:yolox-m`.
+
+    Separate from the keypoint model because they ARE separate models: the boxes come
+    from YOLOX and the keypoints from RTMPose, and a reader comparing a box against the
+    points measured inside it needs to know which produced which.
+
+    A tracker with no object detector has no such source, and therefore records no boxes
+    — which is the right answer, because `DetectionStage` synthesizes a full-image box in
+    that case and a box covering the whole frame says nothing about where the subject is.
+    """
+
+    name: str
+    box_names: tuple[str, ...]
     configuration: dict[str, JsonValue]
 
     def to_source(self) -> Source:
@@ -67,6 +112,9 @@ class ObservationRecordingRequest:
     tracker: TrackerRecordingDefinition
     spatial_series: tuple[SpatialPointSeries, ...]
     camera_geometry: tuple[CameraModel, ...]
+    # Absent when the tracker runs no object detector (MediaPipe), in which case no
+    # BOXES_2D channel is declared and no boxes are recorded.
+    detector: DetectorRecordingDefinition | None = None
 
     def __post_init__(self) -> None:
         if self.reprojection is not None:
@@ -139,6 +187,9 @@ class GroupTimingDefinition(Descriptor):
 class CameraObservationChannels:
     overlay: Channel
     capture: Channel
+    # None when the tracker runs no object detector: there is no detector to attribute
+    # the boxes to, and the box DetectionStage would synthesize covers the whole image.
+    boxes: Channel | None = None
 
     @classmethod
     def create(
@@ -163,7 +214,29 @@ class CameraObservationChannels:
                 source=f"camera:{image.camera_id}",
                 name=TimingSampleName.CAPTURE,
             ),
+            boxes=Channel(
+                sensor_group=request.group.name,
+                source=request.detector.name,
+                reference_frame=image.name,
+                kind=ChannelKind.BOXES_2D,
+                names=request.detector.box_names,
+                components=BOX_COMPONENTS,
+                stage=ProcessingStage.OBSERVATIONS,
+            ) if request.detector is not None else None,
         )
+
+
+# One row per detection stage per frame. `detector_ran` is 1.0 when the object detector
+# produced this box on this frame and 0.0 when it was carried forward from the tracked
+# keypoints — the provenance that makes an over-eager redetect policy legible offline.
+BOX_COMPONENTS: dict[str, str] = {
+    SampleComponent.X1: SampleUnit.PIXELS,
+    SampleComponent.Y1: SampleUnit.PIXELS,
+    SampleComponent.X2: SampleUnit.PIXELS,
+    SampleComponent.Y2: SampleUnit.PIXELS,
+    SampleComponent.CONFIDENCE: SampleUnit.DIMENSIONLESS,
+    SampleComponent.DETECTOR_RAN: SampleUnit.DIMENSIONLESS,
+}
 
 
 def create_timing_channel(

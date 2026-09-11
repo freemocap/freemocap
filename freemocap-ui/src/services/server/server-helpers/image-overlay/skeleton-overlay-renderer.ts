@@ -11,6 +11,7 @@ import {
     Point2D,
 } from "@/services/server/server-helpers/image-overlay/image-overlay-system";
 import type {
+    BoxOverlay,
     SkeletonObservation,
     SkeletonPoint,
 } from "@/services/server/server-helpers/image-overlay/skeleton-types";
@@ -173,38 +174,45 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
             this.drawLandmarkPoints(landmarkMap);
         }
 
-        // Debug: draw person bounding box.
-        this.drawBbox(observation);
+        // The detector crops the keypoints were measured inside.
+        this.drawBoxes(observation);
 
         this.drawStats(observation);
 
         this.ctx.restore();
     }
 
-    private drawBbox(obs: SkeletonObservation): void {
-        const { bbox_x1, bbox_y1, bbox_x2, bbox_y2, bbox_from_detector } = obs;
-        if (bbox_x1 === undefined || bbox_y1 === undefined
-            || bbox_x2 === undefined || bbox_y2 === undefined) return;
-        if (!isFinite(bbox_x1) || !isFinite(bbox_y1)
-            || !isFinite(bbox_x2) || !isFinite(bbox_y2)) return;
+    private drawBoxes(obs: SkeletonObservation): void {
+        for (const box of obs.boxes ?? []) {
+            this.drawBox(box);
+        }
+    }
+
+    private drawBox(box: BoxOverlay): void {
+        // A stage that detected nothing this frame is a NaN row, not a missing one.
+        if (!isFinite(box.x1) || !isFinite(box.y1)
+            || !isFinite(box.x2) || !isFinite(box.y2)) return;
 
         const { scaleX, scaleY } = this;
-        const x1 = bbox_x1 * scaleX;
-        const y1 = bbox_y1 * scaleY;
-        const x2 = bbox_x2 * scaleX;
-        const y2 = bbox_y2 * scaleY;
-
-        const color = bbox_from_detector ? '#00FF00' : '#FF8C00'; // green=YOLOX, orange=track
-        const label = bbox_from_detector ? 'YOLOX' : 'track';
-        const w = x2 - x1;
-        const h = y2 - y1;
+        const x1 = box.x1 * scaleX;
+        const y1 = box.y1 * scaleY;
+        const w = box.x2 * scaleX - x1;
+        const h = box.y2 * scaleY - y1;
         if (w <= 0 || h <= 0) return;
+
+        // green = the object detector ran this frame, orange = the box was carried
+        // forward from the tracked keypoints. Green on every frame means the redetect
+        // policy is firing constantly, which is a frame-rate bug you can see.
+        const color = box.fromDetector ? '#00FF00' : '#FF8C00';
+        const label = isFinite(box.confidence)
+            ? `${box.name} ${box.confidence.toFixed(2)}`
+            : box.name;
 
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = 1.5;
         this.ctx.strokeRect(x1, y1, w, h);
 
-        // Label at top-left of bbox.
+        // Label at top-left of the box.
         this.drawText(
             label,
             x1,

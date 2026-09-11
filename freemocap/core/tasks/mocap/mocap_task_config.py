@@ -21,7 +21,6 @@ from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetec
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
     BBoxSmoothingConfig,
-    KeypointsWithinBBoxRatioConfig,
 )
 
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
@@ -186,7 +185,13 @@ class PosthocMocapPipelineConfig(BaseModel):
                         bbox_policy=BBoxPolicyConfig(
                             redetect_interval=redetect_interval,
                             keypoint_bbox_expansion=0.05,
-                            fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.5)],
+                            # See skeleton_tracker_config in tracker_factory.py:
+                            # the keypoints_within_bbox_ratio check measures
+                            # against smooth_bbox rather than the padded/
+                            # aspect-corrected window RTMPose actually decodes
+                            # into, so it false-fires on every frame for a
+                            # standing subject and pins the person detector on.
+                            fitness_checks=[],
                             min_shrink_ratio_per_frame=0.995,
                             min_bbox_size_px=80.0,
                         ),

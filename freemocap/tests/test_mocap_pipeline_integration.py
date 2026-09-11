@@ -31,6 +31,9 @@ from freemocap.core.pipeline.posthoc.mocap_pipeline import MocapPipeline, MocapW
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.result_processing.saved_reconstruction import SavedPointPolicy, SavedReconstructionRequest, read_saved_reconstruction
+from freemocap.core.recording.result_processing.observation_inputs import camera_group_name
+from freemocap.core.recording.sample_encoding.reconstruction_samples import model_source_name
+from freemocap.core.tasks.mocap.posthoc_mocap_task import _keypoint_model_name
 from freemocap.core.skeletons.charuco_board_skeleton import CHARUCO_BOARD_MODEL_ID
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
@@ -124,8 +127,20 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
         metadata = read_metadata(path=structure.data_parquet_path)
         self.assertIn(CHARUCO_BOARD_MODEL_ID, metadata.runs[0].models)
         self.assertEqual(len(metadata.runs[0].models), 2)
+        # The sensor group names the sampling grid these cameras share, and every source
+        # names the model that produced the rows — neither is the pipeline's own name.
+        group = camera_group_name(["camera"])
+        keypoint_source = f"keypoint_model:{_keypoint_model_name(self.config)}"
+        run = metadata.runs[0]
+        self.assertEqual(set(run.sensor_groups), {group})
+        self.assertIn(keypoint_source, run.sources)
+        self.assertIn(model_source_name(CHARUCO_BOARD_MODEL_ID), run.sources)
+        self.assertTrue(
+            all(":" in source for source in run.sources),
+            f"every source should read namespace:value, got {sorted(run.sources)}",
+        )
         saved = read_saved_reconstruction(SavedReconstructionRequest(
-            structure=structure, run_id=0, sensor_group="mocap", point_source="mocap",
+            structure=structure, run_id=0, sensor_group=group, point_source=keypoint_source,
             model_id=CHARUCO_BOARD_MODEL_ID, point_policy=SavedPointPolicy.FILTERED,
             compute_center_of_mass=True,
         ))

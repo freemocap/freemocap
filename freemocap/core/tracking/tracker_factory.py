@@ -54,7 +54,6 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
     BBoxSmoothingConfig,
     KeypointResetPolicyConfig,
-    KeypointsWithinBBoxRatioConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -219,7 +218,21 @@ def skeleton_tracker_config(
                 bbox_policy=BBoxPolicyConfig(
                     redetect_interval=redetect_interval,
                     keypoint_bbox_expansion=keypoint_bbox_expansion,
-                    fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.5)],
+                    # No keypoints_within_bbox_ratio check here: it compares
+                    # keypoints against bbox_state.smooth_bbox, but RTMPose does
+                    # not decode into smooth_bbox — rtmpose_letterbox_preprocess
+                    # pads it by 1.25x and then widens it to the model's 3:4
+                    # aspect. For a standing subject (tall, narrow box) the real
+                    # decode window is 2-4x wider than smooth_bbox, so keypoints
+                    # legitimately land outside it and the ratio sits near 0.4,
+                    # under the 0.5 threshold. That forces a full-frame YOLOX
+                    # re-detect every frame (~101 ms for 5 cameras), and because
+                    # the fresh detection produces another narrow box, it latches
+                    # on. Measured: detector ran on 45-100% of frames instead of
+                    # the 0.7% redetect_interval implies. redetect_interval is
+                    # the staleness bound until skellytracker's check compares
+                    # against the actual decode window.
+                    fitness_checks=[],
                     min_shrink_ratio_per_frame=0.995,
                     min_bbox_size_px=80.0,
                 ),

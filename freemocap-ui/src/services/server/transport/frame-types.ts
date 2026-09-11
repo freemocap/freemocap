@@ -40,6 +40,9 @@ export interface DerivedPointsFrame {
 export enum OverlayLayer {
     DETECTIONS = 0,
     REPROJECTIONS = 1,
+    /** The detector's bounding boxes — the crop the keypoint detector was actually
+     *  given. Wider rows than the point layers; see `stride`. */
+    BOXES = 2,
 }
 
 export interface OverlayFrame {
@@ -51,8 +54,11 @@ export interface OverlayFrame {
     modelId?: string;
     frameNumber: number;
     names: readonly string[];
-    /** interleaved [x,y,visibility, …] — length names.length * 3. */
+    /** Row-major interleaved values — length names.length * stride. */
     data: Float32Array;
+    /** Values per row: 3 for the point layers ([x,y,visibility]), 6 for BOXES
+     *  ([x1,y1,x2,y2,confidence,detector_ran]). Defaults to 3 when absent. */
+    stride?: number;
     /** Full-resolution (rotated) image size this overlay is in, when the wire
      *  carries it on the channel (independent of calibration). */
     imageSize?: [number, number];

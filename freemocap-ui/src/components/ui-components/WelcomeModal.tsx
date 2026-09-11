@@ -7,7 +7,7 @@ import { LanguageSwitcher } from '@/components/languages/LanguageSwitcher';
 import { VersionChip } from '@/components/ui-components/VersionChip';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { camerasConnectOrUpdate, detectCameras } from '@/store/slices/cameras/cameras-thunks';
-import { selectCameras } from '@/store/slices/cameras/cameras-selectors';
+import { selectCameras, selectFilterVirtualCameras } from '@/store/slices/cameras/cameras-selectors';
 import { EXTERNAL_URLS } from '@/constants/external-urls';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import ButtonCard from '@/components/ui-components/ButtonCard';
@@ -29,6 +29,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
     const { isElectron, api } = useElectronIPC();
     const { connectedCameraIds } = useServer();
     const cameras = useAppSelector(selectCameras);
+    const filterVirtualCameras = useAppSelector(selectFilterVirtualCameras);
     const { startTour } = useTutorial();
     const prevCountRef = useRef(connectedCameraIds.length);
 
@@ -82,13 +83,13 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
         onClose();
         if (cameras.length === 0) {
             try {
-                await dispatch(detectCameras({ filterVirtual: true })).unwrap();
+                await dispatch(detectCameras({ filterVirtual: filterVirtualCameras })).unwrap();
             } catch {
                 return;
             }
         }
         dispatch(camerasConnectOrUpdate());
-    }, [navigate, onClose, dispatch, cameras.length]);
+    }, [navigate, onClose, dispatch, cameras.length, filterVirtualCameras]);
 
     const handleGoToPlayback = useCallback(() => {
         navigate('/playback');

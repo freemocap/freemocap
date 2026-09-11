@@ -95,6 +95,7 @@ export interface CamerasState {
     isPaused: boolean;
     isLoading: boolean;
     autoApply: boolean;
+    filterVirtualCameras: boolean;
     error: string | null;
 }
 

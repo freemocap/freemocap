@@ -2,15 +2,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from skellytracker.core import DetectionStageConfig, TrackerConfig
-from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
-    MediapipePoseDetectorConfig,
-)
-from skellytracker.core.detectors.keypoint_detectors.mediapipe.face.mediapipe_face_detector import (
-    MediapipeFaceDetectorConfig,
-)
-from skellytracker.core.detectors.keypoint_detectors.mediapipe.hands.mediapipe_hand_detector import (
-    MediapipeHandDetectorConfig,
-)
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
     MediapipePoseModelComplexity,
 )
@@ -24,6 +15,7 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 
 from skellyforge.post_processing.filters.filter_config import FilterConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker_config
 
 
 
@@ -133,33 +125,12 @@ class PosthocMocapPipelineConfig(BaseModel):
     @model_validator(mode="after")
     def _build_tracker_config_from_detector_type(self) -> "PosthocMocapPipelineConfig":
         if self.detector_type == "mediapipe":
-            self.tracker_config = TrackerConfig(
-                stages=[
-                    DetectionStageConfig(
-                        name="body",
-                        keypoint_detectors=[
-                            MediapipePoseDetectorConfig(
-                                model_complexity=self.mediapipe_model_complexity,
-                                num_poses=1,
-                                min_pose_detection_confidence=self.mediapipe_detection_confidence,
-                                min_pose_presence_confidence=self.mediapipe_presence_confidence,
-                                min_pose_tracking_confidence=self.mediapipe_tracking_confidence,
-                            ),
-                            MediapipeHandDetectorConfig(
-                                num_hands=self.mediapipe_num_hands,
-                                min_hand_detection_confidence=self.mediapipe_detection_confidence,
-                                min_hand_presence_confidence=self.mediapipe_presence_confidence,
-                                min_hand_tracking_confidence=self.mediapipe_tracking_confidence,
-                            ),
-                            MediapipeFaceDetectorConfig(
-                                num_faces=self.mediapipe_num_faces,
-                                min_face_detection_confidence=self.mediapipe_detection_confidence,
-                                min_face_presence_confidence=self.mediapipe_presence_confidence,
-                                min_face_tracking_confidence=self.mediapipe_tracking_confidence,
-                            ),
-                        ],
-                    )
-                ]
+            self.tracker_config = build_mediapipe_tracker_config(
+                model_complexity=self.mediapipe_model_complexity,
+                detection_confidence=self.mediapipe_detection_confidence,
+                presence_confidence=self.mediapipe_presence_confidence,
+                tracking_confidence=self.mediapipe_tracking_confidence,
+                num_faces=self.mediapipe_num_faces,
             )
         else:
             redetect_interval = max(1, round(5.0 * self.video_fps))

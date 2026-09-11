@@ -15,6 +15,7 @@ import {
     isFrontendPayload,
     isLogRecord,
     isPosthocProgress,
+    isSyncProgress,
     isTrackerSchemas,
 } from "@/services/server/server-helpers/websocket-message-types";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
@@ -453,6 +454,30 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                                     }
                                 }
                             }
+                        }
+                    } else if (isSyncProgress(jsonData)) {
+                        const progress = Math.round(jsonData.progress_fraction * 100);
+                        const dedupeKey = `${jsonData.phase}:${progress}`;
+                        if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== dedupeKey) {
+                            lastPipelineProgressRef.current[jsonData.pipeline_id] = dedupeKey;
+                            const SYNC_PHASE_MAP: Record<string, PipelinePhase> = {
+                                queued: PipelinePhase.QUEUED,
+                                probing: PipelinePhase.SETTING_UP,
+                                detecting_lag: PipelinePhase.PROCESSING_VIDEOS,
+                                trimming: PipelinePhase.PROCESSING_VIDEOS,
+                                verifying: PipelinePhase.FINALIZING,
+                                complete: PipelinePhase.COMPLETE,
+                                failed: PipelinePhase.FAILED,
+                            };
+                            store.dispatch(pipelineProgressUpdated({
+                                pipelineId: jsonData.pipeline_id,
+                                pipelineType: PipelineType.SYNC,
+                                phase: SYNC_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
+                                progress,
+                                detail: jsonData.detail,
+                                recordingName: jsonData.recording_name,
+                                recordingPath: jsonData.recording_path,
+                            }));
                         }
                     } else if (isAppState(jsonData)) {
                         store.dispatch(serverStateReceived(jsonData));

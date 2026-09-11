@@ -439,6 +439,25 @@ jobs:
             fi
           done
 
+      # ── Windows installer signing ──
+      - name: Sign Electron installer with Trusted Signing
+        if: matrix.platform == 'windows'
+        uses: azure/trusted-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net/
+          trusted-signing-account-name: freemocap
+          certificate-profile-name: freemocap
+          files-folder: ${{ github.workspace }}\freemocap-ui\release
+          files-folder-filter: "*.exe"
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+
       # ── R2 upload for CUDA (oversized) builds ──
       # CUDA builds bundle NVIDIA runtime libraries (~1.5 GB) and exceed
       # GitHub's 2 GB file size limit. They go to Cloudflare R2 instead.
@@ -458,7 +477,7 @@ jobs:
           # Fail loudly (per the repo's no-fallbacks rule): a green build that silently
           # skipped this upload is exactly how GPU builds went missing after alpha.11.
           if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$R2_ENDPOINT" ]; then
-            echo "::error::R2 credentials missing — cannot upload the Linux CUDA build."
+            echo "::error::R2 credentials missing — cannot upload the CUDA build."
             echo "::error::Expected org secrets: CLOUDFLARE_R2_ACCESS_KEY_ID / CLOUDFLARE_R2_SECRET_ACCESS_KEY / CLOUDFLARE_R2_S3_ENDPOINT"
             exit 1
           fi
@@ -472,11 +491,10 @@ jobs:
             VERSION="dev-${{ github.run_number }}"
           fi
 
-          # Only the Linux CUDA app installer is oversized → R2. (Windows CUDA .exe is
-          # ~1.x GB and small enough for GitHub, so it's intentionally NOT matched here —
-          # this glob only picks up Linux .AppImage/.deb. macOS is CPU-only, so this step
-          # never runs there.)
-          for file in freemocap-ui/release/*/*.AppImage freemocap-ui/release/*/*.deb; do
+          # All CUDA app installers go to R2.
+          # Windows .exe files are uploaded here only after code signing has completed. 
+          #macOS is CPU-only, so this step never runs there.)
+          for file in freemocap-ui/release/*/*.AppImage freemocap-ui/release/*/*.deb freemocap-ui/release/*/*.exe; do
             [ -f "$file" ] || continue
             ext="${file##*.}"
             aws s3 cp "$file" \
@@ -498,23 +516,6 @@ jobs:
 
           echo "=== R2 upload complete ==="
 
-      # ── Windows installer signing ──
-      - name: Sign Electron installer with Trusted Signing
-        if: matrix.platform == 'windows'
-        uses: azure/trusted-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16
-        with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: https://eus.codesigning.azure.net/
-          trusted-signing-account-name: freemocap
-          certificate-profile-name: freemocap
-          files-folder: ${{ github.workspace }}\freemocap-ui\release
-          files-folder-filter: "*.exe"
-          files-folder-recurse: true
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
 
       # ── Upload final installer artifacts (uses label for human-readable names) ──
       - name: Upload installer artifacts (Windows)
@@ -639,7 +640,7 @@ jobs:
           # Fail loudly (per the repo's no-fallbacks rule): the Linux CUDA server bundle
           # only exists on R2, so missing credentials must break the release, not skip it.
           if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$R2_ENDPOINT" ]; then
-            echo "::error::R2 credentials missing — cannot upload the Linux CUDA server bundle."
+            echo "::error::R2 credentials missing — cannot upload the CUDA server bundle."
             echo "::error::Expected org secrets: CLOUDFLARE_R2_ACCESS_KEY_ID / CLOUDFLARE_R2_SECRET_ACCESS_KEY / CLOUDFLARE_R2_S3_ENDPOINT"
             exit 1
           fi
@@ -657,13 +658,13 @@ jobs:
             asset="freemocap_server_${VERSION}_${label}.zip"
             ( cd "$dir" && zip -qr "$OLDPWD/${asset}" . )
             case "$label" in
-              linux-*-cuda)   # only the >2 GB build goes to R2; everything else → GitHub
+              *-cuda)   # all CUDA server bundles go to R2
                 if [ "$R2_READY" = 1 ]; then
                   aws s3 cp "${asset}" "s3://${R2_BUCKET}/releases/v${VERSION}/${asset}" \
                     --endpoint-url "${R2_ENDPOINT}" --no-progress
                   echo "R2: ${asset}"
                 else
-                  echo "::warning::Skipping Linux CUDA server bundle ${asset} (no R2 credentials)"
+                  echo "::warning::Skipping CUDA server bundle ${asset} (no R2 credentials)"
                 fi
                 rm -f "${asset}"
                 ;;
@@ -674,14 +675,14 @@ jobs:
             esac
           done
 
-          # ── App installers — only Linux CUDA goes to R2 (uploaded by the build job);
-          #    everything else, INCLUDING the smaller Windows CUDA .exe, → GitHub. ──
+          # ── App installers —all CUDA installers go to R2 (uploaded by the build job);
+          #    everything else → GitHub. ──
           for dir in artifacts/installer-*; do
             label=$(basename "$dir" | sed 's/^installer-//')
 
-            # Linux CUDA installer lives on R2 (uploaded during the build job) — skip here.
+            # Linux and Windows CUDA installer lives on R2 (uploaded during the build job) — skip here.
             case "$label" in
-              linux-*-cuda) continue ;;
+              *-cuda) continue ;;
             esac
 
             find "$dir" -type f \( \
@@ -697,27 +698,27 @@ jobs:
           done
 
           # ── Collect R2 download links for the release notes ──
-          # ONLY the Linux CUDA build lives on R2 (it exceeds GitHub's 2 GB limit); it must
-          # be linked in the notes or it's invisible on the Releases page. Keys mirror the
+          # All CUDA builds live on R2 and must be linked in the release notes. 
+          # or they will be invisible on the Releases page. Keys mirror the
           # R2 uploads (installer from the build job, server zip from this job) under
           # releases/v<ver>/. Must stay in sync with isR2Hosted() in the docs' downloads.ts.
           R2_PUBLIC_BASE="https://pub-0a275a10417e425c94e48de393793129.r2.dev/releases/v${VERSION}"
           : > r2-links.md
-          for dir in artifacts/installer-linux-*-cuda; do
+          for dir in artifacts/installer-*-cuda; do
             [ -d "$dir" ] || continue
             label=$(basename "$dir" | sed 's/^installer-//')
-            find "$dir" -type f \( -name '*.AppImage' -o -name '*.deb' \) | while read -r f; do
+            find "$dir" -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.exe' \) | while read -r f; do
               name="freemocap_${VERSION}_${label}.${f##*.}"
               echo "- [\`${name}\`](${R2_PUBLIC_BASE}/${name})" >> r2-links.md
             done
           done
-          for dir in artifacts/server-linux-*-cuda; do
+          for dir in artifacts/server-*-cuda; do
             [ -d "$dir" ] || continue
             label=$(basename "$dir" | sed 's/^server-//')
             name="freemocap_server_${VERSION}_${label}.zip"
             echo "- [\`${name}\`](${R2_PUBLIC_BASE}/${name})" >> r2-links.md
           done
-          echo "=== R2 (Linux CUDA) links ==="; cat r2-links.md || true
+          echo "=== R2 CUDA links ==="; cat r2-links.md || true
 
           echo "=== GitHub-bound release assets ==="
           ls -lh release-assets/

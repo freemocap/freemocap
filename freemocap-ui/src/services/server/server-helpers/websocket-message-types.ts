@@ -109,3 +109,24 @@ export function isPosthocProgress(data: unknown): data is PosthocProgressMessage
     }
     return result.success;
 }
+
+export const SyncProgressSchema = z.object({
+    message_type: z.literal('sync_progress'),
+    pipeline_id: z.string(),
+    pipeline_type: z.string(),
+    phase: z.string(),
+    progress_fraction: z.number().min(0).max(1),
+    detail: z.string().default(''),
+    recording_name: z.string().default(''),
+    recording_path: z.string().default(''),
+});
+
+export type SyncProgressMessage = z.infer<typeof SyncProgressSchema>;
+
+export function isSyncProgress(data: unknown): data is SyncProgressMessage {
+    const result = SyncProgressSchema.safeParse(data);
+    if (!result.success && typeof data === 'object' && data !== null && (data as Record<string, unknown>).message_type === 'sync_progress') {
+        console.error('[WS] sync_progress message failed schema validation:', result.error.format(), data);
+    }
+    return result.success;
+}

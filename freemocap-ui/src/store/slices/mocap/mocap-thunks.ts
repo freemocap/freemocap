@@ -130,16 +130,16 @@ export const stopMocapRecording = createAsyncThunk<
 
 export const importVideos = createAsyncThunk<
     { success: boolean; recordingName: string; recordingPath: string; videoCount: number },
-    { videoPaths: string[]; recordingName?: string; baseDirectory?: string },
+    { videoPaths: string[]; recordingName?: string; baseDirectory?: string; syncJobId?: string },
     { state: RootState; rejectValue: string }
 >(
     'mocap/importVideos',
-    async ({ videoPaths, recordingName, baseDirectory }, { rejectWithValue }) => {
+    async ({ videoPaths, recordingName, baseDirectory, syncJobId }, { rejectWithValue }) => {
         try {
             const response = await fetch(serverUrls.endpoints.importVideos, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoPaths, recordingName, baseDirectory }),
+                body: JSON.stringify({ videoPaths, recordingName, baseDirectory, syncJobId }),
             });
 
             if (!response.ok) {
@@ -205,6 +205,96 @@ export const checkVideoSync = createAsyncThunk<
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error('❌ Failed to check video sync:', errorMessage);
+            return rejectWithValue(errorMessage);
+        }
+    }
+);
+
+export const SyncMethod = {
+    AUDIO: 'audio cross-correlation',
+    BRIGHTNESS: 'brightness change detection',
+} as const;
+export type SyncMethod = (typeof SyncMethod)[keyof typeof SyncMethod];
+
+export interface SyncLagResult {
+    videoName: string;
+    lagSeconds: number;
+    confidence: number | null;
+}
+
+export interface SyncResult {
+    synchronizedVideoFolderPath: string;
+    lags: SyncLagResult[];
+    elapsedSeconds: number;
+    synchronizedFrameCount: number | null;
+}
+
+export const startVideoSync = createAsyncThunk<
+    { jobId: string },
+    { videoPaths: string[]; method: SyncMethod; brightnessRatioThreshold?: number },
+    { state: RootState; rejectValue: string }
+>(
+    'mocap/startVideoSync',
+    async ({ videoPaths, method, brightnessRatioThreshold }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(serverUrls.endpoints.synchronizeVideos, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoPaths, method, brightnessRatioThreshold }),
+            });
+
+            if (!response.ok) {
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
+            }
+
+            const result = await response.json();
+            return { jobId: result.job_id };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to start video sync:', errorMessage);
+            return rejectWithValue(errorMessage);
+        }
+    }
+);
+
+// Discriminated union so callers can poll without treating "still running" (HTTP 425)
+// as an error — only a real failure (job not found, sync error) rejects the thunk.
+export const getSyncResult = createAsyncThunk<
+    { status: 'pending' } | { status: 'done'; result: SyncResult },
+    { jobId: string },
+    { state: RootState; rejectValue: string }
+>(
+    'mocap/getSyncResult',
+    async ({ jobId }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(serverUrls.endpoints.synchronizeVideosResult(jobId));
+
+            if (response.status === 425) {
+                return { status: 'pending' as const };
+            }
+            if (!response.ok) {
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
+            }
+
+            const result = await response.json();
+            return {
+                status: 'done' as const,
+                result: {
+                    synchronizedVideoFolderPath: result.synchronized_video_folder_path,
+                    lags: (result.lags ?? []).map((lag: any) => ({
+                        videoName: lag.video_name,
+                        lagSeconds: lag.lag_seconds,
+                        confidence: lag.confidence ?? null,
+                    })),
+                    elapsedSeconds: result.elapsed_seconds,
+                    synchronizedFrameCount: result.synchronized_frame_count ?? null,
+                },
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to get sync result:', errorMessage);
             return rejectWithValue(errorMessage);
         }
     }

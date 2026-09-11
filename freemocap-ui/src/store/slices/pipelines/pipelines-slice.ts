@@ -7,6 +7,7 @@ import {stopAllPipelines, stopPipeline} from './pipelines-thunks';
 export const PipelineType = {
     CALIBRATION: 'calibration',
     MOCAP: 'mocap',
+    SYNC: 'sync',
 } as const;
 export type PipelineType = (typeof PipelineType)[keyof typeof PipelineType];
 
@@ -29,6 +30,7 @@ export interface PipelineTypeConfig {
 export const PIPELINE_TYPE_CONFIG: Record<PipelineType, PipelineTypeConfig> = {
     [PipelineType.CALIBRATION]: {label: 'Calibration', color: '#26C6DA'},
     [PipelineType.MOCAP]:       {label: 'Mocap',        color: '#AB47BC'},
+    [PipelineType.SYNC]:        {label: 'Synchronize',  color: '#66BB6A'},
 };
 
 export const PHASE_LABELS: Record<PipelinePhase, string> = {

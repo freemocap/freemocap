@@ -12,4 +12,5 @@ export * from './slices/connection';
 export * from './slices/mocap';
 export * from './slices/pipelines';
 export * from './slices/blender';
+export * from './slices/ffmpeg';
 export * from './slices/active-recording';

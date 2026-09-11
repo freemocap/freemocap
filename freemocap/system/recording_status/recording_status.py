@@ -110,6 +110,7 @@ class RecordingStatus(BaseModel):
 
 def missing_blender_input_files(
     recording_folder_path: str | Path,
+    detector: str
 ) -> list[str]:
     output_data = Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME
     detector = detect_blender_input_detector(output_data)
@@ -121,9 +122,10 @@ def missing_blender_input_files(
     ]
 
 
-def raise_if_not_blender_ready(recording_folder_path: str|Path) -> None:
+def raise_if_not_blender_ready(recording_folder_path: str|Path, 
+                               detector:str) -> None:
     """Pre-flight check for export_to_blender. Raises FileNotFoundError listing all missing files."""
-    missing = missing_blender_input_files(recording_folder_path)
+    missing = missing_blender_input_files(recording_folder_path, detector)
     if missing:
         output_data = Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME
         raise FileNotFoundError(

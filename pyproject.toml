@@ -1,6 +1,6 @@
 [project]
 name = "freemocap"
-version = "2.0.0a20"  # bumpver
+version = "2.0.0a23"  # bumpver
 description = "A free and open source markerless motion capture system for everyone 💀✨"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,7 @@ dependencies = [
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
+    "skelly_synchronize",
     #skelly utils
     "skellylogs",
     "skellypings",
@@ -42,6 +43,7 @@ cpu = ["skellytracker[all-cpu]"]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "main" }
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "main"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "main" }
+skelly_synchronize = { git = "https://github.com/freemocap/skellysync", branch = "philip/rewrite" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "main" }
 
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }
@@ -116,7 +118,7 @@ requires-dist = ["numpy", "opencv-contrib-python", "opencv-python", "tqdm"]
 # so `git describe` still resolves to v1.4.7. Every bump command therefore passes
 # --ignore-vcs-tag to bypass those stale VCS tags (baked into the poe tasks).
 [tool.bumpver]
-current_version = "v2.0.0-alpha.20"
+current_version = "v2.0.0-alpha.23"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG.NUM]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

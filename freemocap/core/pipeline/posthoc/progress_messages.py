@@ -23,3 +23,8 @@ class VideoNodeProgressMessage(PipelineProgressMessage):
 @dataclass
 class AggregatorNodeProgressMessage(PipelineProgressMessage):
     pass
+
+
+@dataclass
+class SyncJobProgressMessage(PipelineProgressMessage):
+    message_type: str = "sync_progress"

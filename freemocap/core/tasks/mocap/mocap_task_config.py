@@ -55,11 +55,15 @@ class PosthocMocapPipelineConfig(BaseModel):
         description="RTMPose wholebody model variant. Only used when detector_type='rtmpose'.",
     )
     rtmpose_confidence_threshold: float = Field(
-        default=0.004,
+        default=0.4,
         alias="rtmPoseConfidenceThreshold",
         ge=0.0,
         le=1.0,
-        description="Keypoint confidence threshold for RTMPose. Only used when detector_type='rtmpose'.",
+        description=(
+            "Keypoint confidence threshold for RTMPose (raw SIMCC peak clipped to "
+            "[0, 1]). 0.4 clears the model's no-person response band while keeping "
+            "~96% of visible keypoints. Only used when detector_type='rtmpose'."
+        ),
     )
     # MediaPipe settings (shared across pose/hands/face detectors)
     mediapipe_model_complexity: MediapipePoseModelComplexity = Field(

@@ -186,7 +186,7 @@ def build_skeleton_tracker(
     *,
     onnx_session: OnnxSession,
     model_name: str = "rtmw-x-l_256x192",
-    confidence_threshold: float = 0.004,
+    confidence_threshold: float = 0.4,
     video_fps: float = 30.0,
     keypoint_bbox_expansion: float = 0.05,
 ) -> Tracker:

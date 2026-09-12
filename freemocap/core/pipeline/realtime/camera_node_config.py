@@ -36,7 +36,7 @@ def _default_skeleton_tracker_config() -> TrackerConfig:
                 keypoint_detectors=[
                     RTMPoseDetectorConfig(
                         model_name="rtmw-x-l_256x192",
-                        confidence_threshold=0.0025,
+                        confidence_threshold=0.4,
                     )
                 ],
                 bbox_policy=BBoxPolicyConfig(
@@ -76,7 +76,7 @@ class CameraNodeConfig(BaseModel):
     detector_type: Literal["rtmpose", "mediapipe"] = DEFAULT_DETECTOR_TYPE
     # RTMPose config (only used when detector_type="rtmpose")
     rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = "rtmw-x-l_256x192"
-    rtmpose_confidence_threshold: float = 0.0025
+    rtmpose_confidence_threshold: float = 0.4
     # MediaPipe config (only used when detector_type="mediapipe")
     mediapipe_model_complexity: MediapipePoseModelComplexity = MediapipePoseModelComplexity.LITE
     mediapipe_detection_confidence: float = 0.5
@@ -113,7 +113,13 @@ class CameraNodeConfig(BaseModel):
 
     # Confidence gating threshold — keypoints below this visibility score
     # have their xy NaN-ed before publication so triangulation skips them.
-    confidence_threshold: float = 0.0025
+    # RTMPose visibility is the raw SIMCC peak clipped to [0, 1]; 0.4 clears the
+    # measured no-person response band (person-free crops top out at ~0.33) while
+    # keeping >=96% of visible keypoints. See RTMPoseDetectorConfig in
+    # skellytracker's rtmpose/wholebody for the full measured distribution.
+    # Kept permissive on purpose — triangulation rejects bad points by
+    # reprojection error better than one view's confidence can.
+    confidence_threshold: float = 0.4
 
     @property
     def tracking2d_enabled(self) -> bool:

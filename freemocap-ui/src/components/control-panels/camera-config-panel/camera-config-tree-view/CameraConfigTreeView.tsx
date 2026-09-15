@@ -8,6 +8,7 @@ import {
     detectCameras,
     selectCameras,
     selectConnectedCameras,
+    selectFilterVirtualCameras,
     selectIsLoading,
     selectIsPaused,
     useAppDispatch,
@@ -26,12 +27,13 @@ export const CameraConfigTreeView: React.FC = () => {
     const isLoading = useAppSelector(selectIsLoading);
     const connectedCameras = useAppSelector(selectConnectedCameras);
     const isPaused = useAppSelector(selectIsPaused);
+    const filterVirtualCameras = useAppSelector(selectFilterVirtualCameras);
 
     useEffect(() => {
         if (isConnected && cameras.length === 0) {
-            dispatch(detectCameras({filterVirtual: true}));
+            dispatch(detectCameras({filterVirtual: filterVirtualCameras}));
         }
-    }, [isConnected, cameras.length, dispatch]);
+    }, [isConnected, cameras.length, dispatch, filterVirtualCameras]);
 
     return (
         <div className="camera-config-sidebar-panel flex flex-col flex-1 bg-middark br-2 p-1 min-h-0 order-1">

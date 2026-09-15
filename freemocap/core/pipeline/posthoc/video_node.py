@@ -97,12 +97,14 @@ def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
 
     if _is_mediapipe_config(tracker_config):
         import skellytracker.core.detectors.keypoint_detectors.mediapipe  # noqa: F401 (registry)
+        from skellytracker.core.sessions.cpu_session import CpuSession, CpuSessionConfig
         from skellytracker.core.sessions.mediapipe_session import (
             MediaPipeSession,
             MediaPipeSessionConfig,
         )
         session = MediaPipeSession.create(MediaPipeSessionConfig())
-        tracker = Tracker.create(tracker_config, {"mediapipe": session})
+        cpu_session = CpuSession.create(CpuSessionConfig())
+        tracker = Tracker.create(tracker_config, {"mediapipe": session, "cpu": cpu_session})
         return tracker, session
 
     model_name = "rtmw-x-l_256x192"
@@ -628,4 +630,8 @@ def _get_observation(
         observation = cache[frame_number]
         return observation, state
 
-    return tracker.process_image(image, frame_number, state)
+    from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
+
+    observation, state = tracker.process_image(image, frame_number, state)
+    merge_mediapipe_hand_face_children(observation)
+    return observation, state

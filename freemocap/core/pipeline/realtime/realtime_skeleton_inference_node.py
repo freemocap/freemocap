@@ -61,6 +61,7 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -285,6 +286,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 conf_threshold = pipeline_config.camera_node_config.confidence_threshold
                 per_camera_skeleton: dict[CameraIdString, Observation | None] = {}
                 for camera_id, obs in observations.items():
+                    merge_mediapipe_hand_face_children(obs)
                     body_stage = obs.stages.get("body")
                     if body_stage is not None and body_stage.keypoints is not None:
                         kpts = body_stage.keypoints

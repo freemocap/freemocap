@@ -2223,7 +2223,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=main#cb739aa5d059c90ba9c92ab5fbd987096423a638" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=main#63100055867b161d32fb1535ed73f73e1ddd187d" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

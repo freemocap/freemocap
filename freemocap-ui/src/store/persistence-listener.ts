@@ -74,6 +74,17 @@ persistenceListenerMiddleware.startListening({
     },
 });
 
+// ─── cameras.filterVirtualCameras ─────────────────────────────────────────────
+persistenceListenerMiddleware.startListening({
+    predicate: (_, curr, prev) =>
+        (curr as RootState).cameras.filterVirtualCameras !== (prev as RootState).cameras.filterVirtualCameras,
+    effect: async (_, api) => {
+        api.cancelActiveListeners();
+        await api.delay(DEBOUNCE_MS);
+        saveToStorage('cameras.filterVirtualCameras', (api.getState() as RootState).cameras.filterVirtualCameras);
+    },
+});
+
 // ─── blender.settings ─────────────────────────────────────────────────────────
 persistenceListenerMiddleware.startListening({
     predicate: (_, curr, prev) => {

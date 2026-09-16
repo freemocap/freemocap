@@ -29,6 +29,7 @@ function buildPosthocConfig(state: RootState) {
         calibrationTomlPath,
         triangulationConfig: config.triangulation,
         filterConfig: config.posthoc_filter,
+        blenderExportConfig: config.blender_export,
         exportToBlender: blenderSupported && blender.exportToBlenderEnabled,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
         autoOpenBlendFile: blenderSupported && blender.autoOpenBlendFile,

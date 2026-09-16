@@ -1,4 +1,5 @@
 import inspect
+import json
 import logging
 import subprocess
 from pathlib import Path
@@ -47,6 +48,7 @@ def export_to_blender(
         blend_file_path: str|Path|None=None,
         blender_exe_path: str|Path|None=None,
         open_file_on_completion:bool=True,
+        blender_export_config: dict|None=None,
 ):
     if detector != "mediapipe":
         message = (
@@ -77,6 +79,10 @@ def export_to_blender(
     # function returns repr() of the wrapper, not the source file path.
     simple_run_script = run_blender_export_module.__file__
 
+    # The addon's own Config namespace lives on the addon side, so the API-level
+    # options get wrapped into it here, at the subprocess boundary.
+    addon_config_payload = {"export_3d_model": dict(blender_export_config or {})}
+
     command_list = [
         str(blender_exe_path),
         "--background",
@@ -86,6 +92,7 @@ def export_to_blender(
         site_packages_path,
         str(recording_folder_path),
         str(blend_file_path),
+        json.dumps(addon_config_payload),
     ]
 
     logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")

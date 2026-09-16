@@ -2,9 +2,17 @@ import React, { useEffect, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ButtonSm from "@/components/ui-components/ButtonSm";
+import Checkbox from "@/components/ui-components/Checkbox";
 import { useMocap } from "@/hooks/useMocap";
 import { useBlender } from "@/hooks/useBlender";
 import { useElectronIPC } from "@/services";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  blenderExportConfigUpdated,
+  selectMocapBlenderExportConfig,
+  BLENDER_MODEL_FORMATS,
+  BlenderModelFormat,
+} from "@/store/slices/mocap";
 
 interface MOCAPBlenderSettingsProps {
   open: boolean;
@@ -16,6 +24,9 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const dispatch = useAppDispatch();
+  const blenderExportConfig = useAppSelector(selectMocapBlenderExportConfig);
 
   const { mocapRecordingPath, detectorType } = useMocap();
   const { api, isElectron } = useElectronIPC();
@@ -54,6 +65,16 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
   const handleOpenInBlender = (): void => {
     if (!mocapRecordingPath) return;
     void triggerOpenInBlender(mocapRecordingPath);
+  };
+
+  const handleModelFormatToggle = (
+    format: BlenderModelFormat,
+    checked: boolean,
+  ): void => {
+    const formats = checked
+      ? [...blenderExportConfig.formats, format]
+      : blenderExportConfig.formats.filter((f) => f !== format);
+    dispatch(blenderExportConfigUpdated({ formats }));
   };
 
   // The freemocap_blender_addon only understands MediaPipe output so far -
@@ -173,6 +194,30 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           onToggle={setAutoOpenBlendFile}
           disabled={!blenderSupported || !exportToBlenderEnabled}
         />
+
+        <SubactionHeader text="3D Model Export" />
+
+        <div className="flex flex-row gap-1 p-1">
+          {BLENDER_MODEL_FORMATS.map((format) => (
+            <Checkbox
+              key={format.value}
+              label={format.label}
+              checked={blenderExportConfig.formats.includes(format.value)}
+              onChange={(e) =>
+                handleModelFormatToggle(format.value, e.target.checked)
+              }
+              disabled={!blenderSupported || !exportToBlenderEnabled}
+            />
+          ))}
+        </div>
+
+        <p className="text sm text-gray p-1 mb-3">
+          {blenderExportConfig.formats.length === 0
+            ? "No formats selected - 3D model export will be skipped."
+            : `3D model will be exported as ${blenderExportConfig.formats
+                .map((f) => f.toUpperCase())
+                .join(" and ")}.`}
+        </p>
 
         <ButtonSm
           text={isExporting ? "Exporting to Blender…" : "Process Recording with Blender"}

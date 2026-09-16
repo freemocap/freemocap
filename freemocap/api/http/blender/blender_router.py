@@ -6,11 +6,15 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from freemocap.core.blender.blender_export_config import BlenderExportConfig
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.blender.helpers.install_blender_addon import \
     install_freemocap_blender_addon
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.system.recording_status.recording_status import compute_recording_status
+from freemocap.system.recording_status.recording_status import (
+    compute_recording_status,
+    detect_blender_input_detector,
+)
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
@@ -48,12 +52,18 @@ class ExportToBlenderRequest(BaseModel):
                 "recordingFolderPath": FREEMOCAP_TEST_DATA_PATH,
                 "blenderExePath": None,
                 "autoOpenBlendFile": True,
+                "blenderExportConfig": {"formats": ["fbx", "bvh"]},
             }
         },
     )
     recording_folder_path: str = Field(alias="recordingFolderPath", default=FREEMOCAP_TEST_DATA_PATH)
     blender_exe_path: str | None = Field(alias="blenderExePath", default=None, examples=[None])
     auto_open_blend_file: bool = Field(alias="autoOpenBlendFile", default=True)
+    blender_export_config: BlenderExportConfig = Field(
+        alias="blenderExportConfig",
+        default_factory=BlenderExportConfig,
+        description="Options forwarded to the Blender addon's 3D model export step.",
+    )
 
     @property
     def blend_file_path(self):
@@ -150,12 +160,20 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
         if not blender_exe.is_file():
             raise HTTPException(status_code=400, detail=f"Blender executable not found at: {request.blender_exe_path}")
 
+    
+        detector = detect_blender_input_detector(
+            recording_folder / "output_data"
+        )
+
         export_to_blender(
             recording_folder_path=str(recording_folder),
+            detector=detector,
             blend_file_path=request.blend_file_path,
             blender_exe_path=str(blender_exe),
             open_file_on_completion=request.auto_open_blend_file,
+            blender_export_config=request.blender_export_config.model_dump(),
         )
+        
         return ExportToBlenderResponse(
             success=True,
             message="Export to Blender completed",

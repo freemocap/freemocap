@@ -56,6 +56,8 @@ def _addon_config_payload(blender_export_config: dict | None) -> dict:
         payload["export_3d_model"] = {"formats": config_in["formats"]}
     if "rest_pose" in config_in:
         payload["add_rig"] = {"rest_pose": config_in["rest_pose"]}
+    if "apply_foot_locking" in config_in:
+        payload["motion_cleanup"] = {"apply_foot_locking": config_in["apply_foot_locking"]}
     return payload
 
 

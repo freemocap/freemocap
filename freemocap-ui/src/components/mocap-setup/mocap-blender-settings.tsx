@@ -142,7 +142,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
             <span className="icon icon-size-20 blender-icon"></span>
             <p className="p-1 text-gray">Blender executable</p>
           </div>
-        <ButtonSm
+          <ButtonSm
             text={isDetecting ? "Detecting..." : "Autodetect"}
             onClick={redetectBlender}
             disabled={isDetecting}
@@ -229,8 +229,8 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           {blenderExportConfig.formats.length === 0
             ? "No formats selected - 3D model export will be skipped."
             : `3D model will be exported as ${blenderExportConfig.formats
-                .map((f) => f.toUpperCase())
-                .join(" and ")}.`}
+              .map((f) => f.toUpperCase())
+              .join(" and ")}.`}
         </p>
 
         <SubactionHeader text="Armature" />
@@ -243,6 +243,17 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
             onChange={handleRestPoseChange}
           />
         </div>
+
+        <SubactionHeader text="Motion Cleanup" />
+
+        <ToggleComponent
+          text="Apply Foot Locking"
+          isToggled={blenderExportConfig.apply_foot_locking}
+          onToggle={(checked) =>
+            dispatch(blenderExportConfigUpdated({ apply_foot_locking: checked }))
+          }
+          disabled={!blenderSupported || !exportToBlenderEnabled}
+        />
 
         <ButtonSm
           text={isExporting ? "Exporting to Blender…" : "Process Recording with Blender"}

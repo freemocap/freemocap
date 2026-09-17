@@ -42,3 +42,11 @@ class BlenderExportConfig(BaseModel):
             "created in the .blend file and anything exported from it."
         ),
     )
+    apply_foot_locking: bool = Field(
+        default=False,
+        alias="applyFootLocking",
+        description=(
+            "If True, run the addon's foot-locking cleanup over the marker motion before "
+            "the scene is set up. Off by default because it rewrites the marker positions."
+        ),
+    )

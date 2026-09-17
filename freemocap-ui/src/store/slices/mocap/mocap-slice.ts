@@ -64,6 +64,8 @@ export interface BlenderExportConfig {
     formats: BlenderModelFormat[];
     /** Rest pose the armature is built in. */
     rest_pose: ArmatureRestPose;
+    /** Run the addon's foot-locking motion cleanup before the scene is set up. */
+    apply_foot_locking: boolean;
 }
 
 export interface PosthocFilterConfig {
@@ -231,6 +233,7 @@ export const DEFAULT_POSTHOC_FILTER_CONFIG: PosthocFilterConfig ={
 export const DEFAULT_BLENDER_EXPORT_CONFIG: BlenderExportConfig = {
     formats: ["fbx", "bvh"],
     rest_pose: "tpose",
+    apply_foot_locking: false,
 };
 
 export const BLENDER_MODEL_FORMATS: { label: string; value: BlenderModelFormat }[] = [
@@ -279,6 +282,7 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     blender_export: {
         formats: [...DEFAULT_BLENDER_EXPORT_CONFIG.formats],
         rest_pose: DEFAULT_BLENDER_EXPORT_CONFIG.rest_pose,
+        apply_foot_locking: DEFAULT_BLENDER_EXPORT_CONFIG.apply_foot_locking,
     },
 
     detectorType: "rtmpose",

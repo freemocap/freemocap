@@ -263,7 +263,10 @@ jobs:
           FREEMOCAP_BUILD_VARIANT: ${{ (matrix.install-gpu && matrix.platform != 'macos') && 'cuda' || 'cpu' }}
         run: |
           uv pip install pyinstaller
-          uv run pyinstaller ./freemocap.spec --clean
+          uv pip show onnxruntime
+          uv pip show onnxruntime-gpu || true
+          uv run --no-sync python -c "import onnxruntime as ort; print('ONNX Runtime:', ort.__version__); print('Providers:', ort.get_available_providers())"
+          uv run --no-sync pyinstaller ./freemocap.spec --clean
 
       # ── Move server BUNDLE into freemocap-ui/ ──
       # PyInstaller runs in onedir mode (freemocap.spec ends in COLLECT), so the

@@ -7,11 +7,15 @@ from pydantic import BaseModel, ConfigDict, Field
 # deliberately not exposed.
 BlenderModelFormat = Literal["fbx", "bvh"]
 
+# Rest pose the addon builds the armature in.
+ArmatureRestPose = Literal["tpose", "apose"]
+
 DEFAULT_BLENDER_MODEL_FORMATS: list[BlenderModelFormat] = ["fbx", "bvh"]
+DEFAULT_ARMATURE_REST_POSE: ArmatureRestPose = "tpose"
 
 
 class BlenderExportConfig(BaseModel):
-    """Options forwarded to the freemocap_blender_addon for 3D model export.
+    """Options forwarded to the freemocap_blender_addon for the Blender export.
 
     These travel to Blender as a serialized argument on the subprocess command
     line, so they must stay JSON-serializable. The addon ignores options it does
@@ -28,5 +32,13 @@ class BlenderExportConfig(BaseModel):
             "a sibling file (e.g. '<recording>.fbx' and '<recording>.bvh') in the "
             "'3d_models' subfolder of the recording. May be empty, in which case the "
             "3D model export stage is skipped entirely."
+        ),
+    )
+    rest_pose: ArmatureRestPose = Field(
+        default=DEFAULT_ARMATURE_REST_POSE,
+        alias="restPose",
+        description=(
+            "Rest pose the armature is built in: 'tpose' or 'apose'. Affects the rig "
+            "created in the .blend file and anything exported from it."
         ),
     )

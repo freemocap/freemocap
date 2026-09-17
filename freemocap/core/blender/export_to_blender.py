@@ -42,6 +42,23 @@ def run_subprocess(command_list: List[str]):
     return process
 
 
+def _addon_config_payload(blender_export_config: dict | None) -> dict:
+    """Map API-level option names into the freemocap_blender_addon's Config namespace.
+
+    The addon's Config groups its options into sections (export_3d_model, add_rig,
+    ...), which is an addon-side detail. This is the boundary that translates, so
+    the HTTP/CLI contract can stay flat. Only keys the caller actually supplied are
+    forwarded; anything omitted keeps the addon's own default.
+    """
+    config_in = blender_export_config or {}
+    payload: dict = {}
+    if "formats" in config_in:
+        payload["export_3d_model"] = {"formats": config_in["formats"]}
+    if "rest_pose" in config_in:
+        payload["add_rig"] = {"rest_pose": config_in["rest_pose"]}
+    return payload
+
+
 def export_to_blender(
         recording_folder_path: str|Path,
         detector:str,
@@ -79,9 +96,7 @@ def export_to_blender(
     # function returns repr() of the wrapper, not the source file path.
     simple_run_script = run_blender_export_module.__file__
 
-    # The addon's own Config namespace lives on the addon side, so the API-level
-    # options get wrapped into it here, at the subprocess boundary.
-    addon_config_payload = {"export_3d_model": dict(blender_export_config or {})}
+    addon_config_payload = _addon_config_payload(blender_export_config)
 
     command_list = [
         str(blender_exe_path),

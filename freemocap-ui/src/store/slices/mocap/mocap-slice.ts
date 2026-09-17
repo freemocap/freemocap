@@ -53,14 +53,17 @@ export interface TriangulationConfig {
 }
 
 export type BlenderModelFormat = "fbx" | "bvh";
+export type ArmatureRestPose = "tpose" | "apose";
 
 /**
- * Options forwarded to the freemocap_blender_addon's 3D model export.
+ * Options forwarded to the freemocap_blender_addon's export.
  * Field names use snake_case to match the backend JSON.
  */
 export interface BlenderExportConfig {
     /** Formats to write. May be empty, which skips 3D model export entirely. */
     formats: BlenderModelFormat[];
+    /** Rest pose the armature is built in. */
+    rest_pose: ArmatureRestPose;
 }
 
 export interface PosthocFilterConfig {
@@ -224,14 +227,20 @@ export const DEFAULT_POSTHOC_FILTER_CONFIG: PosthocFilterConfig ={
     order: 4,
 };
 
-/** Matches the addon's export_3d_model() default: formats = ['fbx', 'bvh']. */
+/** Matches the addon defaults: export formats fbx+bvh, armature built in T-pose. */
 export const DEFAULT_BLENDER_EXPORT_CONFIG: BlenderExportConfig = {
     formats: ["fbx", "bvh"],
+    rest_pose: "tpose",
 };
 
 export const BLENDER_MODEL_FORMATS: { label: string; value: BlenderModelFormat }[] = [
     { label: "FBX", value: "fbx" },
     { label: "BVH", value: "bvh" },
+];
+
+export const ARMATURE_REST_POSES: { label: string; value: ArmatureRestPose }[] = [
+    { label: "TPOSE", value: "tpose" },
+    { label: "APOSE", value: "apose" },
 ];
 
 
@@ -267,7 +276,10 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     triangulation: {...DEFAULT_TRIANGULATION_CONFIG},
     skeleton_filter: {...DEFAULT_REALTIME_FILTER_CONFIG},
     posthoc_filter: {...DEFAULT_POSTHOC_FILTER_CONFIG},
-    blender_export: { formats: [...DEFAULT_BLENDER_EXPORT_CONFIG.formats] },
+    blender_export: {
+        formats: [...DEFAULT_BLENDER_EXPORT_CONFIG.formats],
+        rest_pose: DEFAULT_BLENDER_EXPORT_CONFIG.rest_pose,
+    },
 
     detectorType: "rtmpose",
     rtmPoseModelName: "rtmw-x-l_256x192",

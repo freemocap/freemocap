@@ -14,6 +14,7 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 )
 
 from skellyforge.post_processing.filters.filter_config import FilterConfig
+from freemocap.core.blender.blender_export_config import BlenderExportConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker_config
 
@@ -120,6 +121,11 @@ class PosthocMocapPipelineConfig(BaseModel):
         default=True,
         alias="autoOpenBlendFile",
         description="If True, open the .blend file in Blender after export completes.",
+    )
+    blender_export_config: BlenderExportConfig = Field(
+        default_factory=BlenderExportConfig,
+        alias="blenderExportConfig",
+        description="Options forwarded to the Blender addon's 3D model export step. Ignored when export_to_blender=False.",
     )
 
     @model_validator(mode="after")

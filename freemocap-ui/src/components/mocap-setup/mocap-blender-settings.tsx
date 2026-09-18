@@ -2,9 +2,19 @@ import React, { useEffect, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ButtonSm from "@/components/ui-components/ButtonSm";
+import Checkbox from "@/components/ui-components/Checkbox";
+import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import { useMocap } from "@/hooks/useMocap";
 import { useBlender } from "@/hooks/useBlender";
 import { useElectronIPC } from "@/services";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  blenderExportConfigUpdated,
+  selectMocapBlenderExportConfig,
+  BLENDER_MODEL_FORMATS,
+  ARMATURE_REST_POSES,
+  BlenderModelFormat,
+} from "@/store/slices/mocap";
 
 interface MOCAPBlenderSettingsProps {
   open: boolean;
@@ -16,6 +26,9 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const dispatch = useAppDispatch();
+  const blenderExportConfig = useAppSelector(selectMocapBlenderExportConfig);
 
   const { mocapRecordingPath, detectorType } = useMocap();
   const { api, isElectron } = useElectronIPC();
@@ -54,6 +67,27 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
   const handleOpenInBlender = (): void => {
     if (!mocapRecordingPath) return;
     void triggerOpenInBlender(mocapRecordingPath);
+  };
+
+  const handleModelFormatToggle = (
+    format: BlenderModelFormat,
+    checked: boolean,
+  ): void => {
+    const formats = checked
+      ? [...blenderExportConfig.formats, format]
+      : blenderExportConfig.formats.filter((f) => f !== format);
+    dispatch(blenderExportConfigUpdated({ formats }));
+  };
+
+  const restPoseLabel =
+    ARMATURE_REST_POSES.find((p) => p.value === blenderExportConfig.rest_pose)
+      ?.label ?? ARMATURE_REST_POSES[0].label;
+
+  const handleRestPoseChange = (label: string): void => {
+    const restPose = ARMATURE_REST_POSES.find((p) => p.label === label);
+    if (restPose) {
+      dispatch(blenderExportConfigUpdated({ rest_pose: restPose.value }));
+    }
   };
 
   // The freemocap_blender_addon only understands MediaPipe output so far -
@@ -108,7 +142,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
             <span className="icon icon-size-20 blender-icon"></span>
             <p className="p-1 text-gray">Blender executable</p>
           </div>
-        <ButtonSm
+          <ButtonSm
             text={isDetecting ? "Detecting..." : "Autodetect"}
             onClick={redetectBlender}
             disabled={isDetecting}
@@ -171,6 +205,58 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           text="Auto-open .blend file in Blender when done"
           isToggled={autoOpenBlendFile && blenderSupported}
           onToggle={setAutoOpenBlendFile}
+          disabled={!blenderSupported || !exportToBlenderEnabled}
+        />
+
+        <SubactionHeader text="3D Model Export" />
+
+        <div className="flex p-1 flex-row gap-1 items-center">
+          <span className="text sm">Formats</span>
+          {BLENDER_MODEL_FORMATS.map((format) => (
+            <Checkbox
+              key={format.value}
+              label={format.label}
+              checked={blenderExportConfig.formats.includes(format.value)}
+              onChange={(e) =>
+                handleModelFormatToggle(format.value, e.target.checked)
+              }
+              disabled={!blenderSupported || !exportToBlenderEnabled}
+            />
+          ))}
+        </div>
+
+        <SubactionHeader text="Armature" />
+
+        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+          <span className="text sm">Rest Pose</span>
+          <NameDropdownSelector
+            options={ARMATURE_REST_POSES.map((pose) => pose.label)}
+            initialValue={restPoseLabel}
+            onChange={handleRestPoseChange}
+          />
+        </div>
+
+        <SubactionHeader text="Motion Cleanup" />
+
+        <ToggleComponent
+          text="Apply Foot Locking (Experimental)"
+          isToggled={blenderExportConfig.apply_foot_locking}
+          onToggle={(checked) =>
+            dispatch(blenderExportConfigUpdated({ apply_foot_locking: checked }))
+          }
+          disabled={!blenderSupported || !exportToBlenderEnabled}
+        />
+
+        <ToggleComponent
+          text="Limit Hand Markers Range of Motion (Experimental)"
+          isToggled={blenderExportConfig.limit_hand_markers_range_of_motion}
+          onToggle={(checked) =>
+            dispatch(
+              blenderExportConfigUpdated({
+                limit_hand_markers_range_of_motion: checked,
+              }),
+            )
+          }
           disabled={!blenderSupported || !exportToBlenderEnabled}
         />
 

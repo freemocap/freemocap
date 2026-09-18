@@ -52,6 +52,24 @@ export interface TriangulationConfig {
     target_reprojection_error: number;
 }
 
+export type BlenderModelFormat = "fbx" | "bvh";
+export type ArmatureRestPose = "tpose" | "apose";
+
+/**
+ * Options forwarded to the freemocap_blender_addon's export.
+ * Field names use snake_case to match the backend JSON.
+ */
+export interface BlenderExportConfig {
+    /** Formats to write. May be empty, which skips 3D model export entirely. */
+    formats: BlenderModelFormat[];
+    /** Rest pose the armature is built in. */
+    rest_pose: ArmatureRestPose;
+    /** Run the addon's foot-locking motion cleanup before the scene is set up. */
+    apply_foot_locking: boolean;
+    /** Run the addon's hand/finger marker range-of-motion limit before the scene is set up. */
+    limit_hand_markers_range_of_motion: boolean;
+}
+
 export interface PosthocFilterConfig {
     method: "butter_low_pass";
     cutoff: number;
@@ -102,6 +120,7 @@ export interface MocapConfig {
     skeleton_filter: RealtimeFilterConfig;
     triangulation: TriangulationConfig;
     posthoc_filter: PosthocFilterConfig;
+    blender_export: BlenderExportConfig;
     detectorType: DetectorType;
     rtmPoseModelName: RTMPoseModelName;
     rtmPoseConfidenceThreshold: number;
@@ -212,6 +231,24 @@ export const DEFAULT_POSTHOC_FILTER_CONFIG: PosthocFilterConfig ={
     order: 4,
 };
 
+/** Matches the addon defaults: export formats fbx+bvh, armature built in T-pose. */
+export const DEFAULT_BLENDER_EXPORT_CONFIG: BlenderExportConfig = {
+    formats: ["fbx", "bvh"],
+    rest_pose: "tpose",
+    apply_foot_locking: false,
+    limit_hand_markers_range_of_motion: false,
+};
+
+export const BLENDER_MODEL_FORMATS: { label: string; value: BlenderModelFormat }[] = [
+    { label: "FBX", value: "fbx" },
+    { label: "BVH", value: "bvh" },
+];
+
+export const ARMATURE_REST_POSES: { label: string; value: ArmatureRestPose }[] = [
+    { label: "TPOSE", value: "tpose" },
+    { label: "APOSE", value: "apose" },
+];
+
 
  
 export interface MocapDirectoryInfo {
@@ -245,6 +282,12 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     triangulation: {...DEFAULT_TRIANGULATION_CONFIG},
     skeleton_filter: {...DEFAULT_REALTIME_FILTER_CONFIG},
     posthoc_filter: {...DEFAULT_POSTHOC_FILTER_CONFIG},
+    blender_export: {
+        formats: [...DEFAULT_BLENDER_EXPORT_CONFIG.formats],
+        rest_pose: DEFAULT_BLENDER_EXPORT_CONFIG.rest_pose,
+        apply_foot_locking: DEFAULT_BLENDER_EXPORT_CONFIG.apply_foot_locking,
+        limit_hand_markers_range_of_motion: DEFAULT_BLENDER_EXPORT_CONFIG.limit_hand_markers_range_of_motion,
+    },
 
     detectorType: "rtmpose",
     rtmPoseModelName: "rtmw-x-l_256x192",
@@ -283,6 +326,11 @@ const initialMocapConfig: MocapConfig = {
     posthoc_filter: {
         ...DEFAULT_MOCAP_CONFIG.posthoc_filter,
         ...(_persistedMocapConfig?.posthoc_filter ?? {}),
+    },
+
+    blender_export: {
+        ...DEFAULT_MOCAP_CONFIG.blender_export,
+        ...(_persistedMocapConfig?.blender_export ?? {}),
     },
 };
 
@@ -368,6 +416,10 @@ export const mocapSlice = createSlice({
 
         posthocFilterConfigUpdated: (state, action: PayloadAction<Partial<PosthocFilterConfig>>) => {
             state.config.posthoc_filter = {...state.config.posthoc_filter, ...action.payload};
+        },
+
+        blenderExportConfigUpdated: (state, action: PayloadAction<Partial<BlenderExportConfig>>) => {
+            state.config.blender_export = { ...state.config.blender_export, ...action.payload };
         },
 
         mocapProgressUpdated: (state, action: PayloadAction<number>) => {
@@ -459,6 +511,7 @@ export const selectMocapDetectorConfig = (state: RootState) => state.mocap.confi
 export const selectMocapTriangulationConfig = (state: RootState) => state.mocap.config.triangulation;
 export const selectSkeletonFilterConfig = (state: RootState) => state.mocap.config.skeleton_filter;
 export const selectPosthocFilterConfig = (state: RootState) => state.mocap.config.posthoc_filter;
+export const selectMocapBlenderExportConfig = (state: RootState) => state.mocap.config.blender_export;
 export const selectMocapDetectorType = (state: RootState) => state.mocap.config.detectorType;
 export const selectMocapRtmPoseModelName = (state: RootState) => state.mocap.config.rtmPoseModelName;
 export const selectMocapRtmPoseConfidenceThreshold = (state: RootState) => state.mocap.config.rtmPoseConfidenceThreshold;
@@ -535,6 +588,7 @@ export const {
     skeletonFilterConfigUpdated,
     triangulationConfigUpdated,
     posthocFilterConfigUpdated,
+    blenderExportConfigUpdated,
     mocapProgressUpdated,
     mocapErrorCleared,
     mocapDirectoryInfoUpdated,

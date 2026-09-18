@@ -210,8 +210,8 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
 
         <SubactionHeader text="3D Model Export" />
 
-        <div className="flex flex-row gap-1 p-1 items-center">
-          <span className="text sm">Formats:</span>
+        <div className="flex p-1 flex-row gap-1 items-center">
+          <span className="text sm">Formats</span>
           {BLENDER_MODEL_FORMATS.map((format) => (
             <Checkbox
               key={format.value}
@@ -228,7 +228,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
         <SubactionHeader text="Armature" />
 
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text sm">Rest Pose:</span>
+          <span className="text sm">Rest Pose</span>
           <NameDropdownSelector
             options={ARMATURE_REST_POSES.map((pose) => pose.label)}
             initialValue={restPoseLabel}

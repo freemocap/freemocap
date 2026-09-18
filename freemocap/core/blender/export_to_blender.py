@@ -52,12 +52,22 @@ def _addon_config_payload(blender_export_config: dict | None) -> dict:
     """
     config_in = blender_export_config or {}
     payload: dict = {}
+
     if "formats" in config_in:
         payload["export_3d_model"] = {"formats": config_in["formats"]}
     if "rest_pose" in config_in:
         payload["add_rig"] = {"rest_pose": config_in["rest_pose"]}
-    if "apply_foot_locking" in config_in:
-        payload["motion_cleanup"] = {"apply_foot_locking": config_in["apply_foot_locking"]}
+
+    # Several options can land in the same addon section, so collect them rather
+    # than assigning the section once per option.
+    motion_cleanup = {
+        key: config_in[key]
+        for key in ("apply_foot_locking", "limit_hand_markers_range_of_motion")
+        if key in config_in
+    }
+    if motion_cleanup:
+        payload["motion_cleanup"] = motion_cleanup
+
     return payload
 
 

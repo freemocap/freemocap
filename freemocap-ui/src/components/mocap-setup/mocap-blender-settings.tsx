@@ -225,14 +225,6 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           ))}
         </div>
 
-        <p className="text sm text-gray p-1 mb-3">
-          {blenderExportConfig.formats.length === 0
-            ? "No formats selected - 3D model export will be skipped."
-            : `3D model will be exported as ${blenderExportConfig.formats
-              .map((f) => f.toUpperCase())
-              .join(" and ")}.`}
-        </p>
-
         <SubactionHeader text="Armature" />
 
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
@@ -247,10 +239,23 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
         <SubactionHeader text="Motion Cleanup" />
 
         <ToggleComponent
-          text="Apply Foot Locking"
+          text="Apply Foot Locking (Experimental)"
           isToggled={blenderExportConfig.apply_foot_locking}
           onToggle={(checked) =>
             dispatch(blenderExportConfigUpdated({ apply_foot_locking: checked }))
+          }
+          disabled={!blenderSupported || !exportToBlenderEnabled}
+        />
+
+        <ToggleComponent
+          text="Limit Hand Markers Range of Motion (Experimental)"
+          isToggled={blenderExportConfig.limit_hand_markers_range_of_motion}
+          onToggle={(checked) =>
+            dispatch(
+              blenderExportConfigUpdated({
+                limit_hand_markers_range_of_motion: checked,
+              }),
+            )
           }
           disabled={!blenderSupported || !exportToBlenderEnabled}
         />

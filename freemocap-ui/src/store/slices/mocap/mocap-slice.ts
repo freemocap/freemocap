@@ -66,6 +66,8 @@ export interface BlenderExportConfig {
     rest_pose: ArmatureRestPose;
     /** Run the addon's foot-locking motion cleanup before the scene is set up. */
     apply_foot_locking: boolean;
+    /** Run the addon's hand/finger marker range-of-motion limit before the scene is set up. */
+    limit_hand_markers_range_of_motion: boolean;
 }
 
 export interface PosthocFilterConfig {
@@ -234,6 +236,7 @@ export const DEFAULT_BLENDER_EXPORT_CONFIG: BlenderExportConfig = {
     formats: ["fbx", "bvh"],
     rest_pose: "tpose",
     apply_foot_locking: false,
+    limit_hand_markers_range_of_motion: false,
 };
 
 export const BLENDER_MODEL_FORMATS: { label: string; value: BlenderModelFormat }[] = [
@@ -283,6 +286,7 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
         formats: [...DEFAULT_BLENDER_EXPORT_CONFIG.formats],
         rest_pose: DEFAULT_BLENDER_EXPORT_CONFIG.rest_pose,
         apply_foot_locking: DEFAULT_BLENDER_EXPORT_CONFIG.apply_foot_locking,
+        limit_hand_markers_range_of_motion: DEFAULT_BLENDER_EXPORT_CONFIG.limit_hand_markers_range_of_motion,
     },
 
     detectorType: "rtmpose",

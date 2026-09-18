@@ -50,3 +50,11 @@ class BlenderExportConfig(BaseModel):
             "the scene is set up. Off by default because it rewrites the marker positions."
         ),
     )
+    limit_hand_markers_range_of_motion: bool = Field(
+        default=False,
+        alias="limitHandMarkersRangeOfMotion",
+        description=(
+            "If True, run the addon's hand/finger marker range-of-motion limit before the "
+            "scene is set up. Off by default because it rewrites the marker positions."
+        ),
+    )

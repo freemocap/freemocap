@@ -9,14 +9,16 @@ from skellyforge.core.biomechanics.alignment_definition import AlignmentDefiniti
 from skellyforge.core.biomechanics.reference_alignment import (
     ReferenceAlignmentOutcome, ReferenceAlignmentRequest, ReferenceAlignmentResult, estimate_reference_alignment,
 )
-from skellyforge.core.math.geometry.spatial_vectors import Displacement, Point
-from skellyforge.core.math.geometry.transform_math import Transform
+from skellyforge.core.math.geometry.spatial_vectors import Point
 
 from freemocap.core.reconstruction.alignment_evidence import AlignmentEvidence, AlignmentEvidenceRequest
 from freemocap.core.reconstruction.coordinate_conventions import RECONSTRUCTION_TO_CALIBRATION
 from freemocap.core.reconstruction.posthoc_reconstruction import RecordingTriangulation
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_transform import (
+    CalibrationTransform, CalibrationTransformType,
+)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -35,6 +37,8 @@ class AlignedMocapRecording:
     triangulation: RecordingTriangulation
     camera_geometry: dict[str, CameraModel]
     alignment: ReferenceAlignmentResult
+    transformations: tuple[CalibrationTransform, ...]
+    """New operations applied by this run, in order; never loaded calibration history."""
 
 
 def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapRecording:
@@ -68,29 +72,38 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
         enabled=request.config.enabled, has_explicit_ground=request.has_explicit_ground,
         body_tracks=body_tracks, foot_contacts=foot_contacts, body_config=request.config.body, ground_config=request.config.ground,
     ))
-    if request.config.additional_transform is None and alignment.outcome not in (
+    transformations: list[CalibrationTransform] = []
+    if alignment.outcome in (
         ReferenceAlignmentOutcome.BODY_REFERENCE, ReferenceAlignmentOutcome.FOOT_SUPPORT
     ):
+        transformations.append(CalibrationTransform.from_transform(
+            operation=CalibrationTransformType.PERSON,
+            transform=alignment.transform,
+        ))
+    if request.config.additional_transform is not None:
+        transformations.append(CalibrationTransform.from_transform(
+            operation=CalibrationTransformType.MANUAL,
+            transform=request.config.additional_transform.to_transform(),
+        ))
+    if not transformations:
         return AlignedMocapRecording(
             triangulation=request.triangulation, camera_geometry=request.camera_geometry, alignment=alignment,
+            transformations=(),
         )
-    transform = alignment.transform
-    if request.config.additional_transform is not None:
-        offset = request.config.additional_transform.to_transform()
-        # One frozen scene transform: custom offset after the resolved base alignment.
-        transform = Transform(
-            rotation=offset.rotation * transform.rotation,
-            translation=Displacement.from_prevalidated_array(
-                array=offset.rotation.rotate_vector(vector=transform.translation.array) + offset.translation.array,
-            ),
-        )
-    calibration_transform = Transform(
-        rotation=RECONSTRUCTION_TO_CALIBRATION.convert_quaternion(quaternion=transform.rotation),
-        translation=RECONSTRUCTION_TO_CALIBRATION.convert_displacement(displacement=transform.translation),
-    )
-    points = transform.apply(points=Point.from_prevalidated_array(array=request.triangulation.reconstruction.points_3d)).array
+    points = request.triangulation.reconstruction.points_3d
+    camera_geometry = request.camera_geometry
+    for entry in transformations:
+        points = entry.to_transform().apply(
+            points=Point.from_prevalidated_array(array=points),
+        ).array
+        camera_geometry = dict(zip(
+            camera_geometry,
+            entry.apply_to_cameras(cameras=list(camera_geometry.values())),
+            strict=True,
+        ))
     return AlignedMocapRecording(
         triangulation=replace(request.triangulation, reconstruction=replace(request.triangulation.reconstruction, points_3d=points)),
-        camera_geometry={source: camera.in_world_frame(transform=calibration_transform) for source, camera in request.camera_geometry.items()},
+        camera_geometry=camera_geometry,
         alignment=alignment,
+        transformations=tuple(transformations),
     )

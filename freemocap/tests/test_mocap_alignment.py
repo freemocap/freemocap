@@ -16,6 +16,7 @@ from freemocap.core.recording.sample_encoding.spatial_points import ReferenceAli
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_transform import CalibrationTransformType
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
 from freemocap.tests.test_alignment_evidence import head_request
 from skellyforge.core.biomechanics.reference_alignment import ReferenceAlignmentOutcome
@@ -44,6 +45,9 @@ def test_body_alignment_preserves_projection_and_roundtrips_description() -> Non
     request = alignment_request()
     result = align_mocap_recording(request=request)
     assert result.alignment.outcome is ReferenceAlignmentOutcome.BODY_REFERENCE
+    assert tuple(entry.operation for entry in result.transformations) == (
+        CalibrationTransformType.PERSON,
+    )
     basis = RECONSTRUCTION_TO_CALIBRATION.matrix
     original = request.triangulation.reconstruction.points_3d @ basis.T
     aligned = result.triangulation.reconstruction.points_3d @ basis.T
@@ -61,12 +65,15 @@ def test_disabled_or_explicit_ground_preserves_objects(explicit: bool) -> None:
     result = align_mocap_recording(request=request)
     assert result.camera_geometry is request.camera_geometry
     assert result.triangulation is request.triangulation
+    assert result.transformations == ()
 
 
 def test_bad_reprojection_cannot_anchor_the_scene() -> None:
     request = alignment_request()
     request.triangulation.reconstruction.reprojection_error[:] = 1000.0
-    assert align_mocap_recording(request=request).alignment.outcome is ReferenceAlignmentOutcome.INSUFFICIENT_EVIDENCE
+    result = align_mocap_recording(request=request)
+    assert result.alignment.outcome is ReferenceAlignmentOutcome.INSUFFICIENT_EVIDENCE
+    assert result.transformations == ()
 
 
 def test_posthoc_api_alignment_option_roundtrip() -> None:
@@ -90,6 +97,11 @@ def test_custom_offset_follows_alignment_and_preserves_camera_projection(enabled
     np.testing.assert_allclose(result.triangulation.reconstruction.points_3d,
         base.triangulation.reconstruction.points_3d @ matrix[:3, :3].T + matrix[:3, 3], atol=1e-8)
     assert result.alignment.outcome == base.alignment.outcome
+    expected_operations = (
+        (CalibrationTransformType.PERSON, CalibrationTransformType.MANUAL)
+        if enabled and not explicit else (CalibrationTransformType.MANUAL,)
+    )
+    assert tuple(entry.operation for entry in result.transformations) == expected_operations
     basis = RECONSTRUCTION_TO_CALIBRATION.matrix
     original = request.triangulation.reconstruction.points_3d @ basis.T
     transformed_points = result.triangulation.reconstruction.points_3d @ basis.T
@@ -124,3 +136,51 @@ def test_custom_offset_requires_metric_geometry() -> None:
     with pytest.raises(ValueError, match="single-camera output is in pixels"):
         align_mocap_recording(request=replace(request, config=config,
             triangulation=replace(request.triangulation, sources=("first",))))
+
+
+def test_person_and_manual_operations_save_the_same_camera_geometry(tmp_path) -> None:
+    from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
+    from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+    from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+    from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+    from freemocap.core.tasks.calibration.shared.groundplane_alignment import CalibrationAlignmentMethod
+
+    request = alignment_request()
+    request = replace(request, config=MocapAlignmentConfig(
+        additional_transform=ReferenceTransform(
+            matrix=(0., -1., 0., 125., 1., 0., 0., -80., 0., 0., 1., 42., 0., 0., 0., 1.),
+        ),
+    ))
+    path = tmp_path / "calibration.toml"
+    source = CalibrationResult(
+        cameras=list(request.camera_geometry.values()),
+        board=CharucoBoardDefinition(squares_x=5, squares_y=3, square_length_mm=50),
+        reprojection_error_px=0., initial_cost=0., final_cost=0.,
+        n_iterations=0, solver_time_seconds=0.,
+        n_observations_used=0, n_observations_rejected=0,
+    )
+    source.save_toml(path)
+    original = path.read_bytes()
+    loaded = LoadedCalibration.from_path(path)
+    aligned = align_mocap_recording(request=request)
+    assert path.read_bytes() == original
+    assert aligned.alignment.outcome is ReferenceAlignmentOutcome.BODY_REFERENCE
+
+    saved = CalibrationUpdateRequest(
+        path=path, expected_mtime_ms=loaded.mtime_ms,
+        transformations=aligned.transformations,
+        recording_id="person-alignment-test",
+    ).save()
+    assert saved.metadata.aligned
+    assert saved.metadata.alignment_method is CalibrationAlignmentMethod.PERSON
+    assert saved.metadata.alignment_recording_id == "person-alignment-test"
+    assert saved.metadata.transformation_history == list(aligned.transformations)
+    reloaded = CalibrationResult.load_toml(path)
+    for camera in reloaded.cameras:
+        expected = aligned.camera_geometry[camera.id]
+        np.testing.assert_allclose(
+            camera.extrinsics.rotation_matrix, expected.extrinsics.rotation_matrix, atol=1e-8,
+        )
+        np.testing.assert_allclose(
+            camera.extrinsics.translation, expected.extrinsics.translation, atol=1e-8,
+        )

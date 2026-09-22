@@ -13,7 +13,7 @@ plan_generated: "2026-09-10"
 
 The [ownership and streaming review](architecture-review.md) is ready for a focused
 content review. Its companion communication reference is grounded in named source
-files. The endpoint-wide idempotence audit and broader SDK documentation remain pending.
+files. The processing output-policy audit and broader SDK documentation remain pending.
 
 ## Scope
 
@@ -23,16 +23,21 @@ that existing implementation already follows the intended architecture.
 
 ## Agreed direction
 
-- The server owns execution and authoritative observations of devices and files.
+- Scope: one desktop user, one server, one client with independent lifetimes.
+- The server owns long-lived camera groups, realtime pipelines, posthoc workers,
+  execution, and authoritative observations of devices and files.
 - Client state is disposable. Interpreting a server message must not depend on
   a previous message or the HTTP request that started the operation.
-- HTTP commands express intended state with defined retry semantics.
-- Stream messages describe their own scope. The UI creates or updates the
+- HTTP commands express intent. Processing defaults to overwrite; append run is
+  explicit. Strict idempotence is not required for every operation.
+- Stream messages are fully self-describing for their declared scope. The UI creates or updates the
   appropriate representation from their contents.
 - Newer authoritative observations replace cached server state. Local drafts
   and presentation choices remain client concerns.
-- Dismissing a completed task removes it. Self-description does not require
-  a historical task registry or saved client dismissal lists.
+- The client can discard views locally; fresh messages can recreate them. The server
+  does not need completed-task history, and the client does not need saved dismissal IDs.
+- No cross-restart command recovery or notification replay is promised. A disconnected
+  client can retain its last display until fresh observations arrive.
 
 These are architectural goals. An implementation audit must separately record
 where the current code agrees or differs.
@@ -41,9 +46,9 @@ where the current code agrees or differs.
 
 | Topic | Question to resolve |
 | --- | --- |
-| Retry identity | How do retries differ from intentional reruns, and how long is deduplication valid? |
-| Reconnection | How are current membership, removal, server sessions, and revisions represented? |
-| Task completion | What happens when a client disconnects before completion? |
+| Processing outputs | Does UI-to-disk behavior implement default overwrite and explicit append run? |
+| Fresh observations | Can each message be interpreted alone after either side restarts? |
+| Task completion | Where should completed-history replay be removed while keeping active worker ownership? |
 | SDK scope | Which Python APIs, HTTP routes, stream contracts, and saved formats are public? |
 | Ownership | Which contracts belong to FreeMoCap and which belong to a Skelly package? |
 
@@ -53,8 +58,8 @@ where the current code agrees or differs.
    preserve archives, and show lifecycle/provenance headers.
 2. **Reconcile pages.** Use the disposition register. Record source paths,
    evidence, unresolved claims, and audit dates for each reviewed page.
-3. **Write architecture decisions.** Establish ownership, lifetimes, retry
-   semantics, message scope, and restart behavior with concrete examples.
+3. **Write architecture decisions.** Establish ownership, independent lifetimes, command
+   intent, and fully self-describing message scope with concrete examples.
 4. **Rebuild reference docs.** Consolidate verified content into architecture,
    workflow guides, and explicitly scoped SDK reference. Archive displaced notes.
 5. **Audit implementation.** Trace request → controller → processing → publication

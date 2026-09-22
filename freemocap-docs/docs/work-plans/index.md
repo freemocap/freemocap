@@ -14,6 +14,7 @@ investigations, proposals, checkpoints, and unresolved questions. Inclusion here
 does not promise implementation or establish an SDK contract.
 
 - **Ready for content review:** [Architecture review: ownership and streaming](architecture-review.md).
+- **Source-audit follow-up:** [Processing outputs and object ownership](processing-ownership-audit.md).
 - **Transition plan:** [Documentation transition](documentation-transition.md).
 - **Page inventory:** [Disposition register](disposition.md).
 - **History:** use **Archive — historical work** in the sidebar. Archived pages

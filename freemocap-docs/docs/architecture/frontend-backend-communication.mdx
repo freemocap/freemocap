@@ -67,6 +67,9 @@ not an endorsement of the intended error contract.
 
 ## Server responsibilities
 
+`FreemocapApplication` holds the camera-group, realtime-pipeline, and posthoc-pipeline
+managers. These server-owned objects outlive individual client views and connections.
+
 `WebsocketServer.run` starts connection-owned tasks for the live relay, logs,
 inbound messages, application state, and posthoc progress. They share a serialized
 writer. When a task ends, the runner cancels and awaits its remaining tasks.
@@ -128,6 +131,7 @@ external branch link.
 | `freemocap-ui/src/services/server/task-progress.ts` | `applyTaskSnapshot` |
 | `freemocap-ui/src/store/slices/pipelines/pipelines-slice.ts` | `taskSnapshotReceived`, dismissal reducers, initial storage read |
 | `freemocap-ui/src/store/persistence-listener.ts` | Dismissal persistence |
+| `freemocap/app/freemocap_application.py` | Manager fields, `create`, `create_or_update_realtime_pipeline` |
 | `freemocap/app/app.py` | `collect_task_progress`, `app_lifespan` |
 | `freemocap/api/websocket/websocket_server.py` | `run`, `_app_state_sender`, `_posthoc_progress_sender` |
 | `freemocap/api/websocket/send_serializer.py` | Serialized WebSocket writer |

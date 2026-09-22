@@ -9,7 +9,7 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 # Pub/Sub System
 
-The pub/sub system is a process-safe topic-based message bus that decouples communication between pipeline nodes running in separate child processes. It's similar in spirit to ROS 2 topics, but custom-built for FreeMoCap's specific needs.
+The pub/sub system is a process-safe topic-based message bus that decouples communication between pipeline nodes running in separate child processes. Its message-delivery functionality was deliberately designed to mimic ROS topics. The project maintainer confirmed this design history on 2026-09-10. This influence is specific to PubSub delivery; it does not imply adoption of the rest of ROS's architecture.
 
 ## Why Pub/Sub?
 

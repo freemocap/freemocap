@@ -4,6 +4,7 @@ import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
 import type {RecordingStatusSummary} from '@/types/recording-status';
 import type {LoadedCalibration} from '@/store/slices/calibration/calibration-slice';
+import {LoadedCalibrationSchema} from '@/store/slices/calibration/calibration-types';
 
 // ---------------------------------------------------------------------------
 // Types matching the backend RecordingBundle response
@@ -121,7 +122,7 @@ export const fetchPlaybackBundle = createAsyncThunk<
                     preferredSource: data.videos.preferred_source,
                     sources,
                 },
-                calibration: data.calibration ?? null,
+                calibration: LoadedCalibrationSchema.nullable().parse(data.calibration ?? null),
                 trackerSchema: data.tracker_schema,
                 statusSummary: data.status_summary,
             };

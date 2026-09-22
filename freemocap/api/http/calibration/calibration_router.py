@@ -13,6 +13,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration, get_last_successful_calibration_toml_path
+from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 from freemocap.pubsub.pubsub_topics import (
     CalibrationRecordingStateMessage,
     CalibrationRecordingStateTopic,
@@ -28,10 +29,29 @@ class CalibrationFileOptions(BaseModel):
     recording_path: str | None
 
 
+def _load_calibration(path: Path) -> LoadedCalibration:
+    try:
+        return LoadedCalibration.from_path(path)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Calibration file not found") from error
+    except (OSError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
 @calibration_router.get("/most-recent")
-def most_recent_calibration_path() -> str | None:
+def most_recent_calibration() -> LoadedCalibration | None:
     path = get_last_successful_calibration_toml_path()
-    return str(path) if path.is_file() else None
+    try:
+        return LoadedCalibration.from_path(path)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@calibration_router.get("/content")
+def calibration_content(path: Path) -> LoadedCalibration:
+    return _load_calibration(path)
 
 
 @calibration_router.get("/files")

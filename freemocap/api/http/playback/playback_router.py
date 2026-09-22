@@ -25,7 +25,7 @@ from freemocap.core.playback.media_selection import (
 )
 from typing import Any, Optional
 
-import tomllib
+from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from skellycam.core.recorders.videos.video_file_metadata import VideoFileMetadata, probe_video_files
@@ -172,7 +172,7 @@ class RecordingBundle(BaseModel):
     total_frames: Optional[int] = None
     duration_seconds: Optional[float] = None
     videos: VideoSourcesResponse
-    calibration: Optional[dict[str, Any]] = None
+    calibration: LoadedCalibration | None = None
     tracker_schema: dict[str, Any] | None
     status_summary: RecordingStatusSummary | None
 
@@ -681,8 +681,8 @@ def get_recording_calibration(
         default=None,
         description="Override the default recordings directory",
     ),
-) -> dict[str, Any]:
-    """Parse the recording's calibration TOML and return camera pose data.
+) -> LoadedCalibration:
+    """Load the recording's calibration through the shared validated model.
 
     Returns JSON matching the frontend LoadedCalibration shape:
       { path, mtimeMs, cameras: [...], metadata }
@@ -697,37 +697,11 @@ def get_recording_calibration(
         )
 
     try:
-        raw = toml_path.read_text(encoding="utf-8")
-        parsed = tomllib.loads(raw)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to parse calibration TOML: {e}")
-
-    mtime_ms = toml_path.stat().st_mtime * 1000
-
-    cameras = []
-    for key, val in parsed.items():
-        if key == "metadata" or not isinstance(val, dict):
-            continue
-        if "world_position" not in val or "world_orientation" not in val:
-            continue
-        cameras.append({
-            "id": key,
-            "name": str(val.get("name", key)),
-            "size": val.get("size"),
-            "matrix": val.get("matrix"),
-            "distortions": val.get("distortions"),
-            "rotation": val.get("rotation"),
-            "translation": val.get("translation"),
-            "world_orientation": val["world_orientation"],
-            "world_position": val["world_position"],
-        })
-
-    return {
-        "path": str(toml_path),
-        "mtimeMs": mtime_ms,
-        "cameras": cameras,
-        "metadata": parsed.get("metadata", None),
-    }
+        return LoadedCalibration.from_path(toml_path)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Calibration file not found") from error
+    except (OSError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @playback_router.get(

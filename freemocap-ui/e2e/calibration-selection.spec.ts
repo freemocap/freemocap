@@ -1,6 +1,7 @@
 import {test, expect} from '@playwright/test';
 import {build} from 'esbuild';
 import path from 'node:path';
+import {calibrationFixture} from './fixtures/calibration';
 
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
@@ -8,7 +9,9 @@ test('displayed calibration owns recording and live requests, including clearing
     page.on('pageerror', error => {throw error;});
     const requests: {mocapTaskConfig?: {calibrationTomlPath: string | null}; realtimeConfig?: {aggregator_config: {calibration_toml_path: string | null}}}[] = [];
     await page.route('http://localhost:53117/**', async route => {
-        requests.push(route.request().postDataJSON());
+        if (route.request().method() === 'POST') {
+            requests.push(route.request().postDataJSON());
+        }
         await route.fulfill({json: {success: true, camera_group_id: 'cameras', pipeline_id: 'live'}});
     });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<output id="result"></output>'}));
@@ -16,6 +19,7 @@ test('displayed calibration owns recording and live requests, including clearing
     const bundle = await build({
         stdin: {contents: `
             import {store} from './src/store/store';
+            import {calibrationFixture} from './e2e/fixtures/calibration';
             import {calibrationLoadedFromBundle, loadCalibrationToml, loadCalibrationForRecording} from './src/store/slices/calibration';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {startMocapRecording, stopMocapRecording, processMocapRecording} from './src/store/slices/mocap/mocap-thunks';
@@ -30,7 +34,7 @@ test('displayed calibration owns recording and live requests, including clearing
                 });
             }
             async function run(): Promise<void> {
-                const selected = {path: 'C:/selected.toml', cameras: [], metadata: null, mtimeMs: 1};
+                const selected = calibrationFixture('C:/selected.toml');
                 store.dispatch(calibrationLoadedFromBundle(selected));
                 store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
                 for (const thunk of [startMocapRecording, stopMocapRecording, processMocapRecording]) await store.dispatch(thunk()).unwrap();
@@ -76,7 +80,11 @@ test('opening calibration options and automatic discovery preserve the selected 
     await page.route('http://localhost:53117/**', route => route.fulfill({json: {
         recording_path: 'C:/folder.toml',
     }}));
-    await page.route('**/calibration/most-recent', route => route.fulfill({json: 'C:/recent.toml'}));
+    await page.route('**/calibration/content?*', route => {
+        const selectedPath = new URL(route.request().url()).searchParams.get('path');
+        expect(selectedPath).toBe('C:/folder.toml');
+        return route.fulfill({json: calibrationFixture(selectedPath!)});
+    });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<div id="root"></div>'}));
     await page.goto('http://localhost:53117/');
     const bundle = await build({
@@ -89,7 +97,10 @@ test('opening calibration options and automatic discovery preserve the selected 
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {RecordingCalibrationOptions} from './src/components/mocap-setup/RecordingCalibrationOptions';
             import {useCalibrationTomlLoader} from './src/components/viewport3d/hooks/useCalibrationTomlLoader';
-            store.dispatch(calibrationLoadedFromBundle({path: 'C:/selected.toml', cameras: [], metadata: null, mtimeMs: 1}));
+            import {calibrationFixture} from './e2e/fixtures/calibration';
+            import {electronIpc} from './src/services/electron-ipc/electron-ipc';
+            if (electronIpc !== null) throw new Error('This test must run without Electron');
+            store.dispatch(calibrationLoadedFromBundle(calibrationFixture('C:/selected.toml')));
             store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
             function Harness() {
                 const [open, setOpen] = useState(true);
@@ -103,17 +114,12 @@ test('opening calibration options and automatic discovery preserve the selected 
         `, resolveDir: path.resolve('.'), loader: 'tsx'},
         bundle: true, write: false, outdir: 'calibration-options-test-bundle', format: 'esm', jsx: 'automatic',
         loader: {'.yaml': 'text'}, alias: {'@': path.resolve('src')},
-        plugins: [{name: 'desktop-calibration-reader', setup(builder) {
-            builder.onLoad({filter: /electron-ipc\.ts$/}, () => ({contents: `
-                export const electronIpc = {fileSystem: {readCalibrationToml: {query: async ({path}: {path: string}) => ({path, cameras: [], metadata: null, mtimeMs: 1})}}};
-            `, loader: 'ts'}));
-        }}],
     });
     for (const file of bundle.outputFiles) {
         if (file.path.endsWith('.css')) await page.addStyleTag({content: file.text});
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
-    const folderButton = page.getByRole('button', {name: "Use this recording's calibration"});
+    const folderButton = page.getByRole('button', {name: 'Use recording calibration', exact: true});
     await expect(folderButton).toBeEnabled();
     await expect(page.getByLabel('Selected calibration')).toHaveText('C:/selected.toml');
     await page.getByRole('button', {name: 'Toggle options'}).click();
@@ -122,6 +128,4 @@ test('opening calibration options and automatic discovery preserve the selected 
     await expect(page.getByLabel('Selected calibration')).toHaveText('C:/selected.toml');
     await folderButton.click();
     await expect(page.getByLabel('Selected calibration')).toHaveText('C:/folder.toml');
-    await page.getByRole('button', {name: 'Use most recent calibration'}).click();
-    await expect(page.getByLabel('Selected calibration')).toHaveText('C:/recent.toml');
 });

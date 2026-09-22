@@ -904,6 +904,23 @@
 
 }
 
+a.server-api-link {
+  width: fit-content;
+  max-width: 100%;
+  color: var(--blue-300);
+}
+
+.server-api-url {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.server-api-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
 .playback-settings-popup {
 
   min-width: 182px;

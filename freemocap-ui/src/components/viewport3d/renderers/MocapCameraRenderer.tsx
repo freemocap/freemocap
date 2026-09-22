@@ -37,9 +37,9 @@ function computePose(cam: CalibrationCameraData): CameraPose | null {
     const m4 = new Matrix4().setFromMatrix3(m3);
     const quaternion = new Quaternion().setFromRotationMatrix(m4);
 
-    const fx = cam.matrix?.[0]?.[0] ?? 1;
-    const fy = cam.matrix?.[1]?.[1] ?? fx;
-    const [w, h] = cam.size ?? [1280, 720];
+    const fx = cam.intrinsics.fx;
+    const fy = cam.intrinsics.fy;
+    const [w, h] = cam.image_size;
     const halfW = FRUSTUM_DEPTH_MM * (w / (2 * fx));
     const halfH = FRUSTUM_DEPTH_MM * (h / (2 * fy));
 

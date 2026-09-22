@@ -28,6 +28,63 @@ from freemocap.core.tasks.calibration.shared.groundplane_alignment import (
 
 
 class CalibrationMetadataTests(TestCase):
+    def test_http_loading_uses_shared_content_and_reports_file_errors(self) -> None:
+        from unittest.mock import patch
+
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from freemocap.api.http.calibration import calibration_router as calibration_api
+        from freemocap.api.http.playback.playback_router import playback_router
+        from freemocap.core.recording.recording_access import RecordingAccess
+        from freemocap.core.tasks.calibration.shared.calibration_paths import create_camera_calibration_file_name
+        from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+
+        app = FastAPI()
+        app.state.recording_access = RecordingAccess()
+        app.include_router(calibration_api.calibration_router)
+        app.include_router(playback_router)
+        with TemporaryDirectory() as directory:
+            recording = Path(directory) / "sample"
+            recording.mkdir()
+            path = recording / create_camera_calibration_file_name(recording.name)
+            source = self.make_result()
+            source.groundplane_aligned = True
+            source.save_toml(path)
+            expected = LoadedCalibration.from_path(path).model_dump(mode="json", by_alias=True)
+
+            with patch.object(calibration_api, "get_last_successful_calibration_toml_path", return_value=path):
+                with TestClient(app) as client:
+                    requests = [
+                        ("/calibration/most-recent", {}),
+                        ("/calibration/content", {"path": str(path)}),
+                        ("/playback/sample/calibration", {"recording_parent_directory": directory}),
+                    ]
+                    for endpoint, params in requests:
+                        with self.subTest(endpoint=endpoint):
+                            response = client.get(endpoint, params=params)
+                            self.assertEqual(response.status_code, 200, response.text)
+                            self.assertEqual(response.json(), expected)
+                            self.assertTrue(response.json()["metadata"]["groundplane_applied"])
+                            self.assertIsNone(response.json()["metadata"]["groundplane_method"])
+                            self.assertEqual(len(response.json()["cameras"]), 1)
+
+                    for invalid_content in (b"invalid = [", b"\xff"):
+                        path.write_bytes(invalid_content)
+                        for endpoint, params in requests:
+                            with self.subTest(endpoint=endpoint, invalid_content=invalid_content):
+                                response = client.get(endpoint, params=params)
+                                self.assertEqual(response.status_code, 422, response.text)
+
+                    path.unlink()
+                    response = client.get("/calibration/most-recent")
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIsNone(response.json())
+                    for endpoint, params in requests[1:]:
+                        with self.subTest(missing=endpoint):
+                            response = client.get(endpoint, params=params)
+                            self.assertEqual(response.status_code, 404, response.text)
+
     def make_result(self) -> CalibrationResult:
         return CalibrationResult(
             cameras=[CameraModel(

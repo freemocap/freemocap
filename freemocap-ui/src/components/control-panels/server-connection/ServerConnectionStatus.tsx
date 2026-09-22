@@ -21,7 +21,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
         serverRunning, serverLoading, currentExePath,
         candidates, candidatesLoading, processInfo, error,
         selectedExePath, setSelectedExePath,
-        hostDraft, setHostDraft, portDraft, setPortDraft,
+        serverHost, serverPort, hostDraft, setHostDraft, portDraft, setPortDraft,
         startServer, stopServer, resetServer,
         refreshCandidates, browseForExecutable,
         handleToggleAutoLaunch, handleToggleAutoConnectWs,
@@ -30,6 +30,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     } = panel;
 
     const serverPid = useAppSelector(selectServerPid);
+    const serverApiUrl = `http://${serverHost}:${serverPort}/docs`;
 
 
     const wsState = isConnected ? STATES.CONNECTED : isFailed ? STATES.DISCONNECTED : autoConnectWs ? STATES.CONNECTING : STATES.DISCONNECTED;
@@ -253,6 +254,19 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                             disabled={isConnected}
                                         />
                                     </div>
+                                </div>
+                                <div className="server-api-access flex flex-col gap-1 p-1">
+                                    <span className="text sm text-gray">Server API</span>
+                                    <a
+                                        className="server-api-link text sm flex items-center gap-1"
+                                        href={serverApiUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Open interactive API documentation in your browser"
+                                    >
+                                        <span className="server-api-url">{serverApiUrl}</span>
+                                        <span className="externallink-icon icon icon-size-20 flex-shrink-0" aria-hidden="true" />
+                                    </a>
                                 </div>
                             </div>
                         </>

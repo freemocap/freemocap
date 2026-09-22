@@ -1,6 +1,7 @@
 import {test, expect} from '@playwright/test';
 import {build} from 'esbuild';
 import path from 'node:path';
+import {calibrationFixture} from './fixtures/calibration';
 
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
@@ -21,7 +22,12 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
     });
     await page.route('http://localhost:53117/freemocap/calibration/most-recent', route => {
         discoveries += 1;
-        return route.fulfill({json: manualSelection ? 'C:/replacement.toml' : 'C:/latest.toml'});
+        return route.fulfill({json: calibrationFixture(manualSelection ? 'C:/replacement.toml' : 'C:/latest.toml')});
+    });
+    await page.route('**/calibration/content?*', route => {
+        const selectedPath = new URL(route.request().url()).searchParams.get('path');
+        expect(selectedPath).toBeTruthy();
+        return route.fulfill({json: calibrationFixture(selectedPath!)});
     });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<div id="root"></div>'}));
     await page.goto('http://localhost:53117/');
@@ -35,13 +41,17 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
             import {loadMostRecentCalibration} from './src/store/slices/calibration';
             import {useCalibrationTomlLoader} from './src/components/viewport3d/hooks/useCalibrationTomlLoader';
             import DropdownButton from './src/components/ui-components/DropdownButton';
+            import {electronIpc} from './src/services/electron-ipc/electron-ipc';
+            if (electronIpc !== null) throw new Error('This test must run without Electron');
             store.dispatch(wsConnectionChanged(true));
             store.dispatch({type: 'realtime/apply/fulfilled', payload: {camera_group_id: 'cameras', pipeline_id: 'live'},
                 meta: {arg: store.getState().realtime.pipelineConfig}});
             function Harness() {
                 useCalibrationTomlLoader(true);
                 const path = useAppSelector(state => state.calibration.loadedCalibration?.path ?? 'none');
+                const cameras = useAppSelector(state => state.calibration.loadedCalibration?.cameras.length ?? 0);
                 return <><output aria-label="Calibration">{path}</output>
+                    <output aria-label="Camera count">{cameras}</output>
                     <DropdownButton buttonProps={{text: 'Set up calibration', rightSideIcon: 'dropdown'}}
                         dropdownItems={<button onClick={() => store.dispatch(loadMostRecentCalibration())}>Load most recent calibration TOML (default)</button>}/>
                 </>;
@@ -50,17 +60,13 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
         `, resolveDir: path.resolve('.'), loader: 'tsx'},
         bundle: true, write: false, outdir: 'calibration-default-test-bundle', format: 'esm', jsx: 'automatic',
         loader: {'.yaml': 'text'}, alias: {'@': path.resolve('src')},
-        plugins: [{name: 'desktop-calibration-reader', setup(builder) {
-            builder.onLoad({filter: /electron-ipc\.ts$/}, () => ({contents: `
-                export const electronIpc = {fileSystem: {readCalibrationToml: {query: async ({path}: {path: string}) => ({path, cameras: [], metadata: null, mtimeMs: 1})}}};
-            `, loader: 'ts'}));
-        }}],
     });
     for (const file of bundle.outputFiles) {
         if (file.path.endsWith('.css')) await page.addStyleTag({content: file.text});
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.getByLabel('Calibration', {exact: true})).toHaveText(startupPath);
+    await expect(page.getByLabel('Camera count')).toHaveText(runningPath === null ? '0' : '1');
     expect(discoveries).toBe(runningPath === undefined ? 1 : 0);
     expect(livePaths).toEqual([]);
     await page.reload();
@@ -77,6 +83,7 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
     manualSelection = true;
     await page.getByRole('button', {name: 'Load most recent calibration TOML (default)', exact: true}).click();
     await expect(page.getByLabel('Calibration', {exact: true})).toHaveText('C:/replacement.toml');
+    await expect(page.getByLabel('Camera count')).toHaveText('1');
     expect(discoveries).toBe(runningPath === undefined ? 3 : 1);
     await expect.poll(() => livePaths).toEqual(['C:/replacement.toml']);
 });

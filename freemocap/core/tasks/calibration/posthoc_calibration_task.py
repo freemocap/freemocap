@@ -134,21 +134,15 @@ def _save_result(
         ground_plane: GroundPlaneResult | None = None,
 ) -> Path:
     """Save CalibrationResult to all standard locations via anipose-compatible TOML."""
-    metadata: dict = {
-        "solver_method": solver_method.value,
-        "recording_info": recording_info.model_dump(),
-    }
-    if ground_plane is not None:
-        groundplane_metadata = {
-            "groundplane_applied": True,
-            "groundplane_method": ground_plane.method,
-            "groundplane_recording_id": recording_info.recording_name,
-            "groundplane_result": ground_plane.to_dict()
-        }
-        metadata.update(groundplane_metadata)
+    result = result.model_copy(deep=True)
+    result.solver_method = solver_method
+    result.recording_info = recording_info
+    result.groundplane_method = ground_plane.method if ground_plane is not None else None
+    result.groundplane_recording_id = recording_info.recording_name if ground_plane is not None else None
+    result.groundplane_result = ground_plane
 
     recording_toml = save_calibration_copies(
-        save_fn=lambda path: result.dump_anipose_toml(path=path, metadata=metadata),
+        save_fn=result.dump_anipose_toml,
         recording_name=recording_info.recording_name,
         recording_folder_path=recording_info.full_recording_path,
     )

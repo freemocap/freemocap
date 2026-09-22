@@ -5,23 +5,25 @@ Provides GroundPlaneResult, the output of ground plane estimation.
 Used by both charuco-based and feet-based ground plane estimation.
 """
 
-from dataclasses import dataclass
+from enum import Enum
 
-import numpy as np
-from numpy.typing import NDArray
+from pydantic import BaseModel, ConfigDict, FiniteFloat
 
 
-@dataclass
-class GroundPlaneResult:
+class CalibrationAlignmentMethod(str, Enum):
+    CHARUCO = "charuco"
+    PERSON = "person"
+
+
+class GroundPlaneResult(BaseModel):
     """Result of ground plane estimation from any method."""
 
-    origin: NDArray[np.float64]  # (3,) world origin position
-    rotation_matrix: NDArray[np.float64]  # (3,3) [x_hat | y_hat | z_hat]
-    method: str  # "charuco" or "feet"
+    model_config = ConfigDict(extra="forbid")
 
-    def to_dict(self) -> dict:
-        return {
-            "origin": list(self.origin),
-            "rotation_matrix": list(self.rotation_matrix),
-            "method": self.method,
-        }
+    origin: tuple[FiniteFloat, FiniteFloat, FiniteFloat]
+    rotation_matrix: tuple[
+        tuple[FiniteFloat, FiniteFloat, FiniteFloat],
+        tuple[FiniteFloat, FiniteFloat, FiniteFloat],
+        tuple[FiniteFloat, FiniteFloat, FiniteFloat],
+    ]
+    method: CalibrationAlignmentMethod

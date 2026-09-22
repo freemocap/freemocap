@@ -18,7 +18,10 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_s
     stack_translations,
 )
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
+from freemocap.core.tasks.calibration.shared.groundplane_alignment import (
+    CalibrationAlignmentMethod,
+    GroundPlaneResult,
+)
 from freemocap.core.tasks.calibration.shared.groundplane_math import (
     CharucoGeometryError,
     CharucoStabilityError,
@@ -122,7 +125,7 @@ def set_charuco_board_as_groundplane(
     ground_plane_result = GroundPlaneResult(
         origin=charuco_origin_in_world,
         rotation_matrix=rmat_charuco_to_world,
-        method="charuco",
+        method=CalibrationAlignmentMethod.CHARUCO,
     )
 
     rvecs_new, tvecs_new = _adjust_world_reference_frame_to_charuco(

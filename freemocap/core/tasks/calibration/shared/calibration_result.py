@@ -7,12 +7,13 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoard
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from freemocap.utilities.toml_mixin import TomlMixin, numpy_to_python
-from pydantic import BaseModel, ConfigDict
+from freemocap.utilities.toml_mixin import TomlMixin
+from pydantic import ConfigDict
+from freemocap.core.tasks.calibration.shared.calibration_metadata import CalibrationMetadata
 from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 
 
-class CalibrationResult(BaseModel, TomlMixin):
+class CalibrationResult(CalibrationMetadata, TomlMixin):
     """Output of calibration.
 
     Serializes to/from the anipose-compatible TOML format. Triangulator
@@ -22,15 +23,12 @@ class CalibrationResult(BaseModel, TomlMixin):
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     cameras: list[CameraModel]
-    board: CharucoBoardDefinition
-    reprojection_error_px: float
-    initial_cost: float
-    final_cost: float
-    n_iterations: int
-    time_seconds: float
-    n_observations_used: int
-    n_observations_rejected: int
-    groundplane_aligned: bool = False
+
+    def to_metadata(self) -> CalibrationMetadata:
+        return CalibrationMetadata(**{
+            name: getattr(self, name)
+            for name in CalibrationMetadata.model_fields
+        })
 
     @property
     def camera_ids(self) -> list[str]:
@@ -48,7 +46,6 @@ class CalibrationResult(BaseModel, TomlMixin):
     def dump_anipose_toml(
             self,
             path: Path,
-            metadata: dict | None = None,
     ) -> None:
         """Write anipose-compatible TOML."""
         cameras_dict: dict[str, object] = {}
@@ -67,24 +64,13 @@ class CalibrationResult(BaseModel, TomlMixin):
                 "world_position": cam.extrinsics.world_position.tolist(),
             }
 
-        meta = metadata.copy() if metadata else {}
-        meta["reprojection_error_px"] = self.reprojection_error_px
-        meta["n_observations_used"] = self.n_observations_used
-        meta["n_observations_rejected"] = self.n_observations_rejected
-        meta["solver_time_seconds"] = self.time_seconds
-        meta["groundplane_applied"] = self.groundplane_aligned
-        meta["board"] = {
-            "squares_x": self.board.squares_x,
-            "squares_y": self.board.squares_y,
-            "square_length_mm": self.board.square_length_mm,
-            "marker_length_mm": self.board.aruco_marker_length_mm,
-            "aruco_dictionary_enum": self.board.aruco_dictionary_enum,
-        }
-        cameras_dict["metadata"] = numpy_to_python(meta)
+        cameras_dict["metadata"] = self.to_metadata().model_dump(
+            mode="json", by_alias=True, exclude_none=True, round_trip=True,
+        )
 
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(tomli_w.dumps(cameras_dict))
+        path.write_text(tomli_w.dumps(cameras_dict), encoding="utf-8")
 
     @classmethod
     def load_anipose_toml(cls, path: Path) -> "CalibrationResult":
@@ -174,6 +160,14 @@ class CalibrationResult(BaseModel, TomlMixin):
             square_length_mm=board_meta.get("square_length_mm", 1.0),
             aruco_dictionary_enum=aruco_dict_enum,
         )
+        marker_ratio = board_meta.get("marker_length_ratio")
+        if marker_ratio is None and "marker_length_mm" in board_meta:
+            marker_ratio = board_meta["marker_length_mm"] / board.square_length_mm
+        if marker_ratio is not None:
+            board = CharucoBoardDefinition.model_validate({
+                **board.model_dump(round_trip=True),
+                "marker_length_ratio": marker_ratio,
+            })
 
         return cls(
             cameras=cameras,
@@ -186,4 +180,9 @@ class CalibrationResult(BaseModel, TomlMixin):
             n_observations_used=metadata.get("n_observations_used", 0),
             n_observations_rejected=metadata.get("n_observations_rejected", 0),
             groundplane_aligned=metadata.get("groundplane_applied", False),
+            solver_method=metadata.get("solver_method"),
+            recording_info=metadata.get("recording_info"),
+            groundplane_method=metadata.get("groundplane_method"),
+            groundplane_recording_id=metadata.get("groundplane_recording_id"),
+            groundplane_result=metadata.get("groundplane_result"),
         )

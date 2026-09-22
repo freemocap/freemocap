@@ -28,6 +28,86 @@ from freemocap.core.tasks.calibration.shared.groundplane_alignment import (
 
 
 class CalibrationMetadataTests(TestCase):
+    def test_transform_history_round_trip_and_inverse(self) -> None:
+        from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
+        from skellyforge.core.math.geometry.spatial_vectors import Displacement, Point
+        from skellyforge.core.math.geometry.transform_math import Transform
+
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+
+        transforms = [
+            Transform(
+                rotation=RotationQuaternion.identity(),
+                translation=Displacement.from_xyz(x=10., y=20., z=30.),
+            ),
+            Transform(
+                rotation=RotationQuaternion(w=0., x=0., y=0., z=1.),
+                translation=Displacement.from_xyz(x=5., y=0., z=0.),
+            ),
+        ]
+        source = self.make_result()
+        source.aligned = True
+        source.transformation_history = [
+            CalibrationTransform.from_transform(operation=operation, transform=transform)
+            for operation, transform in zip(
+                (CalibrationTransformType.PERSON, CalibrationTransformType.MANUAL),
+                transforms,
+            )
+        ]
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.toml"
+            source.save_toml(path)
+            loaded = CalibrationResult.load_toml(path)
+        self.assertEqual(loaded.transformation_history, source.transformation_history)
+        original = Point.from_prevalidated_array(array=np.array([1., 2., 3.]))
+        point = original
+        for entry in loaded.transformation_history:
+            point = entry.to_transform().apply(points=point)
+        np.testing.assert_allclose(point.array, [-6., -22., 33.])
+        for entry in reversed(loaded.transformation_history):
+            point = entry.to_transform().inverse().apply(points=point)
+        np.testing.assert_allclose(point.array, original.array)
+
+    def test_invalid_history_and_alignment_metadata_are_rejected(self) -> None:
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+        from skellyforge.core.math.geometry.transform_math import Transform
+
+        for quaternion in ((0., 0., 0., 0.), (2., 0., 0., 0.)):
+            with self.subTest(quaternion=quaternion), self.assertRaises(ValidationError):
+                CalibrationTransform(
+                    operation=CalibrationTransformType.MANUAL,
+                    quaternion_wxyz=quaternion,
+                    translation_mm=(0., 0., 0.),
+                )
+        source = self.make_result()
+        source.transformation_history = [
+            CalibrationTransform.from_transform(
+                operation=CalibrationTransformType.MANUAL,
+                transform=Transform.identity(),
+            ),
+        ]
+        with self.assertRaises(ValidationError):
+            source.to_metadata()
+
+    def test_runtime_transform_preserves_source_alignment_metadata(self) -> None:
+        from freemocap.core.reconstruction.reference_transform import ReferenceTransform
+        from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
+
+        source = self.make_result()
+        source.aligned = True
+        source.alignment_method = CalibrationAlignmentMethod.CHARUCO
+        tracker = CalibrationStateTracker()
+        tracker.set_reference_transform(reference_transform=ReferenceTransform(
+            matrix=(1., 0., 0., 10., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.),
+        ))
+        transformed = tracker._transform_source(calibration=source)
+        self.assertEqual(transformed.to_metadata(), source.to_metadata())
+        self.assertEqual(transformed.transformation_history, [])
+
     def test_http_loading_uses_shared_content_and_reports_file_errors(self) -> None:
         from unittest.mock import patch
 
@@ -49,7 +129,7 @@ class CalibrationMetadataTests(TestCase):
             recording.mkdir()
             path = recording / create_camera_calibration_file_name(recording.name)
             source = self.make_result()
-            source.groundplane_aligned = True
+            source.aligned = True
             source.save_toml(path)
             expected = LoadedCalibration.from_path(path).model_dump(mode="json", by_alias=True)
 
@@ -65,8 +145,8 @@ class CalibrationMetadataTests(TestCase):
                             response = client.get(endpoint, params=params)
                             self.assertEqual(response.status_code, 200, response.text)
                             self.assertEqual(response.json(), expected)
-                            self.assertTrue(response.json()["metadata"]["groundplane_applied"])
-                            self.assertIsNone(response.json()["metadata"]["groundplane_method"])
+                            self.assertTrue(response.json()["metadata"]["aligned"])
+                            self.assertIsNone(response.json()["metadata"]["alignment_method"])
                             self.assertEqual(len(response.json()["cameras"]), 1)
 
                     for invalid_content in (b"invalid = [", b"\xff"):
@@ -108,10 +188,10 @@ class CalibrationMetadataTests(TestCase):
         source.recording_info = RecordingInfo(
             recording_name="calibration", recording_directory="recordings",
         )
-        source.groundplane_aligned = True
-        source.groundplane_method = CalibrationAlignmentMethod.CHARUCO
-        source.groundplane_recording_id = source.recording_info.recording_name
-        source.groundplane_result = GroundPlaneResult(
+        source.aligned = True
+        source.alignment_method = CalibrationAlignmentMethod.CHARUCO
+        source.alignment_recording_id = source.recording_info.recording_name
+        source.alignment_result = GroundPlaneResult(
             origin=np.array([1.0, 2.0, 3.0]),
             rotation_matrix=np.eye(3),
             method=CalibrationAlignmentMethod.CHARUCO,
@@ -131,18 +211,21 @@ class CalibrationMetadataTests(TestCase):
 
     def test_legacy_marker_size_and_unknown_provenance(self) -> None:
         source = self.make_result()
-        source.groundplane_aligned = True
+        source.aligned = True
         with TemporaryDirectory() as directory:
             path = Path(directory) / "legacy.toml"
             source.save_toml(path)
             document = tomllib.loads(path.read_text(encoding="utf-8"))
+            document["metadata"]["groundplane_applied"] = document["metadata"].pop("aligned")
+            document["metadata"].pop("transformation_history")
             board = document["metadata"]["board"]
             board["marker_length_mm"] = board.pop("marker_length_ratio") * board["square_length_mm"]
             path.write_text(tomli_w.dumps(document), encoding="utf-8")
             loaded = CalibrationResult.load_toml(path)
         self.assertAlmostEqual(loaded.board.marker_length_ratio, 0.65)
-        self.assertTrue(loaded.groundplane_aligned)
-        self.assertIsNone(loaded.groundplane_method)
+        self.assertTrue(loaded.aligned)
+        self.assertIsNone(loaded.alignment_method)
+        self.assertEqual(loaded.transformation_history, [])
         self.assertIsNone(loaded.solver_method)
         self.assertIsNone(loaded.recording_info)
 
@@ -189,8 +272,8 @@ class CalibrationMetadataTests(TestCase):
         self.assertEqual(parsed.metadata.board.squares_x, 7)
         self.assertEqual(parsed.metadata.board.squares_y, 5)
         self.assertEqual(parsed.metadata.board.square_length_mm, 1.0)
-        self.assertIsNone(parsed.metadata.groundplane_method)
-        self.assertFalse(parsed.metadata.groundplane_aligned)
+        self.assertIsNone(parsed.metadata.alignment_method)
+        self.assertFalse(parsed.metadata.aligned)
 
     def test_malformed_camera_table_is_rejected(self) -> None:
         source = self.make_result()

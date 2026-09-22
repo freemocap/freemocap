@@ -134,7 +134,6 @@ class CalibrationStateTracker:
         )
         return calibration.model_copy(update={
             "cameras": [camera.in_world_frame(transform=transform) for camera in calibration.cameras],
-            "groundplane_aligned": False,
         })
 
     def set_source_path(self, calibration_toml_path: Path | None) -> bool:

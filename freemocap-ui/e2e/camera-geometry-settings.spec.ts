@@ -24,7 +24,7 @@ test('camera geometry keeps its summary visible without repeating the calibratio
             import Section from './src/components/common/settings-layout/settings-section';
             import Summary from './src/components/mocap-setup/camera-geometry-summary';
             import Settings from './src/components/mocap-setup/capture-volume-settings';
-            store.dispatch(calibrationLoadedFromBundle({path:'C:/recordings/freemocap_test_data/freemocap_test_data_camera_calibration.toml', cameras:[{},{},{}],metadata:{groundplane_applied:false}}));
+            store.dispatch(calibrationLoadedFromBundle({path:'C:/recordings/freemocap_test_data/freemocap_test_data_camera_calibration.toml', cameras:[{},{},{}],metadata:{aligned:false}}));
             createRoot(document.getElementById('root')!).render(<Provider store={store}><MemoryRouter>
                 <div className="settings-layout"><Section title="Camera geometry" summary={<Summary/>}><Settings mode="playback"/></Section></div>
             </MemoryRouter></Provider>);

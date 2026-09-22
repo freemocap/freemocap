@@ -16,8 +16,8 @@ export default function CameraGeometrySummary() {
                 {config.boardMode === CalibrationBoardMode.AUTO ? 'Auto board' : `${config.charucoBoard.squares_x} × ${config.charucoBoard.squares_y} board`} · {config.charucoBoard.square_length_mm} mm
             </SettingsSummaryChip>
             <SettingsSummaryChip title="Calibration solver">{CALIBRATION_SOLVER_LABELS[config.solverMethod]}</SettingsSummaryChip>
-            <SettingsSummaryChip>{calibration?.metadata?.groundplane_applied === true
-                ? 'Saved ground plane' : alignToPerson ? 'Align to person' : 'Calibration frame'}</SettingsSummaryChip>
+            <SettingsSummaryChip>{calibration?.metadata?.aligned === true
+                ? 'Aligned calibration' : alignToPerson ? 'Align to person' : 'Calibration frame'}</SettingsSummaryChip>
         </span>
         {calibration && <SettingsSummaryChip tone="path" title={calibration.path}>{filename}</SettingsSummaryChip>}
     </span>;

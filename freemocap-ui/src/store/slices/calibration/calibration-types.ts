@@ -44,6 +44,17 @@ export type CalibrationCameraData = z.infer<typeof CalibrationCameraDataSchema>;
 
 export const CalibrationAlignmentMethodSchema = z.enum(['charuco', 'person']);
 
+export const CalibrationTransformTypeSchema = z.enum({
+    ...CalibrationAlignmentMethodSchema.enum,
+    manual: 'manual',
+});
+export const CalibrationTransformSchema = z.object({
+    operation: CalibrationTransformTypeSchema,
+    quaternion_wxyz: CameraExtrinsicsSchema.shape.quaternion_wxyz,
+    translation_mm: CameraExtrinsicsSchema.shape.translation,
+});
+export type CalibrationTransform = z.infer<typeof CalibrationTransformSchema>;
+
 export const CalibrationMetadataSchema = z.object({
     board: z.object({
         squares_x: z.number().int(),
@@ -60,7 +71,7 @@ export const CalibrationMetadataSchema = z.object({
     solver_time_seconds: z.number(),
     n_observations_used: z.number().int(),
     n_observations_rejected: z.number().int(),
-    groundplane_applied: z.boolean(),
+    aligned: z.boolean(),
     solver_method: CalibrationSolverMethodSchema.nullable(),
     recording_info: z.object({
         recording_name: z.string(),
@@ -82,13 +93,14 @@ export const CalibrationMetadataSchema = z.object({
             perf_counter_ns: z.number(),
         }),
     }).nullable(),
-    groundplane_method: CalibrationAlignmentMethodSchema.nullable(),
-    groundplane_recording_id: z.string().nullable(),
-    groundplane_result: z.object({
+    alignment_method: CalibrationAlignmentMethodSchema.nullable(),
+    alignment_recording_id: z.string().nullable(),
+    alignment_result: z.object({
         origin: CalibrationCameraDataSchema.shape.world_position,
         rotation_matrix: CalibrationCameraDataSchema.shape.world_orientation,
         method: CalibrationAlignmentMethodSchema,
     }).nullable(),
+    transformation_history: z.array(CalibrationTransformSchema),
 });
 export type CalibrationMetadata = z.infer<typeof CalibrationMetadataSchema>;
 

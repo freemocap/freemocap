@@ -32,12 +32,13 @@ export function calibrationFixture(path: string): LoadedCalibration {
             solver_time_seconds: 2.5,
             n_observations_used: 100,
             n_observations_rejected: 4,
-            groundplane_applied: true,
+            aligned: true,
             solver_method: null,
             recording_info: null,
-            groundplane_method: null,
-            groundplane_recording_id: null,
-            groundplane_result: null,
+            alignment_method: null,
+            alignment_recording_id: null,
+            alignment_result: null,
+            transformation_history: [],
         },
     };
 }

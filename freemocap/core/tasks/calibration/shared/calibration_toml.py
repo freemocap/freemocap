@@ -86,6 +86,17 @@ def _read_legacy_metadata(value: object) -> CalibrationMetadata:
     if isinstance(value, CalibrationMetadata):
         return value
     raw = _TABLE.validate_python(value)
+    for current, historical in (
+        ("aligned", ("groundplane_applied", "groundplane_aligned")),
+        ("alignment_method", ("groundplane_method",)),
+        ("alignment_recording_id", ("groundplane_recording_id",)),
+        ("alignment_result", ("groundplane_result",)),
+    ):
+        if current not in raw:
+            for old_name in historical:
+                if old_name in raw:
+                    raw[current] = raw[old_name]
+                    break
     defaults = CalibrationMetadata(
         board=_read_legacy_board(raw.get("board", {})),
         reprojection_error_px=0.0,

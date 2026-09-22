@@ -133,9 +133,9 @@ def _save_result(
     result = result.model_copy(deep=True)
     result.solver_method = solver_method
     result.recording_info = recording_info
-    result.groundplane_method = ground_plane.method if ground_plane is not None else None
-    result.groundplane_recording_id = recording_info.recording_name if ground_plane is not None else None
-    result.groundplane_result = ground_plane
+    result.alignment_method = ground_plane.method if ground_plane is not None else None
+    result.alignment_recording_id = recording_info.recording_name if ground_plane is not None else None
+    result.alignment_result = ground_plane
 
     recording_toml = save_calibration_copies(
         save_fn=result.save_toml,

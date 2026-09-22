@@ -24,6 +24,7 @@ from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntr
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.shared.calibration_transform import CalibrationTransform
 from freemocap.core.tasks.calibration.charuco_board.charuco_observation_aggregator import CharucoObservationAggregator
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
@@ -125,5 +126,12 @@ def run_anipose_calibration(
         n_observations_used=len(charuco_frame_numbers) * len(cameras),
         n_observations_rejected=0,
         aligned=groundplane_success.success if use_charuco_as_groundplane else False,
+        alignment_method=ground_plane_result.method if ground_plane_result is not None else None,
+        alignment_recording_id=recording_info.recording_name if ground_plane_result is not None else None,
+        alignment_result=ground_plane_result,
+        transformation_history=(
+            [CalibrationTransform.from_ground_plane(result=ground_plane_result)]
+            if ground_plane_result is not None else []
+        ),
     )
     return result, ground_plane_result

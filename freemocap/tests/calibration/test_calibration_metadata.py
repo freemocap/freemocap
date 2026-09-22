@@ -28,6 +28,124 @@ from freemocap.core.tasks.calibration.shared.groundplane_alignment import (
 
 
 class CalibrationMetadataTests(TestCase):
+    def test_calibration_transform_sequence_preserves_projection_and_history(self) -> None:
+        from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
+        from skellyforge.core.math.geometry.spatial_vectors import Displacement, Point
+        from skellyforge.core.math.geometry.transform_math import Transform
+        from freemocap.core.reconstruction.coordinate_conventions import RECONSTRUCTION_TO_CALIBRATION
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+
+        source = self.make_result()
+        original_json = source.model_dump_json()
+        alignment = CalibrationTransform.from_transform(
+            operation=CalibrationTransformType.PERSON,
+            transform=Transform(
+                rotation=RotationQuaternion(w=0., x=0., y=0., z=1.),
+                translation=Displacement.from_xyz(x=0., y=0., z=0.),
+            ),
+        )
+        offset = CalibrationTransform.from_transform(
+            operation=CalibrationTransformType.MANUAL,
+            transform=Transform(
+                rotation=RotationQuaternion.identity(),
+                translation=Displacement.from_xyz(x=10., y=20., z=30.),
+            ),
+        )
+        result = source.transformed(
+            transformations=(alignment, offset), recording_id="person-recording",
+        )
+        chained = source.transformed(
+            transformations=(alignment,), recording_id="person-recording",
+        ).transformed(transformations=(offset,))
+        self.assertEqual(result.cameras, chained.cameras)
+        self.assertEqual(result.to_metadata(), chained.to_metadata())
+        self.assertEqual(result.transformation_history, [alignment, offset])
+        self.assertEqual(source.model_dump_json(), original_json)
+        self.assertTrue(result.aligned)
+        self.assertEqual(result.alignment_method, CalibrationAlignmentMethod.PERSON)
+        self.assertEqual(result.alignment_recording_id, "person-recording")
+        reversed_result = source.transformed(transformations=(offset, alignment))
+        self.assertNotEqual(result.cameras, reversed_result.cameras)
+
+        original_point = Point.from_prevalidated_array(array=np.array([100., 200., 300.]))
+        transformed_point = original_point
+        for entry in (alignment, offset):
+            transformed_point = entry.to_transform().apply(points=transformed_point)
+        original_calibration_point = RECONSTRUCTION_TO_CALIBRATION.convert_point(
+            point=original_point,
+        ).array
+        transformed_calibration_point = RECONSTRUCTION_TO_CALIBRATION.convert_point(
+            point=transformed_point,
+        ).array
+        before = source.cameras[0].extrinsics
+        after = result.cameras[0].extrinsics
+        np.testing.assert_allclose(
+            before.rotation_matrix @ original_calibration_point + before.translation,
+            after.rotation_matrix @ transformed_calibration_point + after.translation,
+            atol=1e-8,
+        )
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "composed.toml"
+            result.save_toml(path)
+            restored = CalibrationResult.load_toml(path)
+        self.assertEqual(restored.transformation_history, [alignment, offset])
+        for restored_camera, expected_camera in zip(restored.cameras, result.cameras, strict=True):
+            self.assertEqual(restored_camera.id, expected_camera.id)
+            self.assertEqual(restored_camera.index, expected_camera.index)
+            self.assertEqual(restored_camera.image_size, expected_camera.image_size)
+            self.assertEqual(restored_camera.intrinsics, expected_camera.intrinsics)
+            np.testing.assert_allclose(
+                restored_camera.extrinsics.rotation_matrix,
+                expected_camera.extrinsics.rotation_matrix, atol=1e-12, rtol=0,
+            )
+            np.testing.assert_allclose(
+                restored_camera.extrinsics.translation,
+                expected_camera.extrinsics.translation, atol=1e-12, rtol=0,
+            )
+            np.testing.assert_allclose(
+                restored_camera.world_position,
+                expected_camera.world_position, atol=1e-12, rtol=0,
+            )
+            np.testing.assert_allclose(
+                restored_camera.world_orientation,
+                expected_camera.world_orientation, atol=1e-12, rtol=0,
+            )
+
+    def test_charuco_history_records_the_applied_transform(self) -> None:
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+
+        source = self.make_result()
+        plane = GroundPlaneResult(
+            origin=(10., 20., 30.),
+            rotation_matrix=((0., -1., 0.), (1., 0., 0.), (0., 0., 1.)),
+            method=CalibrationAlignmentMethod.CHARUCO,
+        )
+        entry = CalibrationTransform.from_ground_plane(result=plane)
+        transformed = source.transformed(transformations=(entry,))
+        before = source.cameras[0].extrinsics
+        after = transformed.cameras[0].extrinsics
+        self.assertEqual(entry.operation, CalibrationTransformType.CHARUCO)
+        np.testing.assert_allclose(
+            after.rotation_matrix,
+            before.rotation_matrix @ np.asarray(plane.rotation_matrix),
+            atol=1e-8,
+        )
+        np.testing.assert_allclose(
+            after.translation,
+            before.rotation_matrix @ np.asarray(plane.origin) + before.translation,
+            atol=1e-8,
+        )
+        np.testing.assert_allclose(
+            transformed.cameras[0].world_position, after.world_position, atol=1e-8,
+        )
+        np.testing.assert_allclose(
+            transformed.cameras[0].world_orientation, after.world_orientation, atol=1e-8,
+        )
+
     def test_transform_history_round_trip_and_inverse(self) -> None:
         from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
         from skellyforge.core.math.geometry.spatial_vectors import Displacement, Point

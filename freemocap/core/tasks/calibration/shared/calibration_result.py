@@ -5,6 +5,10 @@ from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.utilities.toml_mixin import TomlMixin
 from pydantic import ConfigDict
 from freemocap.core.tasks.calibration.shared.calibration_metadata import CalibrationMetadata
+from freemocap.core.tasks.calibration.shared.calibration_transform import (
+    CalibrationTransform, CalibrationTransformType,
+)
+from freemocap.core.tasks.calibration.shared.groundplane_alignment import CalibrationAlignmentMethod
 
 
 class CalibrationResult(CalibrationMetadata, TomlMixin):
@@ -17,6 +21,29 @@ class CalibrationResult(CalibrationMetadata, TomlMixin):
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     cameras: list[CameraModel]
+
+    def transformed(
+        self,
+        *,
+        transformations: tuple[CalibrationTransform, ...],
+        recording_id: str | None = None,
+    ) -> "CalibrationResult":
+        """Apply only the supplied new operations, in order, and append their history."""
+        metadata = self.to_metadata().model_copy(deep=True)
+        cameras = [camera.model_copy(deep=True) for camera in self.cameras]
+        for entry in transformations:
+            cameras = entry.apply_to_cameras(cameras=cameras)
+            metadata.aligned = True
+            if entry.operation != CalibrationTransformType.MANUAL:
+                metadata.alignment_method = CalibrationAlignmentMethod(entry.operation.value)
+                metadata.alignment_recording_id = recording_id
+                # An earlier estimator's evidence does not describe this new alignment.
+                metadata.alignment_result = None
+            metadata.transformation_history.append(entry)
+        return type(self)(
+            cameras=cameras,
+            **metadata.model_dump(round_trip=True),
+        )
 
     def to_metadata(self) -> CalibrationMetadata:
         return CalibrationMetadata(**{

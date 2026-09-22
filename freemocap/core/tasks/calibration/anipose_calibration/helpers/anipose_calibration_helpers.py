@@ -18,6 +18,7 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_s
     stack_translations,
 )
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_transform import CalibrationTransform
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import (
     CalibrationAlignmentMethod,
     GroundPlaneResult,
@@ -128,12 +129,9 @@ def set_charuco_board_as_groundplane(
         method=CalibrationAlignmentMethod.CHARUCO,
     )
 
-    rvecs_new, tvecs_new = _adjust_world_reference_frame_to_charuco(
-        cameras=cameras,
-        charuco_origin_in_world=charuco_origin_in_world,
-        rmat_charuco_to_world=rmat_charuco_to_world,
-    )
-    apply_extrinsics(cameras, rvecs_new, tvecs_new)
+    cameras = CalibrationTransform.from_ground_plane(
+        result=ground_plane_result,
+    ).apply_to_cameras(cameras=cameras)
 
     logger.info("Camera calibration adjusted to set charuco board as ground plane")
 
@@ -148,28 +146,3 @@ def set_charuco_board_as_groundplane(
         logger.info(f"Charuco 3d data saved to {charuco_save_path}")
 
     return cameras, GroundPlaneSuccess(success=True), ground_plane_result
-
-
-def _adjust_world_reference_frame_to_charuco(
-    *,
-    cameras: list[CameraModel],
-    charuco_origin_in_world: np.ndarray,
-    rmat_charuco_to_world: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Adjust camera extrinsics to use charuco board as world reference frame."""
-    rvecs = stack_rodrigues(cameras)
-    tvecs = stack_translations(cameras)
-
-    tvecs_new = np.zeros_like(tvecs)
-    rvecs_new = np.zeros_like(rvecs)
-
-    for i in range(tvecs.shape[0]):
-        rmat_world_to_cam_i, _ = cv2.Rodrigues(rvecs[i])
-        t_delta = rmat_world_to_cam_i @ charuco_origin_in_world
-        tvecs_new[i] = t_delta + tvecs[i]
-
-        new_rmat = rmat_world_to_cam_i @ rmat_charuco_to_world
-        new_rvec, _ = cv2.Rodrigues(new_rmat)
-        rvecs_new[i] = new_rvec.flatten()
-
-    return rvecs_new, tvecs_new

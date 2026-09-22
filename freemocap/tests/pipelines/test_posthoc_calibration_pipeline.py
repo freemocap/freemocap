@@ -79,7 +79,7 @@ def test_calibration_solve_is_numerically_sane(calibration_toml_path):
     Checks the solve quality on the real data without any semantic reading of it:
     sub-pixel mean reprojection, enough observations, and a small rejected fraction.
     """
-    result = CalibrationResult.load_anipose_toml(Path(calibration_toml_path))
+    result = CalibrationResult.load_toml(Path(calibration_toml_path))
     logger.info(
         f"Calibration solve: reproj={result.reprojection_error_px:.3f}px  "
         f"observations={result.n_observations_used}  "

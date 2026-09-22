@@ -49,7 +49,7 @@ class TomlMixin:
         """Serialize model to a TOML file."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.model_dump_toml())
+        path.write_text(self.model_dump_toml(), encoding="utf-8")
 
     @classmethod
     def model_validate_toml(cls, toml_string: str) -> Self:

@@ -6,6 +6,7 @@ from unittest import TestCase
 import tomllib
 
 import numpy as np
+import cv2
 import tomli_w
 from pydantic import ValidationError
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -13,6 +14,9 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoard
 
 from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSolverMethod
 from freemocap.core.tasks.calibration.shared.calibration_metadata import CalibrationMetadata
+from freemocap.core.tasks.calibration.shared.calibration_toml import (
+    CalibrationToml,
+)
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
@@ -57,8 +61,8 @@ class CalibrationMetadataTests(TestCase):
         )
         with TemporaryDirectory() as directory:
             path = Path(directory) / "calibration.toml"
-            source.dump_anipose_toml(path)
-            loaded = CalibrationResult.load_anipose_toml(path)
+            source.save_toml(path)
+            loaded = CalibrationResult.load_toml(path)
         self.assertEqual(source.to_metadata(), loaded.to_metadata())
         self.assertEqual(source.cameras, loaded.cameras)
         metadata = loaded.to_metadata()
@@ -73,12 +77,12 @@ class CalibrationMetadataTests(TestCase):
         source.groundplane_aligned = True
         with TemporaryDirectory() as directory:
             path = Path(directory) / "legacy.toml"
-            source.dump_anipose_toml(path)
+            source.save_toml(path)
             document = tomllib.loads(path.read_text(encoding="utf-8"))
             board = document["metadata"]["board"]
             board["marker_length_mm"] = board.pop("marker_length_ratio") * board["square_length_mm"]
             path.write_text(tomli_w.dumps(document), encoding="utf-8")
-            loaded = CalibrationResult.load_anipose_toml(path)
+            loaded = CalibrationResult.load_toml(path)
         self.assertAlmostEqual(loaded.board.marker_length_ratio, 0.65)
         self.assertTrue(loaded.groundplane_aligned)
         self.assertIsNone(loaded.groundplane_method)
@@ -92,3 +96,70 @@ class CalibrationMetadataTests(TestCase):
                 rotation_matrix=np.eye(3),
                 method=CalibrationAlignmentMethod.CHARUCO,
             )
+
+    def test_legacy_dictionary_and_camera_fields(self) -> None:
+        source = self.make_result()
+        document = CalibrationToml.from_calibration(
+            cameras=source.cameras, metadata=source.to_metadata(),
+        ).model_dump(mode="json", by_alias=True, exclude_none=True, round_trip=True)
+        document["metadata"]["board"].pop("aruco_dictionary_enum")
+        document["metadata"]["board"]["marker_bits"] = 5
+        document["metadata"]["board"]["dict_size"] = 100
+        camera = document["camera"]
+        camera["image_size"] = camera.pop("size")
+        camera.pop("id")
+        camera.pop("index")
+        camera.pop("world_position")
+        camera.pop("world_orientation")
+        camera["translation"] = [10.0, 20.0, 30.0]
+        parsed = CalibrationToml.model_validate(document)
+        loaded = parsed.to_cameras()[0]
+        self.assertEqual(parsed.metadata.board.aruco_dictionary_enum, cv2.aruco.DICT_5X5_100)
+        self.assertEqual(loaded.id, "camera")
+        self.assertEqual(loaded.index, 0)
+        np.testing.assert_allclose(loaded.world_position, [-10.0, -20.0, -30.0])
+        np.testing.assert_allclose(loaded.world_orientation, np.eye(3))
+
+    def test_file_without_metadata_retains_legacy_defaults(self) -> None:
+        source = self.make_result()
+        document = CalibrationToml.from_calibration(
+            cameras=source.cameras, metadata=source.to_metadata(),
+        ).model_dump(mode="json", by_alias=True, exclude_none=True, round_trip=True)
+        document.pop("metadata")
+        parsed = CalibrationToml.model_validate(document)
+        self.assertIs(type(parsed.metadata), CalibrationMetadata)
+        self.assertIs(type(parsed.metadata.board), CharucoBoardDefinition)
+        self.assertEqual(parsed.metadata.board.squares_x, 7)
+        self.assertEqual(parsed.metadata.board.squares_y, 5)
+        self.assertEqual(parsed.metadata.board.square_length_mm, 1.0)
+        self.assertIsNone(parsed.metadata.groundplane_method)
+        self.assertFalse(parsed.metadata.groundplane_aligned)
+
+    def test_malformed_camera_table_is_rejected(self) -> None:
+        source = self.make_result()
+        document = CalibrationToml.from_calibration(
+            cameras=source.cameras, metadata=source.to_metadata(),
+        ).model_dump(mode="json", by_alias=True, exclude_none=True, round_trip=True)
+        document["camera"]["matrix"] = [[1.0, 0.0]]
+        with self.assertRaises(ValidationError):
+            CalibrationToml.model_validate(document)
+
+    def test_duplicate_camera_ids_are_rejected_before_saving(self) -> None:
+        source = self.make_result()
+        with self.assertRaises(ValueError):
+            CalibrationToml.from_calibration(
+                cameras=source.cameras * 2, metadata=source.to_metadata(),
+            )
+
+    def test_configured_board_is_preserved(self) -> None:
+        from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+        from freemocap.core.tasks.calibration.posthoc_calibration_task import _create_board
+
+        board = CharucoBoardDefinition(
+            squares_x=5, squares_y=3, square_length_mm=42,
+            marker_length_ratio=0.65,
+            aruco_dictionary_enum=cv2.aruco.DICT_5X5_100,
+        )
+        copied = _create_board(PosthocCalibrationPipelineConfig(charuco_board=board))
+        self.assertEqual(copied, board)
+        self.assertIsNot(copied, board)

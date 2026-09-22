@@ -1,22 +1,16 @@
 from pathlib import Path
 
-import numpy as np
-import tomli_w
-import tomllib
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
-from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
-from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.calibration_toml import CalibrationToml
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.utilities.toml_mixin import TomlMixin
 from pydantic import ConfigDict
 from freemocap.core.tasks.calibration.shared.calibration_metadata import CalibrationMetadata
-from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 
 
 class CalibrationResult(CalibrationMetadata, TomlMixin):
     """Output of calibration.
 
-    Serializes to/from the anipose-compatible TOML format. Triangulator
+    Serializes to/from calibration TOML. Triangulator
     construction lives in ``freemocap.core.tasks.triangulation.triangulator``.
     """
 
@@ -41,148 +35,20 @@ class CalibrationResult(CalibrationMetadata, TomlMixin):
                 return cam
         raise KeyError(f"Camera '{camera_id}' not found. Available: {self.camera_ids}")
 
-    # ---- Anipose-compatible TOML (same as existing) ----
-
-    def dump_anipose_toml(
+    def save_toml(
             self,
             path: Path,
     ) -> None:
-        """Write anipose-compatible TOML."""
-        cameras_dict: dict[str, object] = {}
-
-        for cam in self.cameras:
-            cameras_dict[cam.id] = {
-                "name": cam.id,
-                "id": cam.id,
-                "index": cam.index,
-                "size": list(cam.image_size),
-                "matrix": cam.intrinsics.to_camera_matrix().tolist(),
-                "distortions": cam.intrinsics.to_dist_coeffs_5().tolist(),
-                "rotation": cam.extrinsics.rodrigues_vector.tolist(),
-                "translation": cam.extrinsics.translation.tolist(),
-                "world_orientation": cam.extrinsics.world_orientation.tolist(),
-                "world_position": cam.extrinsics.world_position.tolist(),
-            }
-
-        cameras_dict["metadata"] = self.to_metadata().model_dump(
-            mode="json", by_alias=True, exclude_none=True, round_trip=True,
-        )
-
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(tomli_w.dumps(cameras_dict), encoding="utf-8")
+        """Write calibration TOML using the shared file-format model."""
+        CalibrationToml.from_calibration(
+            cameras=self.cameras, metadata=self.to_metadata(),
+        ).model_dump_toml_file(Path(path))
 
     @classmethod
-    def load_anipose_toml(cls, path: Path) -> "CalibrationResult":
-        """Load from an anipose-compatible TOML calibration file."""
-        path = Path(path)
-        if not path.is_file():
-            raise FileNotFoundError(f"Calibration file not found: {path}")
-
-        toml_data = tomllib.loads(path.read_text(encoding="utf-8"))
-        metadata = toml_data.pop("metadata", {})
-
-        cameras: list[CameraModel] = []
-        for key in sorted(toml_data.keys()):
-            d = toml_data[key]
-            if "name" not in d:
-                raise ValueError(f"TOML key '{key}' missing 'name' field")
-
-            if "size" in d:
-                size = (int(d["size"][0]), int(d["size"][1]))
-            elif "image_size" in d:
-                size = (int(d["image_size"][0]), int(d["image_size"][1]))
-            else:
-                raise KeyError(f"Camera '{key}' missing 'size' or 'image_size'")
-
-            K = np.array(d["matrix"], dtype=np.float64)
-            if K.shape != (3, 3):
-                raise ValueError(f"Camera '{key}': matrix shape {K.shape}, expected (3, 3)")
-
-            dist = np.array(d["distortions"], dtype=np.float64).ravel()
-
-            intrinsics = CameraIntrinsics(
-                fx=float(K[0, 0]),
-                fy=float(K[1, 1]),
-                cx=float(K[0, 2]),
-                cy=float(K[1, 2]),
-                k1=float(dist[0]) if len(dist) > 0 else 0.0,
-                k2=float(dist[1]) if len(dist) > 1 else 0.0,
-                p1=float(dist[2]) if len(dist) > 2 else 0.0,
-                p2=float(dist[3]) if len(dist) > 3 else 0.0,
-            )
-
-            rvec = np.array(d["rotation"], dtype=np.float64).ravel()
-            tvec = np.array(d["translation"], dtype=np.float64).ravel()
-            extrinsics = CameraExtrinsics.from_rodrigues(rvec=rvec, tvec=tvec)
-
-            world_position = np.array(d.get("world_position", [0.0, 0.0, 0.0]), dtype=np.float64)
-            world_orientation = np.array(d.get("world_orientation", np.eye(3).tolist()), dtype=np.float64)
-
-            camera_id = d.get("id", None)
-            if camera_id is None:
-                camera_id = d.get("name", None)
-
-            cameras.append(
-                CameraModel(
-                    id=CameraIdString(camera_id),
-                    index=CameraIndexInt(d.get("index", len(cameras))), #If indicies not specified, default to list order
-                    image_size=size,
-                    intrinsics=intrinsics,
-                    extrinsics=extrinsics,
-                    world_position=world_position,
-                    world_orientation=world_orientation,
-                )
-            )
-
-        if len(cameras) == 0:
-            raise ValueError(f"No cameras found in {path}")
-
-        import cv2 as _cv2
-        board_meta = metadata.get("board", {})
-        # Backward compat: old TOMLs stored marker_bits + dict_size; new ones store aruco_dictionary_enum directly.
-        _legacy_aruco_dicts = {
-            (4, 50): _cv2.aruco.DICT_4X4_50, (4, 100): _cv2.aruco.DICT_4X4_100,
-            (4, 250): _cv2.aruco.DICT_4X4_250, (4, 1000): _cv2.aruco.DICT_4X4_1000,
-            (5, 50): _cv2.aruco.DICT_5X5_50, (5, 100): _cv2.aruco.DICT_5X5_100,
-            (5, 250): _cv2.aruco.DICT_5X5_250, (5, 1000): _cv2.aruco.DICT_5X5_1000,
-        }
-        if "aruco_dictionary_enum" in board_meta:
-            aruco_dict_enum = int(board_meta["aruco_dictionary_enum"])
-        else:
-            aruco_dict_enum = _legacy_aruco_dicts.get(
-                (board_meta.get("marker_bits", 4), board_meta.get("dict_size", 250)),
-                _cv2.aruco.DICT_4X4_250,
-            )
-        board = CharucoBoardDefinition(
-            squares_x=board_meta.get("squares_x", 7),
-            squares_y=board_meta.get("squares_y", 5),
-            square_length_mm=board_meta.get("square_length_mm", 1.0),
-            aruco_dictionary_enum=aruco_dict_enum,
-        )
-        marker_ratio = board_meta.get("marker_length_ratio")
-        if marker_ratio is None and "marker_length_mm" in board_meta:
-            marker_ratio = board_meta["marker_length_mm"] / board.square_length_mm
-        if marker_ratio is not None:
-            board = CharucoBoardDefinition.model_validate({
-                **board.model_dump(round_trip=True),
-                "marker_length_ratio": marker_ratio,
-            })
-
+    def load_toml(cls, path: Path) -> "CalibrationResult":
+        """Load calibration TOML through the shared validated file-format model."""
+        document = CalibrationToml.model_validate_toml_file(Path(path))
         return cls(
-            cameras=cameras,
-            board=board,
-            reprojection_error_px=metadata.get("reprojection_error_px", 0.0),
-            initial_cost=metadata.get("initial_cost", 0.0),
-            final_cost=metadata.get("final_cost", 0.0),
-            n_iterations=metadata.get("n_iterations", 0),
-            time_seconds=metadata.get("solver_time_seconds", 0.0),
-            n_observations_used=metadata.get("n_observations_used", 0),
-            n_observations_rejected=metadata.get("n_observations_rejected", 0),
-            groundplane_aligned=metadata.get("groundplane_applied", False),
-            solver_method=metadata.get("solver_method"),
-            recording_info=metadata.get("recording_info"),
-            groundplane_method=metadata.get("groundplane_method"),
-            groundplane_recording_id=metadata.get("groundplane_recording_id"),
-            groundplane_result=metadata.get("groundplane_result"),
+            cameras=document.to_cameras(),
+            **document.metadata.model_dump(round_trip=True),
         )

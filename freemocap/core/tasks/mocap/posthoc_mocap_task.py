@@ -134,7 +134,7 @@ def run_posthoc_mocap_task(
 
     timing = PosthocTimingReport()
 
-    calibration = CalibrationResult.load_anipose_toml(calibration_toml_path) if calibration_toml_path is not None else None
+    calibration = CalibrationResult.load_toml(calibration_toml_path) if calibration_toml_path is not None else None
     camera_geometry: dict[str, CameraModel] = {}
     if calibration is not None:
         matching_request = PosthocMatchingRequest(

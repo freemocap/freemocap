@@ -19,7 +19,7 @@ def test_background_matching_installs_source_binding_and_closes(tmp_path: Path) 
         cameras=list(request.cameras), board=CharucoBoardDefinition.create_letter_size_5x3(),
         reprojection_error_px=0.0, initial_cost=0.0, final_cost=0.0, n_iterations=0,
         time_seconds=0.0, n_observations_used=120, n_observations_rejected=0,
-    ).dump_anipose_toml(path=path)
+    ).save_toml(path=path)
     calibration = CalibrationStateTracker.create_and_try_load(calibration_toml_path=path)
     matcher = LiveGeometryMatcher(calibration=calibration, camera_indices={source: index for index, source in enumerate(request.videos)})
     try:

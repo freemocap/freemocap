@@ -118,7 +118,7 @@ class Triangulator(BaseModel):
 
     @classmethod
     def from_anipose_calibration_toml(cls, path: str | Path) -> "Triangulator":
-        result = CalibrationResult.load_anipose_toml(Path(path))
+        result = CalibrationResult.load_toml(Path(path))
         return cls.from_calibration_result(calibration=result)
 
     def subset(self, camera_ids: list[CameraIdString]) -> "Triangulator":

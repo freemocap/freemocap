@@ -3,7 +3,7 @@ run_calibration_task: posthoc calibration processing.
 
 Uses the Anipose solver with CharucoBoardDefinition for board geometry
 and returns a CalibrationResult. Saving is handled here via
-CalibrationResult.dump_anipose_toml.
+CalibrationResult.save_toml.
 
 Called by PosthocAggregationNode after all frames are collected.
 Pre-bind task_config via functools.partial when creating the pipeline.
@@ -41,11 +41,7 @@ logger = logging.getLogger(__name__)
 
 def _create_board(task_config: PosthocCalibrationPipelineConfig) -> CharucoBoardDefinition:
     """Create the shared charuco board definition from pipeline config."""
-    return CharucoBoardDefinition(
-        squares_x=task_config.charuco_board.squares_x,
-        squares_y=task_config.charuco_board.squares_y,
-        square_length_mm=task_config.charuco_board.square_length_mm,
-    )
+    return task_config.charuco_board.model_copy(deep=True)
 
 
 # =============================================================================
@@ -142,7 +138,7 @@ def _save_result(
     result.groundplane_result = ground_plane
 
     recording_toml = save_calibration_copies(
-        save_fn=result.dump_anipose_toml,
+        save_fn=result.save_toml,
         recording_name=recording_info.recording_name,
         recording_folder_path=recording_info.full_recording_path,
     )

@@ -307,7 +307,7 @@ class CalibrationStateTracker:
             True if calibration was loaded successfully.
         """
         try:
-            source_calibration = CalibrationResult.load_anipose_toml(path)
+            source_calibration = CalibrationResult.load_toml(path)
             calibration = self._transform_source(calibration=source_calibration)
             cameras = calibration.cameras
             triangulator = Triangulator(cameras=cameras)

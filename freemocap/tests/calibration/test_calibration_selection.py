@@ -16,7 +16,7 @@ def test_clear_does_not_load_another_calibration(tmp_path: Path) -> None:
     source = build_loaded_tracker().calibration
     assert source is not None
     path = tmp_path / 'selected.toml'
-    source.dump_anipose_toml(path=path)
+    source.save_toml(path=path)
     tracker = CalibrationStateTracker.create_and_try_load(calibration_toml_path=path)
     assert tracker.is_valid
     assert tracker.set_source_path(calibration_toml_path=None)
@@ -30,7 +30,7 @@ def test_unreadable_selection_does_not_retain_previous_geometry(tmp_path: Path) 
     source = build_loaded_tracker().calibration
     assert source is not None
     path = tmp_path / 'selected.toml'
-    source.dump_anipose_toml(path=path)
+    source.save_toml(path=path)
     tracker = CalibrationStateTracker.create_and_try_load(calibration_toml_path=path)
     with pytest.raises(FileNotFoundError):
         tracker.set_source_path(calibration_toml_path=tmp_path / 'missing.toml')

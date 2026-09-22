@@ -19,7 +19,7 @@ def test_live_offset_replaces_resets_and_survives_source_reload(tmp_path: Path) 
     source = build_loaded_tracker()._calibration
     assert source is not None
     path = tmp_path / "calibration.toml"
-    source.dump_anipose_toml(path=path)
+    source.save_toml(path=path)
     original_file = path.read_bytes()
     tracker = CalibrationStateTracker.create_and_try_load(calibration_toml_path=path)
     tracker.bind_live_cameras(live_camera_indices=FITTING_CAMERAS)
@@ -61,7 +61,7 @@ def test_pending_offset_applies_when_calibration_is_loaded(tmp_path: Path) -> No
     source = build_loaded_tracker()._calibration
     assert source is not None
     path = tmp_path / "calibration.toml"
-    source.dump_anipose_toml(path=path)
+    source.save_toml(path=path)
     config = RealtimeAggregatorNodeConfig.model_validate({"reference_transform": {
         "matrix": [1, 0, 0, 200, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
     }})

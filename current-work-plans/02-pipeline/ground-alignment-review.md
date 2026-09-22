@@ -33,9 +33,6 @@ The streaming Forge code has ground-dependent biomechanics but no foot-based gro
   CoordinateSystemTransform. Use the existing convention definition and batch-capable transform.
 - `compare_calibrations.py` has another DLT implementation. The shared Triangulator should
   not claim uniqueness until this is consolidated.
-- `groundplane_alignment.apply_groundplane_to_cameras` constructs CameraModel without its
-  required index and leaves world pose fields at defaults. It is referenced by the pyceres path.
-  Fix and test this before using it for foot alignment; do not copy it as another helper.
 - The mocap task discards returned per-camera weights. Those weights alone are not detection
   confidence; plain DLT assigns uniform weights. Ground estimation needs actual track validity,
   temporal coverage and reconstruction quality, not invented confidence from solver weights.
@@ -146,8 +143,7 @@ session; no per-frame recentering or automatic jump from body to feet when feet 
 All modes transform camera geometry and all reconstructed entities together.
 
 Implementation check: verify groundplane_applied/groundplane_aligned consistency in the active
-Anipose calibration task, artifact writing and loading. PyCeres is dormant and outside this
-implementation scope; its audit findings are deferred, not prerequisites for this feature.
+Anipose calibration task, artifact writing and loading.
 
 Only use the foot fallback if no explicit ground reference was supplied. A known board-defined
 floor takes precedence. Posthoc estimates one transform and freezes it for the whole recording;
@@ -170,7 +166,7 @@ Do not overwrite the supplied calibration artifact; record the alignment with re
 
 1. Agree on foot-support plane and heading semantics; implement/test the pure Forge estimator.
 2. Ensure camera-transform preservation in the active integration and consolidate duplicated
-   convention conversion. Do not revive or refactor the dormant PyCeres path for this work.
+   convention conversion.
 3. User commits/pushes Forge and updates the Git dependency; never install its checkout editable.
 4. Integrate the posthoc fallback, retain reconstruction quality, apply one transform to all geometry.
 5. Test tilted/translated synthetic tracks, irregular timestamps, missing/noisy contacts, moving
@@ -213,7 +209,7 @@ orientation with inverse authored rest orientation and excludes missing/directio
 poses. A test hydrates the actual default human after a known scene rotation and verifies recovery
 across rigid-fit segments. `reference_alignment.py` owns the shared enabled/explicit-ground/
 feet/body/unchanged selection policy, returning the existing Transform and typed diagnostics.
-Fifteen focused tests pass. The active Anipose path sets groundplane_aligned; PyCeres remains deferred.
+Fifteen focused tests pass. The active Anipose path sets groundplane_aligned.
 FreeMoCap's installed dependency was verified to contain the first estimator checkpoint.
 The second checkpoint needs the normal user commit/push/dependency update before app integration.
 Remaining adapter work is observation-quality propagation and model-declared selection of alignment

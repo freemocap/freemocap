@@ -42,6 +42,7 @@ async def main(force_preferred_port:bool=True) -> None:
         format_port_sentinel,
     )
     from freemocap.app.app import create_fastapi_app
+    from freemocap.api.websocket.closing_aware_protocol import ClosingAwareWebSocketProtocol
     from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
 
 
@@ -94,6 +95,7 @@ async def main(force_preferred_port:bool=True) -> None:
             host=HOSTNAME,
             port=port,
             log_level="warning",
+            ws=ClosingAwareWebSocketProtocol,
             reload=False,
         )
         server = uvicorn.Server(config)

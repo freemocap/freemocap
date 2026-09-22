@@ -19,7 +19,7 @@ Calibration estimates each camera's position, orientation, and lens parameters b
 
 ## Solver Methods
 
-### Anipose (Primary)
+### Anipose
 
 The Anipose solver is the workhorse of FreeMoCap calibration. It's based on the [aniposelib](https://github.com/lambdaloop/aniposelib) library but has been **rewritten into our codebase**.
 
@@ -32,14 +32,6 @@ The Anipose solver is the workhorse of FreeMoCap calibration. It's based on the 
 - `helpers/freemocap_anipose.py` — FreeMoCap interface to aniposelib
 - `helpers/bundle_adjust.py` — Bundle adjustment logic
 - `helpers/camera_model_solver_ops.py` — Camera model construction from solver output
-
-### PyCeres (In Development)
-
-A Google Ceres-based bundle adjustment via the PyCeres wrapper. Currently in development and not yet the default solver. When ready, it will provide an alternative optimization backend with potentially better convergence for large camera arrays.
-
-**Files in `core/tasks/calibration/pyceres_calibration/`:**
-- `pyceres_calibration_pipeline.py`
-- `helpers/cost_functions.py`, `helpers/solver.py`, `helpers/initialization.py`, `helpers/models.py`, `helpers/postprocessing.py`
 
 ## CalibrationResult Model
 
@@ -85,7 +77,7 @@ Orchestrated by `posthoc_calibration_task.py` (~340 lines):
 
 1. Receives collected observations from all VideoNodes
 2. Validates all are `CharucoObservation`, converts to shared `CharucoCornersObservation` format
-3. Routes to anipose or pyceres solver based on `task_config.solver_method`
+3. Runs the Anipose solver, the sole supported `task_config.solver_method`
 4. Saves observations to JSON for later analysis / debugging
 5. Computes and logs calibration health metrics (reprojection error per camera, solver convergence)
 

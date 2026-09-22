@@ -4,7 +4,7 @@ Format-agnostic functions for estimating the charuco board's ground-plane pose
 from triangulated 3D corners: finding a stable window where the board is still,
 taking per-corner medians across it, and fitting the known board model with Kabsch.
 
-Used by both the anipose and pyceres calibration paths.
+Used by calibration ground plane alignment.
 """
 
 import numpy as np

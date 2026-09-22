@@ -30,6 +30,7 @@ from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 class FakeWebSocket:
     def __init__(self):
         self.client_state = WebSocketState.CONNECTED
+        self.application_state = WebSocketState.CONNECTED
         self.sent_text: list[str] = []
         self.sent_bytes: list[bytes] = []
 
@@ -41,6 +42,7 @@ class FakeWebSocket:
 
     async def close(self, code: int = 1000, reason: str | None = None) -> None:
         self.client_state = WebSocketState.DISCONNECTED
+        self.application_state = WebSocketState.DISCONNECTED
 
 
 def _human_bundle():

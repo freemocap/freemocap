@@ -14,7 +14,6 @@ import {
     selectCalibrationDirectoryInfo,
     selectCalibrationRecordingPath,
     selectIsUsingManualCalibrationPath,
-    selectPyceresAvailable,
     startCalibrationRecording,
     stopCalibrationRecording,
 } from "@/store/slices/calibration";
@@ -43,7 +42,6 @@ export function useCalibration() {
     const { api, isElectron } = useElectronIPC();
     const calibrationState = useAppSelector(selectCalibration);
     const calibrationRecordingPath = useAppSelector(selectCalibrationRecordingPath);
-    const pyceresAvailable = useAppSelector(selectPyceresAvailable);
     const directoryInfo = useAppSelector(selectCalibrationDirectoryInfo);
     const isUsingManualPath = useAppSelector(selectIsUsingManualCalibrationPath);
 
@@ -123,8 +121,6 @@ export function useCalibration() {
         calibrationRecordingPath,
         directoryInfo,
         isUsingManualPath,
-        // null = not yet checked; consumers treat only an explicit `false` as unavailable.
-        pyceresAvailable,
         // Actions
         updateCalibrationConfig,
         setManualRecordingPath,

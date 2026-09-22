@@ -13,10 +13,9 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 
 
 class CalibrationResult(BaseModel, TomlMixin):
-    """Output of either calibration pipeline.
+    """Output of calibration.
 
-    Both the anipose and pyceres paths produce this type. It can be
-    serialized to/from the anipose-compatible TOML format. Triangulator
+    Serializes to/from the anipose-compatible TOML format. Triangulator
     construction lives in ``freemocap.core.tasks.triangulation.triangulator``.
     """
 

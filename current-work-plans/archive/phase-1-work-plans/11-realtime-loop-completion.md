@@ -106,7 +106,7 @@ that's why nothing broke. This pass ends the parallel-skeleton duplication.
       (Gram-Schmidt exact/approximate basis — already `coordinate_frame_ops.build_orthonormal_basis`;
       the two-tier twist is unchanged). The rest pose stays the authored T-pose definitions.
 - [x] **R3 — the multi-point rigid fit module (DONE 2026-08-13, on disk)** (adapted from the bs repo's ferret skull solver —
-      `clients/bs/python_code/rigid_body_solver/`, minus the pyceres batch optimization): pairwise
+      `clients/bs/python_code/rigid_body_solver/`, without batch optimization): pairwise
       rolling-median distances (the existing `SegmentLengthEstimator`, pair-keyed) → classical MDS
       template (`reconstruct_from_distances`, sign-stabilized against the reference geometry) →
       per-frame rotation-only Procrustes (the existing `align_point_sets_kabsch`), anchored at the

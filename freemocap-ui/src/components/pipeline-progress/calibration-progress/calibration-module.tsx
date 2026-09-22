@@ -2,7 +2,7 @@ import AnchoredInfo from '@/components/ui-components/AnchoredInfo';
 import {RecordingCalibrationOptions} from '@/components/mocap-setup/RecordingCalibrationOptions';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
-import {CalibrationBoardMode} from "@/store/slices/calibration/calibration-types";
+import {CalibrationBoardMode, CALIBRATION_SOLVER_LABELS} from "@/store/slices/calibration/calibration-types";
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
@@ -163,7 +163,7 @@ const CalibrationModule = ({
       ? "AUTO"
       : `${config.charucoBoard.squares_x}x${config.charucoBoard.squares_y}`,
     `${config.charucoBoard.square_length_mm}mm`,
-    config.solverMethod === "anipose" ? "Anipose" : "Pyceres",
+    CALIBRATION_SOLVER_LABELS[config.solverMethod],
   ];
 
   const handleToggleSettings = () => {

@@ -1,6 +1,6 @@
 """Shared calibration-file save logic.
 
-Both the anipose and pyceres paths save calibration results to three locations:
+Calibration results are saved to three locations:
   1. The recording folder
   2. The main calibrations folder
   3. The 'last successful' calibration path

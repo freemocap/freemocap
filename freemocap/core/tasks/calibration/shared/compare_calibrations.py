@@ -276,7 +276,7 @@ def compute_calibration_health(
 
     Args:
         result: The calibration to assess.
-        label: Human-readable name (e.g. "Anipose", "Pyceres").
+        label: Human-readable name for the calibration.
         all_observations: If provided, runs board reconstruction accuracy test.
     """
     per_camera: list[PerCameraHealth] = []

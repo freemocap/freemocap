@@ -652,9 +652,6 @@ dev = [
     { name = "pytest-timeout" },
     { name = "ruff" },
 ]
-pyceres = [
-    { name = "pyceres" },
-]
 tracker-default = [
     { name = "skellytracker" },
     { name = "skellytracker", extra = ["all-cpu"], marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
@@ -704,7 +701,6 @@ dev = [
     { name = "pytest-timeout", specifier = ">=2.0.0" },
     { name = "ruff", specifier = ">=0.9.0" },
 ]
-pyceres = [{ name = "pyceres", specifier = ">=2.5" }]
 tracker-default = [
     { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=development-streaming" },
     { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=development-streaming" },
@@ -1656,28 +1652,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyceres"
-version = "2.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/a3/9519766129c8876f158ec4a8b8d65d1ae9ec03ac97c5cdd621b34d4f0331/pyceres-2.6-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:078ee92e6e9d98a20c030b52396248c41499ed5159342a9163cdfc2ab40e49c0", size = 2414855, upload-time = "2025-11-05T12:35:59.668Z" },
-    { url = "https://files.pythonhosted.org/packages/95/83/53617e96fca87bf01b8d27f9ab51b03c7ff5828cbed1102952c69b4eafbc/pyceres-2.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:294b16310be0f3024eb1c592d8df86bbb227b1443008a51cf01c47ac7c9d3eb2", size = 4931387, upload-time = "2025-11-05T12:36:02.389Z" },
-    { url = "https://files.pythonhosted.org/packages/ab/07/f4fb0fb6fa43a986cae009b3dae5ad6e5929786d7528dbdf92429e83c46f/pyceres-2.6-cp311-cp311-win_amd64.whl", hash = "sha256:66e8b8a69c926a01ae59f7aabf3812b1d8496434e22e064b23006335f3913084", size = 8454404, upload-time = "2025-11-05T12:36:04.361Z" },
-    { url = "https://files.pythonhosted.org/packages/b4/a7/bc1aaea0a2e06b35f1b856c95e0a392719d1395488e36ff87066dba09cc4/pyceres-2.6-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:8ef9014f84b31dbf94936f11964411f67e9cc1733aca8ff38fda079b890adfa7", size = 2420210, upload-time = "2025-11-05T12:36:06.482Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/6d/bea6219072d8d86a5f11f6f61c588780be0bbd5aca1221fc8ad646bcba73/pyceres-2.6-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:284204c5303c582dc3918f43288e7b78bfc674a01e5561b252298a2d133ad14d", size = 4933829, upload-time = "2025-11-05T12:36:08.241Z" },
-    { url = "https://files.pythonhosted.org/packages/4c/4c/2291a63a81ddfa306ee18d57156a458758953933212f224ea3a7bb6b036c/pyceres-2.6-cp312-cp312-win_amd64.whl", hash = "sha256:c7e24463365778f423c34cd0e06ce57634a2e26da16935eec094c72263520493", size = 8457845, upload-time = "2025-11-05T12:36:09.956Z" },
-    { url = "https://files.pythonhosted.org/packages/7a/6d/9e55d8f6b1c504b2a5ac8220aa979e4d2c209be680a67cccb8e729cca34e/pyceres-2.6-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:8561fe1e520171499a606ca500baa5d3f90012dd264e9696fdd87126bed9378d", size = 2420311, upload-time = "2025-11-05T12:36:12.29Z" },
-    { url = "https://files.pythonhosted.org/packages/49/9a/17e371fbcbe29f1041a7014630bb7ff03c87215240b14362fe7e57bdef40/pyceres-2.6-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f5a408a205a690431190b21a4448130c67b838b14dfd459cee22361a06060a1f", size = 4933511, upload-time = "2025-11-05T12:36:14.367Z" },
-    { url = "https://files.pythonhosted.org/packages/1f/32/7588f22cc526abdef03414648eb7bedff5bd5353627f5646f988c2129687/pyceres-2.6-cp313-cp313-win_amd64.whl", hash = "sha256:c8da59494f317f38d8f7c3e980052997f4d5b01d456e440d964a38d09a26bdea", size = 8457867, upload-time = "2025-11-05T12:36:16.084Z" },
-    { url = "https://files.pythonhosted.org/packages/63/89/eaf73a99c4999452e1bb8c9369e477567abc58ff8ece636d20522683157b/pyceres-2.6-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:8759bfe308e2f951a7e1f0752b345856dc276300336bddaea9d35dd86f6d8c16", size = 2422877, upload-time = "2025-11-05T12:36:18.414Z" },
-    { url = "https://files.pythonhosted.org/packages/f7/08/25c45688d04b1a474ffba4726f219947afd36e02d925bc3387b4a9073bc1/pyceres-2.6-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0932b7cb21de92823bbc48c7bbb8c8df992c8a43498b99b64ee37293269ef3d0", size = 4934918, upload-time = "2025-11-05T12:36:20.582Z" },
-    { url = "https://files.pythonhosted.org/packages/f4/78/75487ad67101a0c1f2f727fa11020329a43a2ab628f85abbe59937c49c5b/pyceres-2.6-cp314-cp314-win_amd64.whl", hash = "sha256:e89d4d4d6c3507058a751c72b4dd4c59f6742a0a4262845b1ceafff65f943a2c", size = 8634720, upload-time = "2025-11-05T12:36:22.282Z" },
-]
-
-[[package]]
 name = "pycparser"
 version = "3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2330,7 +2304,7 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs?branch=main#535206f8e7b7d1d73e904c340cdcbdfeeed7a26f" }
+source = { git = "https://github.com/freemocap/skellylogs#535206f8e7b7d1d73e904c340cdcbdfeeed7a26f" }
 dependencies = [
     { name = "tqdm" },
 ]

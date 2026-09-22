@@ -149,9 +149,6 @@ tracker-default = [
     "skellytracker[all-cuda]; sys_platform != 'darwin'",
     "skellytracker[all-cpu]; sys_platform == 'darwin'",
 ]
-pyceres = [
-    "pyceres>=2.5",
-]
 dev = [
     "bumpver",
     "pip-tools",

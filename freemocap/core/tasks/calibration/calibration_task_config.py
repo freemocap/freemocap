@@ -8,14 +8,12 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
     CharucoDetectorConfig,
 )
 
-from freemocap.core.tasks.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 
 class CalibrationSolverMethod(str, Enum):
     """Which calibration solver backend to use."""
     ANIPOSE = "anipose"
-    PYCERES = "pyceres"
 
 
 class PosthocCalibrationPipelineConfig(BaseModel):
@@ -31,13 +29,7 @@ class PosthocCalibrationPipelineConfig(BaseModel):
     solver_method: CalibrationSolverMethod = Field(
         default=CalibrationSolverMethod.ANIPOSE,
         alias="solverMethod",
-        description="Which calibration solver to use: 'anipose' (legacy) or 'pyceres' ( untested bundle adjustment based calibration method).",
-    )
-
-    pyceres_solver_config: PyceresCalibrationSolverConfig = Field(
-        default_factory=PyceresCalibrationSolverConfig,
-        alias="pyceresSolverConfig",
-        description="Configuration for the pyceres bundle adjustment solver. Only used when solver_method='pyceres'.",
+        description="Calibration solver method.",
     )
 
     use_groundplane: bool = Field(

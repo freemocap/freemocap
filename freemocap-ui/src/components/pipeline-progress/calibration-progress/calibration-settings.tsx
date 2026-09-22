@@ -1,4 +1,4 @@
-import {CalibrationBoardMode} from "@/store/slices/calibration/calibration-types";
+import {CalibrationBoardMode, CALIBRATION_SOLVER_LABELS} from "@/store/slices/calibration/calibration-types";
 import React, {
   useCallback,
   useEffect,
@@ -11,7 +11,6 @@ import ValueSelector from "@/components/ui-components/ValueSelector";
 import IconButton from "@/components/ui-components/IconButton";
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import { useCalibration } from "@/hooks/useCalibration";
-import { CalibrationSolverMethod } from "@/store/slices/calibration";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import charucoSettingsImage from "@/assets/images/charuco_settings.webp";
 
@@ -29,34 +28,14 @@ const BOARD_PRESETS: Record<BoardPreset.LETTER | BoardPreset.TEST, BoardPresetDi
 
 const PRESET_OPTIONS: BoardPreset[] = Object.values(BoardPreset);
 
-const PRESET_OPTIONS_SOLVER = ["Anipose legacy", "Accurate"];
-
-const solverLabelToMethod: Record<string, CalibrationSolverMethod> = {
-  "Anipose legacy": "anipose",
-  Accurate: "pyceres",
-};
-
-const solverMethodToLabel: Record<CalibrationSolverMethod, string> = {
-  anipose: "Anipose legacy",
-  pyceres: "Accurate",
-};
-
 interface CalibrationSettingsProps {
   onClose?: () => void;
 }
 
 const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { config, updateCalibrationConfig, pyceresAvailable } = useCalibration();
+  const { config, updateCalibrationConfig } = useCalibration();
   const board = config.charucoBoard;
-
-  const solverOptions = useMemo(
-    () =>
-      pyceresAvailable === false
-        ? PRESET_OPTIONS_SOLVER.filter((label) => label !== "Accurate")
-        : PRESET_OPTIONS_SOLVER,
-    [pyceresAvailable],
-  );
 
   const handleClose = useCallback(() => {
     if (onClose) onClose();
@@ -141,14 +120,6 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
     [board, updateCalibrationConfig],
   );
 
-  const handleSolverChange = useCallback(
-    (value: string) => {
-      const method = solverLabelToMethod[value];
-      if (method) updateCalibrationConfig({ solverMethod: method });
-    },
-    [updateCalibrationConfig],
-  );
-
   return (
     <div className="z-10 calibration-settings-flyout pos-fixed draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
       <div
@@ -179,7 +150,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
                 text={
                   "Preset: The type of tile-based charuco board, either 3×5 or 7×5.\n" +
                   "Square length: The exact dimension of each black square. Measure this square precisely in millimeters.\n" +
-                  "Solver method: There are two options. Select the appropriate one depending on the use case."
+                  "Solver method: Anipose estimates the camera calibration from board observations."
                 }
                 image={true}
                 imageSrc={charucoSettingsImage}
@@ -264,24 +235,10 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         <SubactionHeader text="Solver settings" />
 
-        {/* Method dropdown (only shown when there's a choice to make) */}
-        {solverOptions.length > 1 ? (
-          <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-            <span className="text sm">Method</span>
-            <NameDropdownSelector
-              key={config.solverMethod}
-              options={solverOptions}
-              initialValue={solverMethodToLabel[config.solverMethod]}
-              onChange={handleSolverChange}
-              className="flex flex-row"
-            />
-          </div>
-        ) : (
-          <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-            <span className="text sm">Method</span>
-            <span className="text sm">{solverMethodToLabel[config.solverMethod]}</span>
-          </div>
-        )}
+        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+          <span className="text sm">Method</span>
+          <span className="text sm">{CALIBRATION_SOLVER_LABELS[config.solverMethod]}</span>
+        </div>
       </div>
     </div>
   );

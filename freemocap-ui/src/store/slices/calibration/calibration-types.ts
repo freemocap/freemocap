@@ -1,6 +1,13 @@
+import {z} from 'zod';
+
 export enum CalibrationBoardMode { AUTO = "auto", EXPLICIT = "explicit" }
 
-export type CalibrationSolverMethod = 'anipose' | 'pyceres';
+export const CalibrationSolverMethodSchema = z.enum(['anipose']);
+export type CalibrationSolverMethod = z.infer<typeof CalibrationSolverMethodSchema>;
+
+export const CALIBRATION_SOLVER_LABELS: Record<CalibrationSolverMethod, string> = {
+    [CalibrationSolverMethodSchema.enum.anipose]: 'Anipose',
+};
 
 export interface CharucoBoardConfig {
     squares_x: number;

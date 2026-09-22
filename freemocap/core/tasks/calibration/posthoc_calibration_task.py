@@ -1,11 +1,8 @@
 """
 run_calibration_task: posthoc calibration processing.
 
-Routes to either the legacy anipose solver or the new pyceres bundle
-adjustment solver based on task_config.solver_method.
-
-Both paths use the shared CharucoBoardDefinition for board geometry and
-return a CalibrationResult. Saving is handled uniformly here via
+Uses the Anipose solver with CharucoBoardDefinition for board geometry
+and returns a CalibrationResult. Saving is handled here via
 CalibrationResult.dump_anipose_toml.
 
 Called by PosthocAggregationNode after all frames are collected.
@@ -133,12 +130,12 @@ def _save_result(
         *,
         result: CalibrationResult,
         recording_info: RecordingInfo,
-        solver_method: str,
+        solver_method: CalibrationSolverMethod,
         ground_plane: GroundPlaneResult | None = None,
 ) -> Path:
     """Save CalibrationResult to all standard locations via anipose-compatible TOML."""
     metadata: dict = {
-        "solver_method": solver_method,
+        "solver_method": solver_method.value,
         "recording_info": recording_info.model_dump(),
     }
     if ground_plane is not None:
@@ -160,55 +157,7 @@ def _save_result(
 
 
 # =============================================================================
-# PYCERES CALIBRATION PATH
-# =============================================================================
-
-
-def _run_pyceres_path(
-        *,
-        all_observations: list[CharucoCornersObservation],
-        board: CharucoBoardDefinition,
-        task_config: PosthocCalibrationPipelineConfig,
-        video_metadata: dict[CameraIdString, VideoMetadata],
-) -> tuple[CalibrationResult, GroundPlaneResult | None]:
-    """Run calibration using the pyceres bundle adjustment solver."""
-    try:
-        from freemocap.core.tasks.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
-    except ImportError as e:
-        raise RuntimeError(
-            "The 'Accurate' calibration solver requires the optional `pyceres` package, "
-            "which is not installed in this environment. Install it with "
-            "`uv sync --group pyceres`, or select the 'Anipose legacy' solver instead."
-        ) from e
-
-    if len(all_observations) == 0:
-        raise ValueError("No valid charuco observations found")
-
-    camera_ids = list(video_metadata.keys())
-    image_sizes: dict[str, tuple[int, int]] = {
-        camera_id: (vm.width, vm.height)
-        for camera_id, vm in video_metadata.items()
-    }
-
-    result, ground_plane = run_pyceres_calibration(
-        board=board,
-        all_observations=all_observations,
-        image_sizes=image_sizes,
-        camera_ids=camera_ids,
-        config=task_config.pyceres_solver_config,
-        use_groundplane=task_config.use_groundplane,
-    )
-
-    logger.info(
-        f"Pyceres calibration complete — "
-        f"reprojection error: {result.reprojection_error_px:.4f}px, "
-        f"time: {result.time_seconds:.2f}s"
-    )
-    return result, ground_plane
-
-
-# =============================================================================
-# ANIPOSE CALIBRATION PATH (legacy)
+# ANIPOSE CALIBRATION PATH
 # =============================================================================
 
 
@@ -220,7 +169,7 @@ def _run_anipose_path(
         recording_info: RecordingInfo,
         video_metadata: dict[CameraIdString, VideoMetadata],
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
-    """Run calibration using the legacy anipose solver."""
+    """Run calibration using the Anipose solver."""
     logger.info("Starting anipose calibration...")
 
     result, ground_plane = run_anipose_calibration(
@@ -276,7 +225,7 @@ def run_posthoc_calibration_task(
     # ---- Create shared board definition ----
     board = _create_board(task_config=task_config)
 
-    # ---- Convert to shared observation format (used by pyceres and health check) ----
+    # ---- Convert observations for the calibration health check ----
     all_observations = _convert_all_observations(
         charuco_observations_by_frame=charuco_observations_by_frame,
         board_def=board,
@@ -296,13 +245,6 @@ def run_posthoc_calibration_task(
                 recording_info=recording_info,
                 video_metadata=video_metadata,
             )
-        case CalibrationSolverMethod.PYCERES:
-            result, ground_plane = _run_pyceres_path(
-                all_observations=all_observations,
-                board=board,
-                task_config=task_config,
-                video_metadata=video_metadata,
-            )
         case _:
             raise ValueError(f"Unknown solver method: {task_config.solver_method}")
 
@@ -311,7 +253,7 @@ def run_posthoc_calibration_task(
     _save_result(
         result=result,
         recording_info=recording_info,
-        solver_method=task_config.solver_method.value,
+        solver_method=task_config.solver_method,
         ground_plane=ground_plane,
     )
 

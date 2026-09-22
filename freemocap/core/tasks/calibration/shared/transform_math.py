@@ -3,7 +3,7 @@
 Contains format-agnostic functions for working with 4x4 rigid transforms:
 robust averaging via clustering, spanning tree construction, etc.
 
-Used by both the anipose and pyceres calibration paths.
+Used by calibration coordinate transforms.
 """
 
 import logging

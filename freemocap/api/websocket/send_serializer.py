@@ -25,6 +25,7 @@ class _WebSocketTransport(Protocol):
     """
 
     client_state: WebSocketState
+    application_state: WebSocketState
 
     async def send_text(self, data: str) -> None: ...
     async def send_bytes(self, data: bytes) -> None: ...
@@ -40,7 +41,12 @@ class SendSerializer:
 
     @property
     def is_connected(self) -> bool:
-        return self.websocket.client_state == WebSocketState.CONNECTED
+        # A failed send closes Starlette's application side before the receive
+        # task consumes websocket.disconnect and updates client_state.
+        return (
+            self.websocket.client_state == WebSocketState.CONNECTED
+            and self.websocket.application_state == WebSocketState.CONNECTED
+        )
 
     async def send_message(self, message_bytes: bytes) -> None:
         """Send one CBOR message (a binary frame)."""
@@ -50,12 +56,12 @@ class SendSerializer:
         if not self.is_connected:
             return
         async with self._send_lock:
-            if self.websocket.client_state == WebSocketState.CONNECTED:
+            if self.is_connected:
                 await self.websocket.send_bytes(data)
 
     async def send_raw_text(self, text: str) -> None:
         if not self.is_connected:
             return
         async with self._send_lock:
-            if self.websocket.client_state == WebSocketState.CONNECTED:
+            if self.is_connected:
                 await self.websocket.send_text(text)

@@ -48,7 +48,7 @@ defines the world frame in one of these ways:
 | Method | What it sets | Notes |
 |---|---|---|
 | **Charuco ground plane** | Board plane becomes `z = 0`; board origin becomes the world origin; the in-plane rotation follows the board's orientation on the floor. | `estimate_board_groundplane()` Kabsch-fits the board, then `orient_up_toward_cameras()` orients `+Z` toward the camera centroid (cameras sit above the floor) and re-derives `Y = Z × X` to keep the basis right-handed. **That the in-plane rotation depends on how the board was laid is expected and fine** — we give users guidance on board placement for best compatibility, but variation is acceptable. |
-| **Camera 0 pinned to origin** | Used when ground-plane alignment is not run. World frame = camera 0's frame. | `pin_camera_0_to_origin` (anipose) / `pin_camera_0` (pyceres). |
+| **Camera 0 pinned to origin** | Used when ground-plane alignment is not run. World frame = camera 0's frame. | `pin_camera_0_to_origin` (anipose). |
 | **User offset** `[LATER]` | A user-supplied transform applied on top, via the HTTP control plane. | See consequence 2 above. |
 
 **The world transform FreeMoCap produces is authoritative and is carried through the wire unmodified.**

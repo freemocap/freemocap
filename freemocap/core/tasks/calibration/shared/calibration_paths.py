@@ -1,6 +1,6 @@
 """Shared calibration file path utilities.
 
-Used by both the anipose and pyceres calibration paths.
+Used by calibration saving and loading.
 """
 
 from pathlib import Path

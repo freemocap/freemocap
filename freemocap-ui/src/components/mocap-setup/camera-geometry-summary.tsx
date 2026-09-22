@@ -1,5 +1,5 @@
 import {useAppSelector} from '@/store';
-import {CalibrationBoardMode} from '@/store/slices/calibration/calibration-types';
+import {CalibrationBoardMode, CALIBRATION_SOLVER_LABELS} from '@/store/slices/calibration/calibration-types';
 import SettingsSummaryChip from '@/components/common/settings-layout/settings-summary-chip';
 
 export default function CameraGeometrySummary() {
@@ -15,7 +15,7 @@ export default function CameraGeometrySummary() {
             <SettingsSummaryChip title="Configured calibration board">
                 {config.boardMode === CalibrationBoardMode.AUTO ? 'Auto board' : `${config.charucoBoard.squares_x} × ${config.charucoBoard.squares_y} board`} · {config.charucoBoard.square_length_mm} mm
             </SettingsSummaryChip>
-            <SettingsSummaryChip title="Calibration solver">{config.solverMethod === 'anipose' ? 'Anipose' : 'Pyceres'}</SettingsSummaryChip>
+            <SettingsSummaryChip title="Calibration solver">{CALIBRATION_SOLVER_LABELS[config.solverMethod]}</SettingsSummaryChip>
             <SettingsSummaryChip>{calibration?.metadata?.groundplane_applied === true
                 ? 'Saved ground plane' : alignToPerson ? 'Align to person' : 'Calibration frame'}</SettingsSummaryChip>
         </span>

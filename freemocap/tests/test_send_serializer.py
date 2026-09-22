@@ -14,6 +14,7 @@ from freemocap.api.websocket.send_serializer import SendSerializer
 class FakeWebSocket:
     def __init__(self):
         self.client_state = WebSocketState.CONNECTED
+        self.application_state = WebSocketState.CONNECTED
         self.sent_text: list[str] = []
         self.sent_bytes: list[bytes] = []
 
@@ -25,6 +26,7 @@ class FakeWebSocket:
 
     async def close(self, code: int = 1000, reason: str | None = None) -> None:
         self.client_state = WebSocketState.DISCONNECTED
+        self.application_state = WebSocketState.DISCONNECTED
 
 
 async def test_message_sent_as_bytes_frame():

@@ -1,6 +1,5 @@
 from freemocap.core.recording.recording_access import RecordingBusyError
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
-import importlib.util
 import json
 import logging
 from copy import deepcopy
@@ -108,11 +107,6 @@ class CalibrateRecordingResponse(BaseModel):
     message: str | None = None
     results: dict | None = None
     pipeline_id: str | None = None
-
-
-class PyceresAvailabilityResponse(BaseModel):
-    available: bool
-    message: str | None = None
 
 
 # ==================== Helpers ====================
@@ -251,17 +245,6 @@ async def stop_calibration_recording(
     except Exception as e:
         logger.exception(f"Error stopping calibration recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@calibration_router.get("/solver-methods/pyceres-availability")
-def get_pyceres_availability() -> PyceresAvailabilityResponse:
-    """Check whether the optional `pyceres` package (required by the 'Accurate' solver) is installed."""
-    if importlib.util.find_spec("pyceres") is not None:
-        return PyceresAvailabilityResponse(available=True)
-    return PyceresAvailabilityResponse(
-        available=False,
-        message="The 'pyceres' package is not installed in this environment.",
-    )
 
 
 @calibration_router.post("/recording/calibrate")

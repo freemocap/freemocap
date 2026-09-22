@@ -425,7 +425,7 @@ class WebsocketServer:
         return (
             not self._global_kill_flag.value
             and self._websocket_should_continue
-            and self.websocket.client_state == WebSocketState.CONNECTED
+            and self._serializer.is_connected
         )
 
     async def run(self):
@@ -547,6 +547,11 @@ class WebsocketServer:
         logs_queue = get_websocket_log_queue()
         try:
             while self.should_continue:
+                # A socket send (or a filtered record) need not yield. Give
+                # disconnect callbacks and cancellation time even under load.
+                await asyncio.sleep(0)
+                if not self.should_continue:
+                    break
                 if self.websocket.client_state == WebSocketState.CONNECTED:
                     try:
                         log_entry: dict = logs_queue.get_nowait()

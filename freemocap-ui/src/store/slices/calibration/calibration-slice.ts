@@ -1,10 +1,9 @@
-import {CalibrationBoardMode} from "./calibration-types";
+import {CalibrationBoardMode, CalibrationSolverMethodSchema} from "./calibration-types";
 import {createSelector, createSlice, isAnyOf, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
 import {
     calibrateRecording,
-    checkPyceresAvailability,
     loadCalibrationForRecording,
     loadCalibrationToml,
     loadMostRecentCalibration, restoreCalibrationSelection,
@@ -46,8 +45,6 @@ export interface CalibrationState {
     loadRequestId: string | null;
     mostRecentLoadAttempted: boolean;
     dismissedCalibrationPath: string | null;
-    pyceresAvailable: boolean | null;
-    isCheckingPyceresAvailability: boolean;
 }
 
 const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
@@ -55,14 +52,20 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     charucoBoard: { squares_x: 5, squares_y: 3, square_length_mm: 54 },
     minSharedViewsPerCamera: 200,
     autoStopOnMinViewCount: true,
-    solverMethod: 'anipose',
+    solverMethod: CalibrationSolverMethodSchema.enum.anipose,
     useGroundplane: true,
 };
 
 const _persistedCalibrationConfig = loadFromStorage<CalibrationConfig | null>('calibration.config', null);
 
 const initialState: CalibrationState = {
-    config: { ...DEFAULT_CALIBRATION_CONFIG, ..._persistedCalibrationConfig },
+    config: {
+        ...DEFAULT_CALIBRATION_CONFIG,
+        ..._persistedCalibrationConfig,
+        solverMethod: CalibrationSolverMethodSchema
+            .catch(DEFAULT_CALIBRATION_CONFIG.solverMethod)
+            .parse(_persistedCalibrationConfig?.solverMethod),
+    },
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,
@@ -72,8 +75,6 @@ const initialState: CalibrationState = {
     loadRequestId: null,
     mostRecentLoadAttempted: false,
     dismissedCalibrationPath: null,
-    pyceresAvailable: null,
-    isCheckingPyceresAvailability: false,
 };
 
 export const calibrationSlice = createSlice({
@@ -152,21 +153,6 @@ export const calibrationSlice = createSlice({
             });
 
         builder
-            .addCase(checkPyceresAvailability.pending, (state) => {
-                state.isCheckingPyceresAvailability = true;
-            })
-            .addCase(checkPyceresAvailability.fulfilled, (state, action) => {
-                state.isCheckingPyceresAvailability = false;
-                state.pyceresAvailable = action.payload.available;
-                if (!action.payload.available && state.config.solverMethod === 'pyceres') {
-                    state.config.solverMethod = 'anipose';
-                }
-            })
-            .addCase(checkPyceresAvailability.rejected, (state) => {
-                state.isCheckingPyceresAvailability = false;
-                state.pyceresAvailable = false;
-            });
-        builder
             .addMatcher(isAnyOf(loadCalibrationToml.pending, loadCalibrationForRecording.pending, loadMostRecentCalibration.pending, restoreCalibrationSelection.pending), (state, action) => {
                 state.loadRequestId = action.meta.requestId;
                 state.error = null;
@@ -197,7 +183,6 @@ export const selectCalibrationError = (state: RootState) => state.calibration.er
 export const selectCalibrationDirectoryInfo = (state: RootState) => state.calibration.directoryInfo;
 export const selectLoadedCalibration = (state: RootState) => state.calibration.loadedCalibration;
 export const selectDismissedCalibrationPath = (state: RootState) => state.calibration.dismissedCalibrationPath;
-export const selectPyceresAvailable = (state: RootState) => state.calibration.pyceresAvailable;
 
 export const selectCalibrationRecordingPath = selectActiveRecordingFullPath;
 

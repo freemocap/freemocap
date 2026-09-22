@@ -234,7 +234,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   degradation for approximate collinearity), the head's 7-point skull set (incl. `head_vertex` —
   the model doesn't care tracked-vs-derived), and `kinematics/rigid_point_set.py` (bs-repo-derived
   MDS template, chirality-stabilized, per-frame rotation-only Procrustes — reflection-free via the
-  existing Umeyama Kabsch; pyceres deliberately not ported). The freemocap wrapper then wired the
+  existing Umeyama Kabsch). The freemocap wrapper then wired the
   graded dispatch (2 rigid points → the span path; 3+ → the fit): the skull pair estimator (21
   canonical pair keys, wall-clock window — the synthetic-counter bug the quality review caught was
   fixed), the 30-frame chirality-stable template rebuild policy, the fit anchored at the
@@ -250,7 +250,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   rigidifier grades by declaration: 2 rigid points → the span path (the degenerate Procrustes);
   3+ → the full rigid-body fit (median pairwise distances → MDS template → per-frame rotation-only
   Procrustes anchored at the tree-corrected origin — adapted from the bs repo's ferret skull solver,
-  minus pyceres). The skull = the head's 7-point rigid set (incl. `head_vertex` — the model does not
+  without batch optimization). The skull = the head's 7-point rigid set (incl. `head_vertex` — the model does not
   care whether a mapping derives a point or a tracker measures it). The jaw + mouth corners
   articulate and anchor at observed. The earlier face-pass fix (freemocap, rejected) is superseded.
   Nuance pinned: the EXACT axis's names must be in `rigid_points`; the APPROXIMATE axis is a

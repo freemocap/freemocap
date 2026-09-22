@@ -1,5 +1,6 @@
 """Coordinate recording readers and exclusive posthoc ownership in the server process."""
 
+from _thread import RLock as RLockType
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -28,7 +29,7 @@ class RecordingBusyError(RuntimeError):
 
 @dataclass
 class RecordingAccess:
-    lock: RLock = field(default_factory=RLock)
+    lock: RLockType = field(default_factory=RLock)
     owners: dict[Path, RecordingOwner] = field(default_factory=dict)
     readers: dict[UUID, tuple[Path, Callable[[], None]]] = field(default_factory=dict)
     revision: int = 0

@@ -56,7 +56,7 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     minSharedViewsPerCamera: 200,
     autoStopOnMinViewCount: true,
     solverMethod: 'anipose',
-    useGroundplane: false,
+    useGroundplane: true,
 };
 
 const _persistedCalibrationConfig = loadFromStorage<CalibrationConfig | null>('calibration.config', null);

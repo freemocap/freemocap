@@ -72,6 +72,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     // Held model/cameras (for overlay image sizes + connections).
     const modelsRef = useRef<ModelDefinition[] | null>(null);
+    const modelsSubscribersRef = useRef<Set<(models: ModelDefinition[]) => void>>(new Set());
     const camerasRef = useRef<CalibratedCamera[] | null>(null);
 
     // 3D data refs and subscriber sets (backed by TransportService below).
@@ -175,6 +176,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subs.push(transport.subscribeToModels((models) => {
             modelsRef.current = models;
             store.dispatch(modelsReceived(models));
+            for (const cb of modelsSubscribersRef.current) cb(models);
         }));
         subs.push(transport.subscribeToConvention((convention) => {
             store.dispatch(conventionReceived(convention));
@@ -394,13 +396,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         // Replay the held definitions: a subscriber joining mid-stream (worker recreation,
         // remount) would otherwise wait for a model_sequence change that never comes on a
         // stable pipeline.
-        const existing = transportRef.current?.getModels();
+        const existing = modelsRef.current;
         if (existing) cb(existing);
-        return transportRef.current?.subscribeToModels(cb) ?? (() => {});
+        modelsSubscribersRef.current.add(cb);
+        return () => { modelsSubscribersRef.current.delete(cb); };
     }, []);
 
     const getModels = useCallback((): ModelDefinition[] | null => {
-        return transportRef.current?.getModels() ?? null;
+        return modelsRef.current;
     }, []);
 
     const getLatestKeypoints = useCallback((): KeypointsFrame | null => {

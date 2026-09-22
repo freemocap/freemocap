@@ -331,20 +331,24 @@ class WebsocketServer:
 
         await self._ensure_composition(newest)
 
-        image_bytes: bytes | bytearray | memoryview | None = None
-        mf_timestamp: float = 0.0
         pipeline = self._app.realtime_pipeline_manager.pipelines.get(newest.pipeline_id)
-        if pipeline is not None:
-            # JPEG resize+encode of every camera is milliseconds of CPU work —
-            # run it off the event loop so the frame sender, log relay, and
-            # framerate relays don't stall behind it each frame.
+        if pipeline is None:
+            return None
+        # JPEG resize+encode of every camera is milliseconds of CPU work —
+        # run it off the event loop so the frame sender, log relay, and
+        # framerate relays don't stall behind it each frame.
+        try:
             payload = await asyncio.to_thread(
                 pipeline.camera_group.get_frontend_payload_by_frame_number,
                 frame_number=newest.frame_number,
                 display_image_sizes=self._display_image_sizes,
             )
-            if payload is not None:
-                image_bytes, mf_timestamp = payload
+        except IndexError:
+            # The image is no longer available; retry on the next relay iteration.
+            return None
+        if payload is None:
+            return None
+        image_bytes, mf_timestamp = payload
 
         self._record_framerate(
             camera_group_id=newest.camera_group_id,
@@ -352,20 +356,11 @@ class WebsocketServer:
         )
         await self._send_framerate_updates()
 
-        if image_bytes is None:
-            # A live pipeline frame with no camera-group payload is an
-            # anomaly — surface it rather than silently shipping a frame message
-            # without its image.
-            logger.warning(
-                f"camera-group payload unavailable for aggregator frame "
-                f"{newest.frame_number} — frame message sent without its image"
-            )
-
         return FrameContext(
             frame_number=newest.frame_number,
             timestamp=float(mf_timestamp),
             aggregator_output=newest,
-            image_payload=image_bytes if image_bytes is not None else None,
+            image_payload=image_bytes,
         )
 
     async def _await_camera_only_frame(self) -> "FrameContext | None":

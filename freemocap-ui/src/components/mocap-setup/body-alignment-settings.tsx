@@ -8,7 +8,7 @@ const ALIGN_INFO = {
     title: 'Align to person',
     text: <>
         <p>Uses stationary foot contacts to estimate the floor and body landmarks to establish orientation. If foot support is insufficient, uses body orientation.</p>
-        <p>A ground plane saved in the calibration takes precedence. Turn this off to keep the calibration frame when no ground plane is saved.</p>
+        <p>An already-aligned calibration keeps its saved reference frame. Otherwise, this option estimates alignment from the person. Turn it off to keep the supplied calibration frame.</p>
         <p>Applies to the next mocap processing run, including its reconstructed points and cameras.</p>
     </>,
 };

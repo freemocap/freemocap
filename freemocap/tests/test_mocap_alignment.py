@@ -37,7 +37,7 @@ def alignment_request() -> MocapAlignmentRequest:
             reconstruction=TriangulationResult(points_3d=evidence.positions, diagnostics=None,
                 reprojection_error=np.zeros((2,count,points)), per_camera_weights=np.full((count,points,2), .5))),
         camera_geometry=geometry, bundle=evidence.bundle, definition=evidence.definition,
-        timestamps_seconds=evidence.timestamps_seconds, has_explicit_ground=False, config=MocapAlignmentConfig(),
+        timestamps_seconds=evidence.timestamps_seconds, preserve_reference_frame=False, config=MocapAlignmentConfig(),
     )
 
 
@@ -59,13 +59,21 @@ def test_body_alignment_preserves_projection_and_roundtrips_description() -> Non
     assert ReferenceAlignmentDescriptor.model_validate_json(descriptor.model_dump_json()) == descriptor
 
 
-@pytest.mark.parametrize("explicit", [False, True])
-def test_disabled_or_explicit_ground_preserves_objects(explicit: bool) -> None:
-    request = replace(alignment_request(), has_explicit_ground=explicit, config=MocapAlignmentConfig(enabled=explicit))
+@pytest.mark.parametrize("preserve", [False, True])
+def test_disabled_or_preserved_reference_keeps_objects(preserve: bool) -> None:
+    request = replace(alignment_request(), preserve_reference_frame=preserve, config=MocapAlignmentConfig(enabled=preserve))
     result = align_mocap_recording(request=request)
     assert result.camera_geometry is request.camera_geometry
     assert result.triangulation is request.triangulation
     assert result.transformations == ()
+    assert result.alignment.outcome is (
+        ReferenceAlignmentOutcome.PRESERVED_REFERENCE
+        if preserve else ReferenceAlignmentOutcome.DISABLED
+    )
+    assert result.alignment.body_evidence is None
+    assert result.alignment.ground_evidence is None
+    descriptor = ReferenceAlignmentDescriptor.from_result(result=result.alignment)
+    assert ReferenceAlignmentDescriptor.model_validate_json(descriptor.model_dump_json()) == descriptor
 
 
 def test_bad_reprojection_cannot_anchor_the_scene() -> None:
@@ -83,9 +91,9 @@ def test_posthoc_api_alignment_option_roundtrip() -> None:
     assert restored.body_alignment == config.body_alignment
 
 
-@pytest.mark.parametrize("enabled,explicit", [(True, False), (False, False), (True, True)])
-def test_custom_offset_follows_alignment_and_preserves_camera_projection(enabled: bool, explicit: bool) -> None:
-    request = replace(alignment_request(), has_explicit_ground=explicit, config=MocapAlignmentConfig(enabled=enabled))
+@pytest.mark.parametrize("enabled,preserve", [(True, False), (False, False), (True, True)])
+def test_custom_offset_follows_alignment_and_preserves_camera_projection(enabled: bool, preserve: bool) -> None:
+    request = replace(alignment_request(), preserve_reference_frame=preserve, config=MocapAlignmentConfig(enabled=enabled))
     base = align_mocap_recording(request=request)
     offset = ReferenceTransform(matrix=(0., -1., 0., 125., 1., 0., 0., -80., 0., 0., 1., 42., 0., 0., 0., 1.))
     config = PosthocMocapPipelineConfig.model_validate({
@@ -99,7 +107,7 @@ def test_custom_offset_follows_alignment_and_preserves_camera_projection(enabled
     assert result.alignment.outcome == base.alignment.outcome
     expected_operations = (
         (CalibrationTransformType.PERSON, CalibrationTransformType.MANUAL)
-        if enabled and not explicit else (CalibrationTransformType.MANUAL,)
+        if enabled and not preserve else (CalibrationTransformType.MANUAL,)
     )
     assert tuple(entry.operation for entry in result.transformations) == expected_operations
     basis = RECONSTRUCTION_TO_CALIBRATION.matrix

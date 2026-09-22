@@ -2263,7 +2263,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#0d6211376a7eacc7f0fe10afc9b3ef793a552202" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#2d137a0e3b3b989e34d4e090b1a011f95d7af43e" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },
@@ -2293,7 +2293,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#45144f04e3808f5ced03284a459f27d0bb6fcb1b" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#9e6ed96f52e3dedba0a0836aa918130fc65bb254" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },
@@ -2304,7 +2304,7 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs#535206f8e7b7d1d73e904c340cdcbdfeeed7a26f" }
+source = { git = "https://github.com/freemocap/skellylogs?branch=main#535206f8e7b7d1d73e904c340cdcbdfeeed7a26f" }
 dependencies = [
     { name = "tqdm" },
 ]
@@ -2321,7 +2321,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#1cd49b0fe2250263930e9495c835b91b1026bcdc" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#46ae56732194a8bad4507e8f5108fce2b076f466" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

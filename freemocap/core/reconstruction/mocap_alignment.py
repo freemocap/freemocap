@@ -28,7 +28,7 @@ class MocapAlignmentRequest:
     bundle: TrackedSkeletonBundle
     definition: AlignmentDefinition
     timestamps_seconds: NDArray[np.float64]
-    has_explicit_ground: bool
+    preserve_reference_frame: bool
     config: MocapAlignmentConfig
 
 
@@ -46,7 +46,7 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
         raise ValueError("Custom transforms in millimeters require calibrated multicamera reconstruction; single-camera output is in pixels")
     body_tracks = ()
     foot_contacts = ()
-    if request.config.enabled and not request.has_explicit_ground and len(request.triangulation.sources) > 1:
+    if request.config.enabled and not request.preserve_reference_frame and len(request.triangulation.sources) > 1:
         # Pixel reprojection errors come from the pixel-input recording triangulator.
         # Missing observations have NaN errors. This is geometric support, not detector probability.
         errors = request.triangulation.reconstruction.reprojection_error
@@ -69,7 +69,7 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
         ))
         body_tracks, foot_contacts = evidence.body_tracks, evidence.foot_contacts
     alignment = estimate_reference_alignment(request=ReferenceAlignmentRequest(
-        enabled=request.config.enabled, has_explicit_ground=request.has_explicit_ground,
+        enabled=request.config.enabled, preserve_reference_frame=request.preserve_reference_frame,
         body_tracks=body_tracks, foot_contacts=foot_contacts, body_config=request.config.body, ground_config=request.config.ground,
     ))
     transformations: list[CalibrationTransform] = []

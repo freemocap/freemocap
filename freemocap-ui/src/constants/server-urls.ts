@@ -76,6 +76,7 @@ class ServerUrls {
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,
             calibrationMostRecent: `${baseUrl}/freemocap/calibration/most-recent`,
             calibrationContent: `${baseUrl}/freemocap/calibration/content`,
+            calibrationTransform: `${baseUrl}/freemocap/calibration/transform`,
             calibrationStopRecording: `${baseUrl}/freemocap/calibration/recording/stop`,
             calibrateRecording: `${baseUrl}/freemocap/calibration/recording/calibrate`,
 

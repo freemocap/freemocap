@@ -173,7 +173,6 @@ function serializeWheelEvent(e: WheelEvent, rect: DOMRect) {
 
 export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | null}) {
   const calibrationConfig = useAppSelector(selectCalibrationConfig);
-  const loadedCalibration = calibration;
   const {
     isLive,
     subscribeToKeypoints,
@@ -185,7 +184,7 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useReferenceFrameForwarder(VIEWPORT_WORKER, isLive);
+  useReferenceFrameForwarder(VIEWPORT_WORKER, isLive, calibration);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -269,13 +268,6 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
       data: calibrationConfig,
     });
   }, [calibrationConfig]);
-
-  useEffect(() => {
-    VIEWPORT_WORKER.postMessage({
-      type: "calibration",
-      data: loadedCalibration,
-    });
-  }, [loadedCalibration]);
 
   const handleFit = useCallback(() => {
     // Frame every RECONSTRUCTED thing — a person and a board both belong in the shot —

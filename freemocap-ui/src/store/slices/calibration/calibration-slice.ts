@@ -2,6 +2,7 @@ import {CalibrationBoardMode, CalibrationSolverMethodSchema} from "./calibration
 import {createSelector, createSlice, isAnyOf, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
+import {saveCalibrationTransform} from './calibration-save';
 import {
     calibrateRecording,
     loadCalibrationForRecording,
@@ -39,6 +40,7 @@ export interface CalibrationState {
     isRecording: boolean;
     recordingProgress: number;
     isLoading: boolean;
+    isSaving: boolean;
     error: string | null;
     directoryInfo: CalibrationDirectoryInfo | null;
     loadedCalibration: LoadedCalibration | null;
@@ -69,6 +71,7 @@ const initialState: CalibrationState = {
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,
+    isSaving: false,
     error: null,
     directoryInfo: null,
     loadedCalibration: null,
@@ -109,6 +112,21 @@ export const calibrationSlice = createSlice({
         resetCalibrationState: () => initialState,
     },
     extraReducers: (builder) => {
+        builder
+            .addCase(saveCalibrationTransform.pending, (state) => {
+                state.isSaving = true;
+                state.error = null;
+            })
+            .addCase(saveCalibrationTransform.fulfilled, (state, action) => {
+                state.isSaving = false;
+                if (state.loadedCalibration?.path === action.payload.path) {
+                    state.loadedCalibration = action.payload;
+                }
+            })
+            .addCase(saveCalibrationTransform.rejected, (state, action) => {
+                state.isSaving = false;
+                state.error = action.payload ?? action.error.message ?? 'Could not save calibration.';
+            });
         builder
             .addCase(startCalibrationRecording.pending, (state) => {
                 state.isLoading = true;

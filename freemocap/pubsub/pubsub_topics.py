@@ -21,6 +21,8 @@ from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
@@ -50,8 +52,22 @@ class ProcessFrameNumberMessage(TopicMessageABC):
 # ---------------------------------------------------------------------------
 
 @dataclass
+class CalibrationUpdateCommand:
+    request_id: str
+    request: CalibrationUpdateRequest
+
+
+@dataclass
 class PipelineConfigUpdateMessage(TopicMessageABC):
     pipeline_config: RealtimePipelineConfig = None
+    calibration_update: CalibrationUpdateCommand | None = None
+
+
+@dataclass
+class CalibrationUpdateResultMessage(TopicMessageABC):
+    request_id: str
+    calibration: LoadedCalibration | None = None
+    error: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +223,7 @@ class SkeletonFitterResetMessage(TopicMessageABC):
 
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
+CalibrationUpdateResultTopic = create_topic(CalibrationUpdateResultMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
 VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts , #TODO - shouldnt thouh, agg node should run concurrently w/ video nodes

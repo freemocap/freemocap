@@ -12,6 +12,7 @@ import SettingRow from '@/components/common/settings-layout/setting-row';
 import BodyAlignmentSettings from './body-alignment-settings';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
 import TransformEditor from './transform-editor';
+import ReferenceTransformSummary from './reference-transform-summary';
 import {transformFields, transformFromFields, TransformRepresentation} from './reference-transform';
 
 const TRANSFORM_INFO = {
@@ -40,8 +41,6 @@ export default function ReferenceFrameSettings() {
     const setTransformEnabled = (enabled: boolean) => dispatch(referenceTransformEnabledUpdated(enabled));
     const setTransformation = (matrix: Matrix4 | null) => dispatch(referenceTransformUpdated(
         matrix ? transformFields(matrix, TransformRepresentation.Matrix) : null));
-    const fields = transformation ? transformFields(transformation, TransformRepresentation.Quaternion) : null;
-    const preview = (values: number[]) => values.map(value => Number(value.toFixed(3))).join(', ');
     return <>
         <BodyAlignmentSettings/>
 
@@ -53,10 +52,7 @@ export default function ReferenceFrameSettings() {
             above decides whether the transform is applied, never whether the
             feature can be found. */}
         <div className={`reference-transform-block${transformEnabled ? '' : ' reference-transform-block-inactive'}`}>
-            {fields && <output className="reference-transform-summary" aria-label="Defined transformation">
-                        <span><span className="reference-transform-term">q (wxyz)</span>[{preview(fields.slice(3))}]</span>
-                        <span><span className="reference-transform-term">t (xyz) mm</span>[{preview(fields.slice(0, 3))}]</span>
-            </output>}
+            {transformation && <ReferenceTransformSummary matrix={transformation}/>}
             <div className="reference-transform-actions">
                 {transformation && <ButtonSm text="Reset" className="secondary reference-frame-edit"
                     onClick={() => setTransformation(null)}/>}

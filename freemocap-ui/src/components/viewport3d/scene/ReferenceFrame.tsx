@@ -9,9 +9,8 @@ export function useReferenceTransform(): Matrix4 | null {
 
 export function ReferenceFrame() {
     const transform = useReferenceTransform();
-    const inverse = useMemo(() => transform?.clone().invert(), [transform]);
-    if (!inverse) return null;
-    return <group name="Inverse reference frame" matrix={inverse} matrixAutoUpdate={false}>
+    if (!transform) return null;
+    return <group name="Transformed reference frame" matrix={transform} matrixAutoUpdate={false}>
         <axesHelper args={[500]}/>
     </group>;
 }

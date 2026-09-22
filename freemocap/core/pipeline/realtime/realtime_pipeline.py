@@ -33,7 +33,12 @@ from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
 )
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
+from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 from freemocap.pubsub.pubsub_topics import (
+    CalibrationUpdateCommand,
+    CalibrationUpdateResultMessage,
+    CalibrationUpdateResultTopic,
     AggregationNodeOutputTopic,
     AggregationNodeOutputMessage,
     PipelineConfigUpdateMessage,
@@ -75,6 +80,71 @@ class RealtimePipeline:
     # Config stashed while a calibration recording temporarily forces Charuco-only
     # mode (skeleton inference paused). None whenever not in that mode.
     _pre_calibration_config: RealtimePipelineConfig | None = None
+    _calibration_update_subscription: TopicSubscriptionQueue | None = None
+    _calibration_update_task: asyncio.Task[LoadedCalibration] | None = None
+
+    @property
+    def calibration_update_pending(self) -> bool:
+        return (
+            self._calibration_update_task is not None
+            and not self._calibration_update_task.done()
+        )
+
+    async def save_calibration_transform(
+        self, *, request: CalibrationUpdateRequest,
+    ) -> LoadedCalibration:
+        if self.calibration_update_pending:
+            raise ValueError("A calibration save is already in progress.")
+        if self._pre_calibration_config is not None:
+            raise ValueError("Finish calibration recording before saving a transform.")
+        if not self.alive:
+            raise ValueError("The realtime pipeline is no longer running.")
+        if self._calibration_update_subscription is None:
+            self._calibration_update_subscription = self.pubsub.get_subscription(
+                CalibrationUpdateResultTopic,
+            )
+        self._calibration_update_task = asyncio.create_task(
+            self._save_calibration_transform(request=request),
+        )
+        # A disconnected HTTP client must not cancel the runtime-state handoff.
+        return await asyncio.shield(self._calibration_update_task)
+
+    async def _save_calibration_transform(
+        self, *, request: CalibrationUpdateRequest,
+    ) -> LoadedCalibration:
+        command = CalibrationUpdateCommand(
+            request_id=str(uuid.uuid4()), request=request,
+        )
+        self.pubsub.publish(
+            topic_type=PipelineConfigUpdateTopic,
+            message=PipelineConfigUpdateMessage(
+                pipeline_config=self.config,
+                calibration_update=command,
+            ),
+        )
+        subscription = self._calibration_update_subscription
+        assert subscription is not None
+        while True:
+            try:
+                result: CalibrationUpdateResultMessage = subscription.get_nowait()
+            except Empty:
+                if not self.alive:
+                    raise ValueError(
+                        "The pipeline stopped before confirming the save. "
+                        "Reload the calibration to check its saved state."
+                    )
+                await asyncio.sleep(0.05)
+                continue
+            if result.request_id != command.request_id:
+                continue
+            if result.error is not None:
+                raise ValueError(result.error)
+            if result.calibration is None:
+                raise ValueError("The worker returned no saved calibration.")
+            config = self.config.model_copy(deep=True)
+            config.aggregator_config.reference_transform = None
+            self.config = config
+            return result.calibration
 
     @property
     def alive(self) -> bool:
@@ -304,6 +374,8 @@ class RealtimePipeline:
 
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
         """Keep inference subscribed while paused; create its worker before enabling it."""
+        if self.calibration_update_pending:
+            raise ValueError("Wait for the calibration save before changing pipeline settings.")
         if new_config.use_centralized_inference != self.config.use_centralized_inference:
             raise ValueError("Changing inference execution mode requires restarting the pipeline")
 
@@ -347,6 +419,8 @@ class RealtimePipeline:
         skeleton tracking is already off. Best-effort: posthoc re-detects any frame
         the cache lacks, so coverage only affects speed, never correctness.
         """
+        if self.calibration_update_pending:
+            raise ValueError("Wait for the calibration save before changing recording mode.")
         if self._pre_calibration_config is not None:
             return  # already in Charuco-only mode
         if not self.config.camera_node_config.skeleton_tracking_enabled:

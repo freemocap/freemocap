@@ -111,3 +111,17 @@ export const LoadedCalibrationSchema = z.object({
     metadata: CalibrationMetadataSchema,
 });
 export type LoadedCalibration = z.infer<typeof LoadedCalibrationSchema>;
+
+export const CalibrationUpdateRequestSchema = z.object({
+    path: LoadedCalibrationSchema.shape.path,
+    expected_mtime_ms: LoadedCalibrationSchema.shape.mtimeMs,
+    transformations: z.array(CalibrationTransformSchema).min(1),
+    recording_id: z.string().nullable().default(null),
+}).strict();
+export type CalibrationUpdateRequest = z.infer<typeof CalibrationUpdateRequestSchema>;
+
+export const CalibrationSceneSchema = z.object({
+    calibration: LoadedCalibrationSchema.nullable(),
+    referenceTransform: z.array(z.number()).length(16).nullable(),
+});
+export type CalibrationScene = z.infer<typeof CalibrationSceneSchema>;

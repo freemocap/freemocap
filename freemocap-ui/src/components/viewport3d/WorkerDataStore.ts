@@ -9,6 +9,7 @@
  */
 
 import { CalibrationBoardMode, type CalibrationConfig, type LoadedCalibration } from "@/store/slices/calibration/calibration-types";
+import {CalibrationSceneSchema} from '@/store/slices/calibration/calibration-types';
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
@@ -172,6 +173,12 @@ export const workerDataStore: KeypointsSource & {
                         || value.landmarks?.data.some(Number.isFinite)));
                 else modelFramesChan.dispatch(data as ResolvedModelFrame[]);
                 break;
+            case "calibrationScene": {
+                const scene = CalibrationSceneSchema.parse(data);
+                calibChan.dispatch(scene.calibration);
+                referenceTransformChan.dispatch(scene.referenceTransform);
+                break;
+            }
             case "calibration":
                 calibChan.dispatch(data as LoadedCalibration | null);
                 break;

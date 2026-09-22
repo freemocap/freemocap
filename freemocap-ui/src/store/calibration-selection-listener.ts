@@ -2,6 +2,7 @@ import {createListenerMiddleware} from '@reduxjs/toolkit';
 import type {RootState} from './root-state-types';
 import {applyRealtimePipeline} from './slices/realtime/realtime-thunks';
 import {restoreCalibrationSelection} from './slices/calibration/calibration-thunks';
+import {saveCalibrationTransform} from './slices/calibration/calibration-save';
 
 export const calibrationSelectionListenerMiddleware = createListenerMiddleware();
 
@@ -9,6 +10,7 @@ const startListening = calibrationSelectionListenerMiddleware.startListening.wit
 startListening({
     predicate: (action, current, previous) => !restoreCalibrationSelection.fulfilled.match(action)
         && !restoreCalibrationSelection.rejected.match(action)
+        && !saveCalibrationTransform.fulfilled.match(action)
         && current.calibration.loadedCalibration !== previous.calibration.loadedCalibration,
     effect: (_, api) => {
         const state = api.getState();

@@ -28,6 +28,241 @@ from freemocap.core.tasks.calibration.shared.groundplane_alignment import (
 
 
 class CalibrationMetadataTests(TestCase):
+    def test_transform_route_saves_once_and_rejects_stale_revision(self) -> None:
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from freemocap.api.http.calibration import calibration_router as calibration_api
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+        from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+        from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+
+        app = FastAPI()
+        app.include_router(calibration_api.calibration_router)
+        application = SimpleNamespace(
+            realtime_pipeline_manager=SimpleNamespace(pipelines={}),
+        )
+        entry = CalibrationTransform(
+            operation=CalibrationTransformType.MANUAL,
+            quaternion_wxyz=(1., 0., 0., 0.),
+            translation_mm=(10., 20., 30.),
+        )
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.toml"
+            self.make_result().save_toml(path)
+            request = CalibrationUpdateRequest(
+                path=path,
+                expected_mtime_ms=LoadedCalibration.from_path(path).mtime_ms,
+                transformations=(entry,),
+            )
+            with patch.object(calibration_api, "get_freemocap_app", return_value=application):
+                with TestClient(app) as client:
+                    response = client.post(
+                        "/calibration/transform", json=request.model_dump(mode="json"),
+                    )
+                    self.assertEqual(response.status_code, 200, response.text)
+                    saved = LoadedCalibration.from_path(path)
+                    self.assertEqual(
+                        response.json(), saved.model_dump(mode="json", by_alias=True),
+                    )
+                    self.assertEqual(saved.metadata.transformation_history, [entry])
+                    saved_bytes = path.read_bytes()
+                    stale = request.model_copy(
+                        update={"expected_mtime_ms": saved.mtime_ms - 1},
+                    )
+                    response = client.post(
+                        "/calibration/transform", json=stale.model_dump(mode="json"),
+                    )
+                    self.assertEqual(response.status_code, 409, response.text)
+                    self.assertEqual(path.read_bytes(), saved_bytes)
+
+    def test_transform_route_delegates_live_save_to_owning_pipeline(self) -> None:
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, patch
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from freemocap.api.http.calibration import calibration_router as calibration_api
+        from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+        from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+        from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+
+        app = FastAPI()
+        app.include_router(calibration_api.calibration_router)
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.toml"
+            self.make_result().save_toml(path)
+            loaded = LoadedCalibration.from_path(path)
+            original = path.read_bytes()
+            config = RealtimePipelineConfig()
+            config.aggregator_config.calibration_toml_path = str(path)
+            pipeline = SimpleNamespace(
+                alive=True, config=config,
+                save_calibration_transform=AsyncMock(return_value=loaded),
+            )
+            application = SimpleNamespace(
+                realtime_pipeline_manager=SimpleNamespace(pipelines={"live": pipeline}),
+            )
+            request = CalibrationUpdateRequest(
+                path=path, expected_mtime_ms=loaded.mtime_ms,
+                transformations=(CalibrationTransform(
+                    operation=CalibrationTransformType.MANUAL,
+                    quaternion_wxyz=(1., 0., 0., 0.),
+                    translation_mm=(10., 20., 30.),
+                ),),
+            )
+            with patch.object(calibration_api, "get_freemocap_app", return_value=application):
+                with TestClient(app) as client:
+                    response = client.post(
+                        "/calibration/transform", json=request.model_dump(mode="json"),
+                    )
+            self.assertEqual(response.status_code, 200, response.text)
+            pipeline.save_calibration_transform.assert_awaited_once_with(request=request)
+            self.assertEqual(path.read_bytes(), original)
+
+    def test_live_save_consumes_offset_only_after_success(self) -> None:
+        from unittest.mock import patch
+        from freemocap.core.reconstruction.reference_transform import ReferenceTransform
+        from freemocap.core.tasks.calibration.shared import calibration_update
+        from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+        from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+
+        source = self.make_result()
+        second = source.cameras[0].model_copy(deep=True)
+        second.id = "second"
+        second.index = 1
+        source.cameras.append(second)
+        offset = ReferenceTransform(
+            matrix=(1., 0., 0., 10., 0., 1., 0., 20., 0., 0., 1., 30., 0., 0., 0., 1.),
+        )
+        entry = CalibrationTransform.from_transform(
+            operation=CalibrationTransformType.MANUAL,
+            transform=offset.to_transform(),
+        )
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.toml"
+            source.save_toml(path)
+            original_file = path.read_bytes()
+            tracker = CalibrationStateTracker.create_and_try_load(path)
+            tracker.set_reference_transform(reference_transform=offset)
+            preview = tracker.calibration
+            self.assertIsNotNone(preview)
+            request = calibration_update.CalibrationUpdateRequest(
+                path=path,
+                expected_mtime_ms=LoadedCalibration.from_path(path).mtime_ms,
+                transformations=(entry,),
+            )
+            with patch.object(calibration_update.os, "replace", side_effect=PermissionError("File busy")):
+                with self.assertRaises(PermissionError):
+                    tracker.commit_reference_transform(request=request)
+            self.assertEqual(path.read_bytes(), original_file)
+            self.assertIs(tracker.calibration, preview)
+            self.assertFalse(tracker.set_reference_transform(reference_transform=offset))
+
+            response = tracker.commit_reference_transform(request=request)
+            self.assertEqual(response.cameras, preview.cameras)
+            self.assertEqual(tracker.calibration.cameras, preview.cameras)
+            self.assertFalse(tracker.set_reference_transform(reference_transform=None))
+            self.assertEqual(response.metadata.transformation_history, [entry])
+            with self.assertRaises(ValueError):
+                tracker.commit_reference_transform(request=request)
+            self.assertEqual(CalibrationResult.load_toml(path).transformation_history, [entry])
+
+    def test_explicit_calibration_update_commits_geometry_and_history(self) -> None:
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+        from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+        from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+
+        entry = CalibrationTransform(
+            operation=CalibrationTransformType.MANUAL,
+            quaternion_wxyz=(1., 0., 0., 0.),
+            translation_mm=(10., 20., 30.),
+        )
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.toml"
+            source = self.make_result()
+            source.save_toml(path)
+            original = path.read_bytes()
+            loaded = LoadedCalibration.from_path(path)
+            request = CalibrationUpdateRequest(
+                path=path, expected_mtime_ms=loaded.mtime_ms,
+                transformations=(entry,),
+            )
+            with request.prepare() as prepared:
+                self.assertEqual(path.read_bytes(), original)
+                self.assertEqual(prepared.calibration.transformation_history, [entry])
+            self.assertEqual(path.read_bytes(), original)
+            with request.prepare() as prepared:
+                response = prepared.commit()
+            restored = CalibrationResult.load_toml(path)
+            self.assertEqual(restored.transformation_history, [entry])
+            self.assertEqual(restored.cameras, source.transformed(transformations=(entry,)).cameras)
+            self.assertEqual(response.mtime_ms, LoadedCalibration.from_path(path).mtime_ms)
+            self.assertEqual(response.metadata, restored.to_metadata())
+
+    def test_failed_calibration_replace_preserves_original_file(self) -> None:
+        from unittest.mock import patch
+        from freemocap.core.tasks.calibration.shared import calibration_update
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+        from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.toml"
+            self.make_result().save_toml(path)
+            original = path.read_bytes()
+            request = calibration_update.CalibrationUpdateRequest(
+                path=path,
+                expected_mtime_ms=LoadedCalibration.from_path(path).mtime_ms,
+                transformations=(CalibrationTransform(
+                    operation=CalibrationTransformType.MANUAL,
+                    quaternion_wxyz=(1., 0., 0., 0.),
+                    translation_mm=(10., 0., 0.),
+                ),),
+            )
+            with request.prepare() as prepared:
+                with patch.object(calibration_update.os, "replace", side_effect=PermissionError("File busy")):
+                    with self.assertRaises(PermissionError):
+                        prepared.commit()
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual(list(Path(directory).glob(".*.toml")), [])
+
+    def test_calibration_update_rejects_stale_file_revision(self) -> None:
+        from freemocap.core.tasks.calibration.shared.calibration_transform import (
+            CalibrationTransform, CalibrationTransformType,
+        )
+        from freemocap.core.tasks.calibration.shared.calibration_update import (
+            CalibrationFileChangedError, CalibrationUpdateRequest,
+        )
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.toml"
+            self.make_result().save_toml(path)
+            original = path.read_bytes()
+            request = CalibrationUpdateRequest(
+                path=path, expected_mtime_ms=0.,
+                transformations=(CalibrationTransform(
+                    operation=CalibrationTransformType.MANUAL,
+                    quaternion_wxyz=(1., 0., 0., 0.),
+                    translation_mm=(10., 0., 0.),
+                ),),
+            )
+            with self.assertRaises(CalibrationFileChangedError):
+                with request.prepare():
+                    self.fail("A stale request must not reach preparation")
+            self.assertEqual(path.read_bytes(), original)
+
     def test_calibration_transform_sequence_preserves_projection_and_history(self) -> None:
         from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
         from skellyforge.core.math.geometry.spatial_vectors import Displacement, Point

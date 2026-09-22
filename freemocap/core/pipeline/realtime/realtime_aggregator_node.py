@@ -96,6 +96,8 @@ from freemocap.core.types.type_overloads import (
 )
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
+    CalibrationUpdateResultMessage,
+    CalibrationUpdateResultTopic,
     CameraNodeOutputMessage,
     CameraNodeOutputTopic,
     PipelineConfigUpdateTopic,
@@ -371,6 +373,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 pipeline_config_sub=pubsub.get_subscription(
                     PipelineConfigUpdateTopic,
                 ),
+                calibration_update_pub=pubsub.get_publication_queue(
+                    CalibrationUpdateResultTopic,
+                ),
                 process_frame_number_pub=pubsub.get_publication_queue(
                     ProcessFrameNumberTopic,
                 ),
@@ -407,6 +412,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         camera_node_sub: TopicSubscriptionQueue,
         skeleton_inference_sub: TopicSubscriptionQueue,
         pipeline_config_sub: TopicSubscriptionQueue,
+        calibration_update_pub: TopicPublicationQueue,
         process_frame_number_pub: TopicPublicationQueue,
         aggregation_output_pub: TopicPublicationQueue,
         timing_pub: TopicPublicationQueue,
@@ -532,6 +538,30 @@ class RealtimeAggregatorNode(AggregatorNode):
                         )
                     except queue.Empty:
                         break
+                    if msg.calibration_update is not None:
+                        command = msg.calibration_update
+                        try:
+                            saved = calibration.commit_reference_transform(
+                                request=command.request,
+                            )
+                        except Exception as error:
+                            logger.exception("Could not save calibration transform")
+                            calibration_update_pub.put(CalibrationUpdateResultMessage(
+                                request_id=command.request_id,
+                                error=str(error),
+                            ))
+                            continue
+                        pipeline_config = pipeline_config.model_copy(deep=True)
+                        pipeline_config.aggregator_config.reference_transform = None
+                        aggregator_config = pipeline_config.aggregator_config
+                        calibration.bind_live_cameras(
+                            live_camera_indices=live_camera_indices,
+                        )
+                        calibration_update_pub.put(CalibrationUpdateResultMessage(
+                            request_id=command.request_id,
+                            calibration=saved,
+                        ))
+                        continue
                     pipeline_config = msg.pipeline_config
                     aggregator_config = pipeline_config.aggregator_config
                     filter_config = aggregator_config.realtime_filter_config

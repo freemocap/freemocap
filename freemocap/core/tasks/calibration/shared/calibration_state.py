@@ -22,6 +22,11 @@ from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.shared.calibration_transform import (
+    CalibrationTransform, CalibrationTransformType,
+)
+from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingResult, CameraMatchingStatus, MatchingFailurePolicy
 from freemocap.core.tasks.calibration.shared.calibration_camera_binding import (
     CalibrationBinding,
@@ -275,6 +280,61 @@ class CalibrationStateTracker:
     def calibration(self) -> CalibrationResult | None:
         """The loaded calibration, or None when there is no valid calibration."""
         return self._calibration
+
+    def commit_reference_transform(self, *, request: CalibrationUpdateRequest) -> LoadedCalibration:
+        """Bake the active offset into the selected file, then consume that offset.
+
+        Called by the owning worker between frames. Nothing in runtime state is
+        changed until replacement geometry is prepared and the file save succeeds.
+        """
+        if self._configured_path is None or (
+            self._configured_path.expanduser().resolve()
+            != request.path.expanduser().resolve()
+        ):
+            raise ValueError("The selected calibration changed before saving.")
+        if self._reference_transform is None:
+            raise ValueError("There is no active runtime transform to save.")
+        expected = CalibrationTransform.from_transform(
+            operation=CalibrationTransformType.MANUAL,
+            transform=self._reference_transform.to_transform(),
+        )
+        if len(request.transformations) != 1:
+            raise ValueError("Save the single active runtime transform.")
+        requested = request.transformations[0]
+        if (
+            requested.operation != expected.operation
+            or not requested.to_transform().rotation.is_same_rotation(
+                other=expected.to_transform().rotation,
+            )
+            or not np.allclose(
+                requested.translation_mm, expected.translation_mm,
+                rtol=0, atol=1e-9,
+            )
+        ):
+            raise ValueError("The runtime transform changed before saving.")
+        # Persist the worker's exact preview, after checking the client's intent.
+        request = CalibrationUpdateRequest(
+            path=request.path,
+            expected_mtime_ms=request.expected_mtime_ms,
+            transformations=(expected,),
+            recording_id=request.recording_id,
+        )
+        with request.prepare() as prepared:
+            triangulator = Triangulator(cameras=prepared.calibration.cameras)
+            response = prepared.commit()
+            self._reference_transform = None
+            self._source_calibration = prepared.calibration
+            self._calibration = prepared.calibration
+            self._triangulator = triangulator
+            self._calibration_path = response.path
+            self._calibration_file_mtime = response.mtime_ms / 1000
+            self._is_valid = True
+            self._consecutive_failure_count = 0
+            self._calibration_generation += 1
+            self._subset_triangulator_cache.clear()
+            self._binding = None
+            self._binding_key = None
+            return response
 
     def check_for_update(self) -> bool:
         """Reload the selected file when it changes; fail if it becomes unreadable."""

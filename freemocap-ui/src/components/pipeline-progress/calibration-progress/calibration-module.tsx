@@ -11,7 +11,7 @@ import IconButton from "@/components/ui-components/IconButton";
 import DropdownButton from "@/components/ui-components/DropdownButton";
 import CalibrationSettings from "./calibration-settings";
 import {useCalibrationTomlLoader} from '@/components/viewport3d/hooks/useCalibrationTomlLoader';
-// import CalibrationReferenceFrame from './calibration-reference-frame';
+import CalibrationReferenceFrame from './calibration-reference-frame';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import ImportVideosModal from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 import charucoBoardImage from "@/assets/images/charuco_board.webp";
@@ -85,10 +85,9 @@ const CalibrationModule = ({
   const location = useLocation();
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
   useCalibrationTomlLoader(appMode === 'streaming' && appModeOverride === undefined);
-  // TODO: Revisit reference-frame controls once the core workflow is stable.
-  // const referenceFrameControls = appMode === 'streaming' && appModeOverride === undefined
-  //   ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
-  //   : null;
+  const referenceFrameControls = appMode === 'streaming' && appModeOverride === undefined
+    ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
+    : null;
   const panelTitle = appModeOverride === undefined ? 'Capture volume' : 'Calibration';
 
   // Cycling calibration messages during recording
@@ -384,6 +383,7 @@ const CalibrationModule = ({
         text: 'When creating a calibration, use the initial ChArUco board pose to define the ground plane. This does not change an already loaded calibration.'}}
         control={<SettingToggleSwitch label="Use initial board as ground plane" isToggled={config.useGroundplane}
           onToggle={useGroundplane => updateCalibrationConfig({useGroundplane})}/>}/>
+      {referenceFrameControls}
     </>;
   }
 
@@ -480,7 +480,7 @@ const CalibrationModule = ({
           />
         </div>
         {calibrationDropdown}
-        {/* {referenceFrameControls} */}
+        {referenceFrameControls}
       </div>
       </>
     );
@@ -551,7 +551,7 @@ const CalibrationModule = ({
         }
         disabled={isLoading}
       />
-      {/* {referenceFrameControls} */}
+      {referenceFrameControls}
     </div>
     </>
   );

@@ -6,6 +6,8 @@ from copy import deepcopy
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from filelock import Timeout
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core.recorders.videos.video_filename import VIDEO_EXTENSIONS
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -14,6 +16,7 @@ from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration, get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
+from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
 from freemocap.pubsub.pubsub_topics import (
     CalibrationRecordingStateMessage,
     CalibrationRecordingStateTopic,
@@ -52,6 +55,34 @@ def most_recent_calibration() -> LoadedCalibration | None:
 @calibration_router.get("/content")
 def calibration_content(path: Path) -> LoadedCalibration:
     return _load_calibration(path)
+
+
+@calibration_router.post("/transform")
+async def transform_calibration(request: CalibrationUpdateRequest) -> LoadedCalibration:
+    pipelines = [
+        pipeline
+        for pipeline in get_freemocap_app().realtime_pipeline_manager.pipelines.values()
+        if pipeline.alive
+    ]
+    try:
+        if len(pipelines) > 1:
+            raise ValueError("Saving a transform requires at most one active realtime pipeline.")
+        if pipelines:
+            pipeline = pipelines[0]
+            selected = pipeline.config.aggregator_config.calibration_toml_path
+            if selected is None or (
+                Path(selected).expanduser().resolve()
+                != request.path.expanduser().resolve()
+            ):
+                raise ValueError("The active pipeline is using a different calibration.")
+            return await pipeline.save_calibration_transform(request=request)
+        return await run_in_threadpool(request.save)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Calibration file not found") from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except (OSError, Timeout) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @calibration_router.get("/files")

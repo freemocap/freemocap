@@ -77,6 +77,7 @@ export function useServerPanel(): ServerPanelState {
     const [currentExePath, setCurrentExePath] = useState<string | null>(null);
     const [candidates, setCandidates] = useState<ExecutableCandidate[]>([]);
     const [candidatesLoading, setCandidatesLoading] = useState(false);
+    const [candidatesInitialized, setCandidatesInitialized] = useState(false);
     const [processInfo, setProcessInfo] = useState<{ pid: number | undefined; killed: boolean } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -139,6 +140,7 @@ export function useServerPanel(): ServerPanelState {
             setError(`Failed to load candidates: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             setCandidatesLoading(false);
+            setCandidatesInitialized(true);
         }
     }, [isElectron, api, selectedExePath]);
 
@@ -180,7 +182,20 @@ export function useServerPanel(): ServerPanelState {
         setServerLoading(true);
         setError(null);
         try {
-            await api.pythonServer.start.mutate({ exePath: selectedExePath || null });
+            try {
+                await api.pythonServer.start.mutate({ exePath: selectedExePath || null });
+            } catch (err) {
+                if (selectedExePath) {
+                    // Stored path exists on disk but failed to actually launch (stale
+                    // mount dir, wrong arch, corrupted, permissions, etc.) — clear it
+                    // and let the backend auto-detect a valid candidate instead.
+                    console.warn('Stored executable path failed to launch, clearing and retrying with auto-detection:', err);
+                    setSelectedExePath('');
+                    await api.pythonServer.start.mutate({ exePath: null });
+                } else {
+                    throw err;
+                }
+            }
             await pollServerStatus();
         } catch (err) {
             console.error('Failed to start server:', err);
@@ -215,7 +230,17 @@ export function useServerPanel(): ServerPanelState {
             disconnect();
             await api.pythonServer.stop.mutate();
             await new Promise((resolve) => setTimeout(resolve, 500));
-            await api.pythonServer.start.mutate({ exePath: selectedExePath || null });
+            try {
+                await api.pythonServer.start.mutate({ exePath: selectedExePath || null });
+            } catch (err) {
+                if (selectedExePath) {
+                    console.warn('Stored executable path failed to launch, clearing and retrying with auto-detection:', err);
+                    setSelectedExePath('');
+                    await api.pythonServer.start.mutate({ exePath: null });
+                } else {
+                    throw err;
+                }
+            }
             await pollServerStatus();
         } catch (err) {
             console.error('Failed to reset server:', err);
@@ -246,13 +271,18 @@ export function useServerPanel(): ServerPanelState {
         if (!isElectron || !api) return;
         if (!autoLaunchServer) return;
         if (autoLaunchFiredRef.current) return;
+        // Wait for the initial candidate load/validation pass to actually
+        // complete (not just "not currently loading") before auto-launching —
+        // candidatesLoading starts false, so checking it alone races against
+        // loadCandidates() setting it true on mount.
+        if (!candidatesInitialized) return;
         if (candidatesLoading) return;
         if (serverRunning || serverLoading) return;
 
         autoLaunchFiredRef.current = true;
         console.log('Auto-launching server...');
         startServer();
-    }, [isElectron, api, autoLaunchServer, candidatesLoading, serverRunning, serverLoading, startServer]);
+    }, [isElectron, api, autoLaunchServer, candidatesInitialized, candidatesLoading, serverRunning, serverLoading, startServer]);
 
     // ── WebSocket auto-reconnect ──
 

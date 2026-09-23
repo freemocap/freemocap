@@ -54,7 +54,6 @@ jobs:
         with:
           version: "latest"
           enable-cache: true
-          cache-suffix: "v2"
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}

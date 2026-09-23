@@ -164,7 +164,7 @@ def run_posthoc_mocap_task(
         triangulation=triangulation, camera_geometry=camera_geometry, bundle=bundles[0],
         definition=AlignmentDefinition.from_default_human(skeleton=bundles[0].skeleton),
         timestamps_seconds=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
-        preserve_reference_frame=calibration.aligned if calibration is not None else False,
+        preserve_reference_frame=False,
         config=task_config.body_alignment,
     ))
     triangulation = aligned.triangulation

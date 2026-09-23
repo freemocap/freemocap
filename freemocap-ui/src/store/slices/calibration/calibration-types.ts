@@ -26,7 +26,7 @@ export interface CalibrationConfig {
     minSharedViewsPerCamera: number;
     autoStopOnMinViewCount: boolean;
     solverMethod: CalibrationSolverMethod;
-    useGroundplane: boolean;
+    alignmentMethod: z.infer<typeof CalibrationAlignmentMethodSchema> | null;
 }
 
 export const CalibrationCameraDataSchema = CalibratedCameraSchema.pick({

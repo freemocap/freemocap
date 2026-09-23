@@ -99,7 +99,6 @@ export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
  * Mirrors backend MocapPipelineConfig.
  */
 export interface MocapConfig {
-    bodyAlignmentEnabled: boolean;
     cameraMatching: CameraMatchingOptions;
     charucoTrackingEnabled: boolean;
     detector: MediapipeDetectorConfig;
@@ -246,7 +245,6 @@ export interface MocapState {
 
 
 const DEFAULT_MOCAP_CONFIG: MocapConfig = {
-    bodyAlignmentEnabled: true,
     cameraMatching: {...defaultCameraMatchingOptions},
     detector: {...MEDIAPIPE_REALTIME_PRESET},
     triangulation: {...DEFAULT_TRIANGULATION_CONFIG},
@@ -313,9 +311,6 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
-        bodyAlignmentUpdated: (state, action: PayloadAction<boolean>) => {
-            state.config.bodyAlignmentEnabled = action.payload;
-        },
         /** Row-major 4x4, or null when no additional transformation is defined. */
         referenceTransformUpdated: (state, action: PayloadAction<number[] | null>) => {
             state.config.referenceTransform = action.payload;
@@ -522,7 +517,6 @@ export const selectCanProcessMocapRecording = createSelector(
 // ==================== Actions Export ====================
 
 export const {
-    bodyAlignmentUpdated,
     referenceTransformUpdated,
     referenceTransformEnabledUpdated,
     cameraMatchingUpdated,

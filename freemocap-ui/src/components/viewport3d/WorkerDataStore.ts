@@ -55,7 +55,7 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     minSharedViewsPerCamera: 200,
     autoStopOnMinViewCount: true,
     solverMethod: "anipose",
-    useGroundplane: false,
+    alignmentMethod: null,
 };
 
 const keypointsChan = makeChannel<KeypointsFrame | null>(null);

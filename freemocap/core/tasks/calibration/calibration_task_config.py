@@ -1,5 +1,6 @@
 from enum import Enum
 from freemocap.core.tracking.board_selection import CharucoBoardMode
+from freemocap.core.tasks.calibration.shared.groundplane_alignment import CalibrationAlignmentMethod
 
 from pydantic import BaseModel, ConfigDict, Field
 from skellytracker.core import DetectionStageConfig, TrackerConfig
@@ -32,10 +33,10 @@ class PosthocCalibrationPipelineConfig(BaseModel):
         description="Calibration solver method.",
     )
 
-    use_groundplane: bool = Field(
-        default=False,
-        alias="useGroundplane",
-        description="Align world frame to charuco board plane after calibration.",
+    alignment_method: CalibrationAlignmentMethod | None = Field(
+        default=None,
+        alias="alignmentMethod",
+        description="ChArUco alignment runs during calibration; person alignment runs during mocap processing.",
     )
 
     triangulation_config: TriangulationConfig = Field(
@@ -46,6 +47,10 @@ class PosthocCalibrationPipelineConfig(BaseModel):
             "vs. subset-ensemble outlier rejection, plus the outlier-rejection knobs."
         ),
     )
+
+    @property
+    def use_groundplane(self) -> bool:
+        return self.alignment_method is CalibrationAlignmentMethod.CHARUCO
 
     @property
     def detector_config(self) -> TrackerConfig:

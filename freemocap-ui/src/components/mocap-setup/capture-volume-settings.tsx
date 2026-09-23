@@ -3,7 +3,6 @@ import {CalibrateRecordingButton} from '@/components/control-panels/calibration-
 import {useAppSelector} from '@/store';
 import {selectMocapRecordingPath} from '@/store/slices/mocap/mocap-slice';
 import SettingRow from '@/components/common/settings-layout/setting-row';
-import ReferenceFrameSettings from './reference-frame-settings';
 
 export default function CaptureVolumeSettings({mode}: {mode: 'recording' | 'playback'}) {
     const directory = useAppSelector(selectMocapRecordingPath);
@@ -16,7 +15,6 @@ export default function CaptureVolumeSettings({mode}: {mode: 'recording' | 'play
                     control={<CalibrateRecordingButton recordingPath={directory}/>}/>
             </div>
         </div>
-        {mode === 'playback' && <ReferenceFrameSettings/>}
     </>;
 }
 

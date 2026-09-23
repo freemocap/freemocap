@@ -1,17 +1,17 @@
 import AnchoredInfo from '@/components/ui-components/AnchoredInfo';
 import {RecordingCalibrationOptions} from '@/components/mocap-setup/RecordingCalibrationOptions';
 import SettingRow from '@/components/common/settings-layout/setting-row';
-import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
+import CalibrationAlignmentSettings from '@/components/mocap-setup/calibration-alignment-settings';
 import {CalibrationBoardMode, CALIBRATION_SOLVER_LABELS} from "@/store/slices/calibration/calibration-types";
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
-import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
 import DropdownButton from "@/components/ui-components/DropdownButton";
 import CalibrationSettings from "./calibration-settings";
 import {useCalibrationTomlLoader} from '@/components/viewport3d/hooks/useCalibrationTomlLoader';
 import CalibrationReferenceFrame from './calibration-reference-frame';
+import ReferenceFrameSettings from '@/components/mocap-setup/reference-frame-settings';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import ImportVideosModal from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 import charucoBoardImage from "@/assets/images/charuco_board.webp";
@@ -85,9 +85,14 @@ const CalibrationModule = ({
   const location = useLocation();
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
   useCalibrationTomlLoader(appMode === 'streaming' && appModeOverride === undefined);
-  const referenceFrameControls = appMode === 'streaming' && appModeOverride === undefined
-    ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
-    : null;
+  const referenceFrameControls = <>
+    <CalibrationAlignmentSettings allowPerson={appMode === 'playback'} disabled={isLoading || isRecording}/>
+    {appMode === 'playback'
+      ? <ReferenceFrameSettings/>
+      : presentation === 'panel' && appModeOverride === undefined
+        ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
+        : null}
+  </>;
   const panelTitle = appModeOverride === undefined ? 'Capture volume' : 'Calibration';
 
   // Cycling calibration messages during recording
@@ -379,10 +384,6 @@ const CalibrationModule = ({
         text: 'Configure the ChArUco board dimensions, measured square size, and calibration solver. These settings apply when creating a calibration.'}}
         control={<ButtonSm text="Configure board…" iconClass="settings-icon" buttonType="secondary" onClick={handleToggleSettings}/>}/>
       {showCalibrationSettings && <CalibrationSettings onClose={handleCloseSettings}/>}
-      <SettingRow label="Use initial board as ground plane" info={{title: 'Calibration ground plane',
-        text: 'When creating a calibration, use the initial ChArUco board pose to define the ground plane. This does not change an already loaded calibration.'}}
-        control={<SettingToggleSwitch label="Use initial board as ground plane" isToggled={config.useGroundplane}
-          onToggle={useGroundplane => updateCalibrationConfig({useGroundplane})}/>}/>
       {referenceFrameControls}
     </>;
   }
@@ -542,15 +543,6 @@ const CalibrationModule = ({
         {calibrationDropdown}
       </div>
       
-      <ToggleComponent
-        text="Align to initial Charuco ground plane"
-        iconClass="snaptogrid-icon"
-        isToggled={config.useGroundplane}
-        onToggle={(checked) =>
-          updateCalibrationConfig({ useGroundplane: checked })
-        }
-        disabled={isLoading}
-      />
       {referenceFrameControls}
     </div>
     </>

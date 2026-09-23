@@ -19,15 +19,22 @@ test('recording and processing requests carry enabled alignment and custom trans
     const bundle = await build({
         stdin: {contents: `
             import {store} from './src/store/store';
-            import {bodyAlignmentUpdated, referenceTransformUpdated, referenceTransformEnabledUpdated, posthocFilterConfigUpdated} from './src/store/slices/mocap/mocap-slice';
+            import {referenceTransformUpdated, referenceTransformEnabledUpdated, posthocFilterConfigUpdated} from './src/store/slices/mocap/mocap-slice';
+            import {calibrationConfigUpdated} from './src/store/slices/calibration';
+            import {CalibrationAlignmentMethodSchema} from './src/store/slices/calibration/calibration-types';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {startMocapRecording, stopMocapRecording, processMocapRecording} from './src/store/slices/mocap/mocap-thunks';
             async function run(): Promise<void> {
                 store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
                 store.dispatch(referenceTransformUpdated([0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]));
-                for (const enabled of [true, false]) {
+                for (const alignmentMethod of [
+                    CalibrationAlignmentMethodSchema.enum.person,
+                    CalibrationAlignmentMethodSchema.enum.charuco,
+                    null,
+                ]) {
+                    const enabled = alignmentMethod === CalibrationAlignmentMethodSchema.enum.person;
                     store.dispatch(referenceTransformEnabledUpdated(enabled));
-                    store.dispatch(bodyAlignmentUpdated(enabled));
+                    store.dispatch(calibrationConfigUpdated({alignmentMethod}));
                     store.dispatch(posthocFilterConfigUpdated({enabled, cutoff: 4.5, order: 3}));
                     await store.dispatch(startMocapRecording()).unwrap();
                     await store.dispatch(stopMocapRecording()).unwrap();
@@ -46,7 +53,7 @@ test('recording and processing requests carry enabled alignment and custom trans
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.locator('#result')).toHaveText('done');
-    expect(requests).toHaveLength(6);
+    expect(requests).toHaveLength(9);
     for (const request of requests.slice(0, 3)) {
         expect(request.mocapTaskConfig.filterConfig).toEqual({enabled: true, method: 'butter_low_pass', cutoff: 4.5, order: 3});
         expect(request.mocapTaskConfig.bodyAlignment).toEqual({enabled: true, additional_transform: {matrix: [0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]}});

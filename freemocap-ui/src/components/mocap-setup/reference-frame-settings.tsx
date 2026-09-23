@@ -9,7 +9,6 @@ import {
 } from '@/store/slices/mocap';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import SettingRow from '@/components/common/settings-layout/setting-row';
-import BodyAlignmentSettings from './body-alignment-settings';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
 import TransformEditor from './transform-editor';
 import ReferenceTransformSummary from './reference-transform-summary';
@@ -42,8 +41,6 @@ export default function ReferenceFrameSettings() {
     const setTransformation = (matrix: Matrix4 | null) => dispatch(referenceTransformUpdated(
         matrix ? transformFields(matrix, TransformRepresentation.Matrix) : null));
     return <>
-        <BodyAlignmentSettings/>
-
         <SettingRow label="Apply custom transform" info={TRANSFORM_INFO}
             control={<SettingToggleSwitch label="Apply custom transform" isToggled={transformEnabled}
                 onToggle={setTransformEnabled}/>}/>

@@ -1,4 +1,4 @@
-import {CalibrationBoardMode, CalibrationSolverMethodSchema} from "./calibration-types";
+import {CalibrationAlignmentMethodSchema, CalibrationBoardMode, CalibrationSolverMethodSchema} from "./calibration-types";
 import {createSelector, createSlice, isAnyOf, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
@@ -55,7 +55,7 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     minSharedViewsPerCamera: 200,
     autoStopOnMinViewCount: true,
     solverMethod: CalibrationSolverMethodSchema.enum.anipose,
-    useGroundplane: true,
+    alignmentMethod: CalibrationAlignmentMethodSchema.enum.charuco,
 };
 
 const _persistedCalibrationConfig = loadFromStorage<CalibrationConfig | null>('calibration.config', null);
@@ -64,6 +64,9 @@ const initialState: CalibrationState = {
     config: {
         ...DEFAULT_CALIBRATION_CONFIG,
         ..._persistedCalibrationConfig,
+        alignmentMethod: CalibrationAlignmentMethodSchema.nullable()
+            .catch(DEFAULT_CALIBRATION_CONFIG.alignmentMethod)
+            .parse(_persistedCalibrationConfig?.alignmentMethod),
         solverMethod: CalibrationSolverMethodSchema
             .catch(DEFAULT_CALIBRATION_CONFIG.solverMethod)
             .parse(_persistedCalibrationConfig?.solverMethod),
@@ -85,7 +88,9 @@ export const calibrationSlice = createSlice({
     initialState,
     reducers: {
         calibrationConfigUpdated: (state, action: PayloadAction<Partial<CalibrationConfig>>) => {
-            state.config = { ...state.config, ...action.payload };
+            const config = { ...state.config, ...action.payload };
+            config.alignmentMethod = CalibrationAlignmentMethodSchema.nullable().parse(config.alignmentMethod);
+            state.config = config;
         },
         calibrationProgressUpdated: (state, action: PayloadAction<number>) => {
             state.recordingProgress = action.payload;

@@ -5,17 +5,15 @@ Provides optimistic loading, graceful degradation on repeated triangulation
 failure, and periodic file-change detection for hot-reloading.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
-from pathlib import Path
 
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 
 import numpy as np
-from numpy.typing import NDArray
-from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
@@ -24,6 +22,13 @@ from freemocap.core.tasks.triangulation.helpers.angulation_result import Angulat
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from skellytracker.core.data_primitives.observation import Observation
+    from skellycam.core.types.type_overloads import CameraIdString
+    from pathlib import Path
+    from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 

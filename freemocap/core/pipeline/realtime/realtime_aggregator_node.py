@@ -19,13 +19,13 @@ enforced by a single closed-form forward pass. Only real (non-extrapolated)
 keypoints teach lengths. The reset signal clears the rolling window so the next
 ~window seconds re-fit from scratch.
 """
+from __future__ import annotations
+
 import logging
-import multiprocessing.synchronize
 import queue
 import threading
 import time
 from dataclasses import dataclass
-from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import numpy as np
@@ -45,27 +45,19 @@ from freemocap.core.tasks.mocap.rigid_body.skeleton_rigidifier import (
     RealtimeSkeletonRigidifier,
     RigidifyResult,
 )
-from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemory,
     CameraGroupSharedMemoryDTO,
 )
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellyforge.data_models.trajectory_3d import Point3d
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
-from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
-from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import RealtimePointGate, \
     GateResult
-from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
-from freemocap.core.types.type_overloads import TopicPublicationQueue
-from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     CameraNodeOutputMessage,
     CameraNodeOutputTopic,
@@ -79,6 +71,22 @@ from freemocap.pubsub.pubsub_topics import (
     SkeletonInferenceResultTopic,
     PipelineTimingTopic,
 )
+from typing import TYPE_CHECKING
+
+# Re-exported for realtime_pipeline_manager.py, freemocap_application.py, and
+# realtime_router.py, so it must stay a live import rather than TYPE_CHECKING-only.
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig  # noqa: TC001
+
+if TYPE_CHECKING:
+    from freemocap.pubsub.pubsub_manager import PubSubTopicManager
+    from freemocap.core.types.type_overloads import TopicPublicationQueue
+    from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
+    from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
+    from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
+    from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
+    from multiprocessing.sharedctypes import Synchronized
+    import multiprocessing.synchronize
+    from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 
 # Cap on how many pending skeleton-inference results we hold while waiting for
 # camera-node charuco outputs to arrive. Prevents unbounded memory growth if

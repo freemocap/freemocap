@@ -10,12 +10,11 @@ import math
 import os
 from pathlib import Path
 
-import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-from pydantic import Field, model_validator
+from pydantic import Field, field_serializer, model_validator
 
-from freemocap.core.recording.sample_encoding.arrow_schema import SAMPLE_SCHEMA
+from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionSourceDefinition
 from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     Descriptor,
@@ -31,22 +30,6 @@ from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import ModelDefinition
 from freemocap.core.streaming.producers.producer_contexts import StreamContext
 from freemocap.core.types.channel_kind import ChannelKind
-
-
-class PlaybackWindowRequest(Descriptor):
-    run_id: int = Field(ge=0)
-    revision: str = Field(min_length=1)
-    sensor_groups: tuple[str, ...] = Field(min_length=1)
-    start_s: float = Field(allow_inf_nan=False)
-    end_s: float = Field(allow_inf_nan=False)
-
-    @model_validator(mode="after")
-    def validate_interval(self) -> "PlaybackWindowRequest":
-        if not 0 < self.end_s - self.start_s <= 3:
-            raise ValueError(
-                "Playback queries require an interval of at most three seconds"
-            )
-        return self
 
 
 class PlaybackTimeline(Descriptor):
@@ -82,6 +65,7 @@ class PlaybackMedia(Descriptor):
 
 
 class PlaybackRun(Descriptor):
+    model_sources: dict[str, str]
     calibration_updates: dict[str, CalibrationUpdateRequest] = Field(default_factory=dict)
     run_id: int
     models: tuple[ModelDefinition, ...]
@@ -90,31 +74,17 @@ class PlaybackRun(Descriptor):
     timelines: tuple[PlaybackTimeline, ...]
     media: tuple[PlaybackMedia, ...]
 
+    @field_serializer("models")
+    def serialize_models(self, models: tuple[ModelDefinition, ...]) -> list[dict[str, object]]:
+        """Use the same declared wire geometry as live streaming."""
+        return [model.to_cbor_message() for model in models]
+
 
 class PlaybackManifest(Descriptor):
     recording_id: str
     revision: str
     selected_run_id: int
     runs: tuple[PlaybackRun, ...]
-
-
-class PlaybackChannelData(Descriptor):
-    channel: Channel
-    frame_numbers: tuple[int, ...]
-    timestamps_s: tuple[float, ...]
-    values: tuple[float | None, ...]
-
-
-class PlaybackWindow(Descriptor):
-    revision: str
-    run_id: int
-    start_s: float
-    end_s: float
-    channels: tuple[PlaybackChannelData, ...]
-
-
-class StalePlaybackRevision(ValueError):
-    """The selected recording has been replaced since its manifest was loaded."""
 
 
 @dataclass(frozen=True)
@@ -189,6 +159,12 @@ def playback_manifest(path: Path) -> PlaybackManifest:
                     ))
             runs.append(
                 PlaybackRun(
+                    model_sources={
+                        name: ReconstructionSourceDefinition.model_validate(source.definition).model_id
+                        for name, source in run.sources.items()
+                        if source.kind == SourceKind.INSTANCE
+                        and "model_id" in source.definition
+                    },
                     calibration_updates=run.calibration_updates,
                     run_id=run_id,
                     models=composition.models,
@@ -203,117 +179,4 @@ def playback_manifest(path: Path) -> PlaybackManifest:
             revision=view.revision,
             selected_run_id=view.metadata.selected_run_id,
             runs=tuple(runs),
-        )
-
-
-def playback_window(*, path: Path, request: PlaybackWindowRequest) -> PlaybackWindow:
-    with recording_view(path) as view:
-        if view.revision != request.revision:
-            raise StalePlaybackRevision(
-                "Recording changed; reload the playback manifest"
-            )
-        run = view.metadata.runs[request.run_id]
-        if not set(request.sensor_groups).issubset(run.sensor_groups):
-            raise ValueError("Unknown playback sensor group")
-        batches: list[pa.RecordBatch] = []
-        row_count = 0
-        timestamp_index = SAMPLE_SCHEMA.get_field_index("timestamp_s")
-        for index in range(view.parquet.num_row_groups):
-            stats = (
-                view.parquet.metadata.row_group(index)
-                .column(timestamp_index)
-                .statistics
-            )
-            if (
-                stats is not None
-                and stats.has_min_max
-                and (stats.max < request.start_s or stats.min >= request.end_s)
-            ):
-                continue
-            for batch in view.parquet.iter_batches(
-                row_groups=[index], batch_size=65536
-            ):
-                mask = pc.and_(
-                    pc.equal(batch.column("run_id"), request.run_id),
-                    pc.is_in(
-                        batch.column("sensor_group"),
-                        value_set=pa.array(request.sensor_groups),
-                    ),
-                )
-                mask = pc.and_(
-                    mask, pc.greater_equal(batch.column("timestamp_s"), request.start_s)
-                )
-                mask = pc.and_(
-                    mask, pc.less(batch.column("timestamp_s"), request.end_s)
-                )
-                selected = batch.filter(mask).replace_schema_metadata(None)
-                row_count += selected.num_rows
-                if row_count > 2_000_000:
-                    raise ValueError(
-                        "Playback window is too large; request a shorter interval"
-                    )
-                if selected.num_rows:
-                    batches.append(selected)
-        table = pa.Table.from_batches(batches, schema=SAMPLE_SCHEMA)
-        channels: list[PlaybackChannelData] = []
-        for channel in run.channels:
-            if channel.sensor_group not in request.sensor_groups:
-                continue
-            mask = pc.and_(
-                pc.equal(table["sensor_group"], channel.sensor_group),
-                pc.equal(table["source"], channel.source),
-            )
-            mask = pc.and_(mask, pc.equal(table["channel"], channel.kind))
-            mask = pc.and_(
-                mask,
-                pc.is_null(table["reference_frame"])
-                if channel.reference_frame is None
-                else pc.equal(table["reference_frame"], channel.reference_frame),
-            )
-            selected = table.filter(mask).to_pydict()
-            frames = tuple(sorted(set(selected["frame_number"])))
-            if not frames:
-                continue
-            frame_indices = {frame: index for index, frame in enumerate(frames)}
-            names = {name: index for index, name in enumerate(channel.names)}
-            components = {name: index for index, name in enumerate(channel.components)}
-            values: list[float | None] = [None] * (
-                len(frames) * len(names) * len(components)
-            )
-            seen: set[int] = set()
-            timestamps: dict[int, float] = {}
-            for frame, timestamp, name, component, value in zip(
-                selected["frame_number"],
-                selected["timestamp_s"],
-                selected["name"],
-                selected["component"],
-                selected["value"],
-                strict=True,
-            ):
-                offset = (frame_indices[frame] * len(names) + names[name]) * len(
-                    components
-                ) + components[component]
-                if offset in seen or (
-                    frame in timestamps and timestamps[frame] != timestamp
-                ):
-                    raise ValueError("Duplicate or inconsistent playback sample")
-                seen.add(offset)
-                timestamps[frame] = timestamp
-                values[offset] = value
-            if len(seen) != len(values):
-                raise ValueError("Incomplete playback sample grid")
-            channels.append(
-                PlaybackChannelData(
-                    channel=channel,
-                    frame_numbers=frames,
-                    timestamps_s=tuple(timestamps[frame] for frame in frames),
-                    values=tuple(values),
-                )
-            )
-        return PlaybackWindow(
-            revision=view.revision,
-            run_id=request.run_id,
-            start_s=request.start_s,
-            end_s=request.end_s,
-            channels=tuple(channels),
         )

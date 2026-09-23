@@ -38,6 +38,7 @@
     "d3": "^7.9.0",
     "electron-updater": "^6.8.1",
     "hyparquet": "^1.25.6",
+    "hyparquet-compressors": "^1.1.2",
     "i18next-browser-languagedetector": "^8.2.1",
     "jpeg-js": "^0.4.4",
     "js-yaml": "^4.1.1",

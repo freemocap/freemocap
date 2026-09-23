@@ -31,10 +31,13 @@ export default function PlaybackPage(): React.ReactElement {
     const [error, setError] = useState<string | null>(null);
     useEffect(() => {
         setChecked(false); setError(null);
+        if (!isConnected) return;
         let active = true;
         const request = dispatch(fetchTaskSnapshot());
-        void request.unwrap().then(() => {if (active) setChecked(true);}).catch((failure: unknown) => {
-            if (active) setError(String(failure));
+        void request.then(action => {
+            if (!active) return;
+            if (fetchTaskSnapshot.fulfilled.match(action)) setChecked(true);
+            else setError(action.error.message ?? 'Unable to load processing task status.');
         });
         return () => {active = false; request.abort();};
     }, [dispatch, isConnected, path]);

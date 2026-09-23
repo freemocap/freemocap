@@ -3,23 +3,15 @@ from freemocap.core.recording.recording_access import RecordingAccess
 
 from pathlib import Path
 
-import pytest
+import json
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from freemocap.api.http.playback.playback_router import playback_router
 from freemocap.api.http.playback.playback_router import video_stream_url
 from urllib.parse import parse_qs, urlsplit
-from freemocap.core.recording.parquet_storage.parquet_writer import (
-    publish_recording,
-    recording_write_lock,
-)
-from freemocap.tests.test_recording_store import metadata_fixture, sample_batch
 
 from freemocap.core.recording.playback_queries import (
-    PlaybackWindowRequest,
-    StalePlaybackRevision,
     playback_manifest,
-    playback_window,
 )
 from freemocap.core.recording.playback_queries import recording_view
 from freemocap.core.recording.result_processing.observation_publication import (
@@ -28,7 +20,6 @@ from freemocap.core.recording.result_processing.observation_publication import (
 from freemocap.core.recording.result_processing.observation_inputs import (
     ObservationRecordingRequest,
 )
-from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.tests.test_reconstruction_checkpoints import publication
 
@@ -50,7 +41,7 @@ def test_replacing_video_changes_playback_url_without_adding_output_files(tmp_pa
     assert list(tmp_path.iterdir()) == [video]
 
 
-def test_playback_manifest_and_bounded_samples(
+def test_playback_manifest_uses_live_model_wire_format(
     publication: ObservationRecordingRequest, tmp_path: Path
 ) -> None:
     publish_posthoc_observations(publication)
@@ -58,38 +49,39 @@ def test_playback_manifest_and_bounded_samples(
     manifest = playback_manifest(structure.data_parquet_path)
     assert manifest.runs[0].models[0].model_id == publication.models[0].model_id
     assert manifest.runs[0].models[0].segments
-    assert manifest.model_dump_json()
-    request = PlaybackWindowRequest(
-        run_id=0,
-        revision=manifest.revision,
-        sensor_groups=("mocap",),
-        start_s=0.0,
-        end_s=0.02,
-    )
-    first = playback_window(path=structure.data_parquet_path, request=request)
-    assert first.channels and all(item.frame_numbers == (0,) for item in first.channels)
-    assert first.model_dump_json()
-    second = playback_window(
-        path=structure.data_parquet_path,
-        request=request.model_copy(update={"start_s": 0.02, "end_s": 0.1}),
-    )
-    landmarks = next(
-        item
-        for item in second.channels
-        if item.channel.kind == ChannelKind.LANDMARKS_3D
-    )
-    assert landmarks.frame_numbers == (1,)
-    assert all(value is None for value in landmarks.values)
+    assert manifest.runs[0].model_sources == {
+        item.definition.source_name: item.definition.model_id
+        for item in publication.reconstructions
+    }
+    encoded = json.loads(manifest.model_dump_json())
+    assert encoded["runs"][0]["models"] == [
+        json.loads(json.dumps(model.to_cbor_message()))
+        for model in manifest.runs[0].models
+    ]
+
+
+
+def test_parquet_download_preserves_bytes_and_checks_revision(
+    publication: ObservationRecordingRequest, tmp_path: Path,
+) -> None:
     publish_posthoc_observations(publication)
-    with pytest.raises(StalePlaybackRevision):
-        playback_window(path=structure.data_parquet_path, request=request)
-
-
-def test_playback_rejects_unbounded_queries() -> None:
-    with pytest.raises(ValueError, match="at most three"):
-        PlaybackWindowRequest(
-            run_id=0, revision="revision", sensor_groups=("mocap",), start_s=0, end_s=60
-        )
+    structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
+    manifest = playback_manifest(structure.data_parquet_path)
+    app = FastAPI()
+    app.state.recording_access = RecordingAccess()
+    app.include_router(playback_router)
+    with TestClient(app) as client:
+        params = {
+            "recording_parent_directory": str(tmp_path),
+            "revision": manifest.revision,
+        }
+        response = client.get("/playback/recording/parquet", params=params)
+        assert response.status_code == 200
+        assert response.content == structure.data_parquet_path.read_bytes()
+        assert response.headers["etag"] == f'"{manifest.revision}"'
+        assert response.headers["cache-control"] == "no-store"
+        publish_posthoc_observations(publication)
+        assert client.get("/playback/recording/parquet", params=params).status_code == 409
 
 
 def test_open_playback_snapshot_allows_atomic_publication(
@@ -105,34 +97,6 @@ def test_open_playback_snapshot_allows_atomic_publication(
         assert playback_manifest(path).revision != previous.revision
 
 
-def test_playback_preserves_different_group_rates(tmp_path: Path) -> None:
-    structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
-    with recording_write_lock(structure=structure):
-        publish_recording(
-            structure=structure,
-            metadata=metadata_fixture(),
-            batches=[
-                sample_batch(group="mocap", count=2, fps=30.0),
-                sample_batch(group="eye", count=8, fps=120.0),
-            ],
-        )
-    manifest = playback_manifest(structure.data_parquet_path)
-    result = playback_window(
-        path=structure.data_parquet_path,
-        request=PlaybackWindowRequest(
-            run_id=0,
-            revision=manifest.revision,
-            sensor_groups=("mocap", "eye"),
-            start_s=0,
-            end_s=0.1,
-        ),
-    )
-    counts = {
-        item.channel.sensor_group: len(item.frame_numbers) for item in result.channels
-    }
-    assert counts == {"mocap": 2, "eye": 8}
-
-
 def test_playback_api_revision_and_validation(
     publication: ObservationRecordingRequest, tmp_path: Path
 ) -> None:
@@ -144,31 +108,8 @@ def test_playback_api_revision_and_validation(
         params = dict(recording_parent_directory=str(tmp_path))
         response = client.get("/playback/recording/manifest", params=params)
         assert response.status_code == 200
-        request = dict(
-            run_id=0,
-            revision=response.json()["revision"],
-            sensor_groups=["mocap"],
-            start_s=0,
-            end_s=0.1,
-        )
-        assert (
-            client.post(
-                "/playback/recording/window", params=params, json=request
-            ).status_code
-            == 200
-        )
-        request["revision"] = "stale"
-        assert (
-            client.post(
-                "/playback/recording/window", params=params, json=request
-            ).status_code
-            == 409
-        )
-        request["end_s"] = 60
-        assert (
-            client.post(
-                "/playback/recording/window", params=params, json=request
-            ).status_code
-            == 422
-        )
-
+        params["revision"] = response.json()["revision"]
+        assert client.get("/playback/recording/parquet", params=params).status_code == 200
+        params["revision"] = "stale"
+        assert client.get("/playback/recording/parquet", params=params).status_code == 409
+        assert client.post("/playback/recording/window", params=params).status_code == 404

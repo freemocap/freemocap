@@ -1,5 +1,5 @@
 """
-Playback router: serves recording descriptors, numeric windows and video file bytes.
+Playback router: serves recording descriptors, Parquet data and video file bytes.
 Browser playback uses original video bytes or an in-memory codec compatibility stream.
 
 Endpoints are keyed on {recording_id} (the recording folder name). The full
@@ -33,8 +33,9 @@ from skellycam.core.timestamps.recording_timing_reader import resolve_camera_tim
 from skellycam.core.recorders.videos.video_associations import VideoAssociations
 from skellycam.core.recorders.videos.video_derivation import VideoDerivation
 from freemocap.core.recording.playback_queries import (
-    PlaybackManifest, PlaybackWindow, PlaybackWindowRequest, StalePlaybackRevision,
-    playback_manifest, playback_window, PlaybackMedia, PlaybackTimeline,
+    PlaybackManifest,
+    playback_manifest, PlaybackMedia, PlaybackTimeline,
+    recording_view,
 )
 from pydantic import BaseModel
 
@@ -238,21 +239,6 @@ def get_playback_manifest(recording_id: str, recording_parent_directory: str | N
         )})
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-
-
-@playback_router.post("/{recording_id}/window")
-def get_playback_window(recording_id: str, request: PlaybackWindowRequest,
-    recording_parent_directory: str | None = None) -> PlaybackWindow:
-    folder = _resolve_recording_path(recording_id, recording_parent_directory)
-    structure = RecordingStructure(base_directory=folder.parent, recording_name=folder.name)
-    try:
-        return playback_window(path=structure.data_parquet_path, request=request)
-    except StalePlaybackRevision as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    except (KeyError, ValueError) as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
-    except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail="Recording data is unavailable") from error
 
 
 def _discover_videos(folder: Path) -> dict[str, Path]:
@@ -645,6 +631,7 @@ async def browser_video_stream(
 )
 def get_recording_parquet(
     recording_id: str,
+    revision: str | None = Query(default=None, min_length=1),
     recording_parent_directory: str | None = Query(
         default=None,
         description="Override the default recordings directory",
@@ -657,7 +644,16 @@ def get_recording_parquet(
             status_code=404,
             detail=f"No parquet file found in recording: {recording_path}",
         )
-    return FileResponse(str(p), media_type="application/octet-stream", filename=p.name)
+    with recording_view(p) as view:
+        if revision is not None and revision != view.revision:
+            raise HTTPException(
+                status_code=409,
+                detail="Recording changed; reload the playback manifest",
+            )
+        return FileResponse(
+            str(p), media_type="application/octet-stream", filename=p.name,
+            headers={"Cache-Control": "no-store", "ETag": f'"{view.revision}"'},
+        )
 
 
 def _find_recording_parquet(recording_path: Path) -> Path | None:

@@ -1,6 +1,7 @@
-import type {PlaybackSource} from './playback-source';
-import type {CalibrationUpdateRequest} from '@/store/slices/calibration/calibration-types';
-import type {ModelDefinition} from '@/services/server/transport/message-contract';
+import {z} from 'zod';
+import {PlaybackSource} from './playback-source';
+import {CalibrationUpdateRequestSchema} from '@/store/slices/calibration/calibration-types';
+import {ModelDefinitionSchema, type ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame, PointsFrame} from '@/services/server/transport/frame-types';
 
 export enum RecordingChannelKind {
@@ -15,23 +16,45 @@ const ROTATION_COMPONENTS = [RecordingComponent.W, ...POSITION_COMPONENTS];
 
 export interface ChannelLayout {names: readonly string[]; components: readonly RecordingComponent[]}
 
-export interface RecordingChannel {
-    sensor_group: string; source: string; reference_frame: string | null;
-    kind: string; names: string[]; components: Record<string, string>;
-}
-export interface RecordingTimeline {
-    sensor_group: string; source: string; frame_numbers: number[]; timestamps_s: number[];
-}
-export interface PlaybackMedia {video_source: PlaybackSource; video_filename: string; nominal_fps: number; timeline: RecordingTimeline}
-export interface RecordingStaticChannel { channel: RecordingChannel; values: Record<string, Record<string, number>> }
-export interface PlaybackRun {
-    calibration_updates?: Record<string, CalibrationUpdateRequest>;
-    run_id: number; models: ModelDefinition[]; channels: RecordingChannel[];
-    static_channels: RecordingStaticChannel[]; timelines: RecordingTimeline[]; media: PlaybackMedia[];
-}
-export interface PlaybackManifest {recording_id: string; revision: string; selected_run_id: number; runs: PlaybackRun[]}
-export interface PlaybackChannelData {channel: RecordingChannel; frame_numbers: number[]; timestamps_s: number[]; values: (number | null)[]}
-export interface PlaybackWindow {revision: string; run_id: number; start_s: number; end_s: number; channels: PlaybackChannelData[]}
+export const RecordingChannelSchema = z.object({
+    sensor_group: z.string(), source: z.string(), reference_frame: z.string().nullable(),
+    kind: z.string(), names: z.array(z.string()), components: z.record(z.string(), z.string()),
+});
+export type RecordingChannel = z.infer<typeof RecordingChannelSchema>;
+export const RecordingTimelineSchema = z.object({
+    sensor_group: z.string(), source: z.string(),
+    frame_numbers: z.array(z.number().int().nonnegative()), timestamps_s: z.array(z.number()),
+});
+export type RecordingTimeline = z.infer<typeof RecordingTimelineSchema>;
+export const PlaybackMediaSchema = z.object({
+    video_source: z.enum(PlaybackSource), video_filename: z.string(),
+    nominal_fps: z.number().positive(), timeline: RecordingTimelineSchema,
+});
+export type PlaybackMedia = z.infer<typeof PlaybackMediaSchema>;
+export const RecordingStaticChannelSchema = z.object({
+    channel: RecordingChannelSchema, values: z.record(z.string(), z.record(z.string(), z.number())),
+});
+export type RecordingStaticChannel = z.infer<typeof RecordingStaticChannelSchema>;
+export const PlaybackRunSchema = z.object({
+    model_sources: z.record(z.string(), z.string()),
+    calibration_updates: z.record(z.string(), CalibrationUpdateRequestSchema).optional(),
+    run_id: z.number().int().nonnegative(), models: z.array(ModelDefinitionSchema),
+    channels: z.array(RecordingChannelSchema), static_channels: z.array(RecordingStaticChannelSchema),
+    timelines: z.array(RecordingTimelineSchema), media: z.array(PlaybackMediaSchema),
+});
+export type PlaybackRun = z.infer<typeof PlaybackRunSchema>;
+export const PlaybackManifestSchema = z.object({
+    recording_id: z.string(), revision: z.string().min(1), selected_run_id: z.number().int().nonnegative(),
+    runs: z.array(PlaybackRunSchema),
+});
+export type PlaybackManifest = z.infer<typeof PlaybackManifestSchema>;
+export const PlaybackChannelDataSchema = z.object({
+    channel: RecordingChannelSchema, frame_numbers: z.array(z.number().int().nonnegative()),
+    timestamps_s: z.array(z.number()),
+    values: z.instanceof(Float64Array),
+});
+export type PlaybackChannelData = z.infer<typeof PlaybackChannelDataSchema>;
+export interface PlaybackSamples {channels: PlaybackChannelData[]}
 
 export function sampleAtTime(timestamps: readonly number[], time: number): number {
     let left = 0, right = timestamps.length;
@@ -65,30 +88,34 @@ export function orderedChannelFrame(data: PlaybackChannelData, time: number, lay
         frame[name * components.length + component])));
 }
 
-export function recordedModelFrame(run: PlaybackRun, window: PlaybackWindow, model: ModelDefinition, group: string, time: number): ResolvedModelFrame {
+export function recordedModelFrame(run: PlaybackRun, samples: PlaybackSamples, model: ModelDefinition, group: string, time: number): ResolvedModelFrame {
     const find = (kind: RecordingChannelKind): PlaybackChannelData | undefined => {
-        const matches = window.channels.filter(item => item.channel.source === model.model_id &&
+        const matches = samples.channels.filter(item => run.model_sources[item.channel.source] === model.model_id &&
             item.channel.sensor_group === group && item.channel.kind === kind);
         if (matches.length > 1) throw new Error(`Ambiguous recording reference frame for ${kind}`);
         return matches[0];
     };
+    const segmentNames = model.segments.map(segment => segment.name);
+    const landmarkNames = model.landmarks.map(landmark => landmark.name);
     const points = (kind: RecordingChannelKind): PointsFrame | null => {
         const item = find(kind);
         if (!item) return null;
-        const data = orderedChannelFrame(item, time, {names: item.channel.names, components: POSITION_COMPONENTS});
-        return data ? {names: item.channel.names, data} : null;
+        const names = kind === RecordingChannelKind.Origins ? segmentNames
+            : kind === RecordingChannelKind.Landmarks ? landmarkNames : item.channel.names;
+        const data = orderedChannelFrame(item, time, {names, components: POSITION_COMPONENTS});
+        return data ? {names, data} : null;
     };
     const staticChannel = (kind: RecordingChannelKind): RecordingStaticChannel | undefined => run.static_channels.find(item =>
-        item.channel.source === model.model_id && item.channel.sensor_group === group && item.channel.kind === kind);
+        run.model_sources[item.channel.source] === model.model_id && item.channel.sensor_group === group && item.channel.kind === kind);
     const scalarValues = (item: RecordingStaticChannel): Float32Array => Float32Array.from(item.channel.names.map(name =>
         item.values[name][Object.keys(item.channel.components)[0]]));
     const scale = staticChannel(RecordingChannelKind.Scale);
     const lengths = staticChannel(RecordingChannelKind.Lengths);
     const world = find(RecordingChannelKind.WorldRotations), local = find(RecordingChannelKind.LocalRotations);
     const worldData = world ? orderedChannelFrame(world, time,
-        {names: world.channel.names, components: ROTATION_COMPONENTS}) : null;
+        {names: segmentNames, components: ROTATION_COMPONENTS}) : null;
     const localData = local && world ? orderedChannelFrame(local, time,
-        {names: world.channel.names, components: ROTATION_COMPONENTS}) : null;
+        {names: segmentNames, components: ROTATION_COMPONENTS}) : null;
     const derived = points(RecordingChannelKind.Derived);
     const comIndex = derived?.names.indexOf('center_of_mass') ?? -1;
     const com = derived && comIndex >= 0 ? Array.from(derived.data.slice(comIndex * 3, comIndex * 3 + 3)) : null;
@@ -96,9 +123,14 @@ export function recordedModelFrame(run: PlaybackRun, window: PlaybackWindow, mod
     return {
         modelId: model.model_id, instanceId: 0, fittedScaleMm,
         landmarks: points(RecordingChannelKind.Landmarks), segmentOrigins: points(RecordingChannelKind.Origins),
-        rotations: world && worldData ? {boneNames: world.channel.names, worldQuaternions: worldData,
+        rotations: world && worldData ? {boneNames: segmentNames, worldQuaternions: worldData,
             localQuaternions: localData ?? new Float32Array(worldData.length).fill(NaN)} : null,
-        segmentLengths: lengths ? {names: lengths.channel.names, data: scalarValues(lengths), fittedScaleMm} : null,
+        segmentLengths: lengths ? {names: segmentNames,
+            data: Float32Array.from(segmentNames.map(name => {
+                const value = lengths.values[name]?.[Object.keys(lengths.channel.components)[0]];
+                if (value === undefined) throw new Error('Missing declared segment length');
+                return value;
+            })), fittedScaleMm} : null,
         derived: {centerOfMass: com?.every(Number.isFinite) ? [com[0], com[1], com[2]] : null, xcom: null},
     };
 }

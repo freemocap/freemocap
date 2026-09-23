@@ -208,3 +208,20 @@ def test_adopts_previous_layout_without_processing(lifecycle):
     assert preparation.prepare(TEST_DATA, fresh=False, **args) == current
     assert len(calls) == 1
     assert not previous.exists()
+
+
+def test_fresh_assertion_failure_retains_scratch_and_prepared_results(lifecycle):
+    args, calls, raw = lifecycle
+    current = preparation.prepare(TEST_DATA, fresh=False, **args)
+
+    def reject(recording, result):
+        assert recording != current
+        assert result["validation"]["parquet_sha256"]
+        raise AssertionError("scientific check failed")
+
+    with pytest.raises(AssertionError, match="scientific check failed"):
+        preparation.prepare(TEST_DATA, fresh=True, validate_fresh=reject, **args)
+    assert (args["prepared_root"] / TEST_DATA.name / "scratch" / "result.json").is_file()
+    assert preparation.prepare(TEST_DATA, fresh=False, **args) == current
+    with pytest.raises(ValueError, match="fresh=True"):
+        preparation.prepare(TEST_DATA, fresh=False, validate_fresh=reject, **args)

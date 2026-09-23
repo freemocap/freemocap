@@ -35,7 +35,6 @@ from freemocap.core.tasks.calibration.calibration_task_config import (
 from freemocap.core.tasks.calibration.shared.calibration_paths import (
     get_last_successful_calibration_toml_path,
 )
-from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 from freemocap.tests.pipelines.helpers import wait_for_pipeline
@@ -275,46 +274,3 @@ def calibration_toml_path(
     size_kb = toml_path.stat().st_size / 1024
     logger.info(f"Calibration TOML written: {toml_path}  ({size_kb:.1f} KB)")
     return toml_path
-
-
-@pytest.fixture(scope="session")
-def posthoc_mocap_output_dir(
-    recording_info: RecordingInfo,
-    posthoc_manager: PosthocPipelineManager,
-    calibration_toml_path: Path,
-    test_recording_path: Path,
-) -> Path:
-    """Run posthoc mocap once for the session; return the output_data directory."""
-    logger.info(
-        f"=== MOCAP PIPELINE START ===  recording={recording_info.recording_name!r}  "
-        f"calibration={calibration_toml_path.name}"
-    )
-    t0 = time.perf_counter()
-    config = PosthocMocapPipelineConfig(
-        calibration_toml_path=str(calibration_toml_path),
-        export_to_blender=False,
-        auto_open_blend_file=False,
-    )
-    logger.info("MocapConfig: calibration_toml_path=%s export_to_blender=False", calibration_toml_path)
-    pipeline = posthoc_manager.create_mocap_pipeline(
-        recording_info=recording_info,
-        mocap_config=config,
-    )
-    logger.info(f"Mocap pipeline created: id={pipeline.id}")
-    wait_for_pipeline(pipeline)
-    elapsed = time.perf_counter() - t0
-    logger.info(f"=== MOCAP PIPELINE DONE  ({elapsed:.1f}s) ===")
-
-    output_dir = test_recording_path / "output_data"
-    if not output_dir.exists():
-        pytest.fail(f"Posthoc mocap completed but output_data not found at {output_dir}")
-
-    npy_files = sorted(output_dir.glob("*.npy"))
-    csv_files = sorted(output_dir.glob("*.csv"))
-    logger.info(
-        f"output_data: {output_dir}  |  "
-        f"{len(npy_files)} .npy  |  {len(csv_files)} .csv"
-    )
-    for f in npy_files + csv_files:
-        logger.info(f"  {f.name}  ({f.stat().st_size / 1024:.1f} KB)")
-    return output_dir

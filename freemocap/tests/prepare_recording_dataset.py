@@ -4,6 +4,7 @@ Run with the repository Python: -B -m freemocap.tests.prepare_recording_dataset.
 """
 
 import argparse
+from collections.abc import Callable
 import hashlib
 import importlib.metadata
 import json
@@ -257,7 +258,10 @@ def execute_worker(command: list[str], *, environment: dict, log_path: Path, tim
                 raise subprocess.CalledProcessError(code, command)
 
 
-def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool, timeout: float) -> Path:
+def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool, timeout: float,
+            validate_fresh: Callable[[Path, dict], None] | None = None) -> Path:
+    if validate_fresh is not None and not fresh:
+        raise ValueError("Fresh-output assertions require fresh=True")
     raw = acquire_recording(dataset, recordings_root=recordings_root)
     report = inspect_recording(dataset, recordings_root=recordings_root)
     identity = {"preparation_version": PREPARATION_VERSION, "source": report,
@@ -326,6 +330,8 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
             logger.error("Preparation failed; log tail:\n%s", (attempt / "preparation.log").read_text(encoding="utf-8", errors="replace")[-10000:])
             raise
         result = json.loads((attempt / "result.json").read_text(encoding="utf-8"))
+        if validate_fresh is not None:
+            validate_fresh(recording, result)
         if existing is not None:
             logger.info("Fresh pipeline validation passed; retaining prepared recording: %s", existing)
             remove_scratch(root)

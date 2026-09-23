@@ -119,7 +119,7 @@ successful processing and validation.
 Run the dedicated consumer group from the core repository:
 
 ```powershell
-.\.venv\Scripts\python.exe -B -m pytest freemocap/tests/reference_recordings -q
+.\.venv\Scripts\python.exe -B -m pytest freemocap/tests/reference_recordings/test_prepared_consumers.py -q
 ```
 
 These four `e2e` checks share one session preparation, using the home-folder test
@@ -134,6 +134,27 @@ revision rejection. A fixture teardown verifies that calibration and Parquet
 bytes have not changed. The HTTP test runs in-process, without a browser or
 network server. These establish consumer compatibility, not pose accuracy.
 The existing synthetic reader tests remain useful for malformed-input cases.
+
+## Fresh posthoc pipeline test
+
+```powershell
+.\.venv\Scripts\python.exe -B -m pytest freemocap/tests/reference_recordings/test_fresh_posthoc.py -q
+```
+
+This `e2e`/`slow` test always runs real calibration and RTMPose mocap in clean
+scratch space. It asserts successful task states, selection of the newly generated
+calibration, matching isolated calibration copies, calibration solve quality,
+fully decoded annotated videos, and all 222 frames of human landmarks and unit
+quaternions in Parquet. Board output cannot substitute for missing human output.
+Assertions execute before cleanup; a failed assertion retains scratch diagnostics.
+Existing prepared recordings remain intact. Running the whole `reference_recordings`
+directory runs both this fresh test and the four consumer tests.
+
+This replaces the two old posthoc test modules and their unused NPY/CSV fixture.
+Legacy calibration/cache/realtime fixtures remain separate pending their own
+refactor. Old absolute CoM-height and anatomical CSV assertions are not claims
+made by this replacement: anatomical accuracy needs a separately reviewed check
+against current landmark definitions and alignment conventions.
 
 ## Remaining integration
 

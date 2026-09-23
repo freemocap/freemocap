@@ -1,7 +1,6 @@
 """Shared helpers for the pipeline end-to-end tests."""
 import logging
 import time
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +24,3 @@ def wait_for_pipeline(pipeline, timeout: float = PIPELINE_TIMEOUT_SECONDS) -> No
         time.sleep(0.5)
     elapsed = time.perf_counter() - start
     logger.info(f"Pipeline [{pipeline.id}] completed in {elapsed:.1f}s")
-
-
-def find_body_3d_npy(npy_files: list[Path]) -> Path:
-    """Pick the body 3D trajectory ``.npy`` from a list of output files."""
-    logger.debug(f"Searching for body 3D npy among: {[f.name for f in npy_files]}")
-    candidates = [f for f in npy_files if "body" in f.stem.lower() and "3d" in f.stem.lower()]
-    if not candidates:
-        candidates = [f for f in npy_files if "body" in f.stem.lower()]
-    if not candidates:
-        raise AssertionError(f"No body npy found among: {[f.name for f in npy_files]}")
-    result = max(candidates, key=lambda f: f.stat().st_mtime)
-    logger.debug(f"Selected body npy: {result.name}")
-    return result

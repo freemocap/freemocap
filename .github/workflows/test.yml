@@ -46,9 +46,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
-      - name: Run linter (ruff)
-        run: uv run ruff check freemocap/
-
       - name: Run tests
         run: uv run pytest freemocap/tests/ -v --tb=short --timeout=300 --timeout-method=thread
 

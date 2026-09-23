@@ -205,7 +205,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           text="Auto-open .blend file in Blender when done"
           isToggled={autoOpenBlendFile && blenderSupported}
           onToggle={setAutoOpenBlendFile}
-          disabled={!blenderSupported || !exportToBlenderEnabled}
+          disabled={!blenderSupported}
         />
 
         <SubactionHeader text="3D Model Export" />
@@ -220,7 +220,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
               onChange={(e) =>
                 handleModelFormatToggle(format.value, e.target.checked)
               }
-              disabled={!blenderSupported || !exportToBlenderEnabled}
+              disabled={!blenderSupported}
             />
           ))}
         </div>
@@ -236,19 +236,19 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           />
         </div>
 
-        <SubactionHeader text="Motion Cleanup" />
+        <SubactionHeader text="Animation Cleanup (Experimental)" />
 
         <ToggleComponent
-          text="Apply Foot Locking (Experimental)"
+          text="Apply Foot Locking"
           isToggled={blenderExportConfig.apply_foot_locking}
           onToggle={(checked) =>
             dispatch(blenderExportConfigUpdated({ apply_foot_locking: checked }))
           }
-          disabled={!blenderSupported || !exportToBlenderEnabled}
+          disabled={!blenderSupported}
         />
 
         <ToggleComponent
-          text="Limit Hand Markers Range of Motion (Experimental)"
+          text="Limit Hand Markers Range of Motion"
           isToggled={blenderExportConfig.limit_hand_markers_range_of_motion}
           onToggle={(checked) =>
             dispatch(
@@ -257,7 +257,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
               }),
             )
           }
-          disabled={!blenderSupported || !exportToBlenderEnabled}
+          disabled={!blenderSupported}
         />
 
         <ButtonSm

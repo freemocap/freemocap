@@ -491,7 +491,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a23"
+version = "2.0.0a24"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },

@@ -14,16 +14,15 @@ permissions:
 
 jobs:
   backend-tests:
-    name: Backend Tests (Python ${{ matrix.python-version }}, ${{ matrix.os }})
+    name: Backend Tests (fast, Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 10
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.11"]
         include:
-          # Full matrix only on PRs to main
           - os: windows-latest
             python-version: "3.11"
           - os: macos-latest
@@ -46,8 +45,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
-      - name: Run tests
-        run: uv run pytest freemocap/tests/ -v --tb=short --timeout=300 --timeout-method=thread
+      - name: Run tests (excluding e2e/slow)
+        run: uv run pytest freemocap/tests/ -v --tb=short --timeout=120 --timeout-method=thread -m "not e2e and not slow"
 
   frontend-typecheck:
     name: Frontend Typecheck

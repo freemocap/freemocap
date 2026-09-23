@@ -51,7 +51,12 @@ def drive_realtime_lockstep(
                 msg = sub.get(timeout=0.2)
             except queue.Empty:
                 continue
-            if isinstance(msg, AggregationNodeOutputMessage) and msg.frame_number >= frame_index:
+            if isinstance(msg, AggregationNodeOutputMessage):
+                if msg.frame_number != frame_index:
+                    raise AssertionError(
+                        f"Expected replay frame {frame_index}, received {msg.frame_number}; "
+                        "lockstep replay must not skip, duplicate, or reorder frames"
+                    )
                 got = msg
                 break
         if got is None:

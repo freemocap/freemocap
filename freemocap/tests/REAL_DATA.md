@@ -148,13 +148,49 @@ fully decoded annotated videos, and all 222 frames of human landmarks and unit
 quaternions in Parquet. Board output cannot substitute for missing human output.
 Assertions execute before cleanup; a failed assertion retains scratch diagnostics.
 Existing prepared recordings remain intact. Running the whole `reference_recordings`
-directory runs both this fresh test and the four consumer tests.
+directory runs this fresh test, the four consumer tests, and the realtime cases below.
 
 This replaces the two old posthoc test modules and their unused NPY/CSV fixture.
 Legacy calibration/cache/realtime fixtures remain separate pending their own
 refactor. Old absolute CoM-height and anatomical CSV assertions are not claims
 made by this replacement: anatomical accuracy needs a separately reviewed check
 against current landmark definitions and alignment conventions.
+
+## Deterministic realtime replay
+
+```powershell
+.\.venv\Scripts\python.exe -B -m pytest freemocap/tests/reference_recordings/test_realtime_pipeline.py -v
+```
+
+Two `e2e`/`slow` cases replay all 222 test frames: ChArUco alone, and ChArUco
+plus RTMPose human tracking. They reuse the prepared calibration explicitly,
+select the recorded 7 x 5 board, and run actual inference and reconstruction
+workers in thread mode with a live parent heartbeat. Every output must match
+the requested frame and all three camera outputs; stale, duplicate, or skipped
+frames fail. Board and human reconstruction are checked independently for finite
+landmarks, positive fitted scale, and unit orientations. Missing observations
+remain allowed; a board is not expected to be visible throughout body movement.
+
+The replay helper writes decoded video frames directly into real shared-memory
+ring buffers, using four slots per camera and small sequential video caches.
+This deliberately bypasses camera capture. It is not a SkellyCam grab/retrieve
+test, a process-mode transport test, a throughput benchmark, or a trajectory
+filter test. Replay uses processing-clock timestamps and disables temporal
+filters; sample-data timed replay remains a later chunk.
+
+Every case shuts down its manager, inference service, worker registry, and
+video/shared-memory owner in finally blocks, then checks that workers stopped
+and shared-memory names can no longer be opened. The prepared-data fixture also
+checks that calibration and Parquet bytes remain unchanged.
+
+The initial successful run still reported poor camera-matching fitness (the
+production continue policy retains the ID-based binding) and missing hand
+orientations. These are separate accuracy/coverage findings, not assertions that
+this replay test establishes anatomical correctness.
+
+The complete `reference_recordings` directory now contains seven cases. The
+workspace's `poe test-reference` includes all of them automatically. For
+realtime-only execution from the workspace, use `poe test-reference -k realtime`.
 
 ## Remaining integration
 

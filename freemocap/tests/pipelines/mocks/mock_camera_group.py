@@ -26,6 +26,7 @@ from skellycam.core.camera.config.image_resolution import ImageResolution
 from skellycam.core.camera.config.image_rotation_types import RotationTypes
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory
+from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.timestamps.timebase_mapping import TimebaseMapping
 from skellycam.core.types.frame_dtype_factories import create_frame_dtype
 from skellycam.core.types.type_overloads import CameraIdString
@@ -73,13 +74,26 @@ class MockCameraGroup(CameraGroup):
         if not paths:
             raise FileNotFoundError(f"No .mp4 videos found in {synchronized_videos_dir}")
         video_group = VideoGroupHelper.from_video_paths(video_paths=paths)
+        for helper in video_group.videos.values():
+            helper.cache.max_size_mb = 8  # Sequential replay does not need a recording-sized cache.
         configs = build_camera_configs_from_videos(video_group)
         timebase_mapping = TimebaseMapping()
-        shm = CameraGroupSharedMemory.create(
-            camera_configs=configs,
-            timebase_mapping=timebase_mapping,
-            read_only=False,
-        )
+        # Lockstep replay needs only a few slots, not the capture default of 1 GiB/camera.
+        buffers = {}
+        try:
+            for camera_id, config in configs.items():
+                buffers[camera_id] = CameraSharedMemoryRingBuffer.create(
+                    example_data=np.recarray(1, dtype=create_frame_dtype(config)),
+                    read_only=False, ring_buffer_length=4,
+                )
+            shm = CameraGroupSharedMemory(camera_shms=buffers, camera_configs=configs,
+                                          read_only=False, original=True)
+        except BaseException:
+            for buffer in buffers.values():
+                buffer.unlink()
+                buffer.close()
+            video_group.close()
+            raise
 
         # Bypass the (beartyped) dataclass __init__ and set only what we need.
         self = object.__new__(cls)
@@ -96,6 +110,7 @@ class MockCameraGroup(CameraGroup):
         self._video_group = video_group
         self._timebase_mapping = timebase_mapping
         self._frame_recarrays: dict[CameraIdString, np.recarray] = {}
+        self._next_frame = 0
         return self
 
     # ``id`` and ``camera_ids`` are inherited from CameraGroup (read ipc.group_id
@@ -132,6 +147,8 @@ class MockCameraGroup(CameraGroup):
         equals ``frame_index`` and the metadata frame_number matches what the
         aggregator requests (``latest_multiframe_number``).
         """
+        if frame_index != self._next_frame or frame_index >= self.frame_count:
+            raise ValueError(f"Expected next replay frame {self._next_frame}, got {frame_index}")
         for camera_id, helper in self._video_group.videos.items():
             image = helper.read_frame_number(frame_index)
             config = self.configs[camera_id]
@@ -149,6 +166,7 @@ class MockCameraGroup(CameraGroup):
             rec.frame_metadata.timestamps.pre_copy_to_camera_shm_ns[0] = now_ns
             rec.frame_metadata.timestamps.post_copy_to_camera_shm_ns[0] = now_ns
             self.shm.camera_shms[camera_id].put_frame(frame_rec_array=rec, overwrite=True)
+        self._next_frame += 1
 
     def close(self) -> None:
         try:

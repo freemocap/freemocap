@@ -1,6 +1,7 @@
 """Canonical recording views for timestamp-based playback without reconstruction work."""
 
 from freemocap.core.playback.media_selection import PlaybackVideoSource
+from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
 from contextlib import contextmanager
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -81,6 +82,7 @@ class PlaybackMedia(Descriptor):
 
 
 class PlaybackRun(Descriptor):
+    calibration_updates: dict[str, CalibrationUpdateRequest] = Field(default_factory=dict)
     run_id: int
     models: tuple[ModelDefinition, ...]
     channels: tuple[Channel, ...]
@@ -187,6 +189,7 @@ def playback_manifest(path: Path) -> PlaybackManifest:
                     ))
             runs.append(
                 PlaybackRun(
+                    calibration_updates=run.calibration_updates,
                     run_id=run_id,
                     models=composition.models,
                     channels=run.channels,

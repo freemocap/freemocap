@@ -5,7 +5,6 @@ import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/constants/server-urls";
 import {fetchTaskSnapshot} from "@/store/slices/pipelines/pipelines-thunks";
 import {selectLoadedCalibration} from "@/store/slices/calibration";
-import {CalibrationAlignmentMethodSchema} from "@/store/slices/calibration/calibration-types";
 
 function buildPosthocConfig(state: RootState) {
     const { config } = state.mocap;
@@ -18,7 +17,7 @@ function buildPosthocConfig(state: RootState) {
     const blenderSupported = config.detectorType === "mediapipe";
     return {
         bodyAlignment: {
-            enabled: state.calibration.config.alignmentMethod === CalibrationAlignmentMethodSchema.enum.person,
+            enabled: config.bodyAlignmentEnabled,
             additional_transform: config.referenceTransformEnabled && config.referenceTransform
                 ? {matrix: config.referenceTransform}
                 : null,

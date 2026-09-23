@@ -139,6 +139,8 @@ def publish_posthoc_observations(
         references.update(reconstruction.reference_frames())
         channels.extend(reconstruction.channels())
     run = RunDescriptor(
+        calibration_updates={request.group.name: request.calibration_update}
+            if request.calibration_update is not None else {},
         checkpoints=reconstruction_checkpoints(
             request=request, timestamps_s=synchronized
         ),
@@ -270,6 +272,11 @@ def publish_posthoc_observations(
                 "Observation overwrite cannot change the saved sample grid"
             )
         result = RunDescriptor(
+            calibration_updates={
+                **{group: update for group, update in retained.calibration_updates.items()
+                   if group != request.group.name},
+                **run.calibration_updates,
+            },
             scale_fits=(*retained.scale_fits, *run.scale_fits),
             camera_geometry={**retained.camera_geometry, **run.camera_geometry},
             sensor_groups=retained.sensor_groups,

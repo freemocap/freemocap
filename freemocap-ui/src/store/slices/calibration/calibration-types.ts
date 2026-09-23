@@ -26,7 +26,7 @@ export interface CalibrationConfig {
     minSharedViewsPerCamera: number;
     autoStopOnMinViewCount: boolean;
     solverMethod: CalibrationSolverMethod;
-    alignmentMethod: z.infer<typeof CalibrationAlignmentMethodSchema> | null;
+    alignmentMethod: z.infer<typeof CalibrationCreationAlignmentMethodSchema> | null;
 }
 
 export const CalibrationCameraDataSchema = CalibratedCameraSchema.pick({
@@ -43,6 +43,8 @@ export const CalibrationCameraDataSchema = CalibratedCameraSchema.pick({
 export type CalibrationCameraData = z.infer<typeof CalibrationCameraDataSchema>;
 
 export const CalibrationAlignmentMethodSchema = z.enum(['charuco', 'person']);
+export const CalibrationCreationAlignmentMethodSchema =
+    CalibrationAlignmentMethodSchema.extract(['charuco']);
 
 export const CalibrationTransformTypeSchema = z.enum({
     ...CalibrationAlignmentMethodSchema.enum,

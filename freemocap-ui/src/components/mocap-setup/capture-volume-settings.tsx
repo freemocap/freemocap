@@ -3,6 +3,7 @@ import {CalibrateRecordingButton} from '@/components/control-panels/calibration-
 import {useAppSelector} from '@/store';
 import {selectMocapRecordingPath} from '@/store/slices/mocap/mocap-slice';
 import SettingRow from '@/components/common/settings-layout/setting-row';
+import ReferenceFrameSettings from './reference-frame-settings';
 
 export default function CaptureVolumeSettings({mode}: {mode: 'recording' | 'playback'}) {
     const directory = useAppSelector(selectMocapRecordingPath);
@@ -14,6 +15,7 @@ export default function CaptureVolumeSettings({mode}: {mode: 'recording' | 'play
                     text: 'Starts a calibration pipeline using the active recording’s videos and configured board. This creates a calibration rather than loading an existing TOML.'}}
                     control={<CalibrateRecordingButton recordingPath={directory}/>}/>
             </div>
+            {mode === 'playback' && <ReferenceFrameSettings/>}
         </div>
     </>;
 }

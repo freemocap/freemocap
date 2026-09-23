@@ -1,4 +1,5 @@
 import type {PlaybackSource} from './playback-source';
+import type {CalibrationUpdateRequest} from '@/store/slices/calibration/calibration-types';
 import type {ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame, PointsFrame} from '@/services/server/transport/frame-types';
 
@@ -24,6 +25,7 @@ export interface RecordingTimeline {
 export interface PlaybackMedia {video_source: PlaybackSource; video_filename: string; nominal_fps: number; timeline: RecordingTimeline}
 export interface RecordingStaticChannel { channel: RecordingChannel; values: Record<string, Record<string, number>> }
 export interface PlaybackRun {
+    calibration_updates?: Record<string, CalibrationUpdateRequest>;
     run_id: number; models: ModelDefinition[]; channels: RecordingChannel[];
     static_channels: RecordingStaticChannel[]; timelines: RecordingTimeline[]; media: PlaybackMedia[];
 }

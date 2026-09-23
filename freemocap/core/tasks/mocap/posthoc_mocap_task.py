@@ -11,6 +11,9 @@ from freemocap.core.recording.result_processing.observation_inputs import (
 from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.shared.calibration_update import (
+    CalibrationFileChangedError, CalibrationUpdateRequest,
+)
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.camera_matching.posthoc_matching import PosthocMatchingRequest
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
@@ -134,7 +137,15 @@ def run_posthoc_mocap_task(
 
     timing = PosthocTimingReport()
 
+    calibration_mtime_ms = (
+        calibration_toml_path.stat().st_mtime_ns / 1_000_000
+        if calibration_toml_path is not None else None
+    )
     calibration = CalibrationResult.load_toml(calibration_toml_path) if calibration_toml_path is not None else None
+    if calibration_toml_path is not None and (
+        calibration_toml_path.stat().st_mtime_ns / 1_000_000 != calibration_mtime_ms
+    ):
+        raise CalibrationFileChangedError("Calibration changed while loading; retry processing.")
     camera_geometry: dict[str, CameraModel] = {}
     if calibration is not None:
         matching_request = PosthocMatchingRequest(
@@ -208,6 +219,14 @@ def run_posthoc_mocap_task(
     )
 
     publication = ObservationRecordingRequest(
+        calibration_update=CalibrationUpdateRequest(
+            path=calibration_toml_path.resolve(),
+            expected_mtime_ms=calibration_mtime_ms,
+            transformations=aligned.transformations,
+            recording_id=recording_info.recording_name,
+        ) if calibration_toml_path is not None
+            and calibration_mtime_ms is not None
+            and aligned.transformations else None,
         reprojection=NamedReprojectionDiagnostics(
             source_ids=triangulation.sources, point_names=triangulation.diagnostic_point_names,
             values=triangulation.reconstruction.diagnostics,

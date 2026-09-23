@@ -8,8 +8,8 @@ test('camera geometry keeps its summary visible without repeating the calibratio
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize({width: 1000, height: 760});
-    await page.route('http://geometry.test/', route => route.fulfill({contentType: 'text/html', body: '<html></html>'}));
-    await page.goto('http://geometry.test/');
+    await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<html></html>'}));
+    await page.goto('http://localhost:53117/');
     await page.setContent('<main id="root" style="max-width:760px;margin:40px auto"></main>');
 
     const bundle = await build({
@@ -26,7 +26,7 @@ test('camera geometry keeps its summary visible without repeating the calibratio
             import Settings from './src/components/mocap-setup/capture-volume-settings';
             store.dispatch(calibrationLoadedFromBundle({path:'C:/recordings/freemocap_test_data/freemocap_test_data_camera_calibration.toml', cameras:[{},{},{}],metadata:{aligned:false}}));
             createRoot(document.getElementById('root')!).render(<Provider store={store}><MemoryRouter>
-                <div className="settings-layout"><Section title="Camera geometry" summary={<Summary/>}><Settings mode="playback"/></Section></div>
+                <div className="settings-layout"><Section title="Camera geometry" summary={<Summary mode="playback"/>}><Settings mode="playback"/></Section></div>
             </MemoryRouter></Provider>);
         `},
         external: ['/images/*', '../images/*', '../assets/icons/import-icon.svg'],
@@ -55,22 +55,29 @@ test('camera geometry keeps its summary visible without repeating the calibratio
     await expect(page.locator('.calibration-module-calibarted')).toHaveCount(0);
     await expect(page.getByRole('button', {name: 'Use recording calibration'})).toHaveCount(0);
     await expect(page.getByRole('button', {name: 'Calibrate from active recording', exact: true})).toHaveClass(/accent-outline/);
-    await expect(page.getByText('Capture volume alignment', {exact: true})).toBeVisible();
-    const alignment = page.getByRole('group', {name: 'Alignment method'});
-    const charuco = alignment.getByRole('radio', {name: /^ChArUco ground plane/});
-    const person = alignment.getByRole('radio', {name: /^Align to person/});
-    const none = alignment.getByRole('radio', {name: /^No additional alignment/});
+    await expect(page.getByText('Mocap capture volume alignment', {exact: true})).toBeVisible();
+    const charuco = page.getByRole('switch', {name: 'Align to ChArUco ground plane', exact: true});
+    const person = page.getByRole('switch', {name: 'Align to person', exact: true});
+    await expect(page.getByRole('radio')).toHaveCount(0);
     await expect(charuco).toBeChecked();
-    await person.check();
-    await expect(charuco).not.toBeChecked();
-    await expect(header).toContainText('Align to person');
-    await none.check();
     await expect(person).not.toBeChecked();
-    await expect(header).toContainText('No additional alignment');
-    await charuco.check();
-    await expect(none).not.toBeChecked();
-    await expect(header).toContainText('Align to ChArUco ground plane');
-    await person.check();
+    await person.click();
+    await expect(person).toBeChecked();
+    await expect(charuco).toBeChecked();
+    await expect(header).toContainText('Mocap: align to person');
+    await charuco.click();
+    await expect(charuco).not.toBeChecked();
+    await expect(person).toBeChecked();
+    await expect(header).toContainText('Calibration: board alignment off');
+    await person.click();
+    await expect(person).not.toBeChecked();
+    await expect(header).toContainText('Mocap: person alignment off');
+    await charuco.click();
+    await expect(person).not.toBeChecked();
+    await expect(header).toContainText('Calibration: ChArUco alignment');
+    await person.click();
+    const orderNote = page.getByText('The custom transform is applied after person alignment.', {exact: true});
+    await expect(orderNote).toHaveCount(0);
     await expect(page.getByText('Applied when you process mocap.', {exact: false})).toHaveCount(0);
     await expect(page.getByRole('switch', {name: 'Apply custom transform', exact: true})).not.toBeChecked();
     await page.getByRole('button', {name: 'Reference frame…', exact: true}).click();
@@ -79,14 +86,20 @@ test('camera geometry keeps its summary visible without repeating the calibratio
     await expect(page.getByRole('dialog', {name: 'Custom reference frame'})).toHaveCount(0);
     await expect(page.getByRole('switch', {name: 'Apply custom transform', exact: true})).toBeChecked();
     await expect(page.getByLabel('Defined transformation')).toContainText('q (wxyz)');
+    await expect(orderNote).toBeVisible();
+    await person.click();
+    await expect(orderNote).toHaveCount(0);
+    await expect(page.getByRole('switch', {name: 'Apply custom transform', exact: true})).toBeChecked();
+    await person.click();
+    await expect(orderNote).toBeVisible();
     await page.screenshot({path: 'test-results/camera-geometry-expanded.png'});
     await page.getByRole('button', {name: 'Set up calibration'}).click();
     await expect(page.getByRole('button', {name: 'Use recording calibration'})).toBeVisible();
     await page.screenshot({path: 'test-results/camera-geometry-source.png', animations: 'disabled'});
     await page.getByRole('button', {name: 'Set up calibration'}).click();
     await header.click();
-    await expect(header).toContainText('Align to person');
-    await expect(alignment).toBeHidden();
+    await expect(header).toContainText('Mocap: align to person');
+    await expect(person).toBeHidden();
     await page.screenshot({path: 'test-results/camera-geometry-collapsed.png'});
     expect(errors).toEqual([]);
 });

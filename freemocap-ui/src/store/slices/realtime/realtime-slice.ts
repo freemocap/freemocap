@@ -2,7 +2,7 @@ import {createSlice, PayloadAction} from "@reduxjs/toolkit";
 import {defaultRealtimePipelineConfig, PipelineState, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
 import {applyRealtimePipeline, closePipeline} from "@/store/slices/realtime/realtime-thunks";
 import {serverStateReceived, serverDisconnected} from "@/store/slices/connection/connection-slice";
-import {saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
+import {matchesSavedManualOffset, saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
 
 const initialState: PipelineState = {
     pipelineConfig: defaultRealtimePipelineConfig,
@@ -35,7 +35,10 @@ export const realtimeSlice = createSlice({
             .addCase(saveCalibrationTransform.fulfilled, (state, action) => {
                 state.isLoading = false;
                 const config = state.pipelineConfig.aggregator_config;
-                if (config.calibration_toml_path === action.payload.path) {
+                if (config.calibration_toml_path === action.payload.path
+                    && (!action.meta.arg || matchesSavedManualOffset(
+                        action.meta.arg, config.reference_transform?.matrix ?? null,
+                    ))) {
                     config.reference_transform = null;
                 }
             })

@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
@@ -115,6 +116,7 @@ class ObservationRecordingRequest:
     # Absent when the tracker runs no object detector (MediaPipe), in which case no
     # BOXES_2D channel is declared and no boxes are recorded.
     detector: DetectorRecordingDefinition | None = None
+    calibration_update: CalibrationUpdateRequest | None = None
 
     def __post_init__(self) -> None:
         if self.reprojection is not None:

@@ -95,6 +95,12 @@ def build_execution_plan(
 def retained_run(*, base: RunDescriptor, plan: StageExecutionPlan) -> RunDescriptor:
     """Remove invalid dynamic/static outputs and their completion records together."""
     data = base.model_dump()
+    data["calibration_updates"] = {
+        group: update.model_dump()
+        for group, update in base.calibration_updates.items()
+        if group not in plan.sensor_groups
+        or ProcessingStage.TRIANGULATION not in plan.invalidate
+    }
     if ProcessingStage.FILTERING in plan.invalidate:
         for group in plan.sensor_groups:
             settings = data["processing"].get(group)

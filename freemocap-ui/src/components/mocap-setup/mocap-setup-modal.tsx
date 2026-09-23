@@ -90,7 +90,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
         },
         {
             name: SetupSection.CameraGeometry,
-            summary: <CameraGeometrySummary/>,
+            summary: <CameraGeometrySummary mode={mode}/>,
             content: <CaptureVolumeSettings mode={mode}/>,
         },
         {

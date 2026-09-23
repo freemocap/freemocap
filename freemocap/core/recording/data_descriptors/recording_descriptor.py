@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 
@@ -94,6 +95,7 @@ def channel_key(*, channel: Channel) -> tuple[str, str, str | None, str]:
 
 
 class RunDescriptor(Descriptor):
+    calibration_updates: dict[str, CalibrationUpdateRequest] = Field(default_factory=dict)
     scale_fits: tuple[RecordingScaleFit, ...] = ()
     camera_geometry: dict[str, tuple[CameraModel, ...]] = Field(
         default_factory=dict
@@ -109,6 +111,8 @@ class RunDescriptor(Descriptor):
 
     @model_validator(mode="after")
     def validate_references(self) -> "RunDescriptor":
+        if not set(self.calibration_updates).issubset(self.sensor_groups):
+            raise ValueError("Unknown calibration update sensor group")
         if any(name != model.model_id for name, model in self.models.items()):
             raise ValueError("Recorded models must be keyed by their model ID")
         fit_keys = [(fit.sensor_group, fit.source) for fit in self.scale_fits]

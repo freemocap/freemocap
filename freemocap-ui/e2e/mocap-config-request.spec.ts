@@ -4,7 +4,7 @@ import path from 'node:path';
 
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
-test('recording and processing requests carry enabled alignment and custom transforms', async ({page}) => {
+test('Mocap requests keep person alignment and custom transforms independent of board alignment', async ({page}) => {
     page.on('pageerror', error => {throw error;});
     const requests: {mocapTaskConfig: {
         bodyAlignment: {enabled: boolean; additional_transform: {matrix: number[]} | null};
@@ -19,7 +19,7 @@ test('recording and processing requests carry enabled alignment and custom trans
     const bundle = await build({
         stdin: {contents: `
             import {store} from './src/store/store';
-            import {referenceTransformUpdated, referenceTransformEnabledUpdated, posthocFilterConfigUpdated} from './src/store/slices/mocap/mocap-slice';
+            import {bodyAlignmentEnabledUpdated, referenceTransformUpdated, referenceTransformEnabledUpdated, posthocFilterConfigUpdated} from './src/store/slices/mocap/mocap-slice';
             import {calibrationConfigUpdated} from './src/store/slices/calibration';
             import {CalibrationAlignmentMethodSchema} from './src/store/slices/calibration/calibration-types';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
@@ -27,18 +27,18 @@ test('recording and processing requests carry enabled alignment and custom trans
             async function run(): Promise<void> {
                 store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
                 store.dispatch(referenceTransformUpdated([0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]));
-                for (const alignmentMethod of [
-                    CalibrationAlignmentMethodSchema.enum.person,
-                    CalibrationAlignmentMethodSchema.enum.charuco,
-                    null,
-                ]) {
-                    const enabled = alignmentMethod === CalibrationAlignmentMethodSchema.enum.person;
-                    store.dispatch(referenceTransformEnabledUpdated(enabled));
-                    store.dispatch(calibrationConfigUpdated({alignmentMethod}));
-                    store.dispatch(posthocFilterConfigUpdated({enabled, cutoff: 4.5, order: 3}));
-                    await store.dispatch(startMocapRecording()).unwrap();
-                    await store.dispatch(stopMocapRecording()).unwrap();
-                    await store.dispatch(processMocapRecording()).unwrap();
+                for (const alignmentMethod of [CalibrationAlignmentMethodSchema.enum.charuco, null]) {
+                    for (const personEnabled of [true, false]) {
+                        for (const transformEnabled of [true, false]) {
+                            store.dispatch(calibrationConfigUpdated({alignmentMethod}));
+                            store.dispatch(bodyAlignmentEnabledUpdated(personEnabled));
+                            store.dispatch(referenceTransformEnabledUpdated(transformEnabled));
+                            store.dispatch(posthocFilterConfigUpdated({enabled: true, cutoff: 4.5, order: 3}));
+                            await store.dispatch(startMocapRecording()).unwrap();
+                            await store.dispatch(stopMocapRecording()).unwrap();
+                            await store.dispatch(processMocapRecording()).unwrap();
+                        }
+                    }
                 }
                 document.getElementById('result')!.textContent = 'done';
             }
@@ -53,14 +53,16 @@ test('recording and processing requests carry enabled alignment and custom trans
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.locator('#result')).toHaveText('done');
-    expect(requests).toHaveLength(9);
-    for (const request of requests.slice(0, 3)) {
+    expect(requests).toHaveLength(24);
+    for (const [index, request] of requests.entries()) {
+        const combination = Math.floor(index / 3) % 4;
         expect(request.mocapTaskConfig.filterConfig).toEqual({enabled: true, method: 'butter_low_pass', cutoff: 4.5, order: 3});
-        expect(request.mocapTaskConfig.bodyAlignment).toEqual({enabled: true, additional_transform: {matrix: [0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]}});
-    }
-    for (const request of requests.slice(3)) {
-        expect(request.mocapTaskConfig.filterConfig).toEqual({enabled: false, method: 'butter_low_pass', cutoff: 4.5, order: 3});
-        expect(request.mocapTaskConfig.bodyAlignment).toEqual({enabled: false, additional_transform: null});
+        expect(request.mocapTaskConfig.bodyAlignment).toEqual({
+            enabled: combination < 2,
+            additional_transform: combination % 2 === 0
+                ? {matrix: [0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]}
+                : null,
+        });
     }
 });
 

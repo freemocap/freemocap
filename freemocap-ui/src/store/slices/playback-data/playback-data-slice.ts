@@ -4,7 +4,8 @@ import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
 import type {RecordingStatusSummary} from '@/types/recording-status';
 import type {LoadedCalibration} from '@/store/slices/calibration/calibration-slice';
-import {LoadedCalibrationSchema} from '@/store/slices/calibration/calibration-types';
+import {CalibrationUpdateRequestSchema, LoadedCalibrationSchema} from '@/store/slices/calibration/calibration-types';
+import {z} from 'zod';
 
 // ---------------------------------------------------------------------------
 // Types matching the backend RecordingBundle response
@@ -93,6 +94,14 @@ export const fetchPlaybackBundle = createAsyncThunk<
                 throw new Error(`Bundle fetch failed: ${response.status}`);
             }
             const data = await response.json();
+            const manifest: PlaybackManifest | null = data.manifest;
+            if (manifest) {
+                manifest.runs = manifest.runs.map(run => ({
+                    ...run,
+                    calibration_updates: z.record(z.string(), CalibrationUpdateRequestSchema)
+                        .parse(run.calibration_updates ?? {}),
+                }));
+            }
 
             const baseUrl = serverUrls.getHttpUrl();
             const sources: PlaybackBundle['videos']['sources'] = {};
@@ -112,7 +121,7 @@ export const fetchPlaybackBundle = createAsyncThunk<
 
             return {
                 recordingId: data.recording_id,
-                manifest: data.manifest,
+                manifest,
                 errors: data.errors,
                 media: data.media,
                 recordingFps: data.recording_fps ?? null,

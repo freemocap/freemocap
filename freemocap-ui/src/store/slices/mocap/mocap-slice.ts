@@ -2,6 +2,7 @@ import {CameraMatchingOptions, defaultCameraMatchingOptions} from '@/types/camer
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
+import {matchesSavedManualOffset, saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
 import {
     processMocapRecording,
     startMocapRecording,
@@ -115,6 +116,7 @@ export interface MocapConfig {
     mediapipeNumHands: number;
     mediapipeNumFaces: number;
 
+    bodyAlignmentEnabled: boolean;
     /** Row-major rigid offset applied after posthoc alignment, with translation in mm. */
     referenceTransform: number[] | null;
     referenceTransformEnabled: boolean;
@@ -261,6 +263,7 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     mediapipeTrackingConfidence: 0.5,
     mediapipeNumHands: 2,
     mediapipeNumFaces: 1,
+    bodyAlignmentEnabled: false,
     referenceTransform: null,
     referenceTransformEnabled: false,
 };
@@ -311,6 +314,9 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
+        bodyAlignmentEnabledUpdated: (state, action: PayloadAction<boolean>) => {
+            state.config.bodyAlignmentEnabled = action.payload;
+        },
         /** Row-major 4x4, or null when no additional transformation is defined. */
         referenceTransformUpdated: (state, action: PayloadAction<number[] | null>) => {
             state.config.referenceTransform = action.payload;
@@ -416,6 +422,13 @@ export const mocapSlice = createSlice({
     },
 
     extraReducers: (builder) => {
+        builder.addCase(saveCalibrationTransform.fulfilled, (state, action) => {
+            const request = action.meta.arg;
+            if (request && matchesSavedManualOffset(request, state.config.referenceTransform)) {
+                state.config.referenceTransform = null;
+                state.config.referenceTransformEnabled = false;
+            }
+        });
         builder
             .addCase(startMocapRecording.pending, (state) => {
                 state.isLoading = true;
@@ -517,6 +530,7 @@ export const selectCanProcessMocapRecording = createSelector(
 // ==================== Actions Export ====================
 
 export const {
+    bodyAlignmentEnabledUpdated,
     referenceTransformUpdated,
     referenceTransformEnabledUpdated,
     cameraMatchingUpdated,

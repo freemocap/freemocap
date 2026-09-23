@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 from freemocap.core.tracking.board_selection import CharucoBoardMode
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import CalibrationAlignmentMethod
 
@@ -33,10 +34,10 @@ class PosthocCalibrationPipelineConfig(BaseModel):
         description="Calibration solver method.",
     )
 
-    alignment_method: CalibrationAlignmentMethod | None = Field(
+    alignment_method: Literal[CalibrationAlignmentMethod.CHARUCO] | None = Field(
         default=None,
         alias="alignmentMethod",
-        description="ChArUco alignment runs during calibration; person alignment runs during mocap processing.",
+        description="Optionally use the ChArUco board pose to align the generated calibration.",
     )
 
     triangulation_config: TriangulationConfig = Field(

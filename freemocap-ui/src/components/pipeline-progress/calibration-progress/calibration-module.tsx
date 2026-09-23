@@ -11,7 +11,6 @@ import DropdownButton from "@/components/ui-components/DropdownButton";
 import CalibrationSettings from "./calibration-settings";
 import {useCalibrationTomlLoader} from '@/components/viewport3d/hooks/useCalibrationTomlLoader';
 import CalibrationReferenceFrame from './calibration-reference-frame';
-import ReferenceFrameSettings from '@/components/mocap-setup/reference-frame-settings';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import ImportVideosModal from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 import charucoBoardImage from "@/assets/images/charuco_board.webp";
@@ -86,10 +85,8 @@ const CalibrationModule = ({
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
   useCalibrationTomlLoader(appMode === 'streaming' && appModeOverride === undefined);
   const referenceFrameControls = <>
-    <CalibrationAlignmentSettings allowPerson={appMode === 'playback'} disabled={isLoading || isRecording}/>
-    {appMode === 'playback'
-      ? <ReferenceFrameSettings/>
-      : presentation === 'panel' && appModeOverride === undefined
+    <CalibrationAlignmentSettings disabled={isLoading || isRecording}/>
+    {appMode === 'streaming' && presentation === 'panel' && appModeOverride === undefined
         ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
         : null}
   </>;

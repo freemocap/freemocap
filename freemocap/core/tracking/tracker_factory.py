@@ -175,8 +175,8 @@ def _mediapipe_hand_child_stage(
                 (f"{side}_wrist", f"{side}_index"),
                 (f"{side}_wrist", f"{side}_pinky"),
             ),
-            scale_factor=3.0,
-            min_box_size_px=120.0,
+            scale_factor=2.0,
+            min_box_size_px=30.0,
         ),
         keypoint_detectors=[
             MediapipeHandDetectorConfig(

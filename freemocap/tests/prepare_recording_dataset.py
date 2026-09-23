@@ -16,7 +16,6 @@ import subprocess
 import sys
 import threading
 import time
-from uuid import uuid4
 
 from filelock import FileLock
 
@@ -25,6 +24,28 @@ from freemocap.tests.recording_datasets import SAMPLE_DATA, TEST_DATA, acquire_r
 
 logger = logging.getLogger(__name__)
 PREPARATION_VERSION = 1
+WARNING_FILENAME = "FILES_IN_THIS_FOLDER_GET_DELETED_AUTOMATICALLY_DO_NOT_STORE_ANYTHING_YOU_CARE_ABOUT.txt"
+
+
+def remove_scratch(root: Path) -> None:
+    """Caller must hold prepare.lock. Only the fixed scratch child is disposable."""
+    target = root / "scratch"
+    if not target.exists():
+        return
+    # Reject junctions as well as symlinks, including links inside the tree.
+    for path in [target, *target.rglob("*")]:
+        if path.is_symlink() or getattr(path.stat(follow_symlinks=False), "st_file_attributes", 0) & 0x400:
+            raise ValueError(f"Refusing cleanup through a filesystem link: {path}")
+    if target.resolve().parent != root.resolve():
+        raise ValueError("Scratch path escapes its dataset directory")
+    shutil.rmtree(target)
+
+
+def compatible_identity(saved: dict, current: dict) -> bool:
+    """Software revision is provenance, not an instruction to rerun inference."""
+    return ("source" in saved and "preparation_version" in saved
+            and saved.get("preparation_version") == current.get("preparation_version")
+            and saved.get("source") == current.get("source"))
 
 
 def file_digest(path: Path) -> str:
@@ -193,7 +214,7 @@ def reuse_recording(root: Path, identity: dict) -> Path | None:
     if not marker.is_file():
         return None
     ready = json.loads(marker.read_text(encoding="utf-8"))
-    if ready["identity"] != identity:
+    if ready["identity"] != identity and not compatible_identity(ready["identity"], identity):
         return None
     recording = Path(ready["recording"])
     if not recording.resolve().is_relative_to(root.resolve()):
@@ -202,9 +223,9 @@ def reuse_recording(root: Path, identity: dict) -> Path | None:
     parquet = recording / f"{recording.name}_data.parquet"
     calibration = recording / result["calibration_filename"]
     if not parquet.is_file() or file_digest(parquet) != result["validation"]["parquet_sha256"]:
-        raise ValueError("Prepared Parquet changed or is missing; use --fresh to rebuild")
+        raise ValueError("Prepared Parquet changed or is missing; remove the prepared dataset explicitly before rebuilding")
     if not calibration.is_file() or file_digest(calibration) != result["calibration_sha256"]:
-        raise ValueError("Prepared calibration changed or is missing; use --fresh to rebuild")
+        raise ValueError("Prepared calibration changed or is missing; remove the prepared dataset explicitly before rebuilding")
     return recording
 
 
@@ -241,18 +262,46 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
     report = inspect_recording(dataset, recordings_root=recordings_root)
     identity = {"preparation_version": PREPARATION_VERSION, "source": report,
                 "software": software_identity(), "preparer_sha256": file_digest(Path(__file__))}
-    signature = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
-    root = prepared_root.expanduser().resolve() / dataset.name / signature[:16]
+    root = prepared_root.expanduser().resolve() / dataset.name
     # Never place generated files inside the downloaded recording.
-    if root.is_relative_to(raw.resolve()) or raw.resolve().is_relative_to(root):
+    if (root.is_relative_to(recordings_root.resolve()) or recordings_root.resolve().is_relative_to(root)
+            or root.is_relative_to(raw.resolve()) or raw.resolve().is_relative_to(root)):
         raise ValueError("Prepared output must be separate from the raw recording")
     root.mkdir(parents=True, exist_ok=True)
+    warning_root = prepared_root.resolve().parent if prepared_root.name == "prepared" else prepared_root.resolve()
+    (warning_root / WARNING_FILENAME).write_text(
+        "DISPOSABLE TEST SPACE. Files here may be deleted automatically.\n"
+        "Do not store anything you care about here. Original recordings belong outside this directory.\n"
+        "Prepared normal recording outputs are retained for reuse; scratch runs are disposable.\n", encoding="utf-8")
     with FileLock(str(root / "prepare.lock"), timeout=timeout * 2 + 120):
-        existing = None if fresh else reuse_recording(root, identity)
-        if existing is not None:
+        existing = reuse_recording(root, identity)
+        if existing is None and not (root / "ready.json").exists():
+            # Adopt a completed old-layout recording without rerunning detection.
+            for marker in sorted(root.glob("*/ready.json")):
+                with FileLock(str(marker.parent / "prepare.lock"), timeout=0):
+                    previous = reuse_recording(marker.parent, identity)
+                    if previous is None:
+                        continue
+                    validate_parquet(previous, expected_frames=dataset.expected_frame_count)
+                    current = root / "current" / "recordings" / dataset.name
+                    if current.exists():
+                        raise ValueError("Unpublished current recording exists; inspect it before retrying")
+                    current.parent.mkdir(parents=True, exist_ok=True)
+                    previous.rename(current)
+                    ready = json.loads(marker.read_text(encoding="utf-8"))
+                    ready["recording"] = str(current)
+                    (root / "ready.json").write_text(json.dumps(ready, indent=2), encoding="utf-8")
+                    marker.unlink()
+                    existing = current
+                    break
+        if (root / "ready.json").exists() and existing is None:
+            raise ValueError("Prepared inputs changed; explicitly remove the prepared dataset before rebuilding")
+        if existing is not None and not fresh:
+            validate_parquet(existing, expected_frames=dataset.expected_frame_count)
             logger.info("Reusing validated preparation: %s", existing)
             return existing
-        attempt = root / uuid4().hex[:8]
+        remove_scratch(root)
+        attempt = root / "scratch"
         recording = attempt / "recordings" / dataset.name
         folder = recording / "synchronized_videos"
         folder.mkdir(parents=True)
@@ -277,10 +326,22 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
             logger.error("Preparation failed; log tail:\n%s", (attempt / "preparation.log").read_text(encoding="utf-8", errors="replace")[-10000:])
             raise
         result = json.loads((attempt / "result.json").read_text(encoding="utf-8"))
+        if existing is not None:
+            logger.info("Fresh pipeline validation passed; retaining prepared recording: %s", existing)
+            remove_scratch(root)
+            return existing
+        current = root / "current" / "recordings" / dataset.name
+        if current.exists():
+            raise ValueError("Unpublished current recording exists; inspect it before retrying")
+        current.parent.mkdir(parents=True, exist_ok=True)
+        recording.rename(current)
+        recording = current
         ready = {"identity": identity, "recording": str(recording), "result": result}
         temporary = root / "ready.json.tmp"
         temporary.write_text(json.dumps(ready, indent=2), encoding="utf-8")
         temporary.replace(root / "ready.json")
+        shutil.copy2(attempt / "preparation.log", root / "current" / "preparation.log")
+        remove_scratch(root)
         return recording
 
 
@@ -290,7 +351,7 @@ def main() -> None:
     parser.add_argument("--dataset", choices=("test", "sample"), default="test")
     parser.add_argument("--recordings-root", type=Path, default=Path.home() / "freemocap_data" / "recordings")
     parser.add_argument("--prepared-root", type=Path, default=Path.home() / "freemocap_data" / "testing" / "prepared")
-    parser.add_argument("--fresh", action="store_true", help="Execute both pipelines again in a new attempt")
+    parser.add_argument("--fresh", action="store_true", help="Validate a clean scratch run, preserving existing prepared results")
     parser.add_argument("--timeout", type=float, default=1800.0, help="Per-pipeline time limit in seconds")
     arguments = parser.parse_args()
     if not math.isfinite(arguments.timeout) or arguments.timeout <= 0:

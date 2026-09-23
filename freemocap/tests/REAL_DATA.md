@@ -65,21 +65,41 @@ attempt. Application settings and calibration writes are isolated too. The
 installed core environment must already contain the pipeline dependencies and
 have access to required detector assets.
 
-Prepared recordings live under `~/freemocap_data/testing/prepared/`. The command
-prints the resulting recording directory. Each attempt retains its request,
-full log, and result report. A ready marker is published only after both tasks
+Prepared recordings live at
+`~/freemocap_data/testing/prepared/<dataset>/current/recordings/<dataset>/`.
+The command prints this stable directory. Keep its normal outputs, including
+annotated videos, diagnostics, calibration, and Parquet. The testing root gets
+`FILES_IN_THIS_FOLDER_GET_DELETED_AUTOMATICALLY_DO_NOT_STORE_ANYTHING_YOU_CARE_ABOUT.txt`.
+The original downloads remain outside this disposable space.
+A ready marker is published only after both tasks
 report successful completion and current Parquet validation passes: frame grid,
 camera geometry, standard human model, sample schema, and finite values in the
 required channels. The result report retains calibration and alignment history.
 These are readiness checks, not independent reconstruction-accuracy benchmarks.
 
-Compatible completed results are reused after checking output hashes. Identity
-includes input inspection, preparation code, core code, and installed package
-versions/origins and subskelly code hashes. Detector weight files are not yet
-fingerprinted. Changed or missing prepared outputs fail explicitly; `--fresh`
-creates another attempt. Failed attempts are retained for diagnosis and never
-marked ready. Options also include `--recordings-root`, `--prepared-root`, and a
-per-pipeline `--timeout` in seconds.
+Completed results are reused after checking input identity, output hashes, and
+current Parquet compatibility. Software and preparer fingerprints are retained
+as provenance; changes to them do not automatically rerun expensive processing.
+Detector weight files are not yet fingerprinted. Changed inputs or damaged
+outputs fail explicitly rather than silently regenerating them. To deliberately
+regenerate prepared data, stop consumers and remove that dataset's preparation
+directory, then run the helper again.
+
+`--fresh` executes both pipelines in a fixed `scratch/` sibling of `current/`.
+It clears previous scratch outputs before execution so old files cannot satisfy
+a producer test. A successful run removes scratch and preserves existing prepared
+results; when no prepared result exists, the first success becomes `current/`.
+A failed scratch run stays available for diagnosis until the next fresh attempt.
+Its request, log, and partial outputs never qualify as prepared results. Dataset
+locking serializes helper runs; cleanup rejects filesystem links and targets only
+scratch. Consumers must not manually delete or regenerate data while it is in use.
+Options also include `--recordings-root`, `--prepared-root`, and a per-pipeline
+`--timeout` in seconds.
+
+The helper adopts a compatible successful preparation from the previous hashed
+layout without rerunning processing. Historical failed attempts are not swept by
+normal cleanup: they can be removed manually after checking that their old workers
+have stopped. New runs no longer create accumulating hashed attempt directories.
 
 The decimated test recording has a 6 Hz playback rate. Preparation disables
 trajectory filtering for it because the default 6 Hz cutoff exceeds its 3 Hz
@@ -90,6 +110,9 @@ Validated locally on 2026-09-23: fresh calibration and real posthoc processing o
 all 222 test frames completed, followed by Parquet validation. The runner uses
 production workers in thread mode; this does not exercise process-mode transport.
 Sample-data processing has not yet been run through this helper.
+The stable-layout migration and a fresh 222-frame scratch run were also validated:
+the original prepared Parquet hash stayed unchanged and scratch was removed after
+successful processing and validation.
 
 ## Integration still to do
 

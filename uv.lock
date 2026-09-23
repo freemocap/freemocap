@@ -2214,7 +2214,7 @@ source = { git = "https://github.com/freemocap/skellylogs#9114990350d7fb36747526
 [[package]]
 name = "skellypings"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellypings#94b9e4b58322fdf105d48583fb970cade8977de7" }
+source = { git = "https://github.com/freemocap/skellypings#2fedf21356758569ccab069967f127a804f5241d" }
 dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },

@@ -114,7 +114,28 @@ The stable-layout migration and a fresh 222-frame scratch run were also validate
 the original prepared Parquet hash stayed unchanged and scratch was removed after
 successful processing and validation.
 
-## Integration still to do
+## Real-data consumer checks
+
+Run the dedicated consumer group from the core repository:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m pytest freemocap/tests/reference_recordings -q
+```
+
+These four `e2e` checks share one session preparation, using the home-folder test
+dataset and stable prepared recording described above. Missing data is acquired
+and prepared once; existing invalid data fails explicitly. They do not request
+`--fresh`, and ordinary software revisions do not cause inference to rerun.
+
+The checks cover the playback frame/camera timeline and human model mapping,
+loading saved human reconstruction inputs with their matching scale fit,
+calibration/alignment provenance, and the HTTP manifest/Parquet endpoints with
+revision rejection. A fixture teardown verifies that calibration and Parquet
+bytes have not changed. The HTTP test runs in-process, without a browser or
+network server. These establish consumer compatibility, not pose accuracy.
+The existing synthetic reader tests remain useful for malformed-input cases.
+
+## Remaining integration
 
 Downstream tests reuse compatible completed results. Full-pipeline tests execute
 into fresh outputs. Test data is the default; sample data serves trajectory,

@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from freemocap.core.blender.blender_export_config import BlenderExportConfig
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.blender.helpers.install_blender_addon import \
     install_freemocap_blender_addon
@@ -51,12 +52,18 @@ class ExportToBlenderRequest(BaseModel):
                 "recordingFolderPath": FREEMOCAP_TEST_DATA_PATH,
                 "blenderExePath": None,
                 "autoOpenBlendFile": True,
+                "blenderExportConfig": {"formats": ["fbx", "bvh"]},
             }
         },
     )
     recording_folder_path: str = Field(alias="recordingFolderPath", default=FREEMOCAP_TEST_DATA_PATH)
     blender_exe_path: str | None = Field(alias="blenderExePath", default=None, examples=[None])
     auto_open_blend_file: bool = Field(alias="autoOpenBlendFile", default=True)
+    blender_export_config: BlenderExportConfig = Field(
+        alias="blenderExportConfig",
+        default_factory=BlenderExportConfig,
+        description="Options forwarded to the Blender addon's 3D model export step.",
+    )
 
     @property
     def blend_file_path(self):
@@ -164,6 +171,7 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
             blend_file_path=request.blend_file_path,
             blender_exe_path=str(blender_exe),
             open_file_on_completion=request.auto_open_blend_file,
+            blender_export_config=request.blender_export_config.model_dump(),
         )
         
         return ExportToBlenderResponse(

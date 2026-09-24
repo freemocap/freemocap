@@ -154,7 +154,8 @@ def run_posthoc_mocap_aggregator_task(
                 recording_folder_path=str(recording_info.full_recording_path),
                 blender_exe_path=task_config.blender_exe_path,
                 open_file_on_completion=task_config.auto_open_blend_file,
-                detector = task_config.detector_type
+                detector = task_config.detector_type,
+                blender_export_config=task_config.blender_export_config.model_dump(),
             )
         except Exception as e:
             # Don't crash the whole aggregator if blender export fails —

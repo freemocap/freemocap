@@ -98,11 +98,28 @@ class PubSubTopicABC(Generic[MessageType]):
         return relayed
 
     def close(self) -> None:
+        # cancel_join_thread() is required alongside close(): multiprocessing.Queue
+        # registers an untimed atexit finalizer that joins its feeder thread on
+        # interpreter shutdown. If a subscriber/publisher process on the other end
+        # of the pipe already exited, that feeder thread can be stuck retrying a
+        # write and the join hangs forever -- this is the "pytest finishes but the
+        # process never exits" hang. We don't wait for the feeder thread's flush
+        # to finish, so a message put() just before close() could in principle be
+        # dropped instead of delivered -- but PubSubTopicManager.close() already
+        # drains the publication->subscription relay before reaching here, and
+        # callers that care about a final terminal message (e.g. COMPLETE/FAILED)
+        # explicitly drain again before shutdown (see PosthocPipeline.drain_and_
+        # get_messages()). So the residual loss window is narrow and pre-existing,
+        # not something this introduces.
         if hasattr(self.publication, 'close'):
             self.publication.close()
+        if hasattr(self.publication, 'cancel_join_thread'):
+            self.publication.cancel_join_thread()
         for sub in self.subscriptions:
             if hasattr(sub, 'close'):
                 sub.close()
+            if hasattr(sub, 'cancel_join_thread'):
+                sub.cancel_join_thread()
         self.subscriptions.clear()
 
 

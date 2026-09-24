@@ -121,42 +121,81 @@ class RealtimePipeline:
             global_kill_flag=global_kill_flag,
         )
 
-        camera_registry = worker_registry
-        if pipeline_config.camera_node_config.worker_mode == WorkerMode.THREAD:
-            camera_registry = WorkerRegistry(
-                global_kill_flag=global_kill_flag,
-                worker_mode=WorkerMode.THREAD,
+        try:
+            camera_registry = worker_registry
+            if pipeline_config.camera_node_config.worker_mode == WorkerMode.THREAD:
+                camera_registry = WorkerRegistry(
+                    global_kill_flag=global_kill_flag,
+                    worker_mode=WorkerMode.THREAD,
+                )
+
+            # Use the realtime subset if provided, otherwise all cameras in the group.
+            # The camera group is always started with all selected cameras so their
+            # shared memory exists; we just choose which ones feed the pipeline nodes.
+            pipeline_camera_ids: list[CameraIdString] = (
+                [cid for cid in camera_group.configs.keys() if cid in realtime_camera_ids]
+                if realtime_camera_ids is not None
+                else list(camera_group.configs.keys())
             )
 
-        # Use the realtime subset if provided, otherwise all cameras in the group.
-        # The camera group is always started with all selected cameras so their
-        # shared memory exists; we just choose which ones feed the pipeline nodes.
-        pipeline_camera_ids: list[CameraIdString] = (
-            [cid for cid in camera_group.configs.keys() if cid in realtime_camera_ids]
-            if realtime_camera_ids is not None
-            else list(camera_group.configs.keys())
-        )
+            camera_nodes = {
+                camera_id: CameraNode.create(
+                    camera_id=camera_id,
+                    worker_registry=camera_registry,
+                    camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
+                    config=pipeline_config.camera_node_config,
+                    ipc=ipc,
+                    pubsub=pubsub,
+                    skeleton_inference_centralized=(
+                        pipeline_config.use_centralized_inference
+                    ),
+                    log_pipeline_times=pipeline_config.log_pipeline_times,
+                )
+                for camera_id in pipeline_camera_ids
+            }
 
-        camera_nodes = {
-            camera_id: CameraNode.create(
-                camera_id=camera_id,
-                worker_registry=camera_registry,
-                camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
-                config=pipeline_config.camera_node_config,
-                ipc=ipc,
-                pubsub=pubsub,
-                skeleton_inference_centralized=(
-                    pipeline_config.use_centralized_inference
-                ),
-                log_pipeline_times=pipeline_config.log_pipeline_times,
+            skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
+            if (pipeline_config.use_centralized_inference
+                    and pipeline_config.camera_node_config.skeleton_tracking_enabled):
+                skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
+                    camera_group_id=camera_group.id,
+                    camera_ids=pipeline_camera_ids,
+                    worker_registry=worker_registry,
+                    camera_group_shm_dto=camera_group.shm.to_dto(),
+                    config=pipeline_config,
+                    ipc=ipc,
+                    pubsub=pubsub,
+                )
+
+            # Create CharucoRecorderNode if charuco tracking is enabled.
+            # This node buffers observations during calibration recording windows
+            # so posthoc calibration can skip redundant detection.
+            charuco_recorder_node: CharucoRecorderNode | None = None
+            if pipeline_config.camera_node_config.charuco_tracking_enabled:
+                charuco_recorder_node = CharucoRecorderNode.create(
+                    camera_ids=pipeline_camera_ids,
+                    ipc=ipc,
+                    pubsub=pubsub,
+                    board_config=pipeline_config.camera_node_config.charuco_tracker_config.stages[0].keypoint_detectors[0].board,
+                    worker_registry=worker_registry,
+                )
+
+            # Backpressure events between the aggregator and the websocket consumer.
+            # The aggregator processes one frame, publishes the result, clears
+            # `result_consumed_event`, and sets `result_ready_event`. The consumer
+            # waits on `result_ready_event`, grabs the result, then flips the events
+            # in the opposite order — releasing the aggregator to start the next
+            # frame. Initial state: nothing is ready, but the slot is "consumed"
+            # (free), so the aggregator can produce its first frame immediately.
+            result_ready_event = multiprocessing.Event()
+            result_consumed_event = multiprocessing.Event()
+            result_consumed_event.set()
+
+            skeleton_fitter_reset_sub = pubsub.get_subscription(
+                SkeletonFitterResetTopic,
             )
-            for camera_id in pipeline_camera_ids
-        }
 
-        skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
-        if (pipeline_config.use_centralized_inference
-                and pipeline_config.camera_node_config.skeleton_tracking_enabled):
-            skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
+            aggregation_node = RealtimeAggregatorNode.create(
                 camera_group_id=camera_group.id,
                 camera_ids=pipeline_camera_ids,
                 worker_registry=worker_registry,
@@ -164,68 +203,37 @@ class RealtimePipeline:
                 config=pipeline_config,
                 ipc=ipc,
                 pubsub=pubsub,
+                result_ready_event=result_ready_event,
+                result_consumed_event=result_consumed_event,
+                skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
             )
 
-        # Create CharucoRecorderNode if charuco tracking is enabled.
-        # This node buffers observations during calibration recording windows
-        # so posthoc calibration can skip redundant detection.
-        charuco_recorder_node: CharucoRecorderNode | None = None
-        if pipeline_config.camera_node_config.charuco_tracking_enabled:
-            charuco_recorder_node = CharucoRecorderNode.create(
-                camera_ids=pipeline_camera_ids,
+            aggregation_output_subscription = pubsub.get_subscription(
+                AggregationNodeOutputTopic,
+            )
+
+            return cls(
+                id=str(uuid.uuid4())[:6],
+                camera_group=camera_group,
+                config=pipeline_config,
+                camera_nodes=camera_nodes,
+                aggregation_node=aggregation_node,
+                skeleton_inference_node=skeleton_inference_node,
+                charuco_recorder_node=charuco_recorder_node,
+                aggregation_output_subscription=aggregation_output_subscription,
+                result_ready_event=result_ready_event,
+                result_consumed_event=result_consumed_event,
                 ipc=ipc,
                 pubsub=pubsub,
-                board_config=pipeline_config.camera_node_config.charuco_tracker_config.stages[0].keypoint_detectors[0].board,
                 worker_registry=worker_registry,
             )
-
-        # Backpressure events between the aggregator and the websocket consumer.
-        # The aggregator processes one frame, publishes the result, clears
-        # `result_consumed_event`, and sets `result_ready_event`. The consumer
-        # waits on `result_ready_event`, grabs the result, then flips the events
-        # in the opposite order — releasing the aggregator to start the next
-        # frame. Initial state: nothing is ready, but the slot is "consumed"
-        # (free), so the aggregator can produce its first frame immediately.
-        result_ready_event = multiprocessing.Event()
-        result_consumed_event = multiprocessing.Event()
-        result_consumed_event.set()
-
-        skeleton_fitter_reset_sub = pubsub.get_subscription(
-            SkeletonFitterResetTopic,
-        )
-
-        aggregation_node = RealtimeAggregatorNode.create(
-            camera_group_id=camera_group.id,
-            camera_ids=pipeline_camera_ids,
-            worker_registry=worker_registry,
-            camera_group_shm_dto=camera_group.shm.to_dto(),
-            config=pipeline_config,
-            ipc=ipc,
-            pubsub=pubsub,
-            result_ready_event=result_ready_event,
-            result_consumed_event=result_consumed_event,
-            skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
-        )
-
-        aggregation_output_subscription = pubsub.get_subscription(
-            AggregationNodeOutputTopic,
-        )
-
-        return cls(
-            id=str(uuid.uuid4())[:6],
-            camera_group=camera_group,
-            config=pipeline_config,
-            camera_nodes=camera_nodes,
-            aggregation_node=aggregation_node,
-            skeleton_inference_node=skeleton_inference_node,
-            charuco_recorder_node=charuco_recorder_node,
-            aggregation_output_subscription=aggregation_output_subscription,
-            result_ready_event=result_ready_event,
-            result_consumed_event=result_consumed_event,
-            ipc=ipc,
-            pubsub=pubsub,
-            worker_registry=worker_registry,
-        )
+        except Exception:
+            logger.exception(
+                "RealtimePipeline.create() failed after starting pubsub relay "
+                "-- closing pubsub to avoid leaking its non-daemon relay thread"
+            )
+            pubsub.close()
+            raise
 
     def start(self) -> None:
         if self.started:

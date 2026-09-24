@@ -22,13 +22,17 @@ from freemocap.core.tasks.triangulation.helpers.angulation_result import Angulat
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from skellytracker.core.data_primitives.observation import Observation
-    from skellycam.core.types.type_overloads import CameraIdString
-    from pathlib import Path
-    from numpy.typing import NDArray
+# NOTE: this module uses `from __future__ import annotations`, so beartype
+# (which decorates these functions and resolves annotations at runtime)
+# needs every annotated name to actually exist in this module's namespace.
+# TYPE_CHECKING-only imports are invisible to beartype's forward-ref
+# resolution and raise BeartypeCallHintForwardRefException — so these must
+# stay live imports rather than TYPE_CHECKING-only.
+from skellytracker.core.data_primitives.observation import Observation
+from skellycam.core.types.type_overloads import CameraIdString
+from pathlib import Path
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 

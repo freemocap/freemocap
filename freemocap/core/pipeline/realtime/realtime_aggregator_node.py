@@ -71,22 +71,22 @@ from freemocap.pubsub.pubsub_topics import (
     SkeletonInferenceResultTopic,
     PipelineTimingTopic,
 )
-from typing import TYPE_CHECKING
-
-# Re-exported for realtime_pipeline_manager.py, freemocap_application.py, and
-# realtime_router.py, so it must stay a live import rather than TYPE_CHECKING-only.
+# NOTE: this module uses `from __future__ import annotations`, so beartype
+# (which decorates these functions and resolves annotations at runtime)
+# needs every annotated name to actually exist in this module's namespace.
+# TYPE_CHECKING-only imports are invisible to beartype's forward-ref
+# resolution and raise BeartypeCallHintForwardRefException — so these must
+# stay live imports rather than TYPE_CHECKING-only.
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig  # noqa: TC001
-
-if TYPE_CHECKING:
-    from freemocap.pubsub.pubsub_manager import PubSubTopicManager
-    from freemocap.core.types.type_overloads import TopicPublicationQueue
-    from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
-    from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
-    from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
-    from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-    from multiprocessing.sharedctypes import Synchronized
-    import multiprocessing.synchronize
-    from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
+from freemocap.pubsub.pubsub_manager import PubSubTopicManager
+from freemocap.core.types.type_overloads import TopicPublicationQueue
+from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
+from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
+from multiprocessing.sharedctypes import Synchronized
+import multiprocessing.synchronize
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 
 # Cap on how many pending skeleton-inference results we hold while waiting for
 # camera-node charuco outputs to arrive. Prevents unbounded memory growth if

@@ -29,10 +29,10 @@ from freemocap.core.tasks.triangulation.triangulator import Triangulator
 # TYPE_CHECKING-only imports are invisible to beartype's forward-ref
 # resolution and raise BeartypeCallHintForwardRefException — so these must
 # stay live imports rather than TYPE_CHECKING-only.
-from skellytracker.core.data_primitives.observation import Observation
-from skellycam.core.types.type_overloads import CameraIdString
-from pathlib import Path
-from numpy.typing import NDArray
+from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
+from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
+from pathlib import Path  # noqa: TC003
+from numpy.typing import NDArray  # noqa: TC002
 
 logger = logging.getLogger(__name__)
 

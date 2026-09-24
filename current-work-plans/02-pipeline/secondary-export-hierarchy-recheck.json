@@ -1,0 +1,5167 @@
+{
+  "method": "Current numerical reconstruction from unchanged saved 3D keypoints; no inference, calibration, or Parquet publication",
+  "packages": {
+    "skellytracker": {
+      "url": "https://github.com/freemocap/skellytracker",
+      "vcs_info": {
+        "vcs": "git",
+        "commit_id": "7e9c5882f4a9a76e86d028d394a49ae420ac9443",
+        "requested_revision": "development-streaming"
+      }
+    },
+    "skellyforge": {
+      "url": "https://github.com/freemocap/skellyforge",
+      "vcs_info": {
+        "vcs": "git",
+        "commit_id": "0a9f1e1477eb5396028dd649a94c2e9dd84fd588",
+        "requested_revision": "development-streaming"
+      }
+    }
+  },
+  "before": {
+    "recording": "freemocap_test_data",
+    "source_sha256": "dac33763ae0c68627c43a195840dfe253307d44439d5a046dd66464095179268",
+    "revision": "34609661284ea853206b1537b9c9c0feab6d9fbbf781b34dc7ce66044dff468f",
+    "run_id": 0,
+    "model_id": "standard_human",
+    "sensor_group": "camera_group:8491d7",
+    "reference_frame": "calibrated_world",
+    "frames": 222,
+    "time_range_s": [
+      0.0,
+      36.833333333333336
+    ],
+    "fitted_model_scale_mm": 1505.9922573040205,
+    "segments": 61,
+    "offset_policy": "saved connect_at landmark times parent fitted scale; also per-edge mean observed offset",
+    "edges": {
+      "sacrolumbar": {
+        "parent": "pelvis",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.9681540211456096e-16,
+          "p95": 2.9494370145008707e-16,
+          "max": 7.279227128957704e-16
+        }
+      },
+      "left_upper_leg": {
+        "parent": "pelvis",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -113.36472855022315,
+          -0.13148060390915636,
+          1.4381197434885225
+        ],
+        "fitted_rest_offset_mm": [
+          -110.00467875666914,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 7.578132441418875,
+          "p95": 11.77724929185174,
+          "max": 43.05434054768172
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.48856394943386e-14,
+          "p95": 2.842170943040401e-14,
+          "max": 1.1368683772161603e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 7.578132441418874,
+          "p95": 11.777249291851739,
+          "max": 43.05434054768168
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 8.414481651335603,
+          "p95": 13.378005528991029,
+          "max": 46.65430269473647
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.8799409896424698e-16,
+          "p95": 2.8437426839965873e-16,
+          "max": 6.639171117510534e-16
+        }
+      },
+      "right_upper_leg": {
+        "parent": "pelvis",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          113.36472855022315,
+          0.13148060390915425,
+          -1.4381197434885191
+        ],
+        "fitted_rest_offset_mm": [
+          110.00467875666914,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 7.57813244141888,
+          "p95": 11.777249291851712,
+          "max": 43.05434054768172
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.296535442972867e-14,
+          "p95": 2.929642751054232e-14,
+          "max": 5.684341886080802e-14
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 7.578132441418879,
+          "p95": 11.777249291851717,
+          "max": 43.05434054768164
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 8.414481651335606,
+          "p95": 13.378005528991032,
+          "max": 46.65430269473647
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 2.0115972589358478e-16,
+          "p95": 3.0344113091561586e-16,
+          "max": 8.165813462206142e-16
+        }
+      },
+      "thoracic": {
+        "parent": "sacrolumbar",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          0.020570112497067625,
+          -0.05566563416687082,
+          292.3177239814152
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          530.7364091525802
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 36.27254284471357,
+          "p95": 86.7767159629399,
+          "max": 136.70407632530225
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 3.261590746273972e-14,
+          "p95": 5.859285502108464e-14,
+          "max": 2.2740142932498854e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 36.27254284471357,
+          "p95": 86.77671596293993,
+          "max": 136.7040763253023
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 241.16212456553168,
+          "p95": 323.4107576267735,
+          "max": 375.1227572024798
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 5.611969995746329e-16,
+          "p95": 1.0682143095731547e-15,
+          "max": 1.3470035636950686e-15
+        }
+      },
+      "left_lower_leg": {
+        "parent": "left_upper_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          3.3566899260151217e-15,
+          -2.0251290356588505e-16,
+          390.01432826763215
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          393.02078422720643
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 18.45349088398572,
+          "p95": 38.35471350800768,
+          "max": 74.99780215184927
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.8910000025736247e-13,
+          "p95": 3.416517361755701e-13,
+          "max": 6.252776074688882e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 19.960213364009814,
+          "p95": 42.38299507338583,
+          "max": 66.66019745049176
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 20.47598389468541,
+          "p95": 45.43226516669874,
+          "max": 69.460228652156
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.944627131731322e-16,
+          "p95": 1.217482286795774e-15,
+          "max": 2.0262045460540925e-15
+        }
+      },
+      "right_lower_leg": {
+        "parent": "right_upper_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -7.48179810287034e-16,
+          -6.162508774881164e-15,
+          388.8138596998725
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          391.1188380110351
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 17.639760143645546,
+          "p95": 32.37303067756703,
+          "max": 61.859164540736174
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.8698335617978575e-13,
+          "p95": 3.422473120231702e-13,
+          "max": 5.693576990822912e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 19.283883697440462,
+          "p95": 33.74177169053453,
+          "max": 70.809124490243
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 19.5413298183151,
+          "p95": 34.9286039449288,
+          "max": 71.30146368058806
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.921293438087169e-16,
+          "p95": 1.1547927401950276e-15,
+          "max": 2.027134051537781e-15
+        }
+      },
+      "cervical_spine": {
+        "parent": "thoracic",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          2.3903359911580695e-15,
+          37.68722295807269,
+          245.2380096164721
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          236.83785071946696
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 9.981840476186148,
+          "p95": 18.99062554555371,
+          "max": 46.642148917802494
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 5.146518170771519e-14,
+          "p95": 1.1718571004216928e-13,
+          "max": 2.2914314707516465e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 34.729988909255745,
+          "p95": 78.34485800005102,
+          "max": 132.10542182704248
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 229.84179777561326,
+          "p95": 304.8615913180156,
+          "max": 358.3001966367158
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 6.029833594597647e-16,
+          "p95": 1.1039721044583063e-15,
+          "max": 1.3136335981433192e-15
+        }
+      },
+      "left_clavicle": {
+        "parent": "thoracic",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -23.32744650165484,
+          74.6264012406869,
+          239.88333757792728
+        ],
+        "fitted_rest_offset_mm": [
+          -22.555455290890226,
+          90.22367788526742,
+          236.83785071946696
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 11.30915151856194,
+          "p95": 20.741477414897766,
+          "max": 74.22666931191053
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 6.273585697219517e-14,
+          "p95": 1.4218077245071828e-13,
+          "max": 2.5421149729252077e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 34.954390679650615,
+          "p95": 78.66098068940497,
+          "max": 132.44528224876845
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 240.8580628195838,
+          "p95": 316.8648311539653,
+          "max": 370.57193207551256
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.063496939605397e-16,
+          "p95": 1.1394147315365368e-15,
+          "max": 1.3963608103781021e-15
+        }
+      },
+      "right_clavicle": {
+        "parent": "thoracic",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          23.327446501654826,
+          74.6264012406869,
+          239.88333757792728
+        ],
+        "fitted_rest_offset_mm": [
+          22.555455290890226,
+          90.22367788526742,
+          236.83785071946696
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 11.30915151856195,
+          "p95": 20.74147741489773,
+          "max": 74.22666931191071
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 5.864668402189173e-14,
+          "p95": 1.2848442803883017e-13,
+          "max": 2.485884306869352e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 34.95452569192603,
+          "p95": 78.66067217013921,
+          "max": 132.44532705254215
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 240.8580628195838,
+          "p95": 316.8648311539654,
+          "max": 370.57193207551256
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.147340856538224e-16,
+          "p95": 1.083867641624067e-15,
+          "max": 1.4829440673870898e-15
+        }
+      },
+      "left_heel": {
+        "parent": "left_lower_leg",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          1.2248382218032651e-13,
+          8.608101311861098e-15,
+          377.7710341467955
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          373.0707087354315
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 30.24125453354208,
+          "p95": 49.97359477997119,
+          "max": 152.9808937594421
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 4.749476007736517e-13,
+          "p95": 9.133389370511e-13,
+          "max": 1.560866873858911e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 32.56351712811976,
+          "p95": 58.97547911840919,
+          "max": 195.76708406882827
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 33.357401150799056,
+          "p95": 62.247377890488146,
+          "max": 195.47033886418663
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 1.162656052829567e-15,
+          "p95": 2.011110217825692e-15,
+          "max": 2.7138084138967493e-15
+        }
+      },
+      "right_heel": {
+        "parent": "right_lower_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.6590458430922306e-13,
+          2.44339656532391e-14,
+          380.1443982681546
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          377.0406826596777
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 31.704026322875386,
+          "p95": 59.26982547707442,
+          "max": 206.0512878244815
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 4.661914011253546e-13,
+          "p95": 8.688445390309772e-13,
+          "max": 1.3227550287206322e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 32.77379811829741,
+          "p95": 62.59168854156249,
+          "max": 201.63119883293325
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 33.55822607183372,
+          "p95": 66.11068109368352,
+          "max": 200.24271795663356
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.196519519755762e-15,
+          "p95": 2.101218002979192e-15,
+          "max": 2.3706657652896566e-15
+        }
+      },
+      "left_foot": {
+        "parent": "left_lower_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.211930665134397e-13,
+          8.43666700286913e-15,
+          377.73519182501076
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          373.0707087354315
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 30.175747363941955,
+          "p95": 49.82629540824895,
+          "max": 153.01673608122684
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 4.761294654306435e-13,
+          "p95": 9.132891981311251e-13,
+          "max": 1.560866873858911e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 32.55874093486291,
+          "p95": 58.90788637597636,
+          "max": 195.80250460768582
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 33.351477763874605,
+          "p95": 62.18953506280155,
+          "max": 195.47033886418663
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.1611273913623735e-15,
+          "p95": 2.083104588118628e-15,
+          "max": 2.693899891132843e-15
+        }
+      },
+      "right_foot": {
+        "parent": "right_lower_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.6590458430922306e-13,
+          2.44339656532391e-14,
+          380.1443982681546
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          377.0406826596777
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 31.704026322875386,
+          "p95": 59.26982547707442,
+          "max": 206.0512878244815
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 4.661914011253546e-13,
+          "p95": 8.688445390309772e-13,
+          "max": 1.3227550287206322e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 32.77379811829741,
+          "p95": 62.59168854156249,
+          "max": 201.63119883293325
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 33.55822607183372,
+          "p95": 66.11068109368352,
+          "max": 200.24271795663356
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.2102189557639508e-15,
+          "p95": 2.1039086493654203e-15,
+          "max": 2.5214836768083873e-15
+        }
+      },
+      "skull": {
+        "parent": "cervical_spine",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          -0.5768772864039171,
+          10.157479602026767,
+          211.2724978266254
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          206.57014800414905
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 21.066046766405684,
+          "p95": 29.246423853188457,
+          "max": 101.46445529637637
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 8.101714449657865e-14,
+          "p95": 1.8042459247071702e-13,
+          "max": 4.3383856571136184e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 42.08158592223462,
+          "p95": 92.54451125636595,
+          "max": 142.63279279959383
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 229.90882336693883,
+          "p95": 310.50561758832714,
+          "max": 364.04255093748066
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 7.263923049327307e-16,
+          "p95": 1.3432066317848451e-15,
+          "max": 1.6023887798711844e-15
+        }
+      },
+      "left_upper_arm": {
+        "parent": "left_clavicle",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -167.597705208403,
+          -2.707100233279436e-15,
+          -1.438900920995938e-15
+        ],
+        "fitted_rest_offset_mm": [
+          -167.78070304140746,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 7.530518336052539,
+          "p95": 13.838120291194784,
+          "max": 49.322148048507955
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.1135695386879968e-13,
+          "p95": 2.2914314707516465e-13,
+          "max": 2.8563464471519893e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 35.96420425564789,
+          "p95": 80.49368360865176,
+          "max": 132.40524637642753
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 240.873915823251,
+          "p95": 316.94721341300897,
+          "max": 370.5092775899624
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 8.693433220521012e-16,
+          "p95": 1.4267655011536396e-15,
+          "max": 1.8385843027689748e-15
+        }
+      },
+      "right_upper_arm": {
+        "parent": "right_clavicle",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          167.63790487260587,
+          5.468558422631854e-15,
+          1.0032968883982991e-14
+        ],
+        "fitted_rest_offset_mm": [
+          167.7807030414075,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 7.524852757785128,
+          "p95": 13.922681337870783,
+          "max": 49.28194838430505
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 9.938033243290808e-14,
+          "p95": 1.937525864920302e-13,
+          "max": 3.243687902600336e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 35.88016872360929,
+          "p95": 78.86477130194412,
+          "max": 132.4915973064618
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 241.19424620632802,
+          "p95": 316.84204395757916,
+          "max": 370.61931038982215
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 9.05763524816766e-16,
+          "p95": 1.5635202539832971e-15,
+          "max": 1.9879779662086844e-15
+        }
+      },
+      "left_toes": {
+        "parent": "left_foot",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.7619650594514057e-14,
+          -1.4927456133324497e-15,
+          154.3271435814913
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          155.99909625049958
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 16.042546377529643,
+          "p95": 33.90167475178578,
+          "max": 88.81293906283261
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 5.617929384580531e-13,
+          "p95": 1.0495431092791152e-12,
+          "max": 1.571440401082678e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 35.81876395709923,
+          "p95": 65.57599067554335,
+          "max": 216.14623978801419
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 36.88133739340313,
+          "p95": 69.51218255449236,
+          "max": 216.67491527348992
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.4881767962333693e-15,
+          "p95": 2.5797528707113005e-15,
+          "max": 3.726496131657503e-15
+        }
+      },
+      "right_toes": {
+        "parent": "right_foot",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.7977389124671053e-14,
+          -5.507843409752806e-15,
+          151.3904194081825
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          148.2941723999681
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 34.49999248743879,
+          "p95": 28.099676839389364,
+          "max": 435.18489731782734
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 5.591503997347826e-13,
+          "p95": 1.05408288391978e-12,
+          "max": 1.613183380294724e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 45.59218865228606,
+          "p95": 70.36907951921525,
+          "max": 447.1326012110221
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 46.04318297828932,
+          "p95": 71.77329403800363,
+          "max": 448.98341683575114
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.5544293272859355e-15,
+          "p95": 2.6414904337986632e-15,
+          "max": 3.863911092259998e-15
+        }
+      },
+      "left_lower_arm": {
+        "parent": "left_upper_arm",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          3.5150637544700414e-15,
+          2.2821251061739327e-16,
+          283.8986707280875
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          286.04111794925495
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 17.88496845458866,
+          "p95": 38.37686113948129,
+          "max": 78.96090033233142
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 2.5070210753167717e-13,
+          "p95": 4.55911342851553e-13,
+          "max": 5.382449161121785e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 40.36933776467357,
+          "p95": 87.08054617856295,
+          "max": 140.29594144047743
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 242.61372460455846,
+          "p95": 321.7635018714661,
+          "max": 376.47364010663506
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.2400352419602105e-15,
+          "p95": 1.9845856533059214e-15,
+          "max": 2.675679237552714e-15
+        }
+      },
+      "right_lower_arm": {
+        "parent": "right_upper_arm",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.4228882869457015e-14,
+          3.1742521383967383e-15,
+          287.8403155616429
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          289.28291213753585
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 18.026402852804402,
+          "p95": 40.70461612347832,
+          "max": 95.86863887295908
+        },
+        "exact_fk_error_mm": {
+          "count": 214,
+          "rms": 2.649685371197816e-13,
+          "p95": 4.846610145659718e-13,
+          "max": 7.054082769849888e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 214,
+          "rms": 42.93028678936041,
+          "p95": 94.30443224294653,
+          "max": 164.11840247011682
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 214,
+          "rms": 243.072786550774,
+          "p95": 328.2425465801117,
+          "max": 400.8375395268508
+        },
+        "rotation_matrix_error": {
+          "count": 214,
+          "rms": 1.2572680400990965e-15,
+          "p95": 2.1591180165636495e-15,
+          "max": 3.0719871216764673e-15
+        }
+      },
+      "left_carpals": {
+        "parent": "left_lower_arm",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          249.86080324270893
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_carpals": {
+        "parent": "right_lower_arm",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          249.2103221307579
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_thumb_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -20.124574534353627,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_thumb_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          20.124574534353627,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -10.063040263305465,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          10.063040263305465,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          9.147396970864621,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -9.147396970864621,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          17.3806566415457,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -17.3806566415457,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_thumb_proximal_phalanx": {
+        "parent": "left_thumb_metacarpal",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.5832999501298596e-15,
+          -1.7879000460815166e-15,
+          35.094510246642834
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          36.23026948718771
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.293425037671884,
+          "p95": 14.852820338514437,
+          "max": 74.76759483945898
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_thumb_proximal_phalanx": {
+        "parent": "right_thumb_metacarpal",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.3795428973627895e-15,
+          -2.5299725969451656e-15,
+          33.73638298842095
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          33.19954786250182
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 15.803257562163074,
+          "p95": 14.406273749859984,
+          "max": 152.36341639170269
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_proximal_phalanx": {
+        "parent": "left_index_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          59.45958630287734
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_proximal_phalanx": {
+        "parent": "right_index_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          59.45958630287734
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_proximal_phalanx": {
+        "parent": "left_middle_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          62.20350419568526
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_proximal_phalanx": {
+        "parent": "right_middle_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          62.20350419568526
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_proximal_phalanx": {
+        "parent": "left_ring_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          54.885887817445024
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_proximal_phalanx": {
+        "parent": "right_ring_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          54.885887817445024
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_proximal_phalanx": {
+        "parent": "left_pinky_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          45.738490846580405
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_proximal_phalanx": {
+        "parent": "right_pinky_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          45.738490846580405
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_thumb_distal_phalanx": {
+        "parent": "left_thumb_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.8477398998182495e-15,
+          -1.522438717150262e-15,
+          28.71696203128739
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          28.753888783949428
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 6.324222844979351,
+          "p95": 11.134691302448047,
+          "max": 42.870464801171664
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_thumb_distal_phalanx": {
+        "parent": "right_thumb_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          8.686587275031525e-16,
+          -3.194485174826823e-15,
+          28.16359370838064
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          26.561299516179464
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.579124915176571,
+          "p95": 12.532729739333963,
+          "max": 66.73226420524927
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_middle_phalanx": {
+        "parent": "left_index_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.495437016690081e-15,
+          -2.9227658714869047e-16,
+          34.19331384788048
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          34.01610933524649
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 8.449314074035431,
+          "p95": 15.283546044662355,
+          "max": 55.15285625876967
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_middle_phalanx": {
+        "parent": "right_index_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          1.7060557452939978e-16,
+          -1.636292171138048e-15,
+          36.32570090423597
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          34.93727209890547
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 17.006505863006538,
+          "p95": 13.66987738637999,
+          "max": 203.39051596704434
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_middle_phalanx": {
+        "parent": "left_middle_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.2620680720643975e-15,
+          -3.2168582439562434e-15,
+          35.01410927449364
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          35.11940739369945
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 8.709782008952597,
+          "p95": 15.018699451398392,
+          "max": 58.901391236524425
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_middle_phalanx": {
+        "parent": "right_middle_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          1.1379134463074153e-16,
+          -3.0793377759006138e-15,
+          36.622896995090024
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          35.84766327472999
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 15.891042564795848,
+          "p95": 12.531852399563471,
+          "max": 192.7227829247767
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_middle_phalanx": {
+        "parent": "left_ring_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.0479675279172038e-16,
+          1.1958243325985914e-16,
+          31.630810239591035
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          31.05145651677323
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.308673489083523,
+          "p95": 16.14461876103355,
+          "max": 57.89271849537723
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_middle_phalanx": {
+        "parent": "right_ring_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          6.343712722572087e-16,
+          -7.39611163133135e-16,
+          32.24022043165798
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          32.32939115484827
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 9.040570037545104,
+          "p95": 12.306735181501379,
+          "max": 80.57689649010157
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_middle_phalanx": {
+        "parent": "left_pinky_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -4.513482980404235e-16,
+          -2.3987821075283027e-15,
+          26.731128540827502
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          24.643042781038446
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 11.681191906932304,
+          "p95": 17.623950346662845,
+          "max": 93.11178197049885
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_middle_phalanx": {
+        "parent": "right_pinky_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          6.867224577200205e-17,
+          -1.5349207950559667e-15,
+          25.365179537927073
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          24.573892036689045
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 10.667521787218483,
+          "p95": 11.947190909142279,
+          "max": 103.3999133636778
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_distal_phalanx": {
+        "parent": "left_index_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          2.0522913586631034e-15,
+          -1.867827024927925e-15,
+          23.837575336280594
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          23.506716672653674
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.263569286365021,
+          "p95": 15.884974639045298,
+          "max": 71.36746540935054
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_distal_phalanx": {
+        "parent": "right_index_middle_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          3.254703659686861e-15,
+          -9.671694196696043e-17,
+          22.86816183354958
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          22.828892826760345
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 10.950362858297906,
+          "p95": 14.24597456668613,
+          "max": 124.03889049920872
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_distal_phalanx": {
+        "parent": "left_middle_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          2.6383279647179783e-15,
+          -6.048186354653342e-16,
+          23.129498611879406
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          24.08189617342997
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 6.955939601217683,
+          "p95": 14.11955244414309,
+          "max": 41.590498889032396
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_distal_phalanx": {
+        "parent": "right_middle_middle_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          3.599249875710038e-15,
+          -6.678603940093995e-16,
+          23.00571451728982
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          23.384383150408073
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 9.655244043657005,
+          "p95": 14.370219498375107,
+          "max": 88.92580110641744
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_distal_phalanx": {
+        "parent": "left_ring_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.5920272709818388e-15,
+          -9.388907097268118e-16,
+          20.84858292166101
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          20.9134937427759
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 11.359017572567375,
+          "p95": 12.160163510065921,
+          "max": 137.91079405648364
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_distal_phalanx": {
+        "parent": "right_ring_middle_phalanx",
+        "valid_pair_frames": 212,
+        "mean_offset_mm": [
+          4.444427006715824e-15,
+          6.273521076317351e-16,
+          19.942118783882464
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          20.39673422317357
+        ],
+        "offset_variation_mm": {
+          "count": 212,
+          "rms": 7.8170436944166815,
+          "p95": 11.276170849033786,
+          "max": 67.08972444981896
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_distal_phalanx": {
+        "parent": "left_pinky_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          2.076711239370487e-15,
+          -1.5473084910955745e-16,
+          16.21602347944455
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          15.700767113217285
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 10.579964397942584,
+          "p95": 10.262552572175398,
+          "max": 131.89257095044752
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_distal_phalanx": {
+        "parent": "right_pinky_middle_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          2.7441075543191404e-15,
+          2.65249297975922e-16,
+          16.01265566231295
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          15.559213401325403
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 7.771395690265729,
+          "p95": 11.155644759854017,
+          "max": 58.079175537909094
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      }
+    }
+  },
+  "after": {
+    "frames": 222,
+    "segments": 61,
+    "fitted_model_scale_mm": 1505.9922573040205,
+    "edges": {
+      "sacrolumbar": {
+        "parent": "pelvis",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.9507793207752614e-16,
+          "p95": 2.9494370145008707e-16,
+          "max": 7.282203033334249e-16
+        }
+      },
+      "left_upper_leg": {
+        "parent": "pelvis",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -113.36472855022315,
+          -0.13148060390915636,
+          1.4381197434885225
+        ],
+        "fitted_rest_offset_mm": [
+          -110.00467875666914,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 7.578132441418875,
+          "p95": 11.77724929185174,
+          "max": 43.05434054768172
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.48856394943386e-14,
+          "p95": 2.842170943040401e-14,
+          "max": 1.1368683772161603e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 7.578132441418874,
+          "p95": 11.777249291851739,
+          "max": 43.05434054768168
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 8.414481651335603,
+          "p95": 13.378005528991029,
+          "max": 46.65430269473647
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.8799409896424698e-16,
+          "p95": 2.8437426839965873e-16,
+          "max": 6.639171117510534e-16
+        }
+      },
+      "right_upper_leg": {
+        "parent": "pelvis",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          113.36472855022315,
+          0.13148060390915425,
+          -1.4381197434885191
+        ],
+        "fitted_rest_offset_mm": [
+          110.00467875666914,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 7.57813244141888,
+          "p95": 11.777249291851712,
+          "max": 43.05434054768172
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.296535442972867e-14,
+          "p95": 2.929642751054232e-14,
+          "max": 5.684341886080802e-14
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 7.578132441418879,
+          "p95": 11.777249291851717,
+          "max": 43.05434054768164
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 8.414481651335606,
+          "p95": 13.378005528991032,
+          "max": 46.65430269473647
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 2.0115972589358478e-16,
+          "p95": 3.0344113091561586e-16,
+          "max": 8.165813462206142e-16
+        }
+      },
+      "thoracic": {
+        "parent": "sacrolumbar",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          0.020570112497069148,
+          -0.05566563416687235,
+          292.3177239814152
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          272.0798633971828
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 36.27254284471357,
+          "p95": 86.7767159629399,
+          "max": 136.70407632530225
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 3.168097191861693e-14,
+          "p95": 5.274992070007031e-14,
+          "max": 2.2740142932498854e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 36.27254284471357,
+          "p95": 86.7767159629399,
+          "max": 136.7040763253023
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 41.53639232336826,
+          "p95": 70.56286109287939,
+          "max": 116.46627966031525
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 5.697890116329169e-16,
+          "p95": 1.070103392929401e-15,
+          "max": 1.3470035636950686e-15
+        }
+      },
+      "left_lower_leg": {
+        "parent": "left_upper_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          3.3566899260151217e-15,
+          -2.0251290356588505e-16,
+          390.01432826763215
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          393.02078422720643
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 18.45349088398572,
+          "p95": 38.35471350800768,
+          "max": 74.99780215184927
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.8910000025736247e-13,
+          "p95": 3.416517361755701e-13,
+          "max": 6.252776074688882e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 19.960213364009814,
+          "p95": 42.38299507338583,
+          "max": 66.66019745049176
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 20.47598389468541,
+          "p95": 45.43226516669874,
+          "max": 69.460228652156
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.944627131731322e-16,
+          "p95": 1.217482286795774e-15,
+          "max": 2.0262045460540925e-15
+        }
+      },
+      "right_lower_leg": {
+        "parent": "right_upper_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -7.48179810287034e-16,
+          -6.162508774881164e-15,
+          388.8138596998725
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          391.1188380110351
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 17.639760143645546,
+          "p95": 32.37303067756703,
+          "max": 61.859164540736174
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.8698335617978575e-13,
+          "p95": 3.422473120231702e-13,
+          "max": 5.693576990822912e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 19.283883697440462,
+          "p95": 33.74177169053453,
+          "max": 70.809124490243
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 19.5413298183151,
+          "p95": 34.9286039449288,
+          "max": 71.30146368058806
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.921293438087169e-16,
+          "p95": 1.1547927401950276e-15,
+          "max": 2.027134051537781e-15
+        }
+      },
+      "cervical_spine": {
+        "parent": "thoracic",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          2.3903359911580695e-15,
+          37.68722295807269,
+          245.2380096164721
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          236.83785071946696
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 9.981840476186148,
+          "p95": 18.99062554555371,
+          "max": 46.642148917802494
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 4.8845954143237644e-14,
+          "p95": 1.1718571004216928e-13,
+          "max": 2.2914314707516465e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 34.72998890925574,
+          "p95": 78.344858000051,
+          "max": 132.1054218270425
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 60.74084251228387,
+          "p95": 77.51567970468824,
+          "max": 104.27165123413977
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 6.163883466220702e-16,
+          "p95": 1.1406813577532839e-15,
+          "max": 1.3136335981433192e-15
+        }
+      },
+      "left_clavicle": {
+        "parent": "thoracic",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -23.32744650165484,
+          74.6264012406869,
+          239.88333757792728
+        ],
+        "fitted_rest_offset_mm": [
+          -22.555455290890226,
+          90.22367788526742,
+          236.83785071946696
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 11.30915151856194,
+          "p95": 20.741477414897766,
+          "max": 74.22666931191053
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 6.265010668840295e-14,
+          "p95": 1.3359320883049892e-13,
+          "max": 2.5421149729252077e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 34.95439067965061,
+          "p95": 78.66098068940495,
+          "max": 132.44528224876834
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 43.65253089094514,
+          "p95": 69.03881664928637,
+          "max": 112.69794780928484
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.162585089738178e-16,
+          "p95": 1.1670373262622356e-15,
+          "max": 1.3963608103781021e-15
+        }
+      },
+      "right_clavicle": {
+        "parent": "thoracic",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          23.327446501654826,
+          74.6264012406869,
+          239.88333757792728
+        ],
+        "fitted_rest_offset_mm": [
+          22.555455290890226,
+          90.22367788526742,
+          236.83785071946696
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 11.30915151856195,
+          "p95": 20.74147741489773,
+          "max": 74.22666931191071
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 5.719722932305192e-14,
+          "p95": 1.2962727062594987e-13,
+          "max": 2.485884306869352e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 34.95452569192603,
+          "p95": 78.66067217013921,
+          "max": 132.44532705254218
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 43.65253089094514,
+          "p95": 69.0388166492863,
+          "max": 112.69794780928478
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 6.236862418184533e-16,
+          "p95": 1.0958065355090644e-15,
+          "max": 1.4829440673870898e-15
+        }
+      },
+      "left_heel": {
+        "parent": "left_lower_leg",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          1.2248382218032651e-13,
+          8.608101311861098e-15,
+          377.7710341467955
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          373.0707087354315
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 30.24125453354208,
+          "p95": 49.97359477997119,
+          "max": 152.9808937594421
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 4.749476007736517e-13,
+          "p95": 9.133389370511e-13,
+          "max": 1.560866873858911e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 32.56351712811976,
+          "p95": 58.97547911840919,
+          "max": 195.76708406882827
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 33.357401150799056,
+          "p95": 62.247377890488146,
+          "max": 195.47033886418663
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 1.162656052829567e-15,
+          "p95": 2.011110217825692e-15,
+          "max": 2.7138084138967493e-15
+        }
+      },
+      "right_heel": {
+        "parent": "right_lower_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.6590458430922306e-13,
+          2.44339656532391e-14,
+          380.1443982681546
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          377.0406826596777
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 31.704026322875386,
+          "p95": 59.26982547707442,
+          "max": 206.0512878244815
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 4.661914011253546e-13,
+          "p95": 8.688445390309772e-13,
+          "max": 1.3227550287206322e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 32.77379811829741,
+          "p95": 62.59168854156249,
+          "max": 201.63119883293325
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 33.55822607183372,
+          "p95": 66.11068109368352,
+          "max": 200.24271795663356
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.196519519755762e-15,
+          "p95": 2.101218002979192e-15,
+          "max": 2.3706657652896566e-15
+        }
+      },
+      "left_foot": {
+        "parent": "left_lower_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.211930665134397e-13,
+          8.43666700286913e-15,
+          377.73519182501076
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          373.0707087354315
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 30.175747363941955,
+          "p95": 49.82629540824895,
+          "max": 153.01673608122684
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 4.761294654306435e-13,
+          "p95": 9.132891981311251e-13,
+          "max": 1.560866873858911e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 32.55874093486291,
+          "p95": 58.90788637597636,
+          "max": 195.80250460768582
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 33.351477763874605,
+          "p95": 62.18953506280155,
+          "max": 195.47033886418663
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.1611273913623735e-15,
+          "p95": 2.083104588118628e-15,
+          "max": 2.693899891132843e-15
+        }
+      },
+      "right_foot": {
+        "parent": "right_lower_leg",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.6590458430922306e-13,
+          2.44339656532391e-14,
+          380.1443982681546
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          377.0406826596777
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 31.704026322875386,
+          "p95": 59.26982547707442,
+          "max": 206.0512878244815
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 4.661914011253546e-13,
+          "p95": 8.688445390309772e-13,
+          "max": 1.3227550287206322e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 32.77379811829741,
+          "p95": 62.59168854156249,
+          "max": 201.63119883293325
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 33.55822607183372,
+          "p95": 66.11068109368352,
+          "max": 200.24271795663356
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.2102189557639508e-15,
+          "p95": 2.1039086493654203e-15,
+          "max": 2.5214836768083873e-15
+        }
+      },
+      "skull": {
+        "parent": "cervical_spine",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          -0.5768772864039171,
+          10.157479602026767,
+          211.2724978266254
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          206.57014800414905
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 21.066046766405684,
+          "p95": 29.246423853188457,
+          "max": 101.46445529637637
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 7.957962453534481e-14,
+          "p95": 1.7288250917028504e-13,
+          "max": 4.3383856571136184e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 42.08158592223462,
+          "p95": 92.54451125636595,
+          "max": 142.63279279959386
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 72.39079265483241,
+          "p95": 99.95006186150451,
+          "max": 168.21026681249774
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 7.379413635917741e-16,
+          "p95": 1.364925815158941e-15,
+          "max": 1.6934313352458652e-15
+        }
+      },
+      "left_upper_arm": {
+        "parent": "left_clavicle",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          -167.597705208403,
+          -2.707100233279436e-15,
+          -1.438900920995938e-15
+        ],
+        "fitted_rest_offset_mm": [
+          -167.78070304140746,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 7.530518336052539,
+          "p95": 13.838120291194784,
+          "max": 49.322148048507955
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 1.1139051617111968e-13,
+          "p95": 2.2914314707516465e-13,
+          "max": 2.8421709430404007e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 35.96420425564789,
+          "p95": 80.49368360865186,
+          "max": 132.40524637642739
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 44.51046636341082,
+          "p95": 69.02427050743786,
+          "max": 112.6183005340881
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 8.725721410575281e-16,
+          "p95": 1.4404935818115082e-15,
+          "max": 1.8404688495566206e-15
+        }
+      },
+      "right_upper_arm": {
+        "parent": "right_clavicle",
+        "valid_pair_frames": 215,
+        "mean_offset_mm": [
+          167.63790487260587,
+          5.468558422631854e-15,
+          1.0032968883982991e-14
+        ],
+        "fitted_rest_offset_mm": [
+          167.7807030414075,
+          0.0,
+          0.0
+        ],
+        "offset_variation_mm": {
+          "count": 215,
+          "rms": 7.524852757785128,
+          "p95": 13.922681337870783,
+          "max": 49.28194838430505
+        },
+        "exact_fk_error_mm": {
+          "count": 215,
+          "rms": 9.798620204260512e-14,
+          "p95": 1.8961032832179492e-13,
+          "max": 3.243687902600336e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 215,
+          "rms": 35.88016872360929,
+          "p95": 78.8647713019441,
+          "max": 132.49159730646184
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 215,
+          "rms": 44.28205355945669,
+          "p95": 69.1612203976952,
+          "max": 112.72735956886872
+        },
+        "rotation_matrix_error": {
+          "count": 215,
+          "rms": 9.168078295843997e-16,
+          "p95": 1.5742320622987864e-15,
+          "max": 1.9879779662086844e-15
+        }
+      },
+      "left_toes": {
+        "parent": "left_foot",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.7619650594514057e-14,
+          -1.4927456133324497e-15,
+          154.3271435814913
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          155.99909625049958
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 16.042546377529643,
+          "p95": 33.90167475178578,
+          "max": 88.81293906283261
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 5.617929384580531e-13,
+          "p95": 1.0495431092791152e-12,
+          "max": 1.571440401082678e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 35.81876395709923,
+          "p95": 65.57599067554335,
+          "max": 216.14623978801419
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 36.88133739340313,
+          "p95": 69.51218255449236,
+          "max": 216.67491527348992
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.4881767962333693e-15,
+          "p95": 2.5797528707113005e-15,
+          "max": 3.726496131657503e-15
+        }
+      },
+      "right_toes": {
+        "parent": "right_foot",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          1.7977389124671053e-14,
+          -5.507843409752806e-15,
+          151.3904194081825
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          148.2941723999681
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 34.49999248743879,
+          "p95": 28.099676839389364,
+          "max": 435.18489731782734
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 5.591503997347826e-13,
+          "p95": 1.05408288391978e-12,
+          "max": 1.613183380294724e-12
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 45.59218865228606,
+          "p95": 70.36907951921525,
+          "max": 447.1326012110221
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 46.04318297828932,
+          "p95": 71.77329403800363,
+          "max": 448.98341683575114
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.5544293272859355e-15,
+          "p95": 2.6414904337986632e-15,
+          "max": 3.863911092259998e-15
+        }
+      },
+      "left_lower_arm": {
+        "parent": "left_upper_arm",
+        "valid_pair_frames": 216,
+        "mean_offset_mm": [
+          3.5150637544700414e-15,
+          2.2821251061739327e-16,
+          283.8986707280875
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          286.04111794925495
+        ],
+        "offset_variation_mm": {
+          "count": 216,
+          "rms": 17.88496845458866,
+          "p95": 38.37686113948129,
+          "max": 78.96090033233142
+        },
+        "exact_fk_error_mm": {
+          "count": 216,
+          "rms": 2.47032411512056e-13,
+          "p95": 4.1088437601025093e-13,
+          "max": 5.382449161121785e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 216,
+          "rms": 40.36933776467357,
+          "p95": 87.08054617856295,
+          "max": 140.29594144047726
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 216,
+          "rms": 47.79988648398272,
+          "p95": 85.0695821757534,
+          "max": 118.08333095176181
+        },
+        "rotation_matrix_error": {
+          "count": 216,
+          "rms": 1.2429758576585377e-15,
+          "p95": 2.0279417522193837e-15,
+          "max": 2.6785568543202082e-15
+        }
+      },
+      "right_lower_arm": {
+        "parent": "right_upper_arm",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.4228882869457015e-14,
+          3.1742521383967383e-15,
+          287.8403155616429
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          289.28291213753585
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 18.026402852804402,
+          "p95": 40.70461612347832,
+          "max": 95.86863887295908
+        },
+        "exact_fk_error_mm": {
+          "count": 214,
+          "rms": 2.6851256340202274e-13,
+          "p95": 4.995237061851795e-13,
+          "max": 7.021082710159376e-13
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 214,
+          "rms": 42.93028678936041,
+          "p95": 94.3044322429466,
+          "max": 164.11840247011682
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 214,
+          "rms": 50.35252002907064,
+          "p95": 83.83765393372808,
+          "max": 143.91130553708717
+        },
+        "rotation_matrix_error": {
+          "count": 214,
+          "rms": 1.265047765777246e-15,
+          "p95": 2.2473937815792346e-15,
+          "max": 3.0745564722883268e-15
+        }
+      },
+      "left_carpals": {
+        "parent": "left_lower_arm",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          249.86080324270893
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_carpals": {
+        "parent": "right_lower_arm",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          249.2103221307579
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_thumb_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -20.124574534353627,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_thumb_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          20.124574534353627,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -10.063040263305465,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          10.063040263305465,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          9.147396970864621,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -9.147396970864621,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_metacarpal": {
+        "parent": "left_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          17.3806566415457,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_metacarpal": {
+        "parent": "right_carpals",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -17.3806566415457,
+          0.0,
+          22.868492427161552
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_thumb_proximal_phalanx": {
+        "parent": "left_thumb_metacarpal",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.5832999501298596e-15,
+          -1.7879000460815166e-15,
+          35.094510246642834
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          36.23026948718771
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.293425037671884,
+          "p95": 14.852820338514437,
+          "max": 74.76759483945898
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_thumb_proximal_phalanx": {
+        "parent": "right_thumb_metacarpal",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.3795428973627895e-15,
+          -2.5299725969451656e-15,
+          33.73638298842095
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          33.19954786250182
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 15.803257562163074,
+          "p95": 14.406273749859984,
+          "max": 152.36341639170269
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_proximal_phalanx": {
+        "parent": "left_index_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          59.45958630287734
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_proximal_phalanx": {
+        "parent": "right_index_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          59.45958630287734
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_proximal_phalanx": {
+        "parent": "left_middle_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          62.20350419568526
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_proximal_phalanx": {
+        "parent": "right_middle_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          62.20350419568526
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_proximal_phalanx": {
+        "parent": "left_ring_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          54.885887817445024
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_proximal_phalanx": {
+        "parent": "right_ring_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          54.885887817445024
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_proximal_phalanx": {
+        "parent": "left_pinky_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          45.738490846580405
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_proximal_phalanx": {
+        "parent": "right_pinky_metacarpal",
+        "valid_pair_frames": 0,
+        "mean_offset_mm": null,
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          45.738490846580405
+        ],
+        "offset_variation_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_thumb_distal_phalanx": {
+        "parent": "left_thumb_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.8477398998182495e-15,
+          -1.522438717150262e-15,
+          28.71696203128739
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          28.753888783949428
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 6.324222844979351,
+          "p95": 11.134691302448047,
+          "max": 42.870464801171664
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_thumb_distal_phalanx": {
+        "parent": "right_thumb_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          8.686587275031525e-16,
+          -3.194485174826823e-15,
+          28.16359370838064
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          26.561299516179464
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.579124915176571,
+          "p95": 12.532729739333963,
+          "max": 66.73226420524927
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_middle_phalanx": {
+        "parent": "left_index_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.495437016690081e-15,
+          -2.9227658714869047e-16,
+          34.19331384788048
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          34.01610933524649
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 8.449314074035431,
+          "p95": 15.283546044662355,
+          "max": 55.15285625876967
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_middle_phalanx": {
+        "parent": "right_index_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          1.7060557452939978e-16,
+          -1.636292171138048e-15,
+          36.32570090423597
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          34.93727209890547
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 17.006505863006538,
+          "p95": 13.66987738637999,
+          "max": 203.39051596704434
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_middle_phalanx": {
+        "parent": "left_middle_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -1.2620680720643975e-15,
+          -3.2168582439562434e-15,
+          35.01410927449364
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          35.11940739369945
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 8.709782008952597,
+          "p95": 15.018699451398392,
+          "max": 58.901391236524425
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_middle_phalanx": {
+        "parent": "right_middle_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          1.1379134463074153e-16,
+          -3.0793377759006138e-15,
+          36.622896995090024
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          35.84766327472999
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 15.891042564795848,
+          "p95": 12.531852399563471,
+          "max": 192.7227829247767
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_middle_phalanx": {
+        "parent": "left_ring_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.0479675279172038e-16,
+          1.1958243325985914e-16,
+          31.630810239591035
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          31.05145651677323
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.308673489083523,
+          "p95": 16.14461876103355,
+          "max": 57.89271849537723
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_middle_phalanx": {
+        "parent": "right_ring_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          6.343712722572087e-16,
+          -7.39611163133135e-16,
+          32.24022043165798
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          32.32939115484827
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 9.040570037545104,
+          "p95": 12.306735181501379,
+          "max": 80.57689649010157
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_middle_phalanx": {
+        "parent": "left_pinky_proximal_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          -4.513482980404235e-16,
+          -2.3987821075283027e-15,
+          26.731128540827502
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          24.643042781038446
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 11.681191906932304,
+          "p95": 17.623950346662845,
+          "max": 93.11178197049885
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_middle_phalanx": {
+        "parent": "right_pinky_proximal_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          6.867224577200205e-17,
+          -1.5349207950559667e-15,
+          25.365179537927073
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          24.573892036689045
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 10.667521787218483,
+          "p95": 11.947190909142279,
+          "max": 103.3999133636778
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_index_distal_phalanx": {
+        "parent": "left_index_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          2.0522913586631034e-15,
+          -1.867827024927925e-15,
+          23.837575336280594
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          23.506716672653674
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 9.263569286365021,
+          "p95": 15.884974639045298,
+          "max": 71.36746540935054
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_index_distal_phalanx": {
+        "parent": "right_index_middle_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          3.254703659686861e-15,
+          -9.671694196696043e-17,
+          22.86816183354958
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          22.828892826760345
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 10.950362858297906,
+          "p95": 14.24597456668613,
+          "max": 124.03889049920872
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_middle_distal_phalanx": {
+        "parent": "left_middle_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          2.6383279647179783e-15,
+          -6.048186354653342e-16,
+          23.129498611879406
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          24.08189617342997
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 6.955939601217683,
+          "p95": 14.11955244414309,
+          "max": 41.590498889032396
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_middle_distal_phalanx": {
+        "parent": "right_middle_middle_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          3.599249875710038e-15,
+          -6.678603940093995e-16,
+          23.00571451728982
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          23.384383150408073
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 9.655244043657005,
+          "p95": 14.370219498375107,
+          "max": 88.92580110641744
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_ring_distal_phalanx": {
+        "parent": "left_ring_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          1.5920272709818388e-15,
+          -9.388907097268118e-16,
+          20.84858292166101
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          20.9134937427759
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 11.359017572567375,
+          "p95": 12.160163510065921,
+          "max": 137.91079405648364
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_ring_distal_phalanx": {
+        "parent": "right_ring_middle_phalanx",
+        "valid_pair_frames": 212,
+        "mean_offset_mm": [
+          4.444427006715824e-15,
+          6.273521076317351e-16,
+          19.942118783882464
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          20.39673422317357
+        ],
+        "offset_variation_mm": {
+          "count": 212,
+          "rms": 7.8170436944166815,
+          "p95": 11.276170849033786,
+          "max": 67.08972444981896
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "left_pinky_distal_phalanx": {
+        "parent": "left_pinky_middle_phalanx",
+        "valid_pair_frames": 214,
+        "mean_offset_mm": [
+          2.076711239370487e-15,
+          -1.5473084910955745e-16,
+          16.21602347944455
+        ],
+        "fitted_rest_offset_mm": [
+          0.0,
+          0.0,
+          15.700767113217285
+        ],
+        "offset_variation_mm": {
+          "count": 214,
+          "rms": 10.579964397942584,
+          "p95": 10.262552572175398,
+          "max": 131.89257095044752
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      },
+      "right_pinky_distal_phalanx": {
+        "parent": "right_pinky_middle_phalanx",
+        "valid_pair_frames": 213,
+        "mean_offset_mm": [
+          2.7441075543191404e-15,
+          2.65249297975922e-16,
+          16.01265566231295
+        ],
+        "fitted_rest_offset_mm": [
+          -0.0,
+          0.0,
+          15.559213401325403
+        ],
+        "offset_variation_mm": {
+          "count": 213,
+          "rms": 7.771395690265729,
+          "p95": 11.155644759854017,
+          "max": 58.079175537909094
+        },
+        "exact_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "mean_offset_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "fitted_rest_fk_error_mm": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        },
+        "rotation_matrix_error": {
+          "count": 0,
+          "rms": null,
+          "p95": null,
+          "max": null
+        }
+      }
+    }
+  }
+}

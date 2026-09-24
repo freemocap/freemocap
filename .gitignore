@@ -44,6 +44,9 @@ pip-delete-this-directory.txt
 
 # Unit test / coverage reports
 htmlcov/
+# Generated real-recording review; regenerated in place, never recording source data.
+.test-artifacts/connected-recording-review.html
+.test-artifacts/shoulder-mapping-comparison.json
 .tox/
 .nox/
 .coverage

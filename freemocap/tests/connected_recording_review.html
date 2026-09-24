@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Recording skeleton review</title>
+<style>body{margin:0;background:#101723;color:#edf3fc;font:14px system-ui;display:flex;height:100vh}#scene{flex:1;min-width:0}aside{width:330px;padding:18px;overflow:auto;background:#1b2535}h1{font-size:19px}label{display:block;margin:10px 0}button,select,input{font:inherit}button{padding:6px;margin:3px}input[type=range]{width:100%}input[type=number]{width:70px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}.note{color:#b3c3d9;font-size:12px;line-height:1.5}#stats{line-height:1.7}canvas{display:block}</style>
+<div id="scene"></div><aside><h1>Real recording · skeleton review</h1>
+<p class="note">Current skeleton math on saved 3D points. No video processing. Yellow points are mapped landmarks; orange segments use core's reconstructed origins; cyan is the connected skeleton.</p>
+<button id="play">Play</button><button id="resetView">Fit view</button><input id="frame" aria-label="Frame" type="range"><p id="clock"></p>
+<label>Window start index <input id="start" type="number" min="0"></label><label>Window end index <input id="end" type="number" min="0"></label>
+<button id="late">Last quarter</button><button id="all">Whole recording</button>
+<fieldset><legend>Shoulder attachment review</legend>
+<button id="shoulderView">Focus shoulders</button>
+<label><input id="shoulderObserved" type="checkbox" checked> White: shoulder keypoints + midpoint</label>
+<label><input id="shoulderMapped" type="checkbox" checked> Magenta: mapped SC joints</label>
+<label><input id="shoulderConnected" type="checkbox" checked> Cyan: connected SC joints</label>
+<label><input id="shoulderGaps" type="checkbox" checked> Magenta-to-cyan difference lines</label>
+<label><input id="shoulderLabels" type="checkbox" checked> Shoulder marker labels</label>
+<pre id="shoulderStats"></pre>
+<p class="note">SC = sternoclavicular. White points come from the saved 3D input (which may be filtered); the midpoint is derived. SC points are model estimates. Difference lines measure disagreement, not anatomical accuracy. L/R refer to the subject.</p>
+</fieldset>
+<p class="note">The late window is a starting point for review, not a verified clean interval. Inspect the board-occluded portion separately. Timing uses saved timestamps; absent poses remain absent.</p>
+<label><input id="points" type="checkbox" checked> Mapped landmarks · yellow</label>
+<label><input id="independent" type="checkbox" checked> Core segment poses · orange</label>
+<label><input id="connected" type="checkbox" checked> Connected skeleton · cyan</label>
+<label><input id="axes" type="checkbox" checked> Selected segment axes (RGB = XYZ)</label>
+<label>Inspect segment <select id="segment"></select></label><div id="stats"></div>
+<p class="note">Origin displacement is a difference between representations, not an accuracy score. Rotations are shared. Fixed attachments need not reproduce noisy observed origins.</p>
+<details><summary>Coverage (connected frames per segment)</summary><pre id="coverage"></pre></details>
+<details><summary>Source and installed revisions</summary><pre id="provenance"></pre></details>
+<p class="note">Drag to orbit; scroll to zoom. Geometry is in millimetres, Z up. This diagnostic is not an exporter or anatomical IK fit.</p></aside>
+<script>window.REVIEW=__DATA__;</script><script>__JAVASCRIPT__</script></html>

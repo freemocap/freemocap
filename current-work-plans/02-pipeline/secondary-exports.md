@@ -2,6 +2,10 @@
 
 Status: investigation and proposal, 2026-09-22. No implementation or format decisions are approved by this document.
 
+Follow-up numerical evidence (2026-09-23): [saved hierarchy findings](secondary-export-hierarchy-findings.md).
+The prepared test recording was inspected without reprocessing. This is the numeric
+part of the evidence spike only; no BVH/glTF prototype or Blender import was performed.
+
 ## Assessment
 
 The current Parquet contract appears to contain the ingredients for data exports and animated scene exports. CSV/NumPy are comparatively straightforward. glTF visual playback is moderate work. A conventional BVH rig with demonstrated equivalence to playback is the highest-risk part: stored segment positions are not automatically the positions produced by a fixed-offset joint hierarchy.

@@ -67,6 +67,7 @@ export const exportRecordingToBlender = createAsyncThunk<
                     recordingFolderPath,
                     blenderExePath,
                     autoOpenBlendFile: blender.autoOpenBlendFile,
+                    blenderExportConfig: state.mocap.config.blender_export,
                 }),
             });
 

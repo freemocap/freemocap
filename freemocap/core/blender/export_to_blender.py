@@ -1,4 +1,5 @@
 import inspect
+import json
 import logging
 import subprocess
 from pathlib import Path
@@ -41,12 +42,42 @@ def run_subprocess(command_list: List[str]):
     return process
 
 
+def _addon_config_payload(blender_export_config: dict | None) -> dict:
+    """Map API-level option names into the freemocap_blender_addon's Config namespace.
+
+    The addon's Config groups its options into sections (export_3d_model, add_rig,
+    ...), which is an addon-side detail. This is the boundary that translates, so
+    the HTTP/CLI contract can stay flat. Only keys the caller actually supplied are
+    forwarded; anything omitted keeps the addon's own default.
+    """
+    config_in = blender_export_config or {}
+    payload: dict = {}
+
+    if "formats" in config_in:
+        payload["export_3d_model"] = {"formats": config_in["formats"]}
+    if "rest_pose" in config_in:
+        payload["add_rig"] = {"rest_pose": config_in["rest_pose"]}
+
+    # Several options can land in the same addon section, so collect them rather
+    # than assigning the section once per option.
+    motion_cleanup = {
+        key: config_in[key]
+        for key in ("apply_foot_locking", "limit_hand_markers_range_of_motion")
+        if key in config_in
+    }
+    if motion_cleanup:
+        payload["motion_cleanup"] = motion_cleanup
+
+    return payload
+
+
 def export_to_blender(
         recording_folder_path: str|Path,
         detector:str,
         blend_file_path: str|Path|None=None,
         blender_exe_path: str|Path|None=None,
         open_file_on_completion:bool=True,
+        blender_export_config: dict|None=None,
 ):
     if detector != "mediapipe":
         message = (
@@ -77,6 +108,8 @@ def export_to_blender(
     # function returns repr() of the wrapper, not the source file path.
     simple_run_script = run_blender_export_module.__file__
 
+    addon_config_payload = _addon_config_payload(blender_export_config)
+
     command_list = [
         str(blender_exe_path),
         "--background",
@@ -86,6 +119,7 @@ def export_to_blender(
         site_packages_path,
         str(recording_folder_path),
         str(blend_file_path),
+        json.dumps(addon_config_payload),
     ]
 
     logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")

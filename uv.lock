@@ -597,7 +597,7 @@ tracker-default = [
 [[package]]
 name = "freemocap-blender-addon"
 version = "2026.4.1041"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#9f08f2c7d786ae92ab5c374a71aa6791a43d27b8" }
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#549b0fd7fc840c8b0908a8373a986eca91c18ad8" }
 
 [[package]]
 name = "h11"

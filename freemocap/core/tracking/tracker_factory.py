@@ -9,6 +9,7 @@ directly, so the registry-side-effect imports are guaranteed to have run.
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 import skellytracker.core.detectors.keypoint_detectors.charuco    # noqa: F401 (registry)
@@ -48,6 +49,18 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 )
 
 logger = logging.getLogger(__name__)
+
+# skellytracker's model-preparation step (downloading, then rewriting the
+# ONNX graph for dynamic batching) reads/writes shared cache files on disk
+# under the model's cache path. When multiple VideoNode workers build a
+# skeleton session concurrently (one per camera, in the posthoc pipeline)
+# those writes race and can hand back a corrupted/partially-written graph
+# (e.g. `IndexError: list index out of range` from `_symbolize_batch_dim`
+# reading an empty `graph.input`). Serializing session creation avoids the
+# race; the cache hit on subsequent calls makes this cheap after the first.
+# Eventually we should make an interface in skellytracker that handles this
+# properly
+_onnx_session_build_lock = threading.Lock()
 
 
 def build_charuco_tracker(board_def: CharucoBoardDefinition) -> tuple[Tracker, CpuSession]:
@@ -95,14 +108,15 @@ def build_skeleton_onnx_session(
     yolox_spec = YoloxPersonDetector.model_spec(yolox_model_name)
     rtmpose_spec = RTMPoseKeypointDetector.model_spec(model_name)
 
-    session = OnnxSession.create(
-        OnnxSessionConfig(
-            batch_size=batch_size,
-            models=[yolox_spec, rtmpose_spec],
-            execution_provider=execution_provider,
-            device_id=device_id,
+    with _onnx_session_build_lock:
+        session = OnnxSession.create(
+            OnnxSessionConfig(
+                batch_size=batch_size,
+                models=[yolox_spec, rtmpose_spec],
+                execution_provider=execution_provider,
+                device_id=device_id,
+            )
         )
-    )
     return session
 
 

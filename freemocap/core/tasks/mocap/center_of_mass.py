@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from pathlib import Path
+from pathlib import Path  # noqa: TC003 (beartype validates the module-level dict annotation below at import time)
 from typing import Literal
 
 import numpy as np

@@ -465,7 +465,14 @@ def equivalence_violations(
 def find_body_csv(path) -> Path:
     """Resolve a body-3D CSV from a recording folder, output_data folder, or CSV path.
 
-    Prefers ``mediapipe_body_3d_xyz.csv``; falls back to any ``*body_3d_xyz.csv``.
+    Prefers ``mediapipe_body_3d_xyz.csv``; falls back to any ``*body_3d_xyz.csv``
+    that isn't a ``charuco_board_*`` calibration artifact — a recording's
+    output_data folder holds both the calibration pass's charuco-board
+    reconstruction (also named ``*_body_3d_xyz.csv`` by the actor's generic
+    save-out naming) and the mocap pass's real body-tracker output, and a
+    plain alphabetical sort put "charuco_board_..." ahead of "mediapipe_..."
+    /"rtmpose_...", silently handing callers 24 board corners instead of the
+    actual skeleton.
     """
     path = Path(path).expanduser()
     if path.is_file() and path.suffix.lower() == ".csv":
@@ -477,8 +484,9 @@ def find_body_csv(path) -> Path:
         if preferred.exists():
             return preferred
         matches = sorted(directory.glob("*body_3d_xyz.csv"))
-        if matches:
-            return matches[0]
+        body_tracker_matches = [m for m in matches if not m.name.startswith("charuco_board")]
+        if body_tracker_matches:
+            return body_tracker_matches[0]
     raise FileNotFoundError(f"No *body_3d_xyz.csv found under {path}")
 
 

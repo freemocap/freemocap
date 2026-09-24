@@ -2165,7 +2165,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=main#524e5fc513c99c72f20f76be0eccf7199b200dfb" }
+source = { git = "https://github.com/freemocap/skellycam?branch=main#26509b06ba44980b3ccaae7c9c5f4efab4e88c90" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },

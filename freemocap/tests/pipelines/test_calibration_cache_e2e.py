@@ -15,11 +15,7 @@ import pytest
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from skellytracker.core import DetectionStageConfig, TrackerConfig
-from skellytracker.core.detectors.keypoint_detectors.charuco import (
-    CharucoBoardDefinition,
-    CharucoDetectorConfig,
-)
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import (
@@ -50,14 +46,11 @@ def _build_charuco_pipeline_config(charuco_board: CharucoBoardDefinition) -> Rea
         worker_mode=WorkerMode.THREAD,
         charuco_tracking_enabled=True,
         skeleton_tracking_enabled=False,
-        charuco_tracker_config=TrackerConfig(
-            stages=[
-                DetectionStageConfig(
-                    name="charuco",
-                    keypoint_detectors=[CharucoDetectorConfig(board=charuco_board)],
-                )
-            ]
-        ),
+        # charuco_tracker_config is always rebuilt from charuco_board by
+        # CameraNodeConfig's model validator, so set charuco_board here —
+        # passing charuco_tracker_config directly would be silently
+        # discarded and replaced with the config's default 5x3 board.
+        charuco_board=charuco_board,
     )
     aggregator_config = RealtimeAggregatorNodeConfig(
         triangulation_enabled=True,

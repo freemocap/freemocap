@@ -5,17 +5,15 @@ Provides optimistic loading, graceful degradation on repeated triangulation
 failure, and periodic file-change detection for hot-reloading.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
-from pathlib import Path
 
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 
 import numpy as np
-from numpy.typing import NDArray
-from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
@@ -24,6 +22,17 @@ from freemocap.core.tasks.triangulation.helpers.angulation_result import Angulat
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
+
+# NOTE: this module uses `from __future__ import annotations`, so beartype
+# (which decorates these functions and resolves annotations at runtime)
+# needs every annotated name to actually exist in this module's namespace.
+# TYPE_CHECKING-only imports are invisible to beartype's forward-ref
+# resolution and raise BeartypeCallHintForwardRefException — so these must
+# stay live imports rather than TYPE_CHECKING-only.
+from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
+from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
+from pathlib import Path  # noqa: TC003
+from numpy.typing import NDArray  # noqa: TC002
 
 logger = logging.getLogger(__name__)
 

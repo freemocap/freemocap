@@ -315,18 +315,18 @@ class VideoNode(SourceNode):
                 fps = video_reader.get(cv2.CAP_PROP_FPS)
                 width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                video_writer = cv2.VideoWriter(
-                    str(annotated_output_path), cv2.VideoWriter_fourcc(*"avc1"), fps, (width, height)
-                )
-                if not video_writer.isOpened():
-                    video_writer.release()
-                    logger.warning(
-                        f"H.264 ('avc1') encoder unavailable for {video_path.stem} — "
-                        f"falling back to 'mp4v'"
-                    )
+                for fourcc in ("avc1", "mp4v", "MJPG"):
                     video_writer = cv2.VideoWriter(
-                        str(annotated_output_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
+                        str(annotated_output_path), cv2.VideoWriter.fourcc(*fourcc), fps, (width, height)
                     )
+                    if video_writer.isOpened():
+                        if fourcc != "avc1":
+                            logger.warning(
+                                f"H.264 ('avc1') encoder unavailable for {video_path.stem} — "
+                                f"using '{fourcc}' instead"
+                            )
+                        break
+                    video_writer.release()
                 if not video_writer.isOpened():
                     raise RuntimeError(
                         f"Failed to create video writer for: {annotated_output_path}"

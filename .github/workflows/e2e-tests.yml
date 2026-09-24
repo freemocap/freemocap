@@ -1,22 +1,22 @@
-name: Tests
+name: E2E Tests
 
 on:
   pull_request:
-    branches: [main, development]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: tests-${{ github.ref }}
+  group: e2e-tests-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  backend-tests:
-    name: Backend Tests (fast, Python ${{ matrix.python-version }}, ${{ matrix.os }})
+  backend-e2e-tests:
+    name: Backend E2E Tests (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -61,30 +61,5 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
-      - name: Run tests (excluding e2e/slow)
-        run: uv run pytest freemocap/tests/ -v --tb=short --timeout=120 --timeout-method=thread -m "not e2e and not slow"
-
-  frontend-typecheck:
-    name: Frontend Typecheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    defaults:
-      run:
-        working-directory: freemocap-ui
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: freemocap-ui/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Typecheck
-        run: npx tsc --noEmit
+      - name: Run e2e/slow tests
+        run: uv run pytest freemocap/tests/ -v --tb=short --timeout=300 --timeout-method=thread -m "e2e or slow"

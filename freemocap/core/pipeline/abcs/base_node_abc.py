@@ -16,6 +16,7 @@ Error escalation policy (enforced by subclasses, not the base):
   - Posthoc nodes: on exception, call `ipc.shutdown_pipeline()` (pipeline-local)
   - Realtime nodes: on exception, call `ipc.kill_everything()` (app-level)
 """
+import dataclasses
 import logging
 import multiprocessing
 import multiprocessing.queues
@@ -82,6 +83,24 @@ class BaseNode:
             self.worker.terminate_gracefully()
         else:
             self.worker._reap()
+
+        # Subclasses (PosthocAggregationNode, VideoNode, SyncJob, ...) each own a
+        # progress/result multiprocessing.Queue shared with their now-dead child
+        # process. multiprocessing.Queue registers an untimed atexit finalizer that
+        # joins its feeder thread on interpreter shutdown; if that thread is still
+        # parked writing to a pipe whose other end (this dead child) never reads it,
+        # the join blocks forever -- the process prints pytest's summary but never
+        # exits. cancel_join_thread() opts these queues out of that finalizer so we
+        # don't wait on it. This can't lose a message the child was still trying to
+        # send: by this point worker.terminate_gracefully()/_reap() above already
+        # ensured the child process has exited, and whether its own last-gasp
+        # message made it onto the pipe was decided by the CHILD's feeder thread
+        # before *it* exited -- nothing we do here after the fact changes that.
+        for f in dataclasses.fields(self):
+            value = getattr(self, f.name, None)
+            if hasattr(value, "close") and hasattr(value, "cancel_join_thread"):
+                value.close()
+                value.cancel_join_thread()
 
     @staticmethod
     def _create_worker(

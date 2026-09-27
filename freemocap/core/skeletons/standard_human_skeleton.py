@@ -23,6 +23,22 @@ from freemocap.core.tasks.mocap.tracker_mappings import (
 )
 
 STANDARD_HUMAN_MODEL_ID: str = "standard_human"
+STANDARD_HUMAN_UPPER_BODY_FIT_LANDMARKS: tuple[str, ...] = (
+    "left_hip_socket", "right_hip_socket",
+    "left_acromion", "right_acromion",
+    "left_elbow", "right_elbow",
+    "left_wrist", "right_wrist",
+    "left_ear", "right_ear", "nose",
+)
+"""Explicit target selection for the connected upper-body prototype, not production.
+
+Hip sockets belong to the pelvis; acromions to the clavicles; elbows to upper
+arms; wrists to forearms; ears and nose to the skull. Use each source once rather
+than also fitting its alternative shoulder/hip/carpal landmark or derived means.
+Nose adds a non-collinear skull point to the ears. This does not establish that
+tracker points exactly locate anatomical centers, or fully constrain the spine
+and axial rotations. Tolerances and priors are separate, explicit solver inputs.
+"""
 BODY_HEIGHT_SCALE_REFERENCE: str = "body_height"
 ASSUMED_BODY_MASS_KG: float = 70.0
 """Until a subject's mass is asked for, de Leva's fractions need something to scale.

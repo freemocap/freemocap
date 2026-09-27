@@ -33,6 +33,7 @@ def alignment_request() -> MocapAlignmentRequest:
     ) for index, name in enumerate(sources)}
     count, points, _ = evidence.positions.shape
     return MocapAlignmentRequest(
+        filtered_points=evidence.positions.copy(),
         triangulation=RecordingTriangulation(sources=sources, keypoint_names=evidence.keypoint_names, diagnostic_point_names=evidence.keypoint_names,
             reconstruction=TriangulationResult(points_3d=evidence.positions, diagnostics=None,
                 reprojection_error=np.zeros((2,count,points)), per_camera_weights=np.full((count,points,2), .5))),
@@ -74,6 +75,29 @@ def test_disabled_or_preserved_reference_keeps_objects(preserve: bool) -> None:
     assert result.alignment.ground_evidence is None
     descriptor = ReferenceAlignmentDescriptor.from_result(result=result.alignment)
     assert ReferenceAlignmentDescriptor.model_validate_json(descriptor.model_dump_json()) == descriptor
+
+
+def test_alignment_uses_filtered_positions_but_preserves_raw_camera_evidence(monkeypatch):
+    from freemocap.core.reconstruction.alignment_evidence import AlignmentEvidence
+    request = alignment_request()
+    offset = np.array([12., -7., 4.])
+    request = replace(request, filtered_points=request.filtered_points + offset)
+    raw = request.triangulation.reconstruction.points_3d.copy()
+    collect = AlignmentEvidence.collect
+    captured = []
+    def capture(*, request):
+        captured.append(request.positions.copy())
+        return collect(request=request)
+    monkeypatch.setattr(AlignmentEvidence, 'collect', capture)
+    result = align_mocap_recording(request=request)
+    np.testing.assert_array_equal(captured[0], request.filtered_points)
+    np.testing.assert_array_equal(request.triangulation.reconstruction.points_3d, raw)
+    rotation = result.alignment.transform.rotation.to_rotation_matrix()
+    np.testing.assert_allclose(
+        result.filtered_points - result.triangulation.reconstruction.points_3d,
+        np.broadcast_to(rotation @ offset, raw.shape), atol=1e-8,
+    )
+    assert result.triangulation.reconstruction.reprojection_error is request.triangulation.reconstruction.reprojection_error
 
 
 def test_bad_reprojection_cannot_anchor_the_scene() -> None:

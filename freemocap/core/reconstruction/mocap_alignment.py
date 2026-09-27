@@ -24,6 +24,8 @@ from freemocap.core.tasks.calibration.shared.calibration_transform import (
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MocapAlignmentRequest:
     triangulation: RecordingTriangulation
+    filtered_points: NDArray[np.float64]
+    """Completed trajectory filtering, in the triangulation's reference frame."""
     camera_geometry: dict[str, CameraModel]
     bundle: TrackedSkeletonBundle
     definition: AlignmentDefinition
@@ -35,6 +37,7 @@ class MocapAlignmentRequest:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AlignedMocapRecording:
     triangulation: RecordingTriangulation
+    filtered_points: NDArray[np.float64]
     camera_geometry: dict[str, CameraModel]
     alignment: ReferenceAlignmentResult
     transformations: tuple[CalibrationTransform, ...]
@@ -42,6 +45,12 @@ class AlignedMocapRecording:
 
 
 def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapRecording:
+    raw_points = request.triangulation.reconstruction.points_3d
+    filtered_points = request.filtered_points
+    if filtered_points.shape != raw_points.shape or not np.array_equal(
+        np.isfinite(filtered_points), np.isfinite(raw_points)
+    ):
+        raise ValueError('Filtered alignment trajectories must preserve shape and missing-keypoint support')
     if request.config.additional_transform is not None and len(request.triangulation.sources) < 2:
         raise ValueError("Custom transforms in millimeters require calibrated multicamera reconstruction; single-camera output is in pixels")
     body_tracks = ()
@@ -65,7 +74,7 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
         evidence = AlignmentEvidence.collect(request=AlignmentEvidenceRequest(
             bundle=request.bundle, definition=request.definition,
             timestamps_seconds=request.timestamps_seconds, keypoint_names=request.triangulation.keypoint_names,
-            positions=points, quality=quality, minimum_quality=request.config.body.minimum_quality,
+            positions=filtered_points, quality=quality, minimum_quality=request.config.body.minimum_quality,
         ))
         body_tracks, foot_contacts = evidence.body_tracks, evidence.foot_contacts
     alignment = estimate_reference_alignment(request=ReferenceAlignmentRequest(
@@ -87,12 +96,16 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
         ))
     if not transformations:
         return AlignedMocapRecording(
+            filtered_points=filtered_points,
             triangulation=request.triangulation, camera_geometry=request.camera_geometry, alignment=alignment,
             transformations=(),
         )
     points = request.triangulation.reconstruction.points_3d
     camera_geometry = request.camera_geometry
     for entry in transformations:
+        filtered_points = entry.to_transform().apply(
+            points=Point.from_prevalidated_array(array=filtered_points),
+        ).array
         points = entry.to_transform().apply(
             points=Point.from_prevalidated_array(array=points),
         ).array
@@ -102,6 +115,7 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
             strict=True,
         ))
     return AlignedMocapRecording(
+        filtered_points=filtered_points,
         triangulation=replace(request.triangulation, reconstruction=replace(request.triangulation.reconstruction, points_3d=points)),
         camera_geometry=camera_geometry,
         alignment=alignment,

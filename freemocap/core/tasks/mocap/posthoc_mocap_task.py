@@ -166,12 +166,19 @@ def run_posthoc_mocap_task(
     )
 
     bundles = (build_standard_human_bundle(detector_type=task_config.detector_type),)
-    _reporter.report(stage=MocapStage.TRIANGULATING, detail="Resolving Mocap reference alignment")
     group_timing = RecordingGroupTiming.resolve(
         recording_folder=recording_folder, videos=video_metadata,
         frame_numbers=tuple(frame[camera_ids[0]].frame_number for frame in frame_observations),
     )
+    _reporter.report(stage=MocapStage.FILTERING, detail="Filtering measured trajectories")
+    filtered = filter_recording_points(
+        points=triangulation.reconstruction.points_3d,
+        timestamps_s=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
+        config=task_config.filter_config,
+    )
+    _reporter.report(stage=MocapStage.FILTERING, detail="Aligning filtered trajectories to person and foot support")
     aligned = align_mocap_recording(request=MocapAlignmentRequest(
+        filtered_points=filtered.points,
         triangulation=triangulation, camera_geometry=camera_geometry, bundle=bundles[0],
         definition=AlignmentDefinition.from_default_human(skeleton=bundles[0].skeleton),
         timestamps_seconds=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
@@ -189,12 +196,6 @@ def run_posthoc_mocap_task(
         })
     if selected_board is not None:
         bundles += (build_charuco_board_bundle(board=selected_board),)
-    _reporter.report(stage=MocapStage.FILTERING, detail="Filtering measured trajectories")
-    filtered = filter_recording_points(
-        points=triangulation.reconstruction.points_3d,
-        timestamps_s=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
-        config=task_config.filter_config,
-    )
     _reporter.report(stage=MocapStage.RECONSTRUCTING, detail=(
         f"Reconstructing skeletons; filtered {filtered.report.filtered_runs} trajectory runs, "
         f"preserved {filtered.report.preserved_short_runs} short runs"
@@ -202,7 +203,7 @@ def run_posthoc_mocap_task(
     reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
         bundles=bundles,
         keypoint_names=triangulation.keypoint_names,
-        keypoints_3d=filtered.points,
+        keypoints_3d=aligned.filtered_points,
         compute_center_of_mass=True,
         timing=timing,
     ))
@@ -247,7 +248,7 @@ def run_posthoc_mocap_task(
             values=values,
         ) for kind, values in (
             (ChannelKind.RAW_KEYPOINTS_3D, triangulation.reconstruction.points_3d),
-            (ChannelKind.KEYPOINTS_3D, filtered.points),
+            (ChannelKind.KEYPOINTS_3D, aligned.filtered_points),
         )),
         group=ObservationGroup(name=group_name, frames=frame_observations, videos=video_metadata),
         tracker=TrackerRecordingDefinition(

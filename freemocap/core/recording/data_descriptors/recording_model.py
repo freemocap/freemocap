@@ -1,6 +1,6 @@
 """Resolved scientific inputs for reconstructing a recorded skeleton instance."""
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, model_serializer, model_validator
 from skellyforge.core.biomechanics.center_of_mass import CenterOfMassDefinitions
 from skellyforge.core.skeleton.skeleton_snapshot import (
     SkeletonSnapshot,
@@ -24,6 +24,20 @@ class RecordedModel(BaseModel):
     center_of_mass: CenterOfMassDefinitions
     segment_masses: dict[str, float]
     scale_reference_name: str
+
+    @model_serializer(mode="wrap")
+    def serialize_model(self, handler):
+        """Preserve historical fingerprints for absent observation frames.
+
+        Old snapshots did not have this field. Absence still means no declared
+        observation frame; never substitute today's model defaults. Present
+        definitions must be serialized so they participate in fit signatures.
+        """
+        result = handler(self)
+        for segment in result.get("skeleton", {}).get("segments", ()):
+            if segment.get("observation_frame") is None:
+                segment.pop("observation_frame", None)
+        return result
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "RecordedModel":

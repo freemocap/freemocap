@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
+from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
+
 import numpy as np
 from numpy.typing import NDArray
 import pyarrow.compute as pc
@@ -142,10 +144,17 @@ def read_saved_reconstruction(
                 "Saved points and fit must use the same reference and spatial units"
             )
         points = _read_points(request=request, metadata=metadata, channel=channel)
+        measured_support = None
+        processing = run.processing.get(request.sensor_group, {}).get('filtering')
+        if request.point_policy == SavedPointPolicy.FILTERED and processing is not None:
+            report = PosthocFilterReport.model_validate(processing)
+            if report.gap_filling is not None:
+                measured_support = report.gap_filling.measured_support(points.values)
         numerical_input = RecordingReconstructionInput(
             bundles=(model.to_bundle(),),
             keypoint_names=channel.names,
             keypoints_3d=points.values,
+            measured_support=measured_support,
             compute_center_of_mass=request.compute_center_of_mass,
             timing=PosthocTimingReport(),
         )

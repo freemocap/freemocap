@@ -32,6 +32,7 @@ class MocapAlignmentRequest:
     timestamps_seconds: NDArray[np.float64]
     preserve_reference_frame: bool
     config: MocapAlignmentConfig
+    measured_support: NDArray[np.bool_] | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -47,10 +48,11 @@ class AlignedMocapRecording:
 def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapRecording:
     raw_points = request.triangulation.reconstruction.points_3d
     filtered_points = request.filtered_points
-    if filtered_points.shape != raw_points.shape or not np.array_equal(
-        np.isfinite(filtered_points), np.isfinite(raw_points)
-    ):
-        raise ValueError('Filtered alignment trajectories must preserve shape and missing-keypoint support')
+    support = np.isfinite(raw_points).all(axis=-1) if request.measured_support is None else request.measured_support
+    if filtered_points.shape != raw_points.shape or support.shape != raw_points.shape[:2] or support.dtype != np.bool_:
+        raise ValueError('Alignment trajectory and support shapes must match')
+    if np.any(support & (~np.isfinite(raw_points).all(axis=-1) | ~np.isfinite(filtered_points).all(axis=-1))):
+        raise ValueError('Alignment support must refer to retained measured samples')
     if request.config.additional_transform is not None and len(request.triangulation.sources) < 2:
         raise ValueError("Custom transforms in millimeters require calibrated multicamera reconstruction; single-camera output is in pixels")
     body_tracks = ()
@@ -70,11 +72,11 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
             valid = np.isfinite(errors[index]) & (depth > 0)
             scores[index, valid] = 1 / (1 + (errors[index, valid] / request.config.reprojection_scale_px) ** 2)
         quality = np.sort(scores, axis=0)[-2]
-        quality[~np.isfinite(points).all(axis=-1)] = 0.0
+        quality[~support] = 0.0
         evidence = AlignmentEvidence.collect(request=AlignmentEvidenceRequest(
             bundle=request.bundle, definition=request.definition,
             timestamps_seconds=request.timestamps_seconds, keypoint_names=request.triangulation.keypoint_names,
-            positions=filtered_points, quality=quality, minimum_quality=request.config.body.minimum_quality,
+            positions=np.where(support[..., None], filtered_points, np.nan), quality=quality, minimum_quality=request.config.body.minimum_quality,
         ))
         body_tracks, foot_contacts = evidence.body_tracks, evidence.foot_contacts
     alignment = estimate_reference_alignment(request=ReferenceAlignmentRequest(

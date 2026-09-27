@@ -185,11 +185,13 @@ def run_worker(request_path: Path) -> None:
         calibration = CalibrationResult.load_toml(calibration_path)
         if len(calibration.cameras) != 3 or not math.isfinite(calibration.reprojection_error_px):
             raise ValueError("Invalid prepared calibration")
+        from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
         config = PosthocMocapPipelineConfig(
             calibration_toml_path=str(calibration_path), detector_type="rtmpose",
             board_mode=CharucoBoardMode.EXPLICIT, charuco_board=board,
             video_fps=request["fps"], export_to_blender=False, auto_open_blend_file=False,
             filter_config=PosthocFilterConfig(enabled=request["filtering_enabled"]),
+            body_alignment=MocapAlignmentConfig(enabled=True),
         )
         mocap_task = manager.create_mocap_pipeline(recording_info=info, mocap_config=config)
         mocap_status = wait_for_success(manager, mocap_task, timeout=request["timeout"])

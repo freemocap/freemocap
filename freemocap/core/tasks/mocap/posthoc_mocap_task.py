@@ -24,7 +24,7 @@ import numpy as np
 from skellyforge.core.biomechanics.alignment_definition import AlignmentDefinition
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
-from freemocap.core.reconstruction.posthoc_filtering import filter_recording_points
+from freemocap.core.reconstruction.posthoc_filtering import prepare_recording_points
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.recording.sample_encoding.spatial_points import ReferenceAlignmentDescriptor
 import shutil
@@ -170,8 +170,8 @@ def run_posthoc_mocap_task(
         recording_folder=recording_folder, videos=video_metadata,
         frame_numbers=tuple(frame[camera_ids[0]].frame_number for frame in frame_observations),
     )
-    _reporter.report(stage=MocapStage.FILTERING, detail="Filtering measured trajectories")
-    filtered = filter_recording_points(
+    _reporter.report(stage=MocapStage.FILTERING, detail="Filling trajectory gaps, then filtering")
+    filtered = prepare_recording_points(
         points=triangulation.reconstruction.points_3d,
         timestamps_s=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
         config=task_config.filter_config,
@@ -179,6 +179,7 @@ def run_posthoc_mocap_task(
     _reporter.report(stage=MocapStage.FILTERING, detail="Aligning filtered trajectories to person and foot support")
     aligned = align_mocap_recording(request=MocapAlignmentRequest(
         filtered_points=filtered.points,
+        measured_support=filtered.report.gap_filling.measured_support(filtered.points),
         triangulation=triangulation, camera_geometry=camera_geometry, bundle=bundles[0],
         definition=AlignmentDefinition.from_default_human(skeleton=bundles[0].skeleton),
         timestamps_seconds=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
@@ -204,6 +205,7 @@ def run_posthoc_mocap_task(
         bundles=bundles,
         keypoint_names=triangulation.keypoint_names,
         keypoints_3d=aligned.filtered_points,
+        measured_support=filtered.report.gap_filling.measured_support(aligned.filtered_points),
         compute_center_of_mass=True,
         timing=timing,
     ))

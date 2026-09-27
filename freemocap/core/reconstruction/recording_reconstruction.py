@@ -20,6 +20,13 @@ class RecordingReconstructionInput:
     keypoints_3d: NDArray[np.float64]
     compute_center_of_mass: bool
     timing: PosthocTimingReport
+    measured_support: NDArray[np.bool_] | None = None
+
+    @property
+    def scale_points(self) -> NDArray[np.float64]:
+        if self.measured_support is None:
+            return self.keypoints_3d
+        return np.where(self.measured_support[..., None], self.keypoints_3d, np.nan)
 
     @property
     def frame_count(self) -> int:
@@ -28,7 +35,7 @@ class RecordingReconstructionInput:
     def fit_inputs(self, bundle: TrackedSkeletonBundle) -> RecordingFitInputs:
         return RecordingFitInputs.from_points(
             names=self.keypoint_names,
-            values=self.keypoints_3d,
+            values=self.scale_points,
             model=RecordedModel.from_bundle(bundle),
         )
 
@@ -39,6 +46,11 @@ class RecordingReconstructionInput:
             or self.frame_count < 1
         ):
             raise ValueError("Expected a nonempty (frames, keypoints, 3) recording")
+        if self.measured_support is not None:
+            if self.measured_support.dtype != np.bool_ or self.measured_support.shape != self.keypoints_3d.shape[:2]:
+                raise ValueError("Measurement support must match frame and keypoint axes")
+            if np.any(self.measured_support & ~np.isfinite(self.keypoints_3d).all(axis=-1)):
+                raise ValueError("Measured support cannot name absent coordinates")
         if np.isinf(self.keypoints_3d).any():
             raise ValueError("Reconstruction input cannot contain infinite coordinates")
         if len(set(self.keypoint_names)) != len(self.keypoint_names):

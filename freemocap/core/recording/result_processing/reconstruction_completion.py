@@ -41,6 +41,7 @@ def reconstruction_checkpoints(
                 "Completion requires exactly one matching published reconstruction input stream"
             )
         series = candidates[0]
+        scale_values = series.values
         if item.definition.point_kind == ChannelKind.KEYPOINTS_3D:
             raw = tuple(series for series in request.spatial_series
                 if series.definition.source == item.definition.tracker
@@ -48,8 +49,14 @@ def reconstruction_checkpoints(
                 and series.definition.kind == ChannelKind.RAW_KEYPOINTS_3D)
             if len(raw) != 1 or request.filtering is None:
                 raise ValueError("Filtered reconstruction requires raw points and a filtering report")
+            support = np.isfinite(series.values).all(axis=-1)
+            original_support = support
+            if request.filtering.gap_filling is not None:
+                support = request.filtering.gap_filling.measured_support(series.values)
+                original_support = request.filtering.gap_filling.original_support(series.values)
+                scale_values = np.where(support[..., None], series.values, np.nan)
             if raw[0].definition.names != series.definition.names or not np.array_equal(
-                np.isfinite(raw[0].values), np.isfinite(series.values),
+                np.isfinite(raw[0].values).all(axis=-1), original_support,
             ):
                 raise ValueError("Filtered points must preserve raw point names and missing observations")
             raw_points[model.model_id] = SavedPointSeries(
@@ -57,7 +64,7 @@ def reconstruction_checkpoints(
                 timestamps_s=timestamps_s, values=raw[0].values,
             ).signature()
         expected = RecordingFitInputs.from_points(
-            names=series.definition.names, values=series.values, model=model
+            names=series.definition.names, values=scale_values, model=model
         )
         if item.result.fit_inputs != expected:
             raise ValueError(

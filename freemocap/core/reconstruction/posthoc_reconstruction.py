@@ -166,7 +166,7 @@ def reconstruct_skeletons_for_recording(
     )
     request.timing.record("build_states", time.perf_counter() - t0)
     t0 = time.perf_counter()
-    for frame in request.keypoints_3d:
+    for frame in request.scale_points:
         points = {
             name: frame[index]
             for index, name in enumerate(request.keypoint_names)

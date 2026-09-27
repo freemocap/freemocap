@@ -205,20 +205,27 @@ def test_refitting_changed_points_changes_completion(
     )
 
 
+@pytest.mark.parametrize("fill_gaps", [False, True])
 def test_filtered_points_reload_with_their_fit_and_preserve_raw_data(
-    publication: ObservationRecordingRequest, tmp_path: Path,
+    publication: ObservationRecordingRequest, tmp_path: Path, fill_gaps: bool,
 ) -> None:
     count = 90
     times = np.arange(count, dtype=np.float64) / 30
     raw_values = np.repeat(publication.spatial_series[0].values[:1], repeats=count, axis=0)
     raw_values[:, :, 0] += 5 * np.sin(2 * np.pi * 10 * times[:, None])
-    filtered = filter_recording_points(points=raw_values, timestamps_s=times, config=PosthocFilterConfig())
+    from freemocap.core.reconstruction.posthoc_filtering import prepare_recording_points
+    if fill_gaps:
+        raw_values[5:15] = np.nan
+        raw_values[80:89] = np.nan  # Final singleton is discarded, not an interpolation anchor.
+    prepare = prepare_recording_points if fill_gaps else filter_recording_points
+    filtered = prepare(points=raw_values, timestamps_s=times, config=PosthocFilterConfig())
     raw = replace(publication.spatial_series[0], values=raw_values)
     processed = replace(raw, definition=raw.definition.model_copy(update={"kind": ChannelKind.KEYPOINTS_3D}),
         values=filtered.points)
     bundle = publication.models[0].to_bundle()
     result = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
         bundles=(bundle,), keypoint_names=processed.definition.names, keypoints_3d=processed.values,
+        measured_support=filtered.report.gap_filling.measured_support(filtered.points) if fill_gaps else None,
         compute_center_of_mass=True, timing=PosthocTimingReport(),
     ))[bundle.model_id]
     group = replace(publication.group,
@@ -244,6 +251,11 @@ def test_filtered_points_reload_with_their_fit_and_preserve_raw_data(
     np.testing.assert_array_equal(saved.points.values, filtered.points)
     assert not np.allclose(saved.points.values, raw_values)
     assert saved.fit.inputs == result.fit_inputs
+    if fill_gaps:
+        assert np.isfinite(saved.points.values).all()
+        assert np.isnan(saved.numerical_input.scale_points[5:15]).all()
+        assert np.isnan(saved.numerical_input.scale_points[80:]).all()
+        assert np.isfinite(raw_values[-1]).all()
     with pytest.raises(ValueError, match="point policy"):
         read_saved_reconstruction(replace(saved_request, point_policy=SavedPointPolicy.IDENTITY))
     assert publish_posthoc_observations(request).runs[0].checkpoints == metadata.runs[0].checkpoints

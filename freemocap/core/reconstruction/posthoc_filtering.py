@@ -12,6 +12,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field
 from scipy.signal import butter, sosfiltfilt
+from freemocap.core.reconstruction.trajectory_gap_filling import GapFillingReport, fill_trajectory_gaps
 
 
 class PosthocFilterConfig(BaseModel):
@@ -31,12 +32,19 @@ class PosthocFilterReport(BaseModel):
     sampling_rate_hz: float | None
     filtered_runs: int = Field(ge=0)
     preserved_short_runs: int = Field(ge=0)
+    gap_filling: GapFillingReport | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class FilteredRecording:
     points: NDArray[np.float64]
     report: PosthocFilterReport
+
+
+def prepare_recording_points(*, points: NDArray[np.float64], timestamps_s: NDArray[np.float64], config: PosthocFilterConfig) -> FilteredRecording:
+    completed, gaps = fill_trajectory_gaps(points=points, timestamps_s=timestamps_s)
+    filtered = filter_recording_points(points=completed, timestamps_s=timestamps_s, config=config)
+    return FilteredRecording(points=filtered.points, report=filtered.report.model_copy(update={"gap_filling": gaps}))
 
 
 def validate_filter_timing(*, timestamps_s: NDArray[np.float64], config: PosthocFilterConfig) -> float:

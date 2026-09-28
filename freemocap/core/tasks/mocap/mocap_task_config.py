@@ -36,6 +36,8 @@ class PosthocMocapPipelineConfig(BaseModel):
     camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig, alias="cameraMatching")
     body_alignment: MocapAlignmentConfig = Field(default_factory=MocapAlignmentConfig, alias="bodyAlignment")
     filter_config: PosthocFilterConfig = Field(default_factory=PosthocFilterConfig, alias="filterConfig")
+    skeleton_fit_enabled: bool = Field(default=False, alias="skeletonFitEnabled",
+        description="Fit the prepared standard-human skeleton with SkellyForge Ceres and save a separate fitted result.")
 
     charuco_tracking_enabled: bool = Field(default=True, alias="charucoTrackingEnabled")
     board_mode: CharucoBoardMode = Field(default=CharucoBoardMode.AUTO, alias="boardMode")

@@ -32,6 +32,17 @@ a rigid one simply has none.
 
 ## The layers
 
+### Optional connected skeleton fitting
+
+The post-hoc Ceres fit is a downstream model estimate, separate from the
+closed-form landmark/segment reconstruction described below. SkellyForge owns
+its quaternion parameter blocks, flexible axial lengths, relaxed linkages and
+residuals. FreeMoCap supplies prepared trajectories and person scale, then saves
+the returned state under a distinct solver source. It does not overwrite measured
+keypoints or the original mapped landmarks and segment poses. See
+[skeleton-fit-integration.md](../02-pipeline/skeleton-fit-integration.md) for the
+current stage and recording contract. The realtime segment path is unchanged.
+
 **keypoint** — a measured 3D world point, tracker-named. Pure measurement, no body meaning. It is
 whatever the tracker emits — never derived, never added to. *(skellytracker)*
 

@@ -1,5 +1,6 @@
 """Triangulate recording observations and reconstruct the selected tracked models."""
 from __future__ import annotations
+from collections.abc import Callable
 
 from freemocap.core.recording.result_processing.observation_inputs import (
     DetectorRecordingDefinition,
@@ -78,6 +79,7 @@ def run_posthoc_mocap_task(
         task_config: PosthocMocapPipelineConfig,
         selected_board: CharucoBoardDefinition | None,
         reporter: TaskProgressReporter | None = None,
+        cancelled: Callable[[], bool] | None = None,
 ) -> None:
     """
     Reconstruct the selected models from collected recording observations.
@@ -270,5 +272,21 @@ def run_posthoc_mocap_task(
             )),
         ) if detector_source is not None else None,
     )
-    publish_posthoc_observations(publication)
+    published = publish_posthoc_observations(publication)
+    if task_config.skeleton_fit_enabled:
+        from freemocap.core.recording.result_processing.skeleton_fitting import fit_saved_skeleton
+        from freemocap.system.recording_structure.recording_structure import RecordingStructure
+
+        _reporter.report(stage=MocapStage.FITTING_SKELETON, detail="Fitting connected human skeleton")
+
+        def fit_progress(window, total):
+            _reporter.report(stage=MocapStage.FITTING_SKELETON,
+                detail=f"Skeleton fit window {window['index'] + 1}/{total}; converged={window['converged']}",
+                fraction=(window['index'] + 1) / total)
+
+        fit_saved_skeleton(
+            structure=RecordingStructure(base_directory=recording_folder.parent, recording_name=recording_folder.name),
+            run_id=published.selected_run_id, sensor_group=group_name,
+            progress=fit_progress, cancelled=cancelled,
+        )
     logger.info("Posthoc mocap complete: canonical Parquet published")

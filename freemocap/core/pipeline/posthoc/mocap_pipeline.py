@@ -91,6 +91,7 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
             frame_observations=observations, recording_info=request.recording,
             video_metadata=video_metadata, task_config=resolved_config, selected_board=selected_board,
             reporter=TaskProgressReporter(callback=request.report),
+            cancelled=lambda: not request.ipc.should_continue,
         )
         if request.ipc.should_continue:
             request.report(AggregatorPhase.COMPLETE, "Mocap processing complete", 1.0)

@@ -17,6 +17,7 @@ def stage_dependencies() -> dict[ProcessingStage, frozenset[ProcessingStage]]:
             {stage.RECONSTRUCTION, stage.SCALE_FIT, stage.TIMING}
         ),
         stage.REPROJECTION: frozenset({stage.RECONSTRUCTION}),
+        stage.SKELETON_FIT: frozenset({stage.RECONSTRUCTION, stage.SCALE_FIT, stage.TIMING}),
     }
 
 

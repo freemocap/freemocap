@@ -81,6 +81,22 @@ async def test_failed_startup_is_not_success(app: FastAPI, monkeypatch: pytest.M
         await serve_application(server=server, app=app)
 
 
+async def test_log_reader_failure_stops_server(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> None:
+    server = Server(config=Config(app=app))
+    server.started = True
+    app.state.log_relay = Mock()
+    app.state.log_relay.check_health.side_effect = RuntimeError("Application log queue reader failed")
+
+    async def serve() -> None:
+        while not server.should_exit:
+            await asyncio.sleep(0)
+
+    monkeypatch.setattr(server, "serve", serve)
+    with pytest.raises(RuntimeError, match="log queue reader failed"):
+        await asyncio.wait_for(serve_application(server=server, app=app), timeout=2)
+    assert server.should_exit
+
+
 async def test_missing_resources_fail_startup_and_cleanup(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> None:
     application = Mock()
     telemetry_shutdown = Mock()

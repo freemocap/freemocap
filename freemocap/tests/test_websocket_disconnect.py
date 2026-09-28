@@ -1,6 +1,7 @@
 """Exercise the installed ASGI transport, including delayed loss notification."""
 
 import asyncio
+from contextlib import contextmanager
 import logging
 import socket as socket_module
 from queue import Queue
@@ -21,6 +22,16 @@ from freemocap.core.pipeline.posthoc.task_snapshot import TaskRegistry
 from freemocap.api.websocket.closing_aware_protocol import ClosingAwareWebSocketProtocol
 from freemocap.api.websocket.websocket_server import WebsocketServer
 from freemocap.api.websocket.send_serializer import SendSerializer
+
+
+class ClientLogBuffer:
+    """Connection tests inject a local subscriber buffer, never the IPC queue."""
+    def __init__(self, queue):
+        self.queue = queue
+
+    @contextmanager
+    def subscribe(self):
+        yield self.queue
 
 
 class RecordingTransport(asyncio.Transport):
@@ -126,7 +137,7 @@ async def test_startup_senders_disconnect_without_fatal_server_shutdown(monkeypa
 
     server._relay = SimpleNamespace(run=idle)
     monkeypatch.setattr(websocket_connect, "WebsocketServer", lambda **kwargs: server)
-    monkeypatch.setattr(websocket_server, "get_websocket_log_queue", lambda: Queue())
+    server._log_relay = ClientLogBuffer(Queue())
     await asyncio.wait_for(websocket_connect.websocket_server_connect(socket), timeout=1)
     assert app.state.fatal_error is None
     assert not app.state.global_kill_flag.value
@@ -150,7 +161,7 @@ async def test_busy_log_relay_allows_disconnect_to_run(monkeypatch, record):
     # A bounded backlog makes failure deterministic without hanging the test.
     for _ in range(100):
         queue.put_nowait(record)
-    monkeypatch.setattr(websocket_server, "get_websocket_log_queue", lambda: queue)
+    server._log_relay = ClientLogBuffer(queue)
     relay = asyncio.create_task(server._logs_relay(ws_log_level=logging.WARNING))
 
     def disconnect():
@@ -174,7 +185,7 @@ async def test_busy_log_relay_can_be_cancelled(monkeypatch):
     queue = Queue()
     for _ in range(100):
         queue.put_nowait({"name": "application", "levelno": logging.WARNING})
-    monkeypatch.setattr(websocket_server, "get_websocket_log_queue", lambda: queue)
+    server._log_relay = ClientLogBuffer(queue)
     relay = asyncio.create_task(server._logs_relay())
     asyncio.get_running_loop().call_soon(relay.cancel)
     await asyncio.wait_for(relay, timeout=1)
@@ -199,7 +210,7 @@ async def test_send_failure_joins_connection_tasks(monkeypatch):
     monkeypatch.setattr(server, "_posthoc_progress_sender", idle)
     queue = Queue()
     queue.put_nowait({"name": "application", "levelno": logging.WARNING})
-    monkeypatch.setattr(websocket_server, "get_websocket_log_queue", lambda: queue)
+    server._log_relay = ClientLogBuffer(queue)
     async with server:
         await asyncio.wait_for(server.run(), timeout=1)
     assert all(task.done() for task in server.ws_tasks)

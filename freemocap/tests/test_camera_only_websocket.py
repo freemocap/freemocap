@@ -47,6 +47,7 @@ def server(monkeypatch: pytest.MonkeyPatch) -> WebsocketServer:
         lambda self: compose_messages(StreamContext(skeletons=())),
     )
     fastapi = FastAPI()
+    fastapi.state.log_relay = Mock()
     fastapi.state.global_kill_flag = SimpleNamespace(value=False)
     result = WebsocketServer(
         fastapi_app=fastapi,

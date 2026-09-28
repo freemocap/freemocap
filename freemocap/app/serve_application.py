@@ -20,10 +20,16 @@ async def serve_application(*, server: Server, app: FastAPI) -> None:
     server_task = asyncio.create_task(_serve(server=server, app=app), name="FreeMoCapServer")
     try:
         while not server_task.done():
+            relay = getattr(app.state, "log_relay", None)
+            if relay is not None:
+                relay.check_health()
             if app.state.global_kill_flag.value:
                 server.should_exit = True
             await asyncio.sleep(0.1)
         await server_task
+        relay = getattr(app.state, "log_relay", None)
+        if relay is not None:
+            relay.check_health()
         if app.state.fatal_error is not None:
             raise RuntimeError("Server stopped after a fatal application error") from app.state.fatal_error
         if not server.started:

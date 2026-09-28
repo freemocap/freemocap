@@ -29,7 +29,6 @@ from skellycam.core.recorders.framerate_tracker import FramerateTracker, Current
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.camera.config.image_rotation_types import RotationTypes
 from skellycam.core.camera.config.camera_config import CameraConfigs
-from skellylogs import get_websocket_log_queue
 from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
@@ -77,6 +76,7 @@ class WebsocketServer:
             raise RuntimeError(
                 "FastAPI app does not have a global_kill_flag in its state"
             )
+        self._log_relay = fastapi_app.state.log_relay
         self._global_kill_flag = fastapi_app.state.global_kill_flag
         self._app: FreemocapApplication = get_freemocap_app()
 
@@ -544,47 +544,47 @@ class WebsocketServer:
 
     async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):
         logger.info("Starting websocket log relay listener...")
-        logs_queue = get_websocket_log_queue()
-        try:
-            while self.should_continue:
-                # A socket send (or a filtered record) need not yield. Give
-                # disconnect callbacks and cancellation time even under load.
-                await asyncio.sleep(0)
-                if not self.should_continue:
-                    break
-                if self.websocket.client_state == WebSocketState.CONNECTED:
-                    try:
-                        log_entry: dict = logs_queue.get_nowait()
-                    except Empty:
+        with self._log_relay.subscribe() as logs_queue:
+            try:
+                while self.should_continue:
+                    # A socket send (or a filtered record) need not yield. Give
+                    # disconnect callbacks and cancellation time even under load.
+                    await asyncio.sleep(0)
+                    if not self.should_continue:
+                        break
+                    if self.websocket.client_state == WebSocketState.CONNECTED:
+                        try:
+                            log_entry: dict = logs_queue.get_nowait()
+                        except Empty:
+                            await await_10ms()
+                            continue
+                        except (EOFError, OSError) as error:
+                            logger.error(
+                                "Log queue read failed (%s: %s)",
+                                error.__class__.__name__,
+                                error,
+                            )
+                            self._websocket_should_continue = False
+                            raise
+                        if not isinstance(log_entry, dict):
+                            continue
+                        if log_entry.get("levelno", 0) < ws_log_level:
+                            continue
+                        message = LogMessage(record=LogRecord.from_logging_dict(log_entry))
+                        await self._serializer.send_message(encode_message(message))
+                    else:
                         await await_10ms()
-                        continue
-                    except (EOFError, OSError) as error:
-                        logger.error(
-                            "Log queue read failed (%s: %s)",
-                            error.__class__.__name__,
-                            error,
-                        )
-                        self._websocket_should_continue = False
-                        raise
-                    if not isinstance(log_entry, dict):
-                        continue
-                    if log_entry.get("levelno", 0) < ws_log_level:
-                        continue
-                    message = LogMessage(record=LogRecord.from_logging_dict(log_entry))
-                    await self._serializer.send_message(encode_message(message))
-                else:
-                    await await_10ms()
-        except asyncio.CancelledError:
-            logger.debug("Log relay task cancelled")
-        except WebSocketDisconnect:
-            logger.info("Client disconnected, ending log relay task...")
-        except Exception as e:
-            logger.exception(
-                f"Error in websocket log relay: {e.__class__.__name__}: {e or '(no message)'} "
-                f"— ws state: {self.websocket.client_state}"
-            )
-            self._websocket_should_continue = False
-            raise
+            except asyncio.CancelledError:
+                logger.debug("Log relay task cancelled")
+            except WebSocketDisconnect:
+                logger.info("Client disconnected, ending log relay task...")
+            except Exception as e:
+                logger.exception(
+                    f"Error in websocket log relay: {e.__class__.__name__}: {e or '(no message)'} "
+                    f"— ws state: {self.websocket.client_state}"
+                )
+                self._websocket_should_continue = False
+                raise
 
     async def _client_message_handler(self):
         """Handle messages from the client, including settings messages."""

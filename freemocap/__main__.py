@@ -4,6 +4,7 @@ import multiprocessing
 import os
 import signal
 import sys
+from threading import Event
 
 from freemocap.app.serve_application import serve_application
 
@@ -24,6 +25,23 @@ async def main(force_preferred_port:bool=True) -> None:
     from skellylogs import configure_logging, LogLevels
     configure_logging(LogLevels.TRACE)
 
+    from skellylogs import get_websocket_log_queue
+    from freemocap.api.websocket.log_relay import LogRelay
+    log_relay = LogRelay(get_websocket_log_queue())
+    log_relay.start()
+    producers_stopped = Event()
+    producers_stopped.set()
+    try:
+        await _run_application(force_preferred_port, log_relay, producers_stopped)
+    finally:
+        if producers_stopped.is_set():
+            log_relay.stop()
+        else:
+            # A failed worker shutdown must not remove its remaining log consumer.
+            logger.error("Worker shutdown incomplete; log reader remains active until process exit")
+
+
+async def _run_application(force_preferred_port, log_relay, producers_stopped) -> None:
     # Heavy imports are here (not at module level) so that multiprocessing
     # child processes don't re-import the entire app tree on Windows.
     # Windows uses the `spawn` start method, which re-executes this file
@@ -62,7 +80,6 @@ async def main(force_preferred_port:bool=True) -> None:
         global_kill_flag=global_kill_flag,
         worker_mode=WorkerMode.PROCESS
     )
-    worker_registry.start_heartbeat()
 
     server: uvicorn.Server | None = None
     signum_to_signal_name = {
@@ -82,6 +99,8 @@ async def main(force_preferred_port:bool=True) -> None:
         signal.signal(sigint, handle_signal)
 
     try:
+        producers_stopped.clear()
+        worker_registry.start_heartbeat()
         kill_process_on_port(port=port)
 
         app = create_fastapi_app(
@@ -89,6 +108,8 @@ async def main(force_preferred_port:bool=True) -> None:
             worker_registry=worker_registry,
             port=port,
         )
+
+        app.state.log_relay = log_relay
 
         config = uvicorn.Config(
             app=app,
@@ -110,12 +131,14 @@ async def main(force_preferred_port:bool=True) -> None:
         raise
     finally:
         global_kill_flag.value = True
-        if server:
-            server.should_exit = True
-            await await_1s()
-
-        worker_registry.shutdown_all()
-        logger.info("FreeMoCap workers shut down")
+        try:
+            if server:
+                server.should_exit = True
+                await await_1s()
+        finally:
+            worker_registry.shutdown_all()
+            producers_stopped.set()
+            logger.info("FreeMoCap workers shut down")
 
 def run_main() -> None:
     asyncio.run(main())

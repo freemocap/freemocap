@@ -41,6 +41,12 @@ env = { PYTHONUTF8 = "1" }
 
 [tool.poe.tasks]
 
+# Reference recordings: these execute processing and save results on local disk.
+datasets = { cmd = "python -B -m freemocap.tools.datasets", help = "Inspect, acquire, calibrate, process, or validate test_data/sample_data" }
+process-test-data = { cmd = "python -B -m freemocap.tools.datasets process test_data", help = "Fresh calibration, mocap, and skeleton fitting on test_data" }
+process-sample-data = { cmd = "python -B -m freemocap.tools.datasets process sample_data", help = "Fresh calibration, mocap, and skeleton fitting on sample_data" }
+process-all-data = { cmd = "python -B -m freemocap.tools.datasets process-all", help = "Process test_data then sample_data; stop on failure" }
+
 # ── Type-checking ───────────────────────────────────────────────────────
 tc-check = { cmd = "ruff check --select TC freemocap/", help = "Preview type-only imports that can move behind TYPE_CHECKING" }
 tc-fix = { cmd = "ruff check --select TC --fix freemocap/", help = "Move type-only imports behind TYPE_CHECKING" }

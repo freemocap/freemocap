@@ -1,4 +1,11 @@
-# Refresh prepared skeleton outputs
+# Reference recordings
+
+For full runs, calibration-only processing, and saved-stage reprocessing, see the
+[dataset commands](../../tools/datasets/README.md). Start with
+`poe process-test-data`, `poe process-sample-data`, or `poe process-all-data` from
+the FreeMoCap repository. These save newly processed results on disk.
+
+## Refresh prepared skeleton outputs
 
 After changing a tracker mapping or Forge skeleton calculation, reuse saved 3D
 keypoints instead of detecting, calibrating or triangulating the videos again:

@@ -178,7 +178,26 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     }), []);
 
     return <KeypointsSourceProvider source={source}><div className="flex flex-col h-full">
-        <div className="flex items-center gap-2 p-1">
+        {!mediaAvailable && clock && <div className="flex items-center gap-2 p-1">
+            <button disabled={loaded?.manifest !== manifest || !!error} onClick={() => setDataPlaying(value => !value)}>{dataPlaying ? 'Pause' : 'Play data'}</button>
+            <input aria-label="Recording time" type="range" min={clock.timestamps_s[0]} max={clock.timestamps_s[clock.timestamps_s.length - 1]}
+                step="any" value={dataTime} onChange={event => {dataTimeRef.current = Number(event.target.value); setDataTime(dataTimeRef.current);}} />
+            <span>{dataTime.toFixed(3)} s</span>
+        </div>}
+        {manifest && loaded?.manifest !== manifest && !error && <p role="status" className="p-2">Loading recording data…</p>}
+        {error && <p role="alert" className="text-error p-2">{error}</p>}
+        {!manifest && !error && <p className="p-2">No reconstruction loaded.</p>}
+        <div className="flex-1 min-h-0" style={{position: 'relative'}}>
+        {children}
+        <details style={{position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 10, width: 'max-content', maxWidth: 'calc(100% - 16px)', color: '#eee'}}>
+            <summary aria-label="Recording results" title="Recording results" className="viewport-options br-1"
+                style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, margin: '0 auto', cursor: 'pointer', listStyle: 'none', background: '#20252bee'}}>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                    <path d="M8 4v4M16 10v4M10 16v4" />
+                </svg>
+            </summary>
+        <div className="viewport-options flex items-center gap-2 p-2 br-1" style={{flexWrap: 'wrap', marginTop: 4, background: '#20252bee'}}>
             <label>Result <select value={runId ?? ''} onChange={event => {
                 const selected = manifest?.runs.find(item => item.run_id === Number(event.target.value));
                 setRunId(Number(event.target.value)); setGroup(selected?.channels[0]?.sensor_group ?? '');
@@ -191,18 +210,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
             <button onClick={reloadManifest}>Reload result</button>
             <span>{Object.values(run?.channels.find(item => item.sensor_group === group && item.kind === RecordingChannelKind.Landmarks)?.components ?? {})[0]}</span>
         </div>
-        {!mediaAvailable && clock && <div className="flex items-center gap-2 p-1">
-            <button disabled={loaded?.manifest !== manifest || !!error} onClick={() => setDataPlaying(value => !value)}>{dataPlaying ? 'Pause' : 'Play data'}</button>
-            <input aria-label="Recording time" type="range" min={clock.timestamps_s[0]} max={clock.timestamps_s[clock.timestamps_s.length - 1]}
-                step="any" value={dataTime} onChange={event => {dataTimeRef.current = Number(event.target.value); setDataTime(dataTimeRef.current);}} />
-            <span>{dataTime.toFixed(3)} s</span>
-        </div>}
-        {manifest && loaded?.manifest !== manifest && !error && <p role="status" className="p-2">Loading recording data…</p>}
-        {error && <p role="alert" className="text-error p-2">{error}</p>}
-        {run && <small className="p-1">{Object.values(run.fitted_skeletons ?? {}).some(d => d.sensor_group === group)
-            ? 'Saved fitted skeleton available • sticks and axes in Viewport settings'
-            : 'This result has no fitted skeleton.'}</small>}
-        {!manifest && !error && <p className="p-2">No reconstruction loaded.</p>}
-        <div className="flex-1 min-h-0">{children}</div>
+        </details>
+        </div>
     </div></KeypointsSourceProvider>;
 }

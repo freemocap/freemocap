@@ -1,4 +1,4 @@
-import {Color, CylinderGeometry, Group, InstancedMesh, MeshBasicMaterial, Object3D, Quaternion, SphereGeometry, Vector3} from 'three';
+import {Color, CylinderGeometry, Group, InstancedMesh, Material, MeshBasicMaterial, MeshStandardMaterial, Object3D, Quaternion, SphereGeometry, Vector3} from 'three';
 import type {FittedSkeletonDefinition, FittedSkeletonFrame} from '@/services/recording/fitted-skeleton-types';
 import {fittedWorldPoint} from '@/services/recording/fitted-skeleton';
 import {registerPickingMesh, unregisterPickingMesh} from './PickingRegistry';
@@ -29,8 +29,8 @@ export class FittedSkeletonInstances {
         geometry.display.forEach((points, body) => points.forEach((p, point) => {
             if (Math.hypot(...p) > 1e-8) this.rods.push({body, point});
         }));
-        this.sticks = new InstancedMesh(new CylinderGeometry(1, 1, 1, 8), new MeshBasicMaterial({color: '#78a7ff'}), Math.max(1, this.rods.length));
-        this.origins = new InstancedMesh(new SphereGeometry(1, 10, 6), new MeshBasicMaterial({color: '#edf3ff'}), geometry.names.length);
+        this.sticks = new InstancedMesh(new CylinderGeometry(1, 1, 1, 8), new MeshStandardMaterial({color: '#00ff00', roughness: 0.65, metalness: 0, emissiveIntensity: 0}), Math.max(1, this.rods.length));
+        this.origins = new InstancedMesh(new SphereGeometry(1, 10, 6), new MeshStandardMaterial({color: '#00ff00', roughness: 0.65, metalness: 0, emissiveIntensity: 0}), geometry.names.length);
         this.axes = new InstancedMesh(new CylinderGeometry(1, 1, 1, 6), new MeshBasicMaterial(), geometry.names.length * 3);
         for (let b = 0; b < geometry.names.length; b++) for (let a = 0; a < 3; a++) this.axes.setColorAt(b * 3 + a, new Color(COLORS[a]));
         for (const mesh of [this.sticks, this.origins, this.axes]) {mesh.count = 0; mesh.frustumCulled = false; this.group.add(mesh);}
@@ -56,14 +56,14 @@ export class FittedSkeletonInstances {
             const i = this.sticks.count++;
             this.stickNames.set(i, `Fitted ${geometry.names[body]} → ${geometry.display_names[body][point]}`);
             this.rod(this.sticks, i, new Vector3().fromArray(frame.origins, body * 3),
-                fittedWorldPoint(this.saved.definition, frame, body, geometry.display[body][point]), this.radii[body]);
+                fittedWorldPoint(this.saved.definition, frame, body, geometry.display[body][point]), this.radii[body] * 0.75);
         }
         geometry.names.forEach((_, b) => {
             if (!frame.validSegments[b]) return;
             const originIndex = this.origins.count++;
             this.originNames.set(originIndex, `Fitted ${geometry.names[b]} origin`);
             const origin = new Vector3().fromArray(frame.origins, b * 3);
-            this.dummy.position.copy(origin); this.dummy.quaternion.identity(); this.dummy.scale.setScalar(this.radii[b] * 1.8);
+            this.dummy.position.copy(origin); this.dummy.quaternion.identity(); this.dummy.scale.setScalar(this.radii[b] * 1.8 * 0.75);
             this.dummy.updateMatrix(); this.origins.setMatrixAt(originIndex, this.dummy.matrix);
             if (!axesVisible) return;
             const q = frame.quaternions.subarray(b * 4, b * 4 + 4);
@@ -82,7 +82,7 @@ export class FittedSkeletonInstances {
     dispose(): void {
         unregisterPickingMesh(this.sticks); unregisterPickingMesh(this.origins);
         for (const mesh of [this.sticks, this.origins, this.axes]) {
-            mesh.geometry.dispose(); (mesh.material as MeshBasicMaterial).dispose(); mesh.dispose();
+            mesh.geometry.dispose(); (mesh.material as Material).dispose(); mesh.dispose();
         }
         this.group.clear();
     }

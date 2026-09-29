@@ -35,10 +35,10 @@ export function classifyRegion(name: string): BoneRegion {
 
 /** Transverse cross-section radius (mm) per region: face < hand < body. */
 export const REGION_CROSS_SECTION: Readonly<Record<BoneRegion, number>> = {
-    body: 12,
-    hand: 5,
-    face: 3,
-    foot: 5,
+    body: 9,
+    hand: 3.75,
+    face: 2.25,
+    foot: 3.75,
 };
 
 /** A single rigid body segment, resolved once at model time. */
@@ -90,7 +90,7 @@ export const DEFAULT_SEGMENT_LENGTH = 1.0;
 export const BONE_SIDE_HEX: Readonly<Record<BoneSide, string>> = {
     left:       "#4488ff",  // blue
     right:      "#ff4444",  // red
-    center:     "#00aa00",  // green
+    center:     "#c8b86a",  // muted sandy yellow
     left_hand:  "#22dddd",  // cyan
     right_hand: "#ff44dd",  // magenta
 };

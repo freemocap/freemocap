@@ -25,13 +25,13 @@ const DUMMY = new Object3D();
 // body‑part) layer uses the per‑category values, while the raw layer uses
 // RAW_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
-const RAW_KEYPOINT_RADIUS = 0.12;
-const SKELETON_POINT_RADIUS = 0.15;
+const RAW_KEYPOINT_RADIUS = 0.15;
+const SKELETON_POINT_RADIUS = 0.1875;
 
-const BODY_KEYPOINT_RADIUS = 0.18;
-const HAND_KEYPOINT_RADIUS = 0.09;
-const FACE_KEYPOINT_RADIUS = 0.06;
-const UNSPECIFIED_KEYPOINT_RADIUS = 0.15;
+const BODY_KEYPOINT_RADIUS = 0.225;
+const HAND_KEYPOINT_RADIUS = 0.1125;
+const FACE_KEYPOINT_RADIUS = 0.075;
+const UNSPECIFIED_KEYPOINT_RADIUS = 0.1875;
 
 function getKeypointRadius(name: string): number {
     switch (classifyPointName(name)) {

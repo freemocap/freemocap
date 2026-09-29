@@ -146,6 +146,8 @@ export function ViewportOverlay({
               checked={visibility.segmentAxes}
               onChange={toggleSegmentAxes}
             />
+            <VisToggle label="Fitted skeleton" checked={visibility.fittedSkeleton} onChange={() => toggle('fittedSkeleton')}/>
+            <VisToggle label="Fitted axes" checked={visibility.fittedAxes} onChange={() => toggle('fittedAxes')}/>
             <p className="text sm mt-1 mb-0" style={{ color: "#888" }}>
               Hover a point or bone for its name · click to pin its numbers.
             </p>

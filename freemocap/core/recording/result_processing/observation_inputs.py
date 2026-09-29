@@ -5,6 +5,7 @@ from collections.abc import Iterable
 
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
+from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries
@@ -117,6 +118,9 @@ class ObservationRecordingRequest:
     # BOXES_2D channel is declared and no boxes are recorded.
     detector: DetectorRecordingDefinition | None = None
     calibration_update: CalibrationUpdateRequest | None = None
+    base_run_id: int = 0
+    reuse_observations: bool = False
+    resolved_timing: RecordingGroupTiming | None = None
 
     def __post_init__(self) -> None:
         if self.reprojection is not None:

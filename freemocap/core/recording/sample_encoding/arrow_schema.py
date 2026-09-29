@@ -39,6 +39,7 @@ class SampleValidator:
     channel_index: dict[tuple[int, str, str, str | None, str], Channel] = field(
         init=False
     )
+    channel_names: dict[tuple[int, str, str, str | None, str], frozenset[str]] = field(init=False)
     pending_rotations: dict[
         tuple[int, str, str, str | None, str, str], tuple[int, dict[str, float | None]]
     ] = field(default_factory=dict)
@@ -55,6 +56,7 @@ class SampleValidator:
             for run_id, run in self.metadata.runs.items()
             for channel in run.channels
         }
+        self.channel_names = {key: frozenset(channel.names) for key, channel in self.channel_index.items()}
 
     def accept(self, *, batch: pa.RecordBatch) -> None:
         if not batch.schema.equals(SAMPLE_SCHEMA, check_metadata=False):
@@ -64,6 +66,10 @@ class SampleValidator:
                 raise ValueError(f"Null values in required column {schema_field.name}")
         # Conversion is bounded by the caller's batch, never the complete recording.
         columns = batch.to_pydict()
+        # Components on the same sample grid share hash transitions. Reuse the
+        # computation, while still tracking and comparing every trajectory.
+        # Batch-local storage bounds memory even for malformed/irregular grids.
+        digest_transitions: dict[tuple[bytes, bytes], bytes] = {}
         for index in range(batch.num_rows):
             run_id = columns["run_id"][index]
             group = columns["sensor_group"][index]
@@ -72,13 +78,14 @@ class SampleValidator:
             kind = columns["channel"][index]
             name = columns["name"][index]
             component = columns["component"][index]
-            channel = self.channel_index.get((run_id, group, source, reference, kind))
+            channel_key = (run_id, group, source, reference, kind)
+            channel = self.channel_index.get(channel_key)
             if channel is None:
                 raise ValueError(
                     f"Undeclared channel: {(run_id, group, source, reference, kind)}"
                 )
             if (
-                name not in channel.names
+                name not in self.channel_names[channel_key]
                 or channel.components.get(component) != columns["units"][index]
             ):
                 raise ValueError(
@@ -125,9 +132,12 @@ class SampleValidator:
                 raise ValueError(
                     f"Duplicate or non-increasing trajectory sample: {key}, frame {frame}"
                 )
-            self.timing_digests[key] = hashlib.sha256(
-                self.timing_digests.get(key, b"") + struct.pack("<qd", frame, timestamp)
-            ).digest()
+            transition = (self.timing_digests.get(key, b""), struct.pack("<qd", frame, timestamp))
+            digest = digest_transitions.get(transition)
+            if digest is None:
+                digest = hashlib.sha256(transition[0] + transition[1]).digest()
+                digest_transitions[transition] = digest
+            self.timing_digests[key] = digest
             self.last_samples[key] = (frame, timestamp)
             self.counts[key] = self.counts.get(key, 0) + 1
 

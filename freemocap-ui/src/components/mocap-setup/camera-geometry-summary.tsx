@@ -5,7 +5,7 @@ import SettingsSummaryChip from '@/components/common/settings-layout/settings-su
 export default function CameraGeometrySummary({mode}: {mode: 'recording' | 'playback'}) {
     const calibration = useAppSelector(state => state.calibration.loadedCalibration);
     const config = useAppSelector(state => state.calibration.config);
-    const personAlignmentEnabled = useAppSelector(state => state.mocap.config.bodyAlignmentEnabled);
+    const alignmentMode = useAppSelector(state => state.mocap.config.bodyAlignmentMode);
     const filename = calibration?.path.split(/[\\/]/).pop();
     return <span className="camera-geometry-summary">
         <span className="camera-geometry-summary-values">
@@ -21,7 +21,7 @@ export default function CameraGeometrySummary({mode}: {mode: 'recording' | 'play
                     ? 'Calibration: ChArUco alignment' : 'Calibration: board alignment off'}
             </SettingsSummaryChip>
             {mode === 'playback' && <SettingsSummaryChip title="During Mocap processing">
-                {personAlignmentEnabled ? 'Mocap: align to person' : 'Mocap: person alignment off'}
+                {alignmentMode === 'auto' ? 'Mocap: automatic alignment' : alignmentMode === 'person' ? 'Mocap: align to person' : 'Mocap: use calibration'}
             </SettingsSummaryChip>}
         </span>
         {calibration && <SettingsSummaryChip tone="path" title={calibration.path}>{filename}</SettingsSummaryChip>}

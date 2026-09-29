@@ -192,31 +192,42 @@ def _read_points(
     metadata: RecordingMetadata,
     channel: Channel,
 ) -> SavedPointSeries:
-    run = metadata.runs[request.run_id]
-    count = run.sensor_groups[request.sensor_group].sample_count
+    return read_saved_channel(structure=request.structure, run_id=request.run_id,
+        metadata=metadata, channel=channel)
+
+
+def read_saved_channel(*, structure: RecordingStructure, run_id: int,
+                       metadata: RecordingMetadata, channel: Channel) -> SavedPointSeries:
+    """Read a complete named channel, preserving its declared component order and nulls.
+
+    The caller holds the recording lock so multiple channels share one snapshot.
+    """
+    run = metadata.runs[run_id]
+    count = run.sensor_groups[channel.sensor_group].sample_count
     if count < 1:
         raise ValueError("Saved reconstruction requires a nonempty point stream")
     selected_metadata = metadata.model_copy(
         update={
-            "runs": {request.run_id: run.model_copy(update={"channels": (channel,)})}
+            "runs": {run_id: run.model_copy(update={"channels": (channel,)})}
         }
     )
     validator = SampleValidator(metadata=selected_metadata)
-    values = np.full((count, len(channel.names), 3), np.nan, dtype=np.float64)
+    values = np.full((count, len(channel.names), len(channel.components)), np.nan, dtype=np.float64)
     frame_indices: dict[int, int] = {}
     timestamps: dict[int, float] = {}
     names = {name: index for index, name in enumerate(channel.names)}
-    components = {SampleComponent.X: 0, SampleComponent.Y: 1, SampleComponent.Z: 2}
-    with pq.ParquetFile(request.structure.data_parquet_path) as parquet:
+    components = {name: index for index, name in enumerate(channel.components)}
+    with pq.ParquetFile(structure.data_parquet_path) as parquet:
         for batch in parquet.iter_batches(batch_size=65536):
             mask = pc.and_(
-                pc.equal(batch.column("run_id"), request.run_id),
-                pc.equal(batch.column("sensor_group"), request.sensor_group),
+                pc.equal(batch.column("run_id"), run_id),
+                pc.equal(batch.column("sensor_group"), channel.sensor_group),
             )
             mask = pc.and_(mask, pc.equal(batch.column("source"), channel.source))
             mask = pc.and_(mask, pc.equal(batch.column("channel"), channel.kind))
             mask = pc.and_(
                 mask, pc.equal(batch.column("reference_frame"), channel.reference_frame)
+                if channel.reference_frame is not None else pc.is_null(batch.column("reference_frame"))
             )
             selected = batch.filter(mask).replace_schema_metadata(None)
             if not selected.num_rows:

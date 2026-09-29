@@ -13,7 +13,48 @@ Post-hoc motion capture processes previously recorded, synchronized camera video
 
 > **Alpha note:** This is an early build. Expect bugs, crashes, and for this documentation and workflow to change significantly before the final release.
 
+## Reprocessing saved stages
+
+Open **Process Mocap → Processing stages** after selecting a recording. FreeMoCap
+checks the recording's saved results and selects unfinished work. For a completed
+recording, check the first stage you want to rerun:
+
+- **2D tracking:** rerun SkellyTracker and all downstream processing.
+- **Triangulation and coordinate alignment:** reuse saved 2D detections, with the
+  currently selected calibration and triangulation/alignment settings.
+- **Gap filling and filtering:** reuse raw 3D points, then apply the
+  current filtering settings, refit person scale and reconstruct the skeleton.
+- **Person scale fitting:** reuse prepared trajectories and refit scale before
+  reconstructing the skeleton.
+- **Skeleton reconstruction and biomechanics:** reuse prepared trajectories and
+  their saved person-scale fit.
+- **Connected skeleton fit:** rerun just the optional connected fit, when enabled
+  in Post-processing settings.
+
+Dependent stages remain checked automatically. Results replace the selected saved
+run; other saved runs remain available. Reusing tracking keeps its original detector
+settings. Reusing triangulation preserves its existing coordinate frame: changing
+calibration or alignment requires selecting triangulation again. Reused tracking
+does not regenerate annotated videos.
+
+Completed tracking and aligned 3D trajectories are saved before skeleton
+reconstruction. If a later stage fails, reopen processing to resume from the saved
+inputs. Missing or incomplete inputs produce an error instead of silently running
+tracking again. Saved 3D processing does not require the original videos or a
+calibration file.
+
 ## Before you begin
+
+Mocap capture volume alignment defaults to **Automatic**. When the selected
+calibration says it is already aligned, processing keeps that coordinate frame.
+Otherwise, processing estimates alignment from the tracked person and foot support.
+**Use calibration** always keeps the calibration frame; **Align to person** always
+estimates a new alignment, even when the calibration is already aligned. An enabled
+custom transform is applied last in all three modes. If person evidence is
+insufficient, the calibration frame is retained and the processing log reports it.
+
+These settings apply when triangulating recordings, including when reusing saved
+2D tracking. Restarting from saved 3D points preserves their existing frame.
 
 You will need:
 

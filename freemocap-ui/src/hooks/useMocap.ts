@@ -1,4 +1,5 @@
 import {useCallback} from 'react';
+import type {StageSelection} from '@/services/recording/posthoc-processing';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {store} from '@/store';
 import {calibrationAutoLoadDismissed, calibrationLoadedFromBundle, loadCalibrationToml, selectLoadedCalibration} from '@/store/slices/calibration';
@@ -239,8 +240,8 @@ export function useMocap() {
         dispatch(stopMocapRecording());
     }, [dispatch]);
 
-    const dispatchProcessMocapRecording = useCallback(() => {
-        dispatch(processMocapRecording());
+    const dispatchProcessMocapRecording = useCallback((selection?: StageSelection) => {
+        dispatch(processMocapRecording(selection));
     }, [dispatch]);
 
     const setCalibrationTomlPath = useCallback(

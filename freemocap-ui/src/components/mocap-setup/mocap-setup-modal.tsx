@@ -15,9 +15,12 @@ import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-
 import {useMocap} from "@/hooks/useMocap";
 import {useAppSelector} from "@/store/hooks";
 import {RTMPOSE_MODELS} from "@/store/slices/mocap";
+import MocapStageSelection from './mocap-stage-selection';
+import type {StageSelection} from '@/services/recording/posthoc-processing';
 
 enum SetupSection {
     Directory = 'Recording directory',
+    Stages = 'Processing stages',
     Detectors = 'Detectors',
     CameraGeometry = 'Camera geometry',
     Triangulation = 'Triangulation',
@@ -43,6 +46,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     } = useMocap();
 
     const config = useAppSelector(state => state.mocap.config);
+    const [stageSelection, setStageSelection] = useState<StageSelection | null>(null);
 
     useEffect(() => {
         if (mocapRecordingPath) validateDirectory(mocapRecordingPath);
@@ -81,6 +85,11 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             content: <ProcessingDirectorySettings open onClose={() => {}}/>,
         },
         {
+            name: SetupSection.Stages,
+            content: <MocapStageSelection path={mocapRecordingPath} fitEnabled={config.skeletonFitEnabled ?? false}
+                onChange={setStageSelection}/>,
+        },
+        {
             name: SetupSection.Detectors,
             summary: <>
                 {detectorSummary()}
@@ -106,6 +115,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             name: SetupSection.PostProcessing,
             summary: <SettingsSummaryChip>
                 {config.posthoc_filter.enabled ? `Butterworth · ${config.posthoc_filter.cutoff} Hz · order ${config.posthoc_filter.order}` : 'Filtering off'}
+                {config.skeletonFitEnabled ? ' · Skeleton fit on' : ''}
             </SettingsSummaryChip>,
             content: <PosthocFilterSettings/>,
         },
@@ -135,7 +145,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             <div className="mocap-settings-layout flex flex-row flex-1">
                 <nav aria-label="Mocap setup sections" className="mocap-settings-navigation flex flex-col">
                     <SubactionHeader text="Mocap setup" className="text-gray"/>
-                    {sections.map(section => <ButtonSm key={section.name} text={section.name}
+                    {sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <ButtonSm key={section.name} text={section.name}
                         buttonType={activeSection === section.name ? 'activated' : 'idle'}
                         className="full-width quaternary" textClass="mocap-section-link"
                         onClick={() => {
@@ -144,7 +154,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                         }}/>)}
                 </nav>
                 <div ref={scrollContainerRef} className="mocap-settings-content settings-layout flex-1 overflow-y-auto">
-                    {sections.map(section => <div key={section.name}
+                    {sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <div key={section.name}
                         ref={element => {
                             if (element) panels.current[section.name] = element;
                             else delete panels.current[section.name];
@@ -161,9 +171,9 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                     {mode === "playback" ? (
                         <ButtonSm text="Process Mocap" textColor="text-white" iconClass="processmocap-icon"
                             buttonType="" className="primary accent"
-                            onClick={() => {dispatchProcessMocapRecording(); onClose?.();}}
-                            disabled={!canProcessMocapRecording} tooltip tooltipPosition="pos-top"
-                            tooltipText={processBlockedReason ?? "Start mocap processing"}/>
+                            onClick={() => {if (stageSelection) {dispatchProcessMocapRecording(stageSelection); onClose?.();}}}
+                            disabled={!canProcessMocapRecording || !stageSelection} tooltip tooltipPosition="pos-top"
+                            tooltipText={processBlockedReason ?? (stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
                     ) : (
                         <ButtonSm text="Save" textColor="text-white" buttonType="" className="primary accent"
                             onClick={onClose} tooltip tooltipPosition="pos-top" tooltipText="Save mocap settings"/>

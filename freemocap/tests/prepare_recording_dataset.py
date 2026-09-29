@@ -191,7 +191,7 @@ def run_worker(request_path: Path) -> None:
             board_mode=CharucoBoardMode.EXPLICIT, charuco_board=board,
             video_fps=request["fps"], export_to_blender=False, auto_open_blend_file=False,
             filter_config=PosthocFilterConfig(enabled=request["filtering_enabled"]),
-            body_alignment=MocapAlignmentConfig(enabled=True),
+            body_alignment=MocapAlignmentConfig(),
         )
         mocap_task = manager.create_mocap_pipeline(recording_info=info, mocap_config=config)
         mocap_status = wait_for_success(manager, mocap_task, timeout=request["timeout"])

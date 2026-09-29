@@ -31,6 +31,7 @@ function Harness(): React.JSX.Element {
             media: bundle.media.filter(item => !item.video_filename.includes('_annotated'))});
     }, [bundle, controller.setPlaybackRun]);
     return <>
+        <div style={{position: 'relative', zIndex: 1, display: 'flex', flexWrap: 'wrap', gap: 8, padding: 16}}>
         <output id="error">{controller.error}</output>
         <output id="ready">{String(controller.allReady)}</output>
         <output id="bundle-ready">{String(bundle !== null)}</output>
@@ -42,11 +43,14 @@ function Harness(): React.JSX.Element {
         <button id="forward" onClick={() => controller.handleSeekCommit(30)}>Seek 30</button>
         <button id="source" onClick={() => setAnnotated(value => !value)}>Switch source</button>
         <button id="recording" onClick={() => setRecordingId(value => value === 'test' ? 'test-other' : 'test')}>Switch recording</button>
+        </div>
+        <div style={{position: 'relative', zIndex: 0}}>
         <PlaybackControls {...controller} onSettingsChange={controller.setSettings}
             onPlayPause={controller.handlePlayPause} onSeekDrag={controller.handleSeekDrag}
             onSeekCommit={controller.handleSeekCommit} onFrameStep={controller.handleFrameStep}
             onPlaybackRateChange={controller.handlePlaybackRateChange} onSeekToStart={controller.handleSeekToStart}
             onSeekToEnd={controller.handleSeekToEnd} onToggleLoop={controller.handleToggleLoop}/>
+        </div>
         {showVideos && videos.map(video => <div key={video.videoId} className="test-video-panel" style={{width: 320, height: 240, display: 'inline-block'}}>
             <ZoomableVideoTile videoId={video.videoId} streamUrl={video.streamUrl} filename={video.filename}
                 showOverlays={false} hasError={false} setVideoRef={controller.setVideoRef}

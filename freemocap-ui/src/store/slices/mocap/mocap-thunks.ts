@@ -6,6 +6,8 @@ import {serverUrls} from "@/constants/server-urls";
 import {fetchTaskSnapshot} from "@/store/slices/pipelines/pipelines-thunks";
 import {selectLoadedCalibration} from "@/store/slices/calibration";
 
+import type {StageSelection} from '@/services/recording/posthoc-processing';
+
 function buildPosthocConfig(state: RootState) {
     const { config } = state.mocap;
     const blender = state.blender;
@@ -17,12 +19,13 @@ function buildPosthocConfig(state: RootState) {
     const blenderSupported = config.detectorType === "mediapipe";
     return {
         bodyAlignment: {
-            enabled: config.bodyAlignmentEnabled,
+            mode: config.bodyAlignmentMode,
             additional_transform: config.referenceTransformEnabled && config.referenceTransform
                 ? {matrix: config.referenceTransform}
                 : null,
         },
         cameraMatching: config.cameraMatching,
+        skeletonFitEnabled: config.skeletonFitEnabled ?? false,
         charucoTrackingEnabled: config.charucoTrackingEnabled,
         boardMode: state.calibration.config.boardMode,
         charucoBoard: state.calibration.config.charucoBoard,
@@ -306,11 +309,11 @@ export const getSyncResult = createAsyncThunk<
 
 export const processMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; results?: unknown; pipeline_id?: string },
-    void,
+    StageSelection | void,
     { state: RootState; rejectValue: string }
 >(
     'mocap/processMocapRecording',
-    async (_, { getState, rejectWithValue, dispatch }) => {
+    async (selection, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
             const mocapRecordingDirectory = selectMocapRecordingPath(state);
@@ -323,7 +326,7 @@ export const processMocapRecording = createAsyncThunk<
 
             console.log('🔧 Processing recording:', {
                 mocapRecordingDirectory,
-                mocapTaskConfig: configWithCalibration,
+                mocapTaskConfig: {...configWithCalibration, ...selection},
             });
 
             const response = await fetch(serverUrls.endpoints.processMocapRecording, {
@@ -331,7 +334,7 @@ export const processMocapRecording = createAsyncThunk<
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     mocapRecordingDirectory,
-                    mocapTaskConfig: configWithCalibration,
+                    mocapTaskConfig: {...configWithCalibration, ...selection},
                 }),
             });
 

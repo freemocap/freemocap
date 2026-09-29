@@ -1,4 +1,4 @@
-"""Complete sampled trajectories without manufacturing never-observed tracks."""
+"""Interpolate interior gaps, leaving unsupported trajectory ends missing."""
 import numpy as np
 from typing import Literal
 from numpy.typing import NDArray
@@ -11,13 +11,14 @@ TIME_COMPARISON_TOLERANCE_SECONDS = 1e-12
 
 class GapFillingReport(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    algorithm_version: Literal[2] = 2
+    # Accept saved reports from before endpoint extrapolation was removed.
+    algorithm_version: Literal[2, 3] = 3
     trajectory_support_seconds: float = TRAJECTORY_SUPPORT_SECONDS
     # (keypoint index, start frame index, exclusive stop); indices use the saved grid.
     filled_spans: tuple[tuple[int, int, int], ...] = ()
     discarded_spans: tuple[tuple[int, int, int], ...] = ()
     unsupported_keypoint_indices: tuple[int, ...] = ()
-    method: Literal["timestamp_linear_interior_nearest_endpoint"] = "timestamp_linear_interior_nearest_endpoint"
+    method: Literal["timestamp_linear_interior_nearest_endpoint", "timestamp_linear_interior"] = "timestamp_linear_interior"
 
     def measured_support(self, points: NDArray[np.float64]) -> NDArray[np.bool_]:
         support = np.isfinite(points).all(axis=-1)
@@ -73,6 +74,7 @@ def fill_trajectory_gaps(
         missing = ~available
         for axis in range(3):
             output[missing, point, axis] = np.interp(
-                timestamps_s[missing], timestamps_s[available], points[available, point, axis])
-        spans.extend(_spans(point, missing))
+                timestamps_s[missing], timestamps_s[available], points[available, point, axis],
+                left=np.nan, right=np.nan)
+        spans.extend(_spans(point, missing & np.isfinite(output[:, point]).all(axis=-1)))
     return output, GapFillingReport(filled_spans=tuple(spans), discarded_spans=tuple(discarded), unsupported_keypoint_indices=tuple(unsupported))

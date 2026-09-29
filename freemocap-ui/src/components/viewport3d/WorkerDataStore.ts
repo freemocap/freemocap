@@ -16,6 +16,7 @@ import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3
 import type { KeypointsFrame, KeypointsSource, ModelFramesCallback, ModelsCallback } from "./KeypointsSourceContext";
 import {PresentationBuffer} from './presentation-buffer';
 import {snapshotEqual} from '@/services/server/transport/snapshot-equality';
+import type {FittedSkeletonDefinition, FittedSkeletonFrame} from '@/services/recording/fitted-skeleton-types';
 
 // ---------------------------------------------------------------------------
 // Shared channel primitive
@@ -59,6 +60,8 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
 };
 
 const keypointsChan = makeChannel<KeypointsFrame | null>(null);
+const fittedDefinitionsChan = makeChannel<FittedSkeletonDefinition[]>([], {replayOnSubscribe: true});
+const fittedFramesChan = makeChannel<FittedSkeletonFrame[]>([], {replayOnSubscribe: true});
 // Every tracked thing this frame: its model definition, segment origins, landmarks,
 // rotations, fitted lengths and derived points. These travel as ONE channel because they
 // describe ONE model — split apart, a renderer could pair a person's rotations with a
@@ -103,6 +106,8 @@ export const workerDataStore: KeypointsSource & {
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
 } = {
+    subscribeToFittedDefinitions: fittedDefinitionsChan.subscribe,
+    subscribeToFittedFrames: fittedFramesChan.subscribe,
     get isLive(): boolean { return livePresentation; },
     // KeypointsSource interface — channels hold KeypointsFrame|null but callbacks expect non-null.
     subscribeToKeypoints: (cb) => {
@@ -151,6 +156,8 @@ export const workerDataStore: KeypointsSource & {
                 pointPresentation.clear();
                 break;
             case "presentationReset":
+                fittedDefinitionsChan.dispatch([]);
+                fittedFramesChan.dispatch([]);
                 modelPresentation.clear();
                 pointPresentation.clear();
                 modelsChan.dispatch([]);
@@ -179,6 +186,12 @@ export const workerDataStore: KeypointsSource & {
                 referenceTransformChan.dispatch(scene.referenceTransform);
                 break;
             }
+            case "fittedDefinitions":
+                fittedDefinitionsChan.dispatch(data as FittedSkeletonDefinition[]);
+                break;
+            case "fittedFrames":
+                fittedFramesChan.dispatch(data as FittedSkeletonFrame[]);
+                break;
             case "calibration":
                 calibChan.dispatch(data as LoadedCalibration | null);
                 break;

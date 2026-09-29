@@ -73,9 +73,56 @@ checks leave the prior Parquet byte-identical. The UI TypeScript check passes.
 Pipeline/store/progress regression tests pass, with existing dependency
 deprecation and a managed-thread test warning still reported.
 
-Next: add the processing UI toggle and the fitted playback layer. Preserve the
-existing segment layer; add independent fitted-stick and fitted-axis controls,
-hover identities and synchronized playback. Derive rendering from saved solver
-geometry. The existing Forge viewers remain the visual reference. Test both real
-recordings in the app before declaring integration complete. CSV/NumPy/glTF/BVH
-export remains subsequent work.
+## Processing controls and playback: 2026-09-28
+
+The motion capture setup's **Post Processing** section now has **Fit skeleton**,
+off by default. Its value travels in the existing post-hoc request as
+`skeletonFitEnabled`; the section summary indicates when enabled. The filter help
+also reflects the current order: gap filling, filtering, then person alignment.
+
+Playback's **Viewport settings** has independent **Fitted skeleton** and
+**Fitted axes** toggles. Blue sticks and white origins identify the saved fit;
+RGB axes use its saved world quaternions. Original keypoints, landmarks, segments
+and their controls remain available. Hover labels identify fitted segments and
+their endpoint landmarks. The existing pin inspector's original-reconstruction
+numerical details are not extended to fitted state in this step.
+
+`playback_manifest` passes the solver source definition through unchanged.
+`services/recording/fitted-skeleton.ts` selects channels with the same recording
+clock as the existing playback and checks matching frames, reference coordinates,
+units and finite state. `FittedSkeletonInstances` renders the saved Forge display
+geometry using saved translations and wxyz quaternions; local Z scales by the
+saved axial length/reference length. It does not fit, estimate scale, interpolate,
+or add linkage displacements a second time. Static geometry is sent to the
+viewport worker when the selected result changes, not on every frame. Switching
+results clears the fitted layer; old recordings continue working without a fit.
+
+Validation includes both real recording solve/checkpoint round trips, exact
+manifest metadata preservation, TypeScript geometry/visibility tests, and the
+existing Parquet browser regression suite. The real-recording browser test
+`e2e/fitted-playback.spec.ts` exercises the actual app provider, Parquet worker,
+viewport worker and renderer, including backward seeking and independent toggles.
+It passed against 222-frame test and 1108-frame sample fitted Parquets. It reads
+the file set by `FREEMOCAP_FITTED_PLAYBACK_PATH` and skips explicitly if unset.
+Use `PLAYWRIGHT_CHANNEL=msedge` to use installed Edge on Windows. Test-generated
+fits used temporary copies; canonical prepared recordings were not changed.
+The Electron video checks also pass for both direct playback and compatibility
+conversion. Their existing fixture is generated with
+`.venv/Scripts/python.exe freemocap-ui/e2e/fixtures/create_decoder_fixture.py`;
+the test page now separates its command buttons from playback tooltips so normal
+clicks reach them. No production video-control behavior was changed.
+
+### Human visual check
+
+Restart the development backend and UI to pick up both halves. For a recording
+without fitted channels, enable **Fit skeleton** in its post-hoc setup and process
+it. For the 6 FPS test recording, leave Butterworth filtering disabled. Open
+**Playback**, expand **Viewport settings**, and compare **Fitted skeleton** against
+**Rigid Body Bones**; enable **Fitted axes** independently. Scrub with the videos
+and inspect the shoulder/spine behavior. **Reload result** rereads a newly saved
+checkpoint. A recording without a fit says so rather than drawing a substitute.
+
+The app-renderer tests cover data playback; human visual acceptance with the
+recording's annotated videos remains the next checkpoint. The existing Forge
+viewers remain the visual reference. CSV/NumPy/glTF/BVH export remains subsequent
+work, with scapula/shoulder-roll and foot-locking improvements still deferred.

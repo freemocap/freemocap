@@ -361,7 +361,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                     {/* Process Recording Button */}
                     <button
                         className="button sm secondary w-full"
-                        onClick={dispatchProcessMocapRecording}
+                        onClick={() => dispatchProcessMocapRecording()}
                         disabled={!canProcessMocapRecording}
                         title={processBlockedReason ?? undefined}
                     >

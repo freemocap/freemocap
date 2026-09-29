@@ -7,7 +7,7 @@ test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 test('Mocap requests keep person alignment and custom transforms independent of board alignment', async ({page}) => {
     page.on('pageerror', error => {throw error;});
     const requests: {mocapTaskConfig: {
-        bodyAlignment: {enabled: boolean; additional_transform: {matrix: number[]} | null};
+        bodyAlignment: {mode: 'auto' | 'calibration' | 'person'; additional_transform: {matrix: number[]} | null};
         filterConfig: {enabled: boolean; method: string; cutoff: number; order: number};
     }}[] = [];
     await page.route('http://localhost:53117/**', async route => {
@@ -19,19 +19,20 @@ test('Mocap requests keep person alignment and custom transforms independent of 
     const bundle = await build({
         stdin: {contents: `
             import {store} from './src/store/store';
-            import {bodyAlignmentEnabledUpdated, referenceTransformUpdated, referenceTransformEnabledUpdated, posthocFilterConfigUpdated} from './src/store/slices/mocap/mocap-slice';
+            import {bodyAlignmentModeUpdated, referenceTransformUpdated, referenceTransformEnabledUpdated, posthocFilterConfigUpdated} from './src/store/slices/mocap/mocap-slice';
             import {calibrationConfigUpdated} from './src/store/slices/calibration';
             import {CalibrationAlignmentMethodSchema} from './src/store/slices/calibration/calibration-types';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {startMocapRecording, stopMocapRecording, processMocapRecording} from './src/store/slices/mocap/mocap-thunks';
             async function run(): Promise<void> {
                 store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
+                if (store.getState().mocap.config.bodyAlignmentMode !== 'auto') throw new Error('Alignment must default to auto');
                 store.dispatch(referenceTransformUpdated([0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]));
                 for (const alignmentMethod of [CalibrationAlignmentMethodSchema.enum.charuco, null]) {
-                    for (const personEnabled of [true, false]) {
+                    for (const alignmentMode of ['auto', 'calibration', 'person']) {
                         for (const transformEnabled of [true, false]) {
                             store.dispatch(calibrationConfigUpdated({alignmentMethod}));
-                            store.dispatch(bodyAlignmentEnabledUpdated(personEnabled));
+                            store.dispatch(bodyAlignmentModeUpdated(alignmentMode));
                             store.dispatch(referenceTransformEnabledUpdated(transformEnabled));
                             store.dispatch(posthocFilterConfigUpdated({enabled: true, cutoff: 4.5, order: 3}));
                             await store.dispatch(startMocapRecording()).unwrap();
@@ -53,12 +54,12 @@ test('Mocap requests keep person alignment and custom transforms independent of 
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.locator('#result')).toHaveText('done');
-    expect(requests).toHaveLength(24);
+    expect(requests).toHaveLength(36);
     for (const [index, request] of requests.entries()) {
-        const combination = Math.floor(index / 3) % 4;
+        const combination = Math.floor(index / 3) % 6;
         expect(request.mocapTaskConfig.filterConfig).toEqual({enabled: true, method: 'butter_low_pass', cutoff: 4.5, order: 3});
         expect(request.mocapTaskConfig.bodyAlignment).toEqual({
-            enabled: combination < 2,
+            mode: ['auto', 'calibration', 'person'][Math.floor(combination / 2)],
             additional_transform: combination % 2 === 0
                 ? {matrix: [0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]}
                 : null,

@@ -116,7 +116,8 @@ export interface MocapConfig {
     mediapipeNumHands: number;
     mediapipeNumFaces: number;
 
-    bodyAlignmentEnabled: boolean;
+    bodyAlignmentMode: 'auto' | 'calibration' | 'person';
+    skeletonFitEnabled: boolean;
     /** Row-major rigid offset applied after posthoc alignment, with translation in mm. */
     referenceTransform: number[] | null;
     referenceTransformEnabled: boolean;
@@ -263,7 +264,8 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     mediapipeTrackingConfidence: 0.5,
     mediapipeNumHands: 2,
     mediapipeNumFaces: 1,
-    bodyAlignmentEnabled: false,
+    bodyAlignmentMode: 'auto',
+    skeletonFitEnabled: false,
     referenceTransform: null,
     referenceTransformEnabled: false,
 };
@@ -314,8 +316,11 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
-        bodyAlignmentEnabledUpdated: (state, action: PayloadAction<boolean>) => {
-            state.config.bodyAlignmentEnabled = action.payload;
+        bodyAlignmentModeUpdated: (state, action: PayloadAction<'auto' | 'calibration' | 'person'>) => {
+            state.config.bodyAlignmentMode = action.payload;
+        },
+        skeletonFitEnabledUpdated: (state, action: PayloadAction<boolean>) => {
+            state.config.skeletonFitEnabled = action.payload;
         },
         /** Row-major 4x4, or null when no additional transformation is defined. */
         referenceTransformUpdated: (state, action: PayloadAction<number[] | null>) => {
@@ -530,7 +535,8 @@ export const selectCanProcessMocapRecording = createSelector(
 // ==================== Actions Export ====================
 
 export const {
-    bodyAlignmentEnabledUpdated,
+    bodyAlignmentModeUpdated,
+    skeletonFitEnabledUpdated,
     referenceTransformUpdated,
     referenceTransformEnabledUpdated,
     cameraMatchingUpdated,

@@ -14,6 +14,8 @@ export interface PointStyle {
 
 /** Viewport layer visibility toggles. */
 export interface ViewportVisibility {
+    fittedSkeleton: boolean;
+    fittedAxes: boolean;
     environment: boolean;
     keypoints: boolean;
     skeleton: boolean;
@@ -32,6 +34,8 @@ export interface ViewportVisibility {
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
+    fittedSkeleton: true,
+    fittedAxes: false,
     environment: true,
     keypoints: true,
     skeleton: true,

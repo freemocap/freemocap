@@ -12,6 +12,7 @@ export interface BlenderState {
     autoOpenBlendFileBeforeExportDisabled: boolean | null;
     isExporting: boolean;
     isDetecting: boolean;
+    hasAttemptedDetection: boolean;
     isOpening: boolean;
     lastBlendFilePath: string | null;
     error: string | null;
@@ -33,6 +34,7 @@ const initialState: BlenderState = {
     autoOpenBlendFileBeforeExportDisabled: null,
     isExporting: false,
     isDetecting: false,
+    hasAttemptedDetection: false,
     isOpening: false,
     lastBlendFilePath: null,
     error: null,
@@ -69,6 +71,7 @@ export const blenderSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(detectBlender.pending, (state) => {
+                state.hasAttemptedDetection = true;
                 state.isDetecting = true;
                 state.error = null;
             })

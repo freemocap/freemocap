@@ -2,7 +2,7 @@ import {useMemo, useState} from 'react';
 import {Matrix4} from 'three';
 import {useAppDispatch, useAppSelector} from '@/store';
 import {
-    bodyAlignmentEnabledUpdated,
+    bodyAlignmentModeUpdated,
     referenceTransformEnabledUpdated,
     referenceTransformUpdated,
     selectReferenceTransform,
@@ -11,6 +11,7 @@ import {
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
+import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
 import SettingsGroupHeading from '@/components/common/settings-layout/settings-group-heading';
 import SettingsSummaryChip from '@/components/common/settings-layout/settings-summary-chip';
 import TransformEditor from './transform-editor';
@@ -37,7 +38,7 @@ export default function ReferenceFrameSettings() {
        that layout. */
     const storedTransform = useAppSelector(selectReferenceTransform);
     const transformEnabled = useAppSelector(selectReferenceTransformEnabled);
-    const personAlignmentEnabled = useAppSelector(state => state.mocap.config.bodyAlignmentEnabled);
+    const alignmentMode = useAppSelector(state => state.mocap.config.bodyAlignmentMode);
     const transformation = useMemo(
         () => storedTransform ? transformFromFields(storedTransform, TransformRepresentation.Matrix) : null,
         [storedTransform],
@@ -52,28 +53,27 @@ export default function ReferenceFrameSettings() {
                 posthoc Mocap processing. The calibration file changes only when you
                 explicitly save the processed transforms.</p>,
         }}/>
-        <SettingRow label="Align to person" info={{
-            title: 'Align to person',
+        <SettingRow label="Alignment" info={{
+            title: 'Processing alignment',
             text: <>
-                <p>Use the tracked person to establish the capture volume's position
-                    and orientation, regardless of the loaded calibration's previous
-                    alignment. Any enabled custom transform is applied afterward.</p>
-                <p><strong>Keeping multiple trials consistent:</strong> Align one
-                    representative trial and save its alignment to the calibration
-                    file. Use that calibration with Align to person turned off for
-                    subsequent trials. Keep the cameras fixed and use the same custom
-                    transform settings so floor markings and stationary objects retain
-                    consistent 3D coordinates.</p>
+                <p>Automatic keeps the calibration's alignment when its saved metadata says
+                    it is aligned. Otherwise it estimates alignment from the person.</p>
+                <p>Use calibration always keeps its coordinate frame. Align to person always
+                    estimates a new alignment, even for an already aligned calibration.</p>
+                <p>To keep trials consistent, save a representative trial's alignment to the
+                    calibration and use Automatic for subsequent trials with fixed cameras.
+                    Any enabled custom transform is applied last.</p>
             </>,
-        }} control={<SettingToggleSwitch label="Align to person"
-            isToggled={personAlignmentEnabled}
-            onToggle={enabled => dispatch(bodyAlignmentEnabledUpdated(enabled))}/>}/>
+        }} control={<SettingSelectInput label="Alignment" value={alignmentMode}
+            options={[{value: 'auto', label: 'Automatic'}, {value: 'calibration', label: 'Use calibration'},
+                {value: 'person', label: 'Align to person'}]}
+            onChange={value => dispatch(bodyAlignmentModeUpdated(value))}/>}/>
         <SettingRow label="Apply custom transform" info={TRANSFORM_INFO}
             control={<SettingToggleSwitch label="Apply custom transform" isToggled={transformEnabled}
                 onToggle={setTransformEnabled}/>}/>
-        {personAlignmentEnabled && transformEnabled && transformation &&
+        {alignmentMode !== 'calibration' && transformEnabled && transformation &&
             <SettingsSummaryChip>
-                The custom transform is applied after person alignment.
+                The custom transform is applied after any person alignment and can tilt or move the aligned floor away from the ground grid.
             </SettingsSummaryChip>}
 
         {/* The definition and its editor are shown unconditionally. The switch

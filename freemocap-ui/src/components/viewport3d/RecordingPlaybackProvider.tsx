@@ -6,6 +6,8 @@ import type {ResolvedModelFrame} from '@/services/server/transport/frame-types';
 import {channelFrame, recordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackChannelData, type PlaybackRun} from '@/services/recording/playback-data';
 
 import {PlaybackLoadResultSchema} from '@/services/recording/playback-parquet-messages';
+import {fittedSkeletonFrames} from '@/services/recording/fitted-skeleton';
+import type {FittedSkeletonDefinition, FittedSkeletonFrame} from '@/services/recording/fitted-skeleton-types';
 
 interface PlaybackState {models: ModelDefinition[]; frames: ResolvedModelFrame[]; points: KeypointsFrame | null}
 
@@ -25,6 +27,10 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const modelSubscribers = useRef(new Set<ModelsCallback>());
     const frameSubscribers = useRef(new Set<ModelFramesCallback>());
     const pointSubscribers = useRef(new Set<KeypointsCallback>());
+    const fittedDefinitions = useRef<FittedSkeletonDefinition[]>([]);
+    const fittedFrames = useRef<FittedSkeletonFrame[]>([]);
+    const fittedDefinitionSubscribers = useRef(new Set<(items: FittedSkeletonDefinition[]) => void>());
+    const fittedFrameSubscribers = useRef(new Set<(items: FittedSkeletonFrame[]) => void>());
     const run = manifest?.runs.find(item => item.run_id === runId);
     const clock = run?.timelines.find(item => item.sensor_group === group && item.source === `timing:${group}`);
     const groups = [...new Set(run?.channels.map(channel => channel.sensor_group) ?? [])];
@@ -36,6 +42,9 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     useEffect(() => {
         setError(null);
         state.current = {models: [], frames: [], points: null};
+        fittedDefinitions.current = []; fittedFrames.current = [];
+        fittedDefinitionSubscribers.current.forEach(cb => cb([]));
+        fittedFrameSubscribers.current.forEach(cb => cb([]));
         modelSubscribers.current.forEach(callback => callback([]));
         frameSubscribers.current.forEach(callback => callback([]));
         pointSubscribers.current.forEach(callback => callback({pointNames: [], interleaved: new Float32Array()}));
@@ -80,6 +89,11 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     useEffect(() => {
         if (!run || !manifest || !group) return;
         state.current = {models: run.models, frames: [], points: null};
+        fittedDefinitions.current = Object.entries(run.fitted_skeletons ?? {})
+            .filter(([, definition]) => definition.sensor_group === group).map(([source, definition]) => ({source, definition}));
+        fittedFrames.current = [];
+        fittedDefinitionSubscribers.current.forEach(cb => cb(fittedDefinitions.current));
+        fittedFrameSubscribers.current.forEach(cb => cb([]));
         modelSubscribers.current.forEach(callback => callback(run.models));
         frameSubscribers.current.forEach(callback => callback([]));
         pointSubscribers.current.forEach(callback => callback({pointNames: [], interleaved: new Float32Array()}));
@@ -89,28 +103,38 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         if (!channels) {setError('Selected recording samples are missing'); return;}
         let raf = 0;
         let emittedTime = NaN;
+        const warnedLayers = new Set<string>();
+        const sample = <T,>(layer: string, time: number, read: () => T, empty: T): T => {
+            try {return read();} catch (failure) {
+                if (!warnedLayers.has(layer)) {
+                    warnedLayers.add(layer);
+                    console.warn('Skipping invalid recording sample; playback will continue', {layer, time, failure});
+                }
+                return empty;
+            }
+        };
         const raw = channels.find(item => item.channel.sensor_group === group && item.channel.kind === RecordingChannelKind.RawPoints);
         const tick = (): void => {
             const time = mediaAvailable ? getRecordingTime() : dataTimeRef.current;
             if (time === null) {
                 if (!Number.isNaN(emittedTime)) {
                     state.current.frames = []; state.current.points = null;
+                    fittedFrames.current = [];
+                    fittedFrameSubscribers.current.forEach(cb => cb([]));
                     emittedTime = NaN;
                     frameSubscribers.current.forEach(callback => callback([]));
                     pointSubscribers.current.forEach(callback => callback({pointNames: [], interleaved: new Float32Array()}));
                 }
             } else if (time !== emittedTime) {
-                try {
-                    state.current.frames = run.models.map(model => recordedModelFrame(run, {channels}, model, group, time));
-                    const data = raw ? channelFrame(raw, time) : null;
+                    state.current.frames = run.models.flatMap(model => sample(`model:${model.model_id}`, time,
+                        () => [recordedModelFrame(run, {channels}, model, group, time)], []));
+                    fittedFrames.current = sample('fitted', time, () => fittedSkeletonFrames(run, channels, group, time), []);
+                    fittedFrameSubscribers.current.forEach(cb => cb(fittedFrames.current));
+                    const data = raw ? sample('raw points', time, () => channelFrame(raw, time), null) : null;
                     state.current.points = raw && data ? {pointNames: raw.channel.names, interleaved: data} : null;
                     frameSubscribers.current.forEach(callback => callback(state.current.frames));
                     pointSubscribers.current.forEach(callback => callback(state.current.points ?? {pointNames: [], interleaved: new Float32Array()}));
                     emittedTime = time;
-                } catch (failure) {
-                    setError(failure instanceof Error ? failure.message : String(failure));
-                    return;
-                }
             }
             raf = requestAnimationFrame(tick);
         };
@@ -142,6 +166,8 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     }, [dataPlaying, mediaAvailable, clock]);
 
     const source = useMemo<KeypointsSource>(() => ({
+        subscribeToFittedDefinitions: cb => {fittedDefinitionSubscribers.current.add(cb); cb(fittedDefinitions.current); return () => {fittedDefinitionSubscribers.current.delete(cb);};},
+        subscribeToFittedFrames: cb => {fittedFrameSubscribers.current.add(cb); cb(fittedFrames.current); return () => {fittedFrameSubscribers.current.delete(cb);};},
         isLive: false,
         getModels: () => state.current.models,
         getLatestModelFrames: () => state.current.frames,
@@ -173,6 +199,9 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         </div>}
         {manifest && loaded?.manifest !== manifest && !error && <p role="status" className="p-2">Loading recording data…</p>}
         {error && <p role="alert" className="text-error p-2">{error}</p>}
+        {run && <small className="p-1">{Object.values(run.fitted_skeletons ?? {}).some(d => d.sensor_group === group)
+            ? 'Saved fitted skeleton available • sticks and axes in Viewport settings'
+            : 'This result has no fitted skeleton.'}</small>}
         {!manifest && !error && <p className="p-2">No reconstruction loaded.</p>}
         <div className="flex-1 min-h-0">{children}</div>
     </div></KeypointsSourceProvider>;

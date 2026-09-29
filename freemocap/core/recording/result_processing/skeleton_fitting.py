@@ -11,6 +11,7 @@ import hashlib
 import importlib.metadata
 import json
 import logging
+from time import perf_counter
 from pathlib import Path
 
 import numpy as np
@@ -118,7 +119,10 @@ def read_fit_inputs(*, path: Path, metadata: RecordingMetadata, run_id: int,
                 if record['time'] != row['timestamp_s']:
                     raise ValueError('Fitting input channels disagree on timestamps')
                 components = tuple(channel.components)
-                vector = record[field].setdefault(row['name'], np.full(len(components), np.nan))
+                vector = record[field].get(row['name'])
+                if vector is None:
+                    vector = np.full(len(components), np.nan)
+                    record[field][row['name']] = vector
                 vector[components.index(row['component'])] = np.nan if row['value'] is None else row['value']
     validator.finish()
     records = [frames[k] for k in sorted(frames)]
@@ -162,7 +166,8 @@ def fitted_channels(*, fit, sensor_group: str, source: str, reference_frame: str
 
 def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_group: str,
                        model_id: str = 'standard_human', keep: bool = False,
-                       progress: Callable | None = None, cancelled: Callable[[], bool] | None = None) -> RecordingMetadata:
+                       progress: Callable | None = None, cancelled: Callable[[], bool] | None = None,
+                       force: bool = False) -> RecordingMetadata:
     """Explicit optional stage; never invoked by reading or rendering a recording.
 
     Cancellation is checked before solving, between windows and before publishing.
@@ -181,8 +186,11 @@ def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_gro
         check_cancelled()
         metadata = read_metadata(path=structure.data_parquet_path)
         logger.info('Loading prepared skeleton-fit inputs: run=%d, sensor_group=%s', run_id, sensor_group)
+        started = perf_counter()
         inputs = read_fit_inputs(path=structure.data_parquet_path, metadata=metadata,
             run_id=run_id, sensor_group=sensor_group, model_id=model_id)
+        loaded = perf_counter()
+        logger.info('Skeleton-fit inputs loaded: frames=%d, seconds=%.3f', len(inputs.records), loaded - started)
         base = metadata.runs[run_id]
         source = f'skeleton_fit:{sensor_group}:{model_id}'
         completed = next((c for c in base.checkpoints if c.sensor_group == sensor_group and c.stage == STAGE), None)
@@ -190,7 +198,7 @@ def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_gro
         saved_kinds = {c.kind for c in base.channels if c.source == source and c.sensor_group == sensor_group and c.stage == STAGE}
         complete_channels = saved_kinds == {ChannelKind.SEGMENT_ORIGINS, ChannelKind.ROTATIONS_WORLD,
             ChannelKind.LINKAGE_DISPLACEMENTS, ChannelKind.SEGMENT_LENGTHS}
-        if (completed is not None and completed.signature == inputs.signature and not keep
+        if (completed is not None and completed.signature == inputs.signature and not keep and not force
                 and saved_source is not None and saved_source.definition.get('input_signature') == inputs.signature
                 and complete_channels):
             logger.info('Reusing skeleton fit: run=%d, sensor_group=%s', run_id, sensor_group)
@@ -198,6 +206,8 @@ def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_gro
         logger.info('Fitting saved skeleton: run=%d, sensor_group=%s, frames=%d', run_id, sensor_group, len(inputs.records))
         fitted = fit_human(inputs.model.skeleton.restore(), inputs.model.model_dump(mode='json'),
             inputs.scale_fit.fit.segment_scales, inputs.records, progress=on_progress)
+        solved = perf_counter()
+        logger.info('Skeleton solve complete: frames=%d, seconds=%.3f', len(inputs.records), solved - loaded)
         check_cancelled()
         series = fitted_channels(fit=fitted, sensor_group=sensor_group, source=source, reference_frame=inputs.reference_frame)
         plan = StageExecutionPlan(run_id, max(metadata.runs) + 1 if keep else run_id,
@@ -219,7 +229,9 @@ def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_gro
         check_cancelled()
         logger.info('Publishing skeleton-fit checkpoint: run=%d, frames=%d, converged=%s',
             plan.target_run_id, len(inputs.records), fitted.sequence.converged)
+        publishing = perf_counter()
         published = publish_checkpoint(structure=structure, metadata=metadata, plan=plan, result=result,
             computed_batches=(batch for item in series for batch in item.batches(sampling)))
-        logger.info('Skeleton-fit checkpoint published: %s', structure.data_parquet_path)
+        logger.info('Skeleton-fit checkpoint published: %s; publication_seconds=%.3f, total_seconds=%.3f',
+            structure.data_parquet_path, perf_counter() - publishing, perf_counter() - started)
         return published

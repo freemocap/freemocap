@@ -1,6 +1,8 @@
 """Triangulate recording observations and reconstruct the selected tracked models."""
 from __future__ import annotations
-from collections.abc import Callable
+from collections.abc import Callable  # noqa: TC003 - runtime type checking
+from concurrent.futures import CancelledError
+from dataclasses import replace
 
 from freemocap.core.recording.result_processing.observation_inputs import (
     DetectorRecordingDefinition,
@@ -15,9 +17,9 @@ from freemocap.core.tasks.calibration.shared.calibration_result import Calibrati
 from freemocap.core.tasks.calibration.shared.calibration_update import (
     CalibrationFileChangedError, CalibrationUpdateRequest,
 )
-from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel  # noqa: TC001 - runtime type checking
 from freemocap.core.tasks.calibration.camera_matching.posthoc_matching import PosthocMatchingRequest
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition  # noqa: TC002 - runtime type checking
 from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import logging
@@ -80,6 +82,7 @@ def run_posthoc_mocap_task(
         selected_board: CharucoBoardDefinition | None,
         reporter: TaskProgressReporter | None = None,
         cancelled: Callable[[], bool] | None = None,
+        saved_timing: RecordingGroupTiming | None = None,
 ) -> None:
     """
     Reconstruct the selected models from collected recording observations.
@@ -93,6 +96,36 @@ def run_posthoc_mocap_task(
     """
     _reporter = reporter or TaskProgressReporter.noop()
     camera_ids = list(video_metadata.keys())
+
+    def check_cancelled():
+        if cancelled is not None and cancelled():
+            raise CancelledError('Mocap processing cancelled; completed stages remain on disk')
+
+    check_cancelled()
+    bundles = (build_standard_human_bundle(detector_type=task_config.detector_type),)
+    if selected_board is not None:
+        bundles += (build_charuco_board_bundle(board=selected_board),)
+    group_name = (task_config.sensor_group if saved_timing is not None else None) or camera_group_name(camera_ids)
+    keypoint_source = f"keypoint_model:{_keypoint_model_name(task_config)}"
+    detector_source = (f"object_detector:{YoloxPersonDetectorConfig().model_name}"
+        if task_config.detector_type == 'rtmpose' else None)
+    observation_checkpoint = ObservationRecordingRequest(
+        reprojection=None, filtering=None, reconstructions=(), spatial_series=(), camera_geometry=(),
+        models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles), recording=recording_info,
+        group=ObservationGroup(name=group_name, frames=frame_observations, videos=video_metadata),
+        tracker=TrackerRecordingDefinition(name=keypoint_source, configuration=task_config.model_dump(mode='json'),
+            point_names=tuple(dict.fromkeys(name for frame in frame_observations for obs in frame.values()
+                for name in obs.to_keypoints().names))),
+        detector=DetectorRecordingDefinition(name=detector_source, configuration=task_config.model_dump(mode='json'),
+            box_names=tuple(dict.fromkeys(stage.name for frame in frame_observations for obs in frame.values()
+                for stage in obs.stages.values()))) if detector_source else None,
+        base_run_id=task_config.base_run_id, reuse_observations=saved_timing is not None,
+        resolved_timing=saved_timing,
+    )
+    if saved_timing is None:
+        _reporter.report(stage=MocapStage.BUILDING_RECORDERS, detail='Saving completed 2D tracking')
+        publish_posthoc_observations(observation_checkpoint)
+    check_cancelled()
 
     # ---- Build observation buffers ----
     _reporter.report(stage=MocapStage.BUILDING_RECORDERS, detail="Building observation buffers")
@@ -167,8 +200,7 @@ def run_posthoc_mocap_task(
         timing=timing,
     )
 
-    bundles = (build_standard_human_bundle(detector_type=task_config.detector_type),)
-    group_timing = RecordingGroupTiming.resolve(
+    group_timing = saved_timing or RecordingGroupTiming.resolve(
         recording_folder=recording_folder, videos=video_metadata,
         frame_numbers=tuple(frame[camera_ids[0]].frame_number for frame in frame_observations),
     )
@@ -178,14 +210,20 @@ def run_posthoc_mocap_task(
         timestamps_s=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
         config=task_config.filter_config,
     )
-    _reporter.report(stage=MocapStage.FILTERING, detail="Aligning filtered trajectories to person and foot support")
+    preserve_reference_frame = task_config.body_alignment.preserve_reference_frame(
+        calibration_aligned=calibration.aligned if calibration is not None else False,
+    )
+    _reporter.report(stage=MocapStage.FILTERING, detail=(
+        "Preserving calibration coordinate frame" if preserve_reference_frame
+        else "Estimating alignment from person and foot support"
+    ))
     aligned = align_mocap_recording(request=MocapAlignmentRequest(
         filtered_points=filtered.points,
         measured_support=filtered.report.gap_filling.measured_support(filtered.points),
         triangulation=triangulation, camera_geometry=camera_geometry, bundle=bundles[0],
         definition=AlignmentDefinition.from_default_human(skeleton=bundles[0].skeleton),
         timestamps_seconds=np.asarray(group_timing.synchronized.timestamps_s, dtype=np.float64),
-        preserve_reference_frame=False,
+        preserve_reference_frame=preserve_reference_frame,
         config=task_config.body_alignment,
     ))
     triangulation = aligned.triangulation
@@ -197,8 +235,23 @@ def run_posthoc_mocap_task(
             "alignment": ReferenceAlignmentDescriptor.from_result(result=aligned.alignment),
             "additional_transform": task_config.body_alignment.additional_transform,
         })
-    if selected_board is not None:
-        bundles += (build_charuco_board_bundle(board=selected_board),)
+    # Publish the aligned 3D streams before the more expensive reconstruction.
+    check_cancelled()
+    spatial_checkpoint = replace(observation_checkpoint,
+        reuse_observations=True, resolved_timing=group_timing,
+        camera_geometry=tuple(camera_geometry[source] for source in camera_ids) if camera_geometry else (),
+        filtering=filtered.report,
+        reprojection=NamedReprojectionDiagnostics(source_ids=triangulation.sources,
+            point_names=triangulation.diagnostic_point_names, values=triangulation.reconstruction.diagnostics)
+            if triangulation.reconstruction.diagnostics is not None else None,
+        spatial_series=tuple(SpatialPointSeries(definition=PointSeriesDefinition(kind=kind,
+            sensor_group=group_name, source=keypoint_source, names=triangulation.keypoint_names,
+            reference=spatial_reference), values=values) for kind, values in (
+                (ChannelKind.RAW_KEYPOINTS_3D, triangulation.reconstruction.points_3d),
+                (ChannelKind.KEYPOINTS_3D, aligned.filtered_points))),
+    )
+    publish_posthoc_observations(spatial_checkpoint)
+    check_cancelled()
     _reporter.report(stage=MocapStage.RECONSTRUCTING, detail=(
         f"Reconstructing skeletons; filtered {filtered.report.filtered_runs} trajectory runs, "
         f"preserved {filtered.report.preserved_short_runs} short runs"
@@ -212,18 +265,7 @@ def run_posthoc_mocap_task(
         timing=timing,
     ))
 
-    # Recording vocabulary: the sensor group names the sampling grid (which cameras
-    # share this clock), and every source names the model that produced the numbers.
-    # Neither is the pipeline's name — "mocap" describes why the run happened, not what
-    # measured anything, and told a reader nothing when it appeared in both columns.
-    group_name = camera_group_name(camera_ids)
-    keypoint_source = f"keypoint_model:{_keypoint_model_name(task_config)}"
-    detector_source = (
-        f"object_detector:{YoloxPersonDetectorConfig().model_name}"
-        if task_config.detector_type == "rtmpose" else None
-    )
-
-    publication = ObservationRecordingRequest(
+    publication = replace(spatial_checkpoint,
         calibration_update=CalibrationUpdateRequest(
             path=calibration_toml_path.resolve(),
             expected_mtime_ms=calibration_mtime_ms,
@@ -232,46 +274,14 @@ def run_posthoc_mocap_task(
         ) if calibration_toml_path is not None
             and calibration_mtime_ms is not None
             and aligned.transformations else None,
-        reprojection=NamedReprojectionDiagnostics(
-            source_ids=triangulation.sources, point_names=triangulation.diagnostic_point_names,
-            values=triangulation.reconstruction.diagnostics,
-        ) if triangulation.reconstruction.diagnostics is not None else None,
-        filtering=filtered.report,
-        models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
         reconstructions=tuple(ReconstructionRecording(
             sensor_group=group_name, reference=spatial_reference,
             definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=keypoint_source,
                 point_kind=ChannelKind.KEYPOINTS_3D),
             result=reconstructions[bundle.model_id],
         ) for bundle in bundles),
-        camera_geometry=tuple(camera_geometry[source] for source in camera_ids) if camera_geometry else (),
-        recording=recording_info,
-        spatial_series=tuple(SpatialPointSeries(
-            definition=PointSeriesDefinition(kind=kind, sensor_group=group_name, source=keypoint_source,
-                names=triangulation.keypoint_names, reference=spatial_reference),
-            values=values,
-        ) for kind, values in (
-            (ChannelKind.RAW_KEYPOINTS_3D, triangulation.reconstruction.points_3d),
-            (ChannelKind.KEYPOINTS_3D, aligned.filtered_points),
-        )),
-        group=ObservationGroup(name=group_name, frames=frame_observations, videos=video_metadata),
-        tracker=TrackerRecordingDefinition(
-            name=keypoint_source,
-            configuration=task_config.model_dump(mode="json"),
-            point_names=tuple(dict.fromkeys(
-                name for frame in frame_observations for observation in frame.values()
-                for name in observation.to_keypoints().names
-            )),
-        ),
-        detector=DetectorRecordingDefinition(
-            name=detector_source,
-            configuration=task_config.model_dump(mode="json"),
-            box_names=tuple(dict.fromkeys(
-                stage.name for frame in frame_observations
-                for observation in frame.values() for stage in observation.stages.values()
-            )),
-        ) if detector_source is not None else None,
     )
+    check_cancelled()
     published = publish_posthoc_observations(publication)
     if task_config.skeleton_fit_enabled:
         from freemocap.core.recording.result_processing.skeleton_fitting import fit_saved_skeleton

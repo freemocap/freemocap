@@ -183,7 +183,7 @@ export const MocapPanel: React.FC = () => {
                     {/* Process button at TOP per requirements */}
                     <button
                         className="button sm secondary w-full"
-                        onClick={dispatchProcessMocapRecording}
+                        onClick={() => dispatchProcessMocapRecording()}
                         disabled={!canProcessMocapRecording}
                         title={processBlockedReason ?? undefined}
                     >

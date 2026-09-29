@@ -19,6 +19,7 @@ import {ViewportPicker} from "@/components/viewport3d/renderers/ViewportPicker";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
 import {useKeypointsSource} from "./KeypointsSourceContext";
 import {workerDataStore} from "./WorkerDataStore";
+import {FittedSkeletonRenderer} from './renderers/FittedSkeletonRenderer';
 
 /**
  * Calls invalidate() whenever scene data changes so the WebGL render loop
@@ -116,6 +117,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <SceneEnvironment />
             <ReferenceFrame />
             <KeypointsRenderer />
+            <FittedSkeletonRenderer />
             {visibility.centerOfMass && <CenterOfMassRenderer />}
             {visibility.connections && <ModelConnectionRenderer />}
             {visibility.face && <FaceRenderer />}

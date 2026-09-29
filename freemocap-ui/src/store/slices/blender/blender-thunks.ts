@@ -31,7 +31,8 @@ export const detectBlender = createAsyncThunk<
         } catch (e) {
             return rejectWithValue(e instanceof Error ? e.message : 'Unknown error');
         }
-    }
+    },
+    {condition: (_, {getState}) => !getState().blender.isDetecting}
 );
 
 interface ExportBlenderResult {

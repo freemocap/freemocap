@@ -46,6 +46,7 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
     RecordingMetadata,
     RunDescriptor,
     SensorGroup,
+    SourceKind,
 )
 from freemocap.core.recording.parquet_storage.parquet_reader import (
     read_metadata,
@@ -67,7 +68,7 @@ def publish_posthoc_observations(
     Numerical completion records are published atomically with their validated output rows.
     """
     frame_numbers = request.group.frame_numbers
-    resolved_timing = RecordingGroupTiming.resolve(
+    resolved_timing = request.resolved_timing or RecordingGroupTiming.resolve(
         recording_folder=Path(request.recording.full_recording_path),
         videos=request.group.videos, frame_numbers=frame_numbers,
     )
@@ -162,12 +163,12 @@ def publish_posthoc_observations(
 
     def batches() -> Iterator[pa.RecordBatch]:
         for series in diagnostics:
-            yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=0))
+            yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=request.base_run_id))
         for reconstruction in request.reconstructions:
             for series in reconstruction.series():
                 yield from series.batches(
                     SeriesSampling(
-                        frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=0
+                        frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=request.base_run_id
                     )
                 )
         for series in request.spatial_series:
@@ -175,7 +176,7 @@ def publish_posthoc_observations(
                 SeriesSampling(
                     frame_numbers=frame_numbers,
                     timestamps_s=synchronized,
-                    run_id=0,
+                    run_id=request.base_run_id,
                 )
             )
         for camera in request.group.videos:
@@ -189,7 +190,7 @@ def publish_posthoc_observations(
                     )
                 ),
                 channel=camera_channels[camera].overlay,
-                run_id=0,
+                run_id=request.base_run_id,
                 batch_size=65536,
             )
             box_channel = camera_channels[camera].boxes
@@ -204,19 +205,19 @@ def publish_posthoc_observations(
                         )
                     ),
                     channel=box_channel,
-                    run_id=0,
+                    run_id=request.base_run_id,
                     batch_size=65536,
                 )
             yield from timing_batches(
                 samples=zip(frame_numbers, camera_times[camera], strict=True),
                 channel=camera_channels[camera].capture,
-                run_id=0,
+                run_id=request.base_run_id,
                 batch_size=65536,
             )
         yield from timing_batches(
             samples=zip(frame_numbers, synchronized, strict=True),
             channel=group_channel,
-            run_id=0,
+            run_id=request.base_run_id,
             batch_size=65536,
         )
 
@@ -227,7 +228,7 @@ def publish_posthoc_observations(
     with recording_write_lock(structure=structure):
         if not structure.data_parquet_path.exists():
             metadata = RecordingMetadata(
-                recording_id=structure.recording_name, selected_run_id=0, runs={0: run}
+                recording_id=structure.recording_name, selected_run_id=request.base_run_id, runs={request.base_run_id: run}
             )
             publish_recording(structure=structure, metadata=metadata, batches=batches())
             return metadata
@@ -242,6 +243,7 @@ def publish_posthoc_observations(
                 )
             },
             request=ProcessingRequest(
+                base_run_id=request.base_run_id,
                 sensor_groups=(request.group.name,),
                 start_stage=ProcessingStage.TIMING,
                 stop_stage=ProcessingStage.OBSERVATIONS,
@@ -261,9 +263,21 @@ def publish_posthoc_observations(
                     ProcessingStage.RECONSTRUCTION,
                 ),
             )
+        elif request.filtering is not None:
+            plan = replace(plan, execute=(*plan.execute, ProcessingStage.FILTERING))
         if any(item.result.compute_center_of_mass for item in request.reconstructions):
             plan = replace(plan, execute=(*plan.execute, ProcessingStage.BIOMECHANICS))
-        retained = retained_run(base=metadata.runs[0], plan=plan)
+        if request.reuse_observations:
+            plan = replace(plan,
+                execute=tuple(stage for stage in plan.execute if stage not in (ProcessingStage.TIMING, ProcessingStage.OBSERVATIONS)),
+                invalidate=tuple(stage for stage in plan.invalidate if stage not in (ProcessingStage.TIMING, ProcessingStage.OBSERVATIONS)))
+            channels = [channel for channel in channels if channel.stage in plan.execute]
+        retained = retained_run(base=metadata.runs[request.base_run_id], plan=plan)
+        if request.reuse_observations:
+            # Reused rows keep the provenance of the detectors and clocks that made them.
+            for name, source in retained.sources.items():
+                if source.kind in (SourceKind.TRACKER, SourceKind.CAMERA, SourceKind.TIMING):
+                    sources[name] = source
         if (
             retained.sensor_groups[request.group.name]
             != run.sensor_groups[request.group.name]
@@ -294,5 +308,7 @@ def publish_posthoc_observations(
             metadata=metadata,
             plan=plan,
             result=result,
-            computed_batches=batches(),
+            computed_batches=(batch for batch in batches()
+                if not request.reuse_observations or batch.column("channel")[0].as_py() not in
+                ("TIMESTAMPS", "OVERLAY_2D", "BOXES_2D")),
         )

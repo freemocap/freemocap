@@ -19,10 +19,10 @@ export function useBlender() {
     const effectiveBlenderExePath = useAppSelector(selectEffectiveBlenderExePath);
 
     useEffect(() => {
-        if (blender.detectedBlenderExePath === null && !blender.isDetecting) {
+        if (!blender.hasAttemptedDetection && !blender.isDetecting) {
             void dispatch(detectBlender());
         }
-    }, [dispatch, blender.detectedBlenderExePath, blender.isDetecting]);
+    }, [dispatch, blender.hasAttemptedDetection, blender.isDetecting]);
 
     const redetectBlender = useCallback(() => {
         void dispatch(detectBlender());

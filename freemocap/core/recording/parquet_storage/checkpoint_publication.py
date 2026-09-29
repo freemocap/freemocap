@@ -45,7 +45,7 @@ def checkpoint_batches(
         run_id=plan.base_run_id,
         sensor_groups=tuple(metadata.runs[plan.base_run_id].sensor_groups),
     ):
-        columns = batch.to_pydict()
+        columns = batch.select(["sensor_group", "source", "reference_frame", "channel"]).to_pydict()
         mask = pa.array(
             [
                 (group, source, reference, kind) in reused_keys
@@ -66,7 +66,7 @@ def checkpoint_batches(
                 pa.array([plan.target_run_id] * reused.num_rows, type=pa.int64()),
             )
     for batch in computed_batches:
-        columns = batch.to_pydict()
+        columns = batch.select(["run_id", "sensor_group", "source", "reference_frame", "channel"]).to_pydict()
         for run_id, group, source, reference, kind in zip(
             columns["run_id"],
             columns["sensor_group"],

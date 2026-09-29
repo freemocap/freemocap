@@ -392,6 +392,17 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
     app = get_freemocap_app()
     try:
         recording_info = request.to_recording_info()
+        if request.mocap_config.start_stage != 'observations':
+            from freemocap.core.pipeline.posthoc.saved_stage_processing import inspect_saved_stages, RESUME_STAGES
+            inventory = inspect_saved_stages(request.mocap_recording_directory)
+            run = next((r for r in inventory['runs'] if r['run_id'] == request.mocap_config.base_run_id), None)
+            groups = [] if run is None else [g for g in run['groups']
+                if request.mocap_config.sensor_group is None or g['sensor_group'] == request.mocap_config.sensor_group]
+            if len(groups) != 1:
+                raise HTTPException(status_code=400, detail='Select a saved run and sensor group for reprocessing')
+            prerequisite = RESUME_STAGES[RESUME_STAGES.index(request.mocap_config.start_stage) - 1]
+            if not groups[0]['stages'][prerequisite]:
+                raise HTTPException(status_code=400, detail=f'Saved {prerequisite} is missing; rerun that stage first')
         logger.info(
             f"Processing mocap recording with detector_type='{request.mocap_config.detector_type}', "
             f"tracker_config stages: {[s.name for s in request.mocap_config.tracker_config.stages]}, "
@@ -410,9 +421,20 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
         )
     except RecordingBusyError as error:
         raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Error processing mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@mocap_router.get('/recording/process/stages')
+def saved_mocap_stages(recording_path: str) -> dict:
+    from freemocap.core.pipeline.posthoc.saved_stage_processing import inspect_saved_stages
+    try:
+        return inspect_saved_stages(recording_path)
+    except (ValueError, OSError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 @mocap_router.delete("/posthoc/pipelines/{pipeline_id}")
 def cancel_posthoc_pipeline(pipeline_id: str) -> None:

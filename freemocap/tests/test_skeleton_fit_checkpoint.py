@@ -64,9 +64,11 @@ def test_real_solver_checkpoint_round_trip_and_reuse(recording, monkeypatch):
     assert run.scale_fits == before.runs[run_id].scale_fits
     for channel in before.runs[run_id].channels:
         assert channel in run.channels
-    # The existing playback manifest must remain readable before its fitted layer
-    # is added. A solver is not another raw reconstruction instance.
-    assert playback_manifest(recording.data_parquet_path).recording_id == recording.recording_name
+    manifest = playback_manifest(recording.data_parquet_path)
+    assert manifest.recording_id == recording.recording_name
+    playback_run = next(item for item in manifest.runs if item.run_id == run_id)
+    assert playback_run.fitted_skeletons[source] == saved
+    assert source not in playback_run.model_sources, 'A solver is not another original reconstruction'
     expected = stage.fitted_channels(fit=fitted, sensor_group=group, source=source,
         reference_frame=next(c.reference_frame for c in run.channels if c.source == source and c.kind == 'ROTATIONS_WORLD'))
     for item in expected:

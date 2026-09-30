@@ -25,7 +25,7 @@ def validate_outputs(recording: Path, *, expected_frames: int, require_fit: bool
             'foot_support', 'body_reference', 'preserved_reference') for value in outcomes.values())):
         raise ValueError(f'Reference alignment did not succeed: {outcomes}')
     fit_source = f'skeleton_fit:{group}:standard_human'
-    kinds = {'SEGMENT_ORIGINS', 'ROTATIONS_WORLD', 'LINKAGE_DISPLACEMENTS', 'SEGMENT_LENGTHS'}
+    kinds = {'SEGMENT_ORIGINS', 'ROTATIONS_WORLD', 'LINKAGE_DISPLACEMENTS', 'SEGMENT_LENGTHS', 'LANDMARKS_3D'}
     fit_channels = [c for c in run.channels if c.source == fit_source and c.sensor_group == group]
     if require_fit:
         if {c.kind for c in fit_channels} != kinds or not any(
@@ -36,6 +36,11 @@ def validate_outputs(recording: Path, *, expected_frames: int, require_fit: bool
     # Check the actual fitted arrays, including their frame grid and rotation norms.
     reference_frames = None
     reference_times = None
+    present = np.ones(expected_frames, dtype=bool)
+    if require_fit:
+        present = np.asarray(run.sources[fit_source].definition['processing'].get('fitted_frames', present))
+        if present.shape != (expected_frames,) or present.dtype != np.bool_:
+            raise ValueError('Fitted-frame mask must match the recording grid')
     for channel in fit_channels if require_fit else ():
         series = read_saved_channel(structure=structure, run_id=run_id, metadata=metadata, channel=channel)
         if len(series.frames) != expected_frames or len(set(series.frames)) != expected_frames:
@@ -46,11 +51,11 @@ def validate_outputs(recording: Path, *, expected_frames: int, require_fit: bool
         if reference_frames is not None and (series.frames != reference_frames or not np.array_equal(times, reference_times)):
             raise ValueError('Fitted channels have different frame grids')
         reference_frames, reference_times = series.frames, times
-        if not np.isfinite(series.values).all():
-            raise ValueError(f'Nonfinite fitted values: {channel.kind}')
+        if not np.isfinite(series.values[present]).all() or not np.isnan(series.values[~present]).all():
+            raise ValueError(f'Fitted values disagree with frame presence: {channel.kind}')
         if channel.kind == 'ROTATIONS_WORLD' and not np.allclose(
-                np.linalg.norm(series.values, axis=-1), 1.0, atol=1e-6, rtol=0):
+                np.linalg.norm(series.values[present], axis=-1), 1.0, atol=1e-6, rtol=0):
             raise ValueError('Fitted rotations are not unit quaternions')
     report.update(run_id=run_id, sensor_group=group, alignment_outcomes=outcomes,
-                  skeleton_fit_checked=require_fit)
+                  skeleton_fit_checked=require_fit, fitted_frame_count=int(present.sum()) if require_fit else None)
     return report

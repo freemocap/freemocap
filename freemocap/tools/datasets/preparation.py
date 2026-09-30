@@ -11,7 +11,6 @@ import json
 import logging
 import math
 import os
-import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -205,6 +204,7 @@ def run_worker(request_path: Path) -> None:
         if request.get('operation', 'process') != 'calibrate':
             mocap_task = manager.create_mocap_pipeline(recording_info=info, mocap_config=config)
             mocap_status = wait_for_success(manager, mocap_task, timeout=request["timeout"])
+            logger.info('validation: Checking recording channels and frame coverage (running)')
             validation = validate_parquet(recording, expected_frames=request["frames"])
             if request.get('validate_workflow'):
                 from freemocap.tools.datasets.validation import validate_outputs
@@ -213,6 +213,7 @@ def run_worker(request_path: Path) -> None:
                     sensor_group=request.get('sensor_group'),
                     require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
                                        and request.get('alignment', 'auto') != 'calibration'))
+            logger.info('validation: Recording checks passed (complete)')
         # Processing may have updated the recording-local calibration: hash the saved file.
         calibration = CalibrationResult.load_toml(calibration_path)
         result = {"calibration_task": calibration_status, "mocap_task": mocap_status,
@@ -254,7 +255,9 @@ def reuse_recording(root: Path, identity: dict) -> Path | None:
 
 def execute_worker(command: list[str], *, environment: dict, log_path: Path, timeout: float) -> None:
     """Keep the full log and stream task progress without separate log access."""
-    with log_path.open("w", encoding="utf-8") as log:
+    from .progress import WorkerProgress
+
+    with WorkerProgress(log_path) as display, log_path.open("w", encoding="utf-8") as log:
         with subprocess.Popen(command, env=environment, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0) as process:
@@ -262,13 +265,7 @@ def execute_worker(command: list[str], *, environment: dict, log_path: Path, tim
                 for line in process.stdout:
                     log.write(line)
                     log.flush()
-                    if "calibration:" in line or "mocap:" in line or " ERROR " in line:
-                        encoding = sys.stdout.encoding or "utf-8"
-                        # Progress bars can share a physical line with a log message.
-                        match = re.search(r'\d{4}-\d\d-\d\d .*?(?:calibration:|mocap:| ERROR ).*', line)
-                        printable = (match.group(0) + '\n' if match else line).encode(
-                            encoding, errors="backslashreplace").decode(encoding)
-                        print(printable, end="", flush=True)
+                    display.feed(line)
             reader = threading.Thread(target=relay, daemon=True)
             reader.start()
             try:

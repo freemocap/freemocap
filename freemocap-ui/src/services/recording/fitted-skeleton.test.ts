@@ -28,6 +28,13 @@ function close(actual: number[], expected: number[]) {
     actual.forEach((value, i) => assert.ok(Math.abs(value - expected[i]) < 1e-4, `${actual} != ${expected}`));
 }
 
+test('a wholly absent frame stays blank and re-entry still renders', () => {
+    const data = channels();
+    for (const item of data) item.values.fill(NaN, 0, item.values.length / 2);
+    assert.deepEqual(fittedSkeletonFrames(run, data, 'cameras', 1), []);
+    assert.equal(fittedSkeletonFrames(run, data, 'cameras', 2).length, 1);
+});
+
 test('saved transforms preserve component order, axial-only deformation, and backward seeking', () => {
     const data = channels();
     assert.deepEqual(fittedSkeletonFrames(run, data, 'cameras', 0), []);

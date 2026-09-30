@@ -252,7 +252,10 @@ def test_filtered_points_reload_with_their_fit_and_preserve_raw_data(
     assert not np.allclose(saved.points.values, raw_values)
     assert saved.fit.inputs == result.fit_inputs
     if fill_gaps:
-        assert np.isfinite(saved.points.values).all()
+        assert np.isfinite(saved.points.values[:5]).all()
+        assert np.isnan(saved.points.values[5:15]).all()  # Whole-person absence.
+        assert np.isfinite(saved.points.values[15:80]).all()
+        assert np.isnan(saved.points.values[80:]).all()  # No endpoint extrapolation.
         assert np.isnan(saved.numerical_input.scale_points[5:15]).all()
         assert np.isnan(saved.numerical_input.scale_points[80:]).all()
         assert np.isfinite(raw_values[-1]).all()

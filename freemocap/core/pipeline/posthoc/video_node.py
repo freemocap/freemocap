@@ -17,6 +17,11 @@ import csv
 import logging
 import multiprocessing
 import pickle
+import os
+import threading
+import time
+import json
+from freemocap.utilities.numerical_statistics import DISTRIBUTION_COLUMNS, distribution_row
 from dataclasses import dataclass, replace
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
@@ -174,6 +179,19 @@ class VideoNode(SourceNode):
         annotation_output: AnnotationVideoOutput | None = None
 
         frame_number: int = 0
+        detected_frames = 0
+        reused_frames = 0
+        tracker_seconds = 0.0
+        tracker_times_ms = []
+        published_frames = 0
+        processing_started = time.perf_counter()
+        logger.info(
+            f"Video processing start: {pipeline_type} / {video_path.name}; "
+            f"PID={os.getpid()}, thread={threading.get_ident()} ({threading.current_thread().name}); "
+            f"OpenCV video opened, {frame_count} frames; "
+            f"observation cache entries={len(cache) if cache is not None else 0}; "
+            f"tracker={type(tracker).__module__}.{type(tracker).__name__}"
+        )
         _error_occurred = False
         try:
             if save_annotated_video:
@@ -201,6 +219,7 @@ class VideoNode(SourceNode):
             ) as pbar:
                 success, image = video_reader.read()
                 while success and not shutdown_self_flag.value and ipc.should_continue:
+                    observation_started = time.perf_counter()
                     observation, tracker_state = _get_observation(
                         frame_number=frame_number,
                         image=image,
@@ -208,6 +227,13 @@ class VideoNode(SourceNode):
                         state=tracker_state,
                         cache=cache,
                     )
+                    if cache is not None and frame_number in cache:
+                        reused_frames += 1
+                    else:
+                        detected_frames += 1
+                        tracker_elapsed = time.perf_counter() - observation_started
+                        tracker_seconds += tracker_elapsed
+                        tracker_times_ms.append(tracker_elapsed * 1000)
                     video_output_pub.put(
                         VideoNodeOutputMessage(
                             camera_id=camera_id,
@@ -215,6 +241,7 @@ class VideoNode(SourceNode):
                             observation=observation,
                         ),
                     )
+                    published_frames += 1
 
                     if annotator is not None and annotation_output is not None:
                         annotation_output.write_frame(image=image, observation=observation, annotator=annotator)
@@ -245,6 +272,27 @@ class VideoNode(SourceNode):
                 f"VideoNode for {video_path.stem} finished reading "
                 f"{frame_number} frames"
             )
+            logger.info(
+                f"Video processing summary: {pipeline_type} / {video_path.name}: "
+                f"{detected_frames} frames newly detected, {reused_frames} reused from observation cache; "
+                f"{frame_number}/{frame_count} frames read, {published_frames} results sent to processing queue; "
+                f"tracker calls={detected_frames}, tracker time={tracker_seconds:.3f}s "
+                f"({1000 * tracker_seconds / detected_frames if detected_frames else 0:.2f} ms/call); "
+                f"video worker elapsed={time.perf_counter() - processing_started:.3f}s; "
+                f"PID={os.getpid()}, thread={threading.get_ident()}"
+            )
+
+            logger.info('Processing statistics: %s', json.dumps(dict(
+                stage=f'{pipeline_type} | video processing',
+                columns=['Read', 'Expected', 'Fresh', 'Cached', 'Queued', 'Wall s'],
+                rows=[[frame_number, frame_count, detected_frames, reused_frames, published_frames,
+                       time.perf_counter() - processing_started]],
+                caption=video_path.name)))
+            logger.info('Processing statistics: %s', json.dumps(dict(
+                stage=f'{pipeline_type} | tracker call time (ms)',
+                columns=DISTRIBUTION_COLUMNS, rows=[distribution_row(tracker_times_ms)],
+                caption=f'{video_path.name}\nFresh calls only; excludes decoding and annotation. '
+                        'SD = population SD; P05–P95 = central 90% of call times.')))
 
         except Exception as e:
             logger.exception(

@@ -10,6 +10,8 @@ Pre-bind task_config via functools.partial when creating the pipeline.
 """
 
 import logging
+import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -161,6 +163,7 @@ def _run_anipose_path(
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run calibration using the Anipose solver."""
     logger.info("Starting anipose calibration...")
+    solver_started = time.perf_counter()
 
     result, ground_plane = run_anipose_calibration(
         charuco_observations_by_frame=charuco_observations_by_frame,
@@ -174,6 +177,11 @@ def _run_anipose_path(
         f"Anipose calibration complete — "
         f"reprojection error: {result.reprojection_error_px:.4f}px"
     )
+    logger.info('Processing statistics: %s', json.dumps(dict(stage='Calibration solver', values={
+        'Elapsed wall time (s)': round(time.perf_counter() - solver_started, 3),
+        'Cameras': len(result.cameras),
+        'Calibration reprojection error (px)': result.reprojection_error_px,
+    })))
     return result, ground_plane
 
 

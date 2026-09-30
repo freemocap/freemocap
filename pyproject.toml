@@ -150,6 +150,7 @@ tracker-default = [
     "skellytracker[all-cpu]; sys_platform == 'darwin'",
 ]
 dev = [
+    "rich>=14.1.0",
     "bumpver",
     "pip-tools",
     "pytest>=8.4.0",

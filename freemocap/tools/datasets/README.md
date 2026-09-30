@@ -4,6 +4,70 @@ Run commands from **the FreeMoCap repository**, `project/repos/freemocap`,
 with its environment activated. Without activation, use
 `uv run --no-sync poe ...` after setting up that environment.
 
+With the dev dependencies installed, an interactive terminal shows Rich progress
+rows for calibration, mocap, and output validation. Frame counts refer to the
+current operation; stages without a known total show an activity indicator.
+Counted stages also show items per second and seconds per item alongside the bar.
+Calibration counts camera frames; tracking counts synchronized frames (one time
+step across the cameras). Rates average the count increase over worker-reported
+time since the first count report of the current stage, and update with progress
+reports. They exclude work before that first report and reset when stages change.
+Rates use compact FR/s and s/FR labels in a contrasting cyan field with separators.
+FR means camera frames during calibration and synchronized frames during tracking.
+The rate field stays blank until it can be calculated, and for stages without counts.
+A counted stage leaves one AVG line in the permanent log when it ends, using the
+same observed count/time interval. It is aggregate throughput, not per-camera latency.
+Timestamped stage starts, stage endings (with their final reported count and
+duration), and pipeline completion/failure remain in terminal scrollback above
+the live bars. Per-frame updates only update the bars. Pipeline elapsed time is
+retained across stage changes. Warnings and errors remain visible. The complete worker
+output is still saved in `processing.log`. Redirected output (or environments
+without Rich) uses the same milestone history in plain text. These displays also work for calibration-only and saved-stage
+runs; they do not change processing or acceptance checks.
+
+Stage headings have separators and show totals rather than a partial count at
+the first poll. Ending counts are explicitly labeled as the last progress report:
+the polling loop can miss intermediate and final counter updates. Durations are
+intervals between worker log timestamps, not precise detector benchmarks.
+Per-video summaries report actual frames newly detected versus observations
+reused from the recording cache, plus frames read. Cached model weights do not
+mean cached image detections. Full dataset runs copy videos and the board
+definition into a new attempt; they do not copy the realtime observation cache.
+
+Calibration runs one video worker per camera. The dataset runner uses threads
+inside its separate worker process. Each video start reports its filename, PID,
+thread identity, tracker class and available observation-cache entries. Each
+video summary reports frames read, new tracker calls, cache hits, observations
+published, elapsed worker time and average tracker-call time. Per-video times
+overlap; adding them is not the whole-run wall time. Tracker-call timing excludes
+video decoding, annotation and writing, and is not a pure detector benchmark.
+
+Numeric tables are reserved for measured results. Setup, saving, sampled stage
+intervals and failures remain plain log lines, without duplicate statistics boxes.
+Video tables show actual counts, cache hits and worker wall time, followed by the
+distribution of fresh tracker-call durations in milliseconds. Calibration reports
+its scalar reprojection error in pixels and solver wall time; the available scalar
+does not support inventing a residual distribution. Triangulation compares cameras
+in shared tables: sample counts, then error distributions in the reported units.
+Each table has a column guide above it. Distribution columns are N, NaN %, Inf %,
+mean, population SD, minimum, P05, median, P95 and maximum.
+NaN and infinity percentages use all input samples, before excluding non-finite
+values from the distribution. Reprojection input samples are observed 2D points;
+missing 3D reconstructions count as NaN errors. An empty input has undefined
+percentages, rather than an implied zero missing-data rate.
+The Queued column counts results sent to another worker, not saved files.
+Messages about completed file writes explicitly say saved to disk.
+P05–P95 describes the central 90% of finite samples, not a confidence interval.
+Outliers remain in the mean, SD and maximum; scientific notation keeps extreme
+values readable. Triangulation diagnostics precede downstream point gates.
+Missing distributions show N=0 with unavailable statistics. Failed stages do not
+receive fabricated residuals or success results.
+
+Camera statistics are collected into comparison tables at calibration completion,
+so concurrent camera workers do not scatter their tables among solver messages.
+Partial or late camera results are retained at shutdown. Each table and its notes
+are rendered as one Rich group, preventing live refreshes between their pieces.
+
 ```powershell
 poe process-test-data
 poe process-sample-data
@@ -21,6 +85,19 @@ The datasets show the same event with three cameras: `test_data` has 222 frames 
 sample data is for full runs. Low-pass filtering remains disabled for test data
 and enabled for sample data; both use production gap filling. Blender export is
 disabled. Videos are acquired from the existing released archives, not regenerated.
+
+Gap filling is supplied by the installed SkellyForge package. FreeMoCap persists
+its version-4 provenance and still reads version-2/3 reports. Interpolation runs
+before smoothing; filled samples never vote as measured evidence for scale or
+alignment. Entirely blank frames remain blank and separate visible intervals.
+
+Skeleton fitting runs independently in each visible interval, retaining original
+frame numbers and timestamps. An interval shorter than three frames or without
+any root-pose seed is left null and reported in `skipped_intervals`; root seeds
+are never borrowed across absence. The fitted source saves every modeled landmark
+alongside its segment transforms and lengths. Its `LANDMARKS_3D` channel contains
+predictions; the original reconstruction channels remain fitting inputs and are
+not overwritten with those predictions. Playback omits wholly absent fitted frames.
 
 ## Choose work explicitly
 

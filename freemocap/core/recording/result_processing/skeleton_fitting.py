@@ -13,6 +13,7 @@ import json
 import logging
 from time import perf_counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pyarrow.compute as pc
@@ -53,7 +54,7 @@ def _json_value(value):
 def solver_provenance() -> dict:
     paths = [Path(_native.__file__), *sorted(Path(fitting.__file__).parent.glob('*.py'))]
     return dict(
-        adapter_version=1,
+        adapter_version=2,
         package_version=importlib.metadata.version('skellyforge'),
         ceres_version=_native.ceres_version,
         code_sha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
@@ -141,6 +142,85 @@ def read_fit_inputs(*, path: Path, metadata: RecordingMetadata, run_id: int,
     return SavedSkeletonFitInputs(records, model, fits[0], reference, signature)
 
 
+@dataclass
+class RecordingHumanFit:
+    model: dict
+    sequence: object
+    landmarks: dict
+
+    def landmark_positions(self):
+        return self.landmarks
+
+
+def fit_visible_intervals(inputs: SavedSkeletonFitInputs, *, progress=None):
+    """Fit prepared visible intervals independently; retain nulls on the saved grid.
+
+    Input channels already went through Forge gap filling. Never fill again here
+    or carry a root seed or temporal residual across a completely absent frame.
+    """
+    records = inputs.records
+    visible = np.array([bool(r['keypoints']) for r in records])
+    boundaries = np.flatnonzero(np.diff(np.r_[False, visible, False])).reshape(-1, 2)
+    skeleton = inputs.model.skeleton.restore()
+    saved_model = inputs.model.model_dump(mode='json')
+    # The authored tree determines the root; dictionary insertion order does not.
+    from skellyforge.core.skeleton.pose.rest_pose import RestPose
+    root = RestPose.default_for(skeleton=skeleton).root_segment_name
+    usable, skipped = [], []
+    for start, stop in boundaries.tolist():
+        interval = records[start:stop]
+        reason = ('fewer_than_three_frames' if stop - start < 3 else
+                  'no_root_pose_in_interval' if not any(root in r['rotations'] and root in r['origins'] for r in interval) else None)
+        if reason:
+            skipped.append(dict(start=start, stop=stop, reason=reason))
+        else:
+            usable.append((start, stop))
+    total = sum(stop - start - 2 for start, stop in usable)
+    fits, windows, offset = [], [], 0
+    for start, stop in usable:
+        def on_progress(window, _total):
+            if progress:
+                adjusted = dict(window, index=offset + window['index'])
+                for key in ('fixed_start', 'active_start', 'active_end'):
+                    if key in adjusted: adjusted[key] += start
+                progress(adjusted, total)
+        fit = fit_human(skeleton, saved_model, inputs.scale_fit.fit.segment_scales,
+                        records[start:stop], progress=on_progress)
+        for window in fit.sequence.processing['windows']:
+            adjusted = dict(window, index=offset + window['index'])
+            for key in ('fixed_start', 'active_start', 'active_end'):
+                if key in adjusted: adjusted[key] += start
+            windows.append(adjusted)
+        fits.append((start, stop, fit))
+        offset += stop - start - 2
+    if len(fits) == 1 and usable == [(0, len(records))]:
+        return fits[0][2]
+    if fits:
+        model = fits[0][2].model
+    else:
+        from skellyforge.core.skeleton.fitting.body_model import body_model
+        from skellyforge.core.skeleton.fitting.human import human_fit_options
+        model = body_model(skeleton, saved_model, inputs.scale_fit.fit.segment_scales,
+                           human_fit_options()['shoulder_profile'], flexible_cervical=True)
+    n, b = len(records), len(model['names'])
+    arrays = {name: np.full((n, b, width), np.nan) for name, width in
+              [('quaternions', 4), ('translations', 3), ('linkage_displacements', 3)]}
+    arrays['lengths'] = np.full((n, b), np.nan)
+    landmarks = {name: np.full((n, 3), np.nan) for names in model['display_names'] for name in names}
+    intervals = []
+    for start, stop, fit in fits:
+        for name in arrays: arrays[name][start:stop] = getattr(fit.sequence, name)
+        for name, values in fit.landmark_positions().items(): landmarks[name][start:stop] = values
+        intervals.append(dict(start=start, stop=stop, processing=fit.sequence.processing))
+    present = np.zeros(n, dtype=bool)
+    for start, stop in usable: present[start:stop] = True
+    sequence = SimpleNamespace(**arrays, processing=dict(windows=windows, intervals=intervals,
+        skipped_intervals=skipped, fitted_frames=present.tolist()),
+        converged=bool(fits) and not skipped and all(f.sequence.converged for _, _, f in fits),
+        report=f'{len(fits)} independent visible intervals; {len(skipped)} unsupported intervals left null')
+    return RecordingHumanFit(model, sequence, landmarks)
+
+
 def fitted_channels(*, fit, sensor_group: str, source: str, reference_frame: str) -> tuple[ChannelSeries, ...]:
     """Persist native state, including flexible geometry and relaxed linkages."""
     model, result = fit.model, fit.sequence
@@ -159,8 +239,14 @@ def fitted_channels(*, fit, sensor_group: str, source: str, reference_frame: str
         reference_frame=reference_frame, kind=ChannelKind.SEGMENT_LENGTHS,
         names=tuple(n for n, keep in zip(model['names'], flexible) if keep), components={'length': 'mm'}, stage=STAGE),
         np.asarray(result.lengths, dtype=np.float64)[:, flexible, None]))
-    if any(not np.isfinite(item.values).all() for item in series):
-        raise ValueError('Skeleton solver returned nonfinite fitted state')
+    landmarks = fit.landmark_positions()
+    series.append(ChannelSeries(Channel(sensor_group=sensor_group, source=source,
+        reference_frame=reference_frame, kind=ChannelKind.LANDMARKS_3D,
+        names=tuple(landmarks), components=dict.fromkeys('xyz', 'mm'), stage=STAGE),
+        np.stack(list(landmarks.values()), axis=1)))
+    present = np.asarray(result.processing.get('fitted_frames', [True] * len(result.quaternions)))
+    if any(not np.isfinite(item.values[present]).all() or not np.isnan(item.values[~present]).all() for item in series):
+        raise ValueError('Fitted channels must be complete on fitted frames and null on absent frames')
     return tuple(series)
 
 
@@ -197,15 +283,14 @@ def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_gro
         saved_source = base.sources.get(source)
         saved_kinds = {c.kind for c in base.channels if c.source == source and c.sensor_group == sensor_group and c.stage == STAGE}
         complete_channels = saved_kinds == {ChannelKind.SEGMENT_ORIGINS, ChannelKind.ROTATIONS_WORLD,
-            ChannelKind.LINKAGE_DISPLACEMENTS, ChannelKind.SEGMENT_LENGTHS}
+            ChannelKind.LINKAGE_DISPLACEMENTS, ChannelKind.SEGMENT_LENGTHS, ChannelKind.LANDMARKS_3D}
         if (completed is not None and completed.signature == inputs.signature and not keep and not force
                 and saved_source is not None and saved_source.definition.get('input_signature') == inputs.signature
                 and complete_channels):
             logger.info('Reusing skeleton fit: run=%d, sensor_group=%s', run_id, sensor_group)
             return metadata
         logger.info('Fitting saved skeleton: run=%d, sensor_group=%s, frames=%d', run_id, sensor_group, len(inputs.records))
-        fitted = fit_human(inputs.model.skeleton.restore(), inputs.model.model_dump(mode='json'),
-            inputs.scale_fit.fit.segment_scales, inputs.records, progress=on_progress)
+        fitted = fit_visible_intervals(inputs, progress=on_progress)
         solved = perf_counter()
         logger.info('Skeleton solve complete: frames=%d, seconds=%.3f', len(inputs.records), solved - loaded)
         check_cancelled()

@@ -7,7 +7,8 @@ from freemocap.core.reconstruction.posthoc_filtering import prepare_recording_po
 
 def test_timestamp_interpolation_discards_singletons_and_records_provenance():
     times=np.array([0., .02, .04, .08, .12, .5, .8])
-    points=np.full((7,3,3),np.nan)
+    points=np.full((7,4,3),np.nan)
+    points[:,3]=1.  # Another retained trajectory keeps the person visible.
     points[1,0]=[2,4,6];points[2,0]=[4,8,12];points[4,0]=[12,24,36]
     points[6,0]=[999,999,999]  # Isolated detection must not anchor the endpoint.
     points[3,1]=[9,8,7]
@@ -15,21 +16,22 @@ def test_timestamp_interpolation_discards_singletons_and_records_provenance():
     filled,report=fill_trajectory_gaps(points=points,timestamps_s=times)
     np.testing.assert_allclose(filled[:,0],[[np.nan]*3,[2,4,6],[4,8,12],[8,16,24],[12,24,36],[np.nan]*3,[np.nan]*3])
     assert report.filled_spans == ((0, 3, 4),)
-    assert report.algorithm_version == 3
-    assert report.method == "timestamp_linear_interior"
-    assert np.isnan(filled[:,1:]).all()
+    assert report.algorithm_version == 4
+    assert report.method == "timestamp_linear_visible_intervals"
+    assert np.isnan(filled[:,1:3]).all()
     assert report.unsupported_keypoint_indices==(1,2)
     decoded=GapFillingReport.model_validate_json(report.model_dump_json())
     np.testing.assert_array_equal(decoded.original_support(filled),np.isfinite(before).all(axis=-1))
     support=decoded.measured_support(filled)
     assert support[:,0].tolist()==[False,True,True,False,True,False,False]
-    assert not support[:,1:].any()
+    assert not support[:,1:3].any()
     np.testing.assert_array_equal(points,before)
 
 
 def test_short_gaps_bridge_but_short_trajectories_do_not_survive():
     times=np.arange(41)/100
-    points=np.full((41,2,3),np.nan)
+    points=np.full((41,3,3),np.nan)
+    points[:,2]=1.
     points[[0,10,20],0]=1.  # Two 100 ms bridges create a supported 200 ms trajectory.
     points[:10,1]=2.  # Only 90 ms of support.
     filled,report=fill_trajectory_gaps(points=points,timestamps_s=times)
@@ -92,8 +94,8 @@ def test_calibration_interpolation_preserves_missing_ends(method):
 
 def test_gap_fill_precedes_filtering_and_runs_when_smoothing_disabled():
     times=np.arange(100)/30
-    points=np.repeat(np.sin(times*3)[:,None,None],3,axis=2)
-    points[35:45]=np.nan
+    points=np.tile(np.sin(times*3)[:,None,None],(1,2,3))
+    points[35:45,0]=np.nan
     points[:5]=np.nan
     points[-5:]=np.nan
     completed,_=fill_trajectory_gaps(points=points,timestamps_s=times)
@@ -103,7 +105,7 @@ def test_gap_fill_precedes_filtering_and_runs_when_smoothing_disabled():
     np.testing.assert_array_equal(actual.points,expected.points)
     assert np.isnan(actual.points[:5]).all()
     assert np.isnan(actual.points[-5:]).all()
-    assert actual.report.filtered_runs==1
+    assert actual.report.filtered_runs==2
     disabled=prepare_recording_points(points=points,timestamps_s=times,config=PosthocFilterConfig(enabled=False))
     np.testing.assert_array_equal(disabled.points,completed)
 

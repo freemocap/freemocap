@@ -229,6 +229,9 @@ def reconstruct_skeletons_with_fits(
             if np.all(np.isfinite(frame[index]))
         }
         for bundle in request.bundles:
+            if not points:
+                # Re-entry starts fresh roll state; frozen person dimensions remain.
+                states[bundle.model_id].reset()
             frames[bundle.model_id].append(
                 reconstruct_skeleton(
                     bundle=bundle,

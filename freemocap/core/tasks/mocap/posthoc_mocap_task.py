@@ -1,5 +1,8 @@
 """Triangulate recording observations and reconstruct the selected tracked models."""
 from __future__ import annotations
+import json
+import time
+from freemocap.utilities.numerical_statistics import DISTRIBUTION_COLUMNS, distribution_row
 from collections.abc import Callable  # noqa: TC003 - runtime type checking
 from concurrent.futures import CancelledError
 from dataclasses import replace
@@ -192,6 +195,7 @@ def run_posthoc_mocap_task(
         _reporter.report(stage=MocapStage.TRIANGULATING, detail=f"Camera matching: {matching_result.status}")
         logger.info("Camera matching: %s; source assignments: %s; fitness: %s",
                     matching_result.status, {source: camera.id for source, camera in camera_geometry.items()}, matching_result.fitness)
+    triangulation_started = time.perf_counter()
     triangulation = triangulate_observation_buffers(
         observation_buffers=observation_recorders,
         camera_geometry=camera_geometry,
@@ -199,6 +203,27 @@ def run_posthoc_mocap_task(
         max_reprojection_error_px=None,
         timing=timing,
     )
+    triangulation_seconds = time.perf_counter() - triangulation_started
+    diagnostics = triangulation.reconstruction.diagnostics
+    if diagnostics is not None:
+        count_rows, error_rows, legend = [], [], []
+        for index, (source, summary) in enumerate(zip(triangulation.sources, diagnostics.summaries(), strict=True)):
+            camera = f'C{index + 1}'
+            legend.append(f'{camera} = {source}')
+            count_rows.append([camera, summary.observed_count, summary.reconstructed_count,
+                               summary.contributing_count])
+            # Include missing reconstructions in the missing-error percentage.
+            errors = np.where(diagnostics.reconstructed[index], diagnostics.errors[index], np.nan)
+            error_rows.append([camera, *distribution_row(errors[diagnostics.observed[index]])])
+        logger.info('Processing statistics: %s', json.dumps(dict(stage='Triangulation | point samples',
+            columns=['Camera', 'Observed', 'Reprojected', 'Contributing'], rows=count_rows,
+            caption=f'Wall time {triangulation_seconds:.3f} s | output shape {triangulation.reconstruction.points_3d.shape}\n'
+                    + '\n'.join(legend))))
+        logger.info('Processing statistics: %s', json.dumps(dict(
+            stage=f'Triangulation | reprojection error ({diagnostics.units})',
+            columns=['Camera', *DISTRIBUTION_COLUMNS], rows=error_rows,
+            caption='Percentages use all observed 2D point samples; missing 3D reconstructions count as NaN.\n'
+                    'Error statistics use finite residuals before downstream filtering. P05–P95 is not a confidence interval.')))
 
     group_timing = saved_timing or RecordingGroupTiming.resolve(
         recording_folder=recording_folder, videos=video_metadata,
@@ -299,4 +324,4 @@ def run_posthoc_mocap_task(
             run_id=published.selected_run_id, sensor_group=group_name,
             progress=fit_progress, cancelled=cancelled,
         )
-    logger.info("Posthoc mocap complete: canonical Parquet published")
+    logger.info("Posthoc mocap complete: recording data saved to disk as Parquet")

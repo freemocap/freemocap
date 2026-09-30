@@ -35,6 +35,8 @@ export function fittedSkeletonFrames(run: PlaybackRun, channels: PlaybackChannel
         const xyz = [RecordingComponent.X, RecordingComponent.Y, RecordingComponent.Z];
         const origins = orderedChannelFrame(positions, time, {names: def.geometry.names, components: xyz})!;
         const quaternions = orderedChannelFrame(rotations, time, {names: def.geometry.names, components: [RecordingComponent.W, ...xyz]})!;
+        // An intentionally absent person has null state for every segment.
+        if (origins.every(Number.isNaN) && quaternions.every(Number.isNaN)) return [];
         if (Object.keys(lengths.channel.components).join() !== 'length' || lengths.channel.components.length !== 'mm') throw new Error('Invalid fitted length units');
         const axial = def.geometry.names.filter((_, i) => def.geometry.references[i] > 0);
         if (axial.length !== lengths.channel.names.length || axial.some(n => !lengths.channel.names.includes(n))) throw new Error('Incomplete fitted axial lengths');

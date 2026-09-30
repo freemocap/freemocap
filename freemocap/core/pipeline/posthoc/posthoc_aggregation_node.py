@@ -144,13 +144,17 @@ class PosthocAggregationNode(AggregatorNode):
         frame_numbers = list(range(start_frame, end_frame))
         camera_ids = list(video_metadata.keys())
         total_expected = len(frame_numbers) * len(camera_ids)
+        collection_label = (
+            "Board detection in videos" if pipeline_type == PosthocPipelineType.CALIBRATION
+            else "Processing camera videos"
+        )
 
         aggregator_progress_pub.put(AggregatorNodeProgressMessage(
             pipeline_id=pipeline_id,
             pipeline_type=str(pipeline_type),
             phase=AggregatorPhase.COLLECTING_CAMERA_OUTPUT,
             progress_fraction=0.0,
-            detail=f"Collecting observations from {len(camera_ids)} cameras ({total_expected} total)",
+            detail=f"{collection_label}: 0/{total_expected} camera frames processed ({len(camera_ids)} cameras)",
             recording_name=rec_name,
             recording_path=rec_path_str,
         ))
@@ -209,7 +213,7 @@ class PosthocAggregationNode(AggregatorNode):
                             pipeline_type=str(pipeline_type),
                             phase=AggregatorPhase.COLLECTING_CAMERA_OUTPUT,
                             progress_fraction=received_count / total_expected,
-                            detail=f"Collecting observations {received_count}/{total_expected}",
+                            detail=f"{collection_label}: {received_count}/{total_expected} camera frames processed",
                             recording_name=rec_name,
                             recording_path=rec_path_str,
                         ))

@@ -133,7 +133,11 @@ def process(name: str, **options) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     with FileLock(str(root / 'prepare.lock'), timeout=0):
         plan = preflight(name, **options)
-        logger.info('Processing plan:\n%s', json.dumps(plan, indent=2))
+        logger.info('%s | %s from %s | calibration: %s | alignment: %s | skeleton fit: %s',
+                    name, plan['operation'], plan['start_stage'], plan['calibration_mode'],
+                    plan['alignment'], 'on' if plan['skeleton_fit'] else 'off')
+        if 'calibration_path' in plan:
+            logger.info('Calibration input: %s', plan['calibration_path'])
         ready = checked_ready(root)
         full = plan['start_stage'] == 'observations' or plan['operation'] == 'calibrate'
         if full:

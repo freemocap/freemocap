@@ -236,7 +236,7 @@ def _mediapipe_face_child_stage(
             # The head is taller than it is wide (face oval height ~= 1.4x
             # ear-to-ear), so scale generously off the ear span to keep the
             # forehead and chin inside the box.
-            scale_factor=2.5,
+            scale_factor=3.0,
             min_box_size_px=120.0,
         ),
         keypoint_detectors=[

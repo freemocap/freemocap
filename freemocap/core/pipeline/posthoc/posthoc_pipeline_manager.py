@@ -21,6 +21,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
+from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.calibration.posthoc_calibration_task import run_posthoc_calibration_task
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
@@ -145,9 +146,21 @@ class PosthocPipelineManager(PipelineManagerABC):
             run_posthoc_mocap_aggregator_task,
             task_config=mocap_config,
         )
+        camera_node_config = CameraNodeConfig(
+            detector_type=mocap_config.detector_type,
+            rtmpose_model_name=mocap_config.rtmpose_model_name,
+            rtmpose_confidence_threshold=mocap_config.rtmpose_confidence_threshold,
+            mediapipe_model_complexity=mocap_config.mediapipe_model_complexity,
+            mediapipe_detection_confidence=mocap_config.mediapipe_detection_confidence,
+            mediapipe_presence_confidence=mocap_config.mediapipe_presence_confidence,
+            mediapipe_tracking_confidence=mocap_config.mediapipe_tracking_confidence,
+            mediapipe_num_hands=mocap_config.mediapipe_num_hands,
+            mediapipe_num_faces=mocap_config.mediapipe_num_faces,
+        )
         pipeline = PosthocPipeline.create(
             recording_info=recording_info,
             detector_config=mocap_config.tracker_config,
+            camera_node_config=camera_node_config,
             aggregation_task_fn=mocap_task_fn,
             pipeline_type=PosthocPipelineType.MOCAP,
             worker_registry=self.worker_registry,

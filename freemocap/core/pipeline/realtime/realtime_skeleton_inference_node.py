@@ -59,7 +59,11 @@ from skellytracker.core.sessions.onnx_session import OnnxSession
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
+from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node_config import (
+    RealtimeSkeletonInferenceNodeConfig,
+)
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
 from freemocap.core.types.type_overloads import TopicPublicationQueue
@@ -143,7 +147,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             for camera_id in camera_ids
         }
 
-        tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+        tracker, session = _build_session_and_tracker(
+            camera_node_config=pipeline_config.camera_node_config,
+            inf_config=pipeline_config.skeleton_inference_node_config,
+            num_cameras=len(camera_ids),
+        )
         if tracker is None:
             logger.error(
                 f"RealtimeSkeletonInferenceNode [{camera_group_id}] could not "
@@ -261,7 +269,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         return
                     tracker.close()
                     gc.collect()
-                    tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+                    tracker, session = _build_session_and_tracker(
+                        camera_node_config=pipeline_config.camera_node_config,
+                        inf_config=pipeline_config.skeleton_inference_node_config,
+                        num_cameras=len(camera_ids),
+                    )
                     if tracker is None:
                         logger.error(
                             f"RealtimeSkeletonInferenceNode [{camera_group_id}] failed to rebuild "
@@ -330,15 +342,19 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
 
 def _build_session_and_tracker(
-    pipeline_config: RealtimePipelineConfig,
+    *,
+    camera_node_config: CameraNodeConfig,
+    inf_config: RealtimeSkeletonInferenceNodeConfig,
     num_cameras: int = 1,
 ) -> tuple[Tracker | None, object | None]:
-    """Construct the session and Tracker from the pipeline config.
+    """Construct the session and Tracker for batched multi-camera tracking.
+
+    Builds exactly ONE shared Tracker/session for `num_cameras` cameras, for
+    use with Tracker.process_batch(). Used by both the realtime pipeline (one
+    camera group) and the posthoc pipeline (one recording's cameras).
 
     Returns (None, None) on failure — caller should treat this as fatal.
     """
-    camera_node_config = pipeline_config.camera_node_config
-
     if camera_node_config.detector_type == "mediapipe":
         from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker
         try:
@@ -360,7 +376,6 @@ def _build_session_and_tracker(
         build_skeleton_tracker,
     )
 
-    inf_config = pipeline_config.skeleton_inference_node_config
     model_name = camera_node_config.rtmpose_model_name
     confidence_threshold = camera_node_config.rtmpose_confidence_threshold
 

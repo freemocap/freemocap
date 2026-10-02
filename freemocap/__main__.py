@@ -34,6 +34,7 @@ async def main(force_preferred_port:bool=True) -> None:
         format_port_sentinel,
     )
     from freemocap.app.app import create_fastapi_app
+    from freemocap.system.logging.log_queue_consumer import start_log_queue_consumer
     from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
 
 
@@ -48,6 +49,8 @@ async def main(force_preferred_port:bool=True) -> None:
 
     suppress_proactor_connection_reset(asyncio.get_running_loop())
 
+    start_log_queue_consumer()
+    
     global_kill_flag = multiprocessing.Value("b", False)
     worker_registry = WorkerRegistry(
         global_kill_flag=global_kill_flag,

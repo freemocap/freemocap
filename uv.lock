@@ -448,6 +448,15 @@ wheels = [
 ]
 
 [[package]]
+name = "filelock"
+version = "4.0.9"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/51/2bc9e529f154fad99b6cd0073e609291eb32fd23581b32362d33d164d316/filelock-4.0.9.tar.gz", hash = "sha256:635e7d67fa92654eed444e75e9ca18426d34e77ad9c469bf4373f75a932f7b22", size = 251200, upload-time = "2026-10-01T23:09:14.029Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/01/4f/83454fafd628e1e7e1726d74e44fb2332be5969d04c6182ca1fecb6c580e/filelock-4.0.9-py3-none-any.whl", hash = "sha256:9287fd61b99a806e5202be29a83034c0808a1b9830e820537c2f5773981f7eeb", size = 110368, upload-time = "2026-10-01T23:09:12.391Z" },
+]
+
+[[package]]
 name = "flatbuffers"
 version = "25.12.19"
 source = { registry = "https://pypi.org/simple" }
@@ -491,7 +500,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a24"
+version = "2.0.0a25"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -2223,9 +2232,10 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=main#63100055867b161d32fb1535ed73f73e1ddd187d" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=main#25627fe1ca19f5b833f39322ed70d3452a89dff4" }
 dependencies = [
     { name = "beartype" },
+    { name = "filelock" },
     { name = "numpy" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },

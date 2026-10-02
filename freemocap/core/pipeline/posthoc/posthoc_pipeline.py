@@ -25,10 +25,12 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
+from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.posthoc.posthoc_aggregation_node import PosthocAggregationNode, \
     PosthocAggregationNodeTaskFn
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from freemocap.core.pipeline.posthoc.video_node import VideoNode
+from freemocap.core.pipeline.posthoc.skeleton_tracking_node import PosthocSkeletonTrackingNode
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
@@ -51,6 +53,7 @@ class PosthocPipeline(PipelineABC):
     aggregation_node: PosthocAggregationNode
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
+    skeleton_tracking_node: PosthocSkeletonTrackingNode | None = None
     started: bool = False
     queued_progress_message: PipelineProgressMessage | None = None
     # Retained latest progress message per node id (keyed by pipeline_id, e.g.
@@ -69,10 +72,14 @@ class PosthocPipeline(PipelineABC):
         if not self.started:
             return False
         any_alive = any(node.is_alive for node in self.video_nodes.values())
+        if self.skeleton_tracking_node is not None:
+            any_alive = any_alive or self.skeleton_tracking_node.is_alive
         return any_alive or self.aggregation_node.is_alive
 
     @property
     def camera_ids(self) -> list[CameraIdString]:
+        if self.skeleton_tracking_node is not None:
+            return self.skeleton_tracking_node.camera_ids
         return list(self.video_nodes.keys())
 
     @classmethod
@@ -86,6 +93,7 @@ class PosthocPipeline(PipelineABC):
         worker_registry: WorkerRegistry,
         global_kill_flag: Synchronized,
         save_annotated_video: bool = True,
+        camera_node_config: CameraNodeConfig | None = None,
     ) -> "PosthocPipeline":
         """
         Create a posthoc pipeline.
@@ -100,6 +108,10 @@ class PosthocPipeline(PipelineABC):
             save_annotated_video: Write annotated video output during detection.
                 If an annotated video already exists, new annotations are layered
                 on top of the existing one.
+            camera_node_config: Required when pipeline_type is MOCAP — carries the
+                detector_type/mediapipe/rtmpose params used to build the shared
+                batched Tracker/session (see realtime_skeleton_inference_node's
+                _build_session_and_tracker). Unused for CALIBRATION.
         """
         recording_path = Path(recording_info.full_recording_path)
 
@@ -119,11 +131,22 @@ class PosthocPipeline(PipelineABC):
         )
 
         video_nodes: dict[CameraIdString, VideoNode] = {}
-        for camera_id, video_helper in video_group.videos.items():
-            video_nodes[camera_id] = VideoNode.create(
-                camera_id=camera_id,
-                video_path=video_helper.video_path,
+        skeleton_tracking_node: PosthocSkeletonTrackingNode | None = None
+        if pipeline_type == PosthocPipelineType.MOCAP:
+            # Mocap (mediapipe/rtmpose) tracking is centralized into a single
+            # process sharing one Tracker/session across all cameras, via
+            # Tracker.process_batch() — avoids N redundant model downloads/GPU
+            # probes and the per-process ONNX-session-build race. Charuco
+            # calibration keeps the per-camera VideoNode path below.
+            if camera_node_config is None:
+                raise ValueError("camera_node_config is required for MOCAP pipelines")
+            skeleton_tracking_node = PosthocSkeletonTrackingNode.create(
+                camera_video_paths={
+                    camera_id: video_helper.video_path
+                    for camera_id, video_helper in video_group.videos.items()
+                },
                 detector_config=detector_config,
+                camera_node_config=camera_node_config,
                 worker_registry=worker_registry,
                 ipc=ipc,
                 pubsub=pubsub,
@@ -132,6 +155,20 @@ class PosthocPipeline(PipelineABC):
                 pipeline_id=pipeline_id,
                 pipeline_type=pipeline_type,
             )
+        else:
+            for camera_id, video_helper in video_group.videos.items():
+                video_nodes[camera_id] = VideoNode.create(
+                    camera_id=camera_id,
+                    video_path=video_helper.video_path,
+                    detector_config=detector_config,
+                    worker_registry=worker_registry,
+                    ipc=ipc,
+                    pubsub=pubsub,
+                    recording_path=recording_path,
+                    save_annotated_video=save_annotated_video,
+                    pipeline_id=pipeline_id,
+                    pipeline_type=pipeline_type,
+                )
 
         aggregation_node = PosthocAggregationNode.create(
             aggregation_task_fn=aggregation_task_fn,
@@ -154,6 +191,7 @@ class PosthocPipeline(PipelineABC):
             aggregation_node=aggregation_node,
             ipc=ipc,
             pubsub=pubsub,
+            skeleton_tracking_node=skeleton_tracking_node,
         )
 
 
@@ -172,7 +210,8 @@ class PosthocPipeline(PipelineABC):
         nodes = list(self.video_nodes.values())
         for i, node in enumerate(nodes):
             node.start()
-
+        if self.skeleton_tracking_node is not None:
+            self.skeleton_tracking_node.start()
 
         self.aggregation_node.start()
         logger.info(f"PosthocPipeline [{self.id}] — all workers started")
@@ -185,6 +224,8 @@ class PosthocPipeline(PipelineABC):
         for node in self.video_nodes.values():
             if node.is_alive:
                 node.shutdown()
+        if self.skeleton_tracking_node is not None and self.skeleton_tracking_node.is_alive:
+            self.skeleton_tracking_node.shutdown()
         if self.aggregation_node.is_alive:
             self.aggregation_node.shutdown()
         logger.debug(f"PosthocPipeline [{self.id}] shut down")
@@ -201,6 +242,8 @@ class PosthocPipeline(PipelineABC):
             self.queued_progress_message = None
         for node in list(self.video_nodes.values()):
             fresh.extend(node.get_progress_messages())
+        if self.skeleton_tracking_node is not None:
+            fresh.extend(self.skeleton_tracking_node.get_progress_messages())
         fresh.extend(self.aggregation_node.get_progress_messages())
 
         for message in fresh:

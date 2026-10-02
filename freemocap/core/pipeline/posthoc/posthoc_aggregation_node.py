@@ -271,6 +271,15 @@ class PosthocAggregationNode(AggregatorNode):
                     recording_name=rec_name,
                     recording_path=rec_path_str,
                 ))
+            # Cancel the queue feeder thread so this process can exit
+            # promptly instead of blocking forever on a full pipe buffer if
+            # the consumer isn't draining as fast as we published (mirrors
+            # the log_queue fix in skellycam's managed_worker.py
+            # _process_entry_point). Must happen last, after the put above.
+            try:
+                aggregator_progress_pub.cancel_join_thread()
+            except Exception:
+                pass
             logger.debug(
                 f"PosthocAggregationNode [{pipeline_id}] exiting"
             )

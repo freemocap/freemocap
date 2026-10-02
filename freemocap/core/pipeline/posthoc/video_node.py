@@ -433,6 +433,16 @@ class VideoNode(SourceNode):
                 base_reader.release()
             if prev_annotated_path is not None and prev_annotated_path.exists():
                 prev_annotated_path.unlink()
+            # Cancel queue feeder threads so this process can exit promptly
+            # instead of blocking forever on a full pipe buffer if the
+            # consumer isn't draining as fast as we published (mirrors the
+            # log_queue fix in skellycam's managed_worker.py
+            # _process_entry_point). Must happen last, after all puts above.
+            for pub_queue in (video_output_pub, video_progress_pub):
+                try:
+                    pub_queue.cancel_join_thread()
+                except Exception:
+                    pass
             logger.debug(f"VideoNode for {video_path.stem} exiting")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:

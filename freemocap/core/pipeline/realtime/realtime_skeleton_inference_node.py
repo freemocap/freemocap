@@ -371,27 +371,20 @@ def _build_session_and_tracker(
             logger.error(f"Failed to construct MediaPipe tracker: {e!r}", exc_info=True)
             return None, None
 
-    from freemocap.core.tracking.tracker_factory import (
-        build_skeleton_onnx_session,
-        build_skeleton_tracker,
-    )
+    from freemocap.core.tracking.tracker_factory import build_rtmpose_tracker
 
     model_name = camera_node_config.rtmpose_model_name
     confidence_threshold = camera_node_config.rtmpose_confidence_threshold
 
     try:
         batch_size = min(inf_config.max_batch_size, num_cameras)
-        onnx_session = build_skeleton_onnx_session(
+        tracker = build_rtmpose_tracker(
             batch_size=batch_size,
             execution_provider=inf_config.execution_provider,
             model_name=model_name,
-        )
-        tracker = build_skeleton_tracker(
-            onnx_session=onnx_session,
-            model_name=model_name,
             confidence_threshold=confidence_threshold,
         )
-        return tracker, onnx_session
+        return tracker, tracker.sessions["onnx"]
     except Exception as e:
         logger.error(
             f"Failed to construct OnnxSession/Tracker with provider="

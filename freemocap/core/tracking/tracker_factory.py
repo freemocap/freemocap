@@ -9,7 +9,6 @@ directly, so the registry-side-effect imports are guaranteed to have run.
 from __future__ import annotations
 
 import logging
-import threading
 from pathlib import Path
 
 import skellytracker.core.detectors.keypoint_detectors.charuco    # noqa: F401 (registry)
@@ -35,11 +34,9 @@ from skellytracker.core.detectors.object_detectors.keypoint_bbox import (
     KeypointBoundingBoxDetectorConfig,
 )
 from skellytracker.core.detectors.object_detectors.yolox import (
-    YoloxPersonDetector,
     YoloxPersonDetectorConfig,
 )
-from skellytracker.core.sessions.cpu_session import CpuSession, CpuSessionConfig
-from skellytracker.core.sessions.onnx_session import OnnxSession, OnnxSessionConfig
+from skellytracker.core.sessions.cpu_session import CpuSession
 from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName  # noqa: TC002
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
@@ -47,20 +44,9 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
     KeypointResetPolicyConfig,
     KeypointsWithinBBoxRatioConfig,
 )
+from skellytracker.core.tracker.tracker_factory import build_tracker as _st_build_tracker
 
 logger = logging.getLogger(__name__)
-
-# skellytracker's model-preparation step (downloading, then rewriting the
-# ONNX graph for dynamic batching) reads/writes shared cache files on disk
-# under the model's cache path. When multiple VideoNode workers build a
-# skeleton session concurrently (one per camera, in the posthoc pipeline)
-# those writes race and can hand back a corrupted/partially-written graph
-# (e.g. `IndexError: list index out of range` from `_symbolize_batch_dim`
-# reading an empty `graph.input`). Serializing session creation avoids the
-# race; the cache hit on subsequent calls makes this cheap after the first.
-# Eventually we should make an interface in skellytracker that handles this
-# properly
-_onnx_session_build_lock = threading.Lock()
 
 
 def build_charuco_tracker(board_def: CharucoBoardDefinition) -> tuple[Tracker, CpuSession]:
@@ -69,7 +55,6 @@ def build_charuco_tracker(board_def: CharucoBoardDefinition) -> tuple[Tracker, C
     Returns both the Tracker and the underlying CpuSession so the caller can
     call tracker.close() / session.close() when done.
     """
-    session = CpuSession.create(CpuSessionConfig())
     config = TrackerConfig(
         stages=[
             DetectionStageConfig(
@@ -78,66 +63,22 @@ def build_charuco_tracker(board_def: CharucoBoardDefinition) -> tuple[Tracker, C
             )
         ]
     )
-    tracker = Tracker.create(config, {"cpu": session})
-    return tracker, session
-
-
-def build_skeleton_onnx_session(
-    *,
-    batch_size: int,
-    execution_provider: ExecutionProviderName | None = None,
-    device_id: int | None = None,
-    model_name: str = "rtmw-x-l_256x192",
-    yolox_model_name: str = "yolox-m",
-) -> OnnxSession:
-    """Create an OnnxSession for RTMPose+YOLOX inference.
-
-    Args:
-        batch_size: Number of cameras (images) per batched inference call.
-        execution_provider: Force a specific provider ('cuda', 'trt', 'cpu',
-            etc.). None = auto-detect best available.
-        device_id: GPU device index. None = auto-select.
-        model_name: RTMPose model variant.
-        yolox_model_name: YOLOX person detector model variant.
-    """
-    from skellytracker.core.detectors.keypoint_detectors.rtmpose import (
-        RTMPoseKeypointDetector,
-        RTMPOSE_MODEL_SPECS,
-    )
-
-    yolox_spec = YoloxPersonDetector.model_spec(yolox_model_name)
-    rtmpose_spec = RTMPoseKeypointDetector.model_spec(model_name)
-
-    with _onnx_session_build_lock:
-        session = OnnxSession.create(
-            OnnxSessionConfig(
-                batch_size=batch_size,
-                models=[yolox_spec, rtmpose_spec],
-                execution_provider=execution_provider,
-                device_id=device_id,
-            )
-        )
-    return session
+    tracker = _st_build_tracker(config)
+    return tracker, tracker.sessions["cpu"]
 
 
 _REDETECT_SECONDS = 5.0
 
 
-def build_skeleton_tracker(
+def _rtmpose_config(
     *,
-    onnx_session: OnnxSession,
     model_name: str = "rtmw-x-l_256x192",
     confidence_threshold: float = 0.004,
     video_fps: float = 30.0,
     keypoint_bbox_expansion: float = 0.05,
-) -> Tracker:
-    """Build a body-pose Tracker (RTMPose + YOLOX) backed by an OnnxSession.
-
-    The session must have been created with build_skeleton_onnx_session() using
-    matching model names.
-    """
+) -> TrackerConfig:
     redetect_interval = max(1, round(_REDETECT_SECONDS * video_fps))
-    config = TrackerConfig(
+    return TrackerConfig(
         stages=[
             DetectionStageConfig(
                 name="body",
@@ -159,7 +100,46 @@ def build_skeleton_tracker(
             )
         ]
     )
-    return Tracker.create(config, {"onnx": onnx_session})
+
+
+def build_rtmpose_tracker(
+    *,
+    batch_size: int,
+    execution_provider: ExecutionProviderName | None = None,
+    device_id: int | None = None,
+    model_name: str = "rtmw-x-l_256x192",
+    confidence_threshold: float = 0.004,
+    video_fps: float = 30.0,
+    keypoint_bbox_expansion: float = 0.05,
+) -> Tracker:
+    """Build a body-pose Tracker (RTMPose + YOLOX) backed by an OnnxSession.
+
+    Args:
+        batch_size: Number of cameras (images) per batched inference call.
+        execution_provider: Force a specific provider ('cuda', 'trt', 'cpu',
+            etc.). None = auto-detect best available.
+        device_id: GPU device index. None = auto-select.
+        model_name: RTMPose model variant.
+        confidence_threshold: Minimum keypoint confidence to accept.
+        video_fps: Source video/stream frame rate, used to size the
+            bbox-redetect interval.
+        keypoint_bbox_expansion: Fractional padding added to a keypoint-derived
+            bounding box.
+    """
+    config = _rtmpose_config(
+        model_name=model_name,
+        confidence_threshold=confidence_threshold,
+        video_fps=video_fps,
+        keypoint_bbox_expansion=keypoint_bbox_expansion,
+    )
+    return _st_build_tracker(
+        config,
+        onnx_overrides={
+            "batch_size": batch_size,
+            "execution_provider": execution_provider,
+            "device_id": device_id,
+        },
+    )
 
 
 def _mediapipe_hand_child_stage(
@@ -319,12 +299,6 @@ def build_mediapipe_tracker(
     _mediapipe_hand_child_stage), so MediaPipe always looks for exactly one
     hand per stage rather than sharing a full-frame budget across both hands.
     """
-    from skellytracker.core.sessions.mediapipe_session import (
-        MediaPipeSession,
-        MediaPipeSessionConfig,
-    )
-
-    session = MediaPipeSession.create(MediaPipeSessionConfig())
     config = build_mediapipe_tracker_config(
         model_complexity=model_complexity,
         detection_confidence=detection_confidence,
@@ -332,8 +306,5 @@ def build_mediapipe_tracker(
         tracking_confidence=tracking_confidence,
         num_faces=num_faces,
     )
-    tracker = Tracker.create(
-        config,
-        {"mediapipe": session, "cpu": CpuSession.create(CpuSessionConfig())},
-    )
-    return tracker, session
+    tracker = _st_build_tracker(config)
+    return tracker, tracker.sessions["mediapipe"]

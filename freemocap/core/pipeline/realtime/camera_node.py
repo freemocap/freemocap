@@ -68,20 +68,16 @@ def _build_skeleton_tracker_from_config(node_config: CameraNodeConfig):
             num_faces=node_config.mediapipe_num_faces,
         )
 
-    from freemocap.core.tracking.tracker_factory import (
-        build_skeleton_onnx_session,
-        build_skeleton_tracker,
-    )
+    from freemocap.core.tracking.tracker_factory import build_rtmpose_tracker
 
     model_name = node_config.rtmpose_model_name
     confidence_threshold = node_config.rtmpose_confidence_threshold
-    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name)
-    tracker = build_skeleton_tracker(
-        onnx_session=onnx_session,
+    tracker = build_rtmpose_tracker(
+        batch_size=1,
         model_name=model_name,
         confidence_threshold=confidence_threshold,
     )
-    return tracker, onnx_session
+    return tracker, tracker.sessions["onnx"]
 
 
 @dataclass

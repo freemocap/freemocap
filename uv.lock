@@ -2165,7 +2165,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=main#26509b06ba44980b3ccaae7c9c5f4efab4e88c90" }
+source = { git = "https://github.com/freemocap/skellycam?branch=main#06771043becd50db1570ed2a67dd0536edbf47f1" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },
@@ -2209,7 +2209,10 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs#9114990350d7fb36747526286671c17abd7e523e" }
+source = { git = "https://github.com/freemocap/skellylogs#33a3611932ce3d43e54cefb2051171d565137445" }
+dependencies = [
+    { name = "tqdm" },
+]
 
 [[package]]
 name = "skellypings"

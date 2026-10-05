@@ -25,6 +25,7 @@ from skellyforge.core.skeleton.pose.model_scale_fitting import (
 )
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
+from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 
 # Everything a desk hides. The hips stay visible — this is somebody at a keyboard, not
@@ -95,7 +96,7 @@ def _fit(keypoints: dict[str, np.ndarray]) -> ModelScaleFit:
         name: Point.from_array(values=position)
         for name, position in mapping.apply(tracker_positions=keypoints).items()
     }
-    resolved = ContinuousRollResolver.for_skeleton(skeleton=skeleton).resolve_pose(
+    resolved = ContinuousRollResolver.for_skeleton(skeleton=skeleton, rest_relative_orientations=RestPose.from_default_yaml(skeleton=skeleton).relative_orientations).resolve_pose(
         pose=hydrate_skeleton(skeleton=skeleton, observed=observed, require_all=False)
     )
     fitter = StreamingModelScaleFitter(skeleton=skeleton, voting_segment_names=voting)

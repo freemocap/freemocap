@@ -1,9 +1,6 @@
-"""KeypointsProducer — the measured keypoints + hydrated landmarks.
+"""Publish tracker keypoints, mapped observations, and reconstructed model landmarks.
 
-Active while a realtime pipeline is live. Fills KEYPOINTS_3D (tracker-named
-measured keypoints) and LANDMARKS_3D (the hydrated standard-human landmarks)
-as self-describing ChannelBlocks. A missing point is a NaN row — never a
-dropped block.
+All three are separate channels. Missing positions remain NaN rows.
 """
 from __future__ import annotations
 
@@ -36,6 +33,15 @@ class KeypointsProducer(ChannelProducer):
                 names=tracker_names,
                 columns=("x", "y", "z", "reprojection_error"),
                 data=assemble_channel_bytes(names=tracker_names, positions=message.keypoints_arrays or {}, n_cols=4),
+            ),
+            ChannelBlock(
+                kind=ChannelKind.MAPPED_KEYPOINTS_3D,
+                columns=("x", "y", "z", "reprojection_error"),
+                data=assemble_channel_bytes(
+                    names=landmark_names,
+                    positions=reconstruction.mapped_keypoints if reconstruction else {},
+                    n_cols=4,
+                ),
             ),
             ChannelBlock(
                 kind=ChannelKind.LANDMARKS_3D,

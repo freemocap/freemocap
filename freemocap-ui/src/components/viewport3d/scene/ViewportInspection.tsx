@@ -51,12 +51,13 @@ function computeDetails(
     // Which MODEL owns this name. A frame carries several, so the numbers have to be read
     // out of the one that declares the target — reading models[0] reported a board
     // landmark's position out of the human's arrays.
-    if (target.kind === "landmark") {
+    if (target.kind === "landmark" || target.kind === "mapped keypoint") {
         const entry = models?.find(
             (m) => definitionsById.get(m.modelId)?.landmarks.some((l) => l.name === target.name),
         );
-        const i = findIndex(entry?.landmarks?.names, target.name);
-        const data = entry?.landmarks?.data;
+        const points = target.kind === "mapped keypoint" ? entry?.mappedKeypoints : entry?.landmarks;
+        const i = findIndex(points?.names, target.name);
+        const data = points?.data;
         const xyz = i >= 0 && data ? [data[i * 3], data[i * 3 + 1], data[i * 3 + 2]] : undefined;
         const definition = entry ? definitionsById.get(entry.modelId) : undefined;
         const lm = definition?.landmarks.find((l) => l.name === target.name);

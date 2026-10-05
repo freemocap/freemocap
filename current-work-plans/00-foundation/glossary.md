@@ -69,6 +69,9 @@ The shared vocabulary, defined once here â€” every other doc links.
 
 ## Mapping vocabulary
 
+- **mapped keypoint trajectory** — a tracker mapping output, keyed by the model landmark it observes; retained independently of the reconstructed landmark trajectory.
+- **landmark trajectory** — model-local geometry transformed by the owning solved segment orientation, translation, and fitted segment scale.
+
 - **mapping** â€” the skellytracker-owned rule turning tracker keypoints into landmark observations
   (direct / mean / weighted / `anatomical_offset`, or **pass-through**). Applied in freemocap *before*
   hydration â€” see [../01-data-model/tracker-mapping.md](../01-data-model/tracker-mapping.md).

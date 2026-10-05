@@ -177,6 +177,7 @@ export const workerDataStore: KeypointsSource & {
             case "modelFrames":
                 if (livePresentation) modelPresentation.update(data as ResolvedModelFrame[], modelKey,
                     value => Boolean(value.segmentOrigins?.data.some(Number.isFinite)
+                        || value.mappedKeypoints?.data.some(Number.isFinite)
                         || value.landmarks?.data.some(Number.isFinite)));
                 else modelFramesChan.dispatch(data as ResolvedModelFrame[]);
                 break;

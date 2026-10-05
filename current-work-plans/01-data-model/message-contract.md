@@ -73,5 +73,5 @@ A frame channel is a `ChannelBlock`: `kind` + `columns` + `data` (packed float32
 bytes, columns by names, row-major), plus `camera_id` (per-camera overlay channels only) and `names`
 (inline, on tracker-keypoint channels). Segment/landmark channels are **index-keyed** — row order is the
 model's ordered segments/landmarks, so those names are dropped. Channel kinds: KEYPOINTS_3D,
-LANDMARKS_3D, SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD, DERIVED_POINTS, OVERLAY_2D,
+MAPPED_KEYPOINTS_3D, LANDMARKS_3D, SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD, DERIVED_POINTS, OVERLAY_2D,
 SEGMENT_LENGTHS, OVERLAY_REPROJECTIONS, JOINT_ANGLES.

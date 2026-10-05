@@ -19,6 +19,7 @@ export interface ViewportVisibility {
     environment: boolean;
     keypoints: boolean;
     skeleton: boolean;
+    mappedKeypoints: boolean;
     face: boolean;
     connections: boolean;
     cameras: boolean;
@@ -39,6 +40,7 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     environment: true,
     keypoints: true,
     skeleton: true,
+    mappedKeypoints: true,
     face: true,
     connections: true,
     cameras: true,
@@ -56,6 +58,7 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
 export interface ViewportStats {
     keypoints: number;
     skeleton: number;
+    mappedKeypoints: number;
     facePoints: number;
     connections: number;
     cameras: number;
@@ -67,7 +70,7 @@ export interface ViewportStats {
 // ---------------------------------------------------------------------------
 
 /** The three inspectable entity kinds in the 3D viewport. */
-export type InspectionKind = "keypoint" | "landmark" | "segment";
+export type InspectionKind = "keypoint" | "mapped keypoint" | "landmark" | "segment";
 
 /** A hovered or pinned inspectable entity. */
 export interface InspectionTarget {

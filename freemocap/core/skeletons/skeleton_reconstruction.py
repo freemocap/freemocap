@@ -26,7 +26,10 @@ class SkeletonReconstruction:
 
     Attributes:
         model_id: which skeleton this is, matching a `TrackedSkeletonBundle`.
-        landmarks: hydrated landmark world positions, including segment origins.
+        mapped_keypoints: mapping observations, keyed by canonical landmark identity.
+        landmarks: scaled model-local geometry transformed by its owning solved segment.
+        segment_origins: root-anchored translations keyed by segment; children attach to
+            the parent's rigid landmark. Geometry requires a measured path to the root.
         segment_rotations_world: per-segment world quaternions (wxyz).
         segment_rotations_local: per-segment parent-relative quaternions (wxyz).
         segment_lengths: fitted length per segment, in millimetres, for EVERY segment -
@@ -42,6 +45,8 @@ class SkeletonReconstruction:
 
     model_id: str
     rigid_body_residuals: dict[str, RigidBodyResidual] = field(default_factory=dict)
+    mapped_keypoints: dict[str, np.ndarray] = field(default_factory=dict)
+    segment_origins: dict[str, np.ndarray] = field(default_factory=dict)
     landmarks: dict[str, np.ndarray] = field(default_factory=dict)
     segment_rotations_world: dict[str, np.ndarray] = field(default_factory=dict)
     segment_rotations_local: dict[str, np.ndarray] = field(default_factory=dict)

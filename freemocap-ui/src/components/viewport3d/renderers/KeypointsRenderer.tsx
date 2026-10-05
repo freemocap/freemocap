@@ -67,10 +67,10 @@ interface KeypointLayerProps {
     /** Which points this layer draws: the raw triangulated measurements from every
      *  detector, or every tracked model's fitted LANDMARKS. The second is what shows a
      *  charuco board as a reconstructed rigid object rather than a cloud of corners. */
-    pointSource: "keypoints" | "modelLandmarks";
+    pointSource: "keypoints" | "modelLandmarks" | "mappedKeypoints";
     color: Color;
     radius: number;
-    statsKey: "keypoints" | "skeleton";
+    statsKey: "keypoints" | "skeleton" | "mappedKeypoints";
     colorMode?: "uniform" | "byBodyPart";
     /** Values per point in the interleaved frame data. Every PointsFrame is
      *  3-interleaved xyz: frame-resolution strips the 4th column
@@ -78,7 +78,7 @@ interface KeypointLayerProps {
      *  3-column. */
     stride: 3 | 4;
     /** The inspection kind reported when this layer's points are hovered/clicked. */
-    inspectionKind: "keypoint" | "landmark";
+    inspectionKind: "keypoint" | "landmark" | "mapped keypoint";
 }
 
 function KeypointLayer({ pointSource, color, radius, statsKey, colorMode = "uniform", stride, inspectionKind }: KeypointLayerProps) {
@@ -159,6 +159,7 @@ function KeypointLayer({ pointSource, color, radius, statsKey, colorMode = "unif
         if (pointSource === "keypoints") {
             return keypointsSource.subscribeToKeypoints(handleFrame);
         }
+        const field = pointSource === "mappedKeypoints" ? "mappedKeypoints" : "landmarks";
         // Every model's landmarks in one cloud. Concatenated rather than "the first
         // model's", because a frame carries several tracked things and their name spaces
         // are disjoint — showing only one of them was the single-object assumption.
@@ -166,17 +167,17 @@ function KeypointLayer({ pointSource, color, radius, statsKey, colorMode = "unif
             const names: string[] = [];
             let total = 0;
             for (const entry of models) {
-                if (!entry.landmarks) continue;
-                names.push(...entry.landmarks.names);
-                total += entry.landmarks.data.length;
+                if (!entry[field]) continue;
+                names.push(...entry[field].names);
+                total += entry[field].data.length;
             }
-            if (names.length === 0) return;
+
             const interleaved = new Float32Array(total);
             let offset = 0;
             for (const entry of models) {
-                if (!entry.landmarks) continue;
-                interleaved.set(entry.landmarks.data, offset);
-                offset += entry.landmarks.data.length;
+                if (!entry[field]) continue;
+                interleaved.set(entry[field].data, offset);
+                offset += entry[field].data.length;
             }
             handleFrame({ pointNames: names, interleaved });
         });
@@ -283,6 +284,10 @@ export function KeypointsRenderer() {
                     stride={3}
                     inspectionKind="keypoint"
                 />
+            )}
+            {visibility.mappedKeypoints && (
+                <KeypointLayer pointSource="mappedKeypoints" color={new Color("#00e5ff")}
+                    radius={0.12} statsKey="mappedKeypoints" stride={3} inspectionKind="mapped keypoint" />
             )}
             {visibility.skeleton && (
                 <KeypointLayer

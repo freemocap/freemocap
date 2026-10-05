@@ -107,13 +107,18 @@ export function ViewportOverlay({
               onChange={toggleEnvironment}
             />
             <VisToggle
-              label="Keypoints"
+              label="Original keypoints"
               countRef={keypointsCountRef}
               checked={visibility.keypoints}
               onChange={toggleKeypoints}
             />
             <VisToggle
-              label="Skeleton"
+              label="Mapped keypoints (cyan)"
+              checked={visibility.mappedKeypoints}
+              onChange={() => toggle("mappedKeypoints")}
+            />
+            <VisToggle
+              label="Landmarks"
               countRef={skeletonCountRef}
               checked={visibility.skeleton}
               onChange={toggleSkeleton}

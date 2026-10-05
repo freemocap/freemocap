@@ -24,18 +24,15 @@ import numpy as np
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import encode_message
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
-from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
+from freemocap.core.skeletons.reconstruct_skeleton import reconstruct_skeleton
+from freemocap.core.skeletons.reconstruction_state import build_reconstruction_states, streaming_model_scale_source
 from freemocap.core.skeletons.standard_human_skeleton import (
     STANDARD_HUMAN_MODEL_ID,
     build_standard_human_bundle,
 )
-from freemocap.core.tasks.mocap.tracker_mappings import load_standard_human_mapping
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
-from skellyforge.core.math.geometry.spatial_vectors import Point
-from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
-from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 
@@ -91,28 +88,14 @@ def _abducted_left_arm(pose: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
 def _hydrate(
     pose: dict[str, np.ndarray],
 ) -> tuple[SkeletonDefinition, RestPose, dict[str, np.ndarray], dict[str, np.ndarray]]:
-    """The aggregator's exact per-frame reconstruction order, one frame.
-
-    tracker mapping -> Point conversion -> hydrate_skeleton (partial) ->
-    ContinuousRollResolver, then hydrate the segment origins onto the mapped
-    landmarks (the wire's standard_skeleton).
-    """
+    """The production reconstruction, including mapped observations and rigid geometry."""
     skeleton = SkeletonDefinition.from_default_yaml()
     rest_pose = RestPose.from_default_yaml(skeleton=skeleton)
-    resolver = ContinuousRollResolver.for_skeleton(skeleton=skeleton)
-    mapping = load_standard_human_mapping("rtmpose")
-    mapped = mapping.apply(tracker_positions=pose)
-    observed = {name: Point.from_array(values=position) for name, position in mapped.items()}
-    resolved = resolver.resolve_pose(
-        pose=hydrate_skeleton(skeleton=skeleton, observed=observed, require_all=False)
-    )
-    hydrated_landmarks = dict(mapped)
-    for segment in skeleton.segments.values():
-        if segment.name in resolved.segment_poses:
-            origin_name = segment.frame_definition.origin_point_name
-            hydrated_landmarks[origin_name] = resolved.segment_poses[segment.name].origin.array
-    world = {name: sp.orientation.as_array() for name, sp in resolved.segment_poses.items()}
-    return skeleton, rest_pose, world, hydrated_landmarks
+    bundle = build_standard_human_bundle(detector_type="rtmpose")
+    state = build_reconstruction_states(bundles=(bundle,), scale_source_for=streaming_model_scale_source(window_frames=30))[bundle.model_id]
+    result = reconstruct_skeleton(bundle=bundle, state=state, filtered_keypoints=pose, compute_center_of_mass=False)
+    assert result is not None
+    return skeleton, rest_pose, result.segment_rotations_world, result.landmarks
 
 
 def _message(
@@ -122,6 +105,9 @@ def _message(
     pose: dict[str, np.ndarray],
 ) -> AggregationNodeOutputMessage:
     """A real aggregator message: tracker keypoints + one skeleton's reconstruction."""
+    bundle = build_standard_human_bundle(detector_type="rtmpose")
+    state = build_reconstruction_states(bundles=(bundle,), scale_source_for=streaming_model_scale_source(window_frames=30))[bundle.model_id]
+    reconstruction = reconstruct_skeleton(bundle=bundle, state=state, filtered_keypoints=pose, compute_center_of_mass=False)
     return AggregationNodeOutputMessage(
         frame_number=7,
         pipeline_config=RealtimePipelineConfig(),
@@ -129,17 +115,7 @@ def _message(
         camera_node_outputs={},
         keypoints_arrays=pose,
         reconstructions={
-            STANDARD_HUMAN_MODEL_ID: SkeletonReconstruction(
-                model_id=STANDARD_HUMAN_MODEL_ID,
-                landmarks=hydrated_landmarks,
-                segment_rotations_world=world,
-                center_of_mass=np.zeros(3),
-                extrapolated_center_of_mass=np.zeros(3),
-                segment_lengths={
-                    seg.name: seg.length for seg in skeleton.segments.values()
-                },
-                fitted_scale_mm=1700.0,
-            )
+            STANDARD_HUMAN_MODEL_ID: reconstruction,
         },
     )
 

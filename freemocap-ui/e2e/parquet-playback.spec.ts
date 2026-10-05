@@ -39,8 +39,16 @@ test.beforeAll(async () => {
         function Probe() {
             const source = useKeypointsSource();
             const [state, setState] = useState('empty');
+            const [products, setProducts] = useState('empty');
+            const [original, setOriginal] = useState(false);
+            useEffect(() => source.subscribeToKeypoints(frame => setOriginal(frame.interleaved.some(Number.isFinite))), [source]);
             useEffect(() => source.subscribeToModelFrames(frames => {
                 const frame = frames[0];
+                const mapped = frame?.mappedKeypoints?.data;
+                const landmarks = frame?.landmarks?.data;
+                setProducts(mapped?.some(Number.isFinite) && landmarks?.some(Number.isFinite)
+                    ? (mapped.some((value, index) => Number.isFinite(value) && Number.isFinite(landmarks[index]) && Math.abs(value - landmarks[index]) > 1) ? 'distinct' : 'same')
+                    : 'missing');
                 if (!frame?.rotations || !frame.segmentOrigins || !frame.segmentLengths) {setState('empty'); return;}
                 const finite = frame.segmentOrigins.data.some(Number.isFinite) && frame.rotations.worldQuaternions.some(Number.isFinite);
                 const complete = frame.segmentLengths.data.every(value => value > 0) &&
@@ -48,7 +56,7 @@ test.beforeAll(async () => {
                     frame.rotations.boneNames.join() === frame.segmentLengths.names.join();
                 setState(complete ? (finite ? 'bones:' + frame.rotations.boneNames.length : 'missing') : 'invalid');
             }), [source]);
-            return <output id="frame">{state}</output>;
+            return <><output id="frame">{state}</output><output id="products">{products}</output><output id="original">{String(original)}</output></>;
         }
         function App() {
             const [manifest, setManifest] = useState(initial);
@@ -103,17 +111,22 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
     if (server) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
-test.beforeEach(() => {downloads = [];});
+test.beforeEach(({page}) => {downloads = []; page.on('pageerror', error => console.error(error));});
 
 test('one download supplies bones, backward seeks and retained results', async ({page}) => {
     await page.goto(url);
     await expect(page.locator('#frame')).toHaveText('bones:61');
+    await expect(page.locator('#products')).toHaveText('distinct');
+    await expect(page.locator('#original')).toHaveText('true');
     for (let index = 0; index < 3; index++) {
         await page.locator('#last').click();
         await expect(page.locator('#frame')).toHaveText('missing');
+        await expect(page.locator('#products')).toHaveText('missing');
+        await expect(page.locator('#original')).toHaveText('false');
         await page.locator('#first').click();
         await expect(page.locator('#frame')).toHaveText('bones:61');
     }
+    await page.getByLabel('Recording results', {exact: true}).click();
     await page.getByRole('combobox').first().selectOption('1');
     await expect(page.locator('#frame')).toHaveText('bones:61');
     expect(downloads).toEqual(['/freemocap/playback/recording/parquet']);

@@ -144,12 +144,12 @@ class ReconstructionRecording:
                 continue
             if frame.model_id != self.definition.model_id:
                 raise ValueError("Reconstruction frame belongs to another model")
-            if set(frame.landmarks) - set(self.definition.landmark_names):
+            if (set(frame.landmarks) | set(frame.mapped_keypoints)) - set(self.definition.landmark_names):
                 raise ValueError("Reconstruction contains undeclared landmarks")
             if set(frame.joint_angles or {}) - set(self.definition.joint_angle_names):
                 raise ValueError("Reconstruction contains undeclared joints")
             if (
-                set(frame.segment_rotations_world) | set(frame.segment_rotations_local)
+                set(frame.segment_origins) | set(frame.segment_rotations_world) | set(frame.segment_rotations_local)
             ) - set(self.definition.segment_origins):
                 raise ValueError("Reconstruction contains undeclared segments")
 
@@ -173,6 +173,11 @@ class ReconstructionRecording:
             stage=ProcessingStage.RECONSTRUCTION,
         )
         for kind, names, components in (
+            (
+                ChannelKind.MAPPED_KEYPOINTS_3D,
+                self.definition.landmark_names,
+                (SampleComponent.X, SampleComponent.Y, SampleComponent.Z),
+            ),
             (
                 ChannelKind.LANDMARKS_3D,
                 self.definition.landmark_names,
@@ -296,18 +301,18 @@ class ReconstructionRecording:
                             if frame.center_of_mass is not None
                             else {}
                         )
-                    case ChannelKind.LANDMARKS_3D | ChannelKind.SEGMENT_ORIGINS:
+                    case ChannelKind.MAPPED_KEYPOINTS_3D:
+                        positions = frame.mapped_keypoints
+                    case ChannelKind.SEGMENT_ORIGINS:
+                        positions = frame.segment_origins
+                    case ChannelKind.LANDMARKS_3D:
                         positions = frame.landmarks
                     case _:
                         raise ValueError(
                             f"Unsupported reconstruction channel: {channel.kind}"
                         )
                 for point, name in enumerate(channel.names):
-                    key = (
-                        self.definition.segment_origins[name]
-                        if channel.kind == ChannelKind.SEGMENT_ORIGINS
-                        else name
-                    )
+                    key = name
                     if key in positions:
                         if positions[key].shape != (len(channel.components),):
                             raise ValueError(

@@ -30,6 +30,16 @@ The ontology is **seven layers**, and each layer is an object with two faces and
 Layers 1–4 and 7 are required of every skeleton. Layers 5–6 are what an *articulated* skeleton adds;
 a rigid one simply has none.
 
+## Dynamic trajectory products
+
+Reconstruction retains three separate products: tracker-named keypoints (raw and
+filtered), mapped keypoint observations keyed by canonical landmark identity, and
+model landmarks transformed by their owning solved segment pose and fitted scale.
+Mapping observations are reconstruction inputs, not rigid geometry or additional
+independent detector measurements. Segment origins are explicit translations keyed
+by segment and paired with the same solved rotations; they are not recovered from
+landmark positions. Missing poses or scale cannot manufacture landmark positions.
+
 ## The layers
 
 ### Optional connected skeleton fitting

@@ -28,6 +28,7 @@ export function ViewportStateProvider({ children }: { children: React.ReactNode 
     const statsRef = useRef<ViewportStats>({
         keypoints: 0,
         skeleton: 0,
+        mappedKeypoints: 0,
         facePoints: 0,
         connections: 0,
         cameras: 0,

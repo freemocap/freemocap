@@ -70,7 +70,7 @@ def inspect_saved_stages(path: str) -> dict:
                 triangulation=ChannelKind.RAW_KEYPOINTS_3D in kinds,
                 filtering=ChannelKind.KEYPOINTS_3D in kinds,
                 scale_fit=any(f.sensor_group == group for f in run.scale_fits),
-                reconstruction=ProcessingStage.RECONSTRUCTION in completed and ChannelKind.LANDMARKS_3D in kinds,
+                reconstruction=ProcessingStage.RECONSTRUCTION in completed and {ChannelKind.LANDMARKS_3D, ChannelKind.MAPPED_KEYPOINTS_3D}.issubset(kinds),
                 skeleton_fit=ProcessingStage.SKELETON_FIT in completed,
             )
             groups.append(dict(sensor_group=group, stages=stages))

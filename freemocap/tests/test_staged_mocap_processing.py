@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 from pathlib import Path
 import shutil
+from freemocap.core.pipeline.performance_report import PerformanceReport
 
 import numpy as np
 import pyarrow as pa
@@ -122,7 +123,7 @@ def test_completed_tracking_and_triangulation_survive_reconstruction_failure(tmp
         sensor_groups=(camera_group_name(['cam']),)))).to_pylist()
     worker = Mock(spec=mocap_pipeline.MocapWorkerRequest,
         config=PosthocMocapPipelineConfig(start_stage='triangulation', detector_type='rtmpose'),
-        recording=info, ipc=SimpleNamespace(should_continue=True), report=Mock())
+        recording=info, ipc=SimpleNamespace(should_continue=True), report=Mock(), performance=PerformanceReport(), pipeline_id="test-resume")
     mocap_pipeline.run_mocap_pipeline(request=worker)
     after = pa.Table.from_batches(list(read_batches(path=structure.data_parquet_path, run_id=0,
         sensor_groups=(camera_group_name(['cam']),)))).to_pylist()

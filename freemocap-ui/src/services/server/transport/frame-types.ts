@@ -86,6 +86,8 @@ export interface ResolvedModelFrame {
     segmentOrigins: PointsFrame | null;
     /** Landmarks placed by the FIT — the reconstructed object, not the raw measurement. */
     landmarks: PointsFrame | null;
+    /** Mapping observations in canonical landmark order, before reconstruction. */
+    mappedKeypoints: PointsFrame | null;
     rotations: RotationsFrame | null;
     segmentLengths: SegmentLengthsFrame | null;
     derived: DerivedPointsFrame;

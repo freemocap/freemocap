@@ -85,7 +85,7 @@ def read_fit_inputs(*, path: Path, metadata: RecordingMetadata, run_id: int,
         raise ValueError('Skeleton fitting requires prepared keypoint trajectories')
     selected = {}
     for field, kind, producer, components in (
-        ('points', ChannelKind.LANDMARKS_3D, source, dict.fromkeys('xyz', 'mm')),
+        ('points', ChannelKind.MAPPED_KEYPOINTS_3D, source, dict.fromkeys('xyz', 'mm')),
         ('keypoints', ChannelKind.KEYPOINTS_3D, definition['tracker'], dict.fromkeys('xyz', 'mm')),
         ('origins', ChannelKind.SEGMENT_ORIGINS, source, dict.fromkeys('xyz', 'mm')),
         ('rotations', ChannelKind.ROTATIONS_WORLD, source, dict.fromkeys('wxyz', '1')),

@@ -114,6 +114,11 @@ function resolveModelFrame(
           }
         : null;
 
+    const mapped = channelByKind(channels, "MAPPED_KEYPOINTS_3D");
+    const mappedKeypoints: PointsFrame | null = mapped
+        ? {names: landmarkNames, data: xyzFromFourColumns(float32(mapped.data), landmarkNames.length)}
+        : null;
+
     const rw = channelByKind(channels, ROTATIONS_WORLD);
     const rl = channelByKind(channels, ROTATIONS_LOCAL);
     const rotations: RotationsFrame | null =
@@ -156,6 +161,7 @@ function resolveModelFrame(
         fittedScaleMm,
         segmentOrigins,
         landmarks,
+        mappedKeypoints,
         rotations,
         segmentLengths,
         derived,

@@ -250,3 +250,29 @@ fixture chain. Scientific comparisons use appropriate numerical tolerances;
 file hashes bind a particular artifact, not a promise of bitwise deterministic
 GPU results across fresh runs. Dataset validation is an integration benchmark,
 not proof of anatomical accuracy.
+
+## Trajectory products
+
+- `RAW_KEYPOINTS_3D` and `KEYPOINTS_3D` retain tracker identities and raw/filtered provenance.
+- `MAPPED_KEYPOINTS_3D` retains mapping observations keyed by canonical model landmark names.
+  Its model source identifies the tracker; `RecordedModel.mappings` stores the mapping definitions.
+- `LANDMARKS_3D` contains model-local landmarks scaled by the fitted segment scale, rotated
+  by the owning segment orientation and translated by its solved origin. It is produced
+  whether or not center of mass computation is enabled.
+- `SEGMENT_ORIGINS` stores translations keyed by segment and paired with `ROTATIONS_WORLD`.
+  Forward kinematics anchors the root at its measured origin and places each child at
+  its parent's scaled, rotated `connect_at` landmark, preserving measured orientations.
+  Scale fitting and roll estimation use observations before this connection step.
+
+Mapped observations survive frames without solvable poses. Landmarks require both the
+owning pose, every ancestor pose through the observed root, and a fitted scale;
+absent results remain missing, with no observation or
+unit-scale substitution. Each product retains its run, source, sensor group, reference
+frame, units and sample grid. Both model point channels belong to reconstruction and are
+invalidated together, including dependent optional solver results. Solver inputs read
+mapped observations; solver predictions remain under their own solver source.
+
+Live view and recording playback show original keypoints, mapped keypoints (cyan), and
+landmarks as independently selectable layers. Playback uses recorded definitions.
+This is the single supported contract. Older mixed landmark recordings are unsupported;
+there is no compatibility reader, semantic version field, or automatic migration.

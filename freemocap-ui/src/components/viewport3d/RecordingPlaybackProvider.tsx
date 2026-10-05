@@ -3,7 +3,7 @@ import {serverUrls} from '@/constants/server-urls';
 import {KeypointsSourceProvider, type KeypointsSource, type KeypointsFrame, type KeypointsCallback, type ModelsCallback, type ModelFramesCallback} from './KeypointsSourceContext';
 import type {ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame} from '@/services/server/transport/frame-types';
-import {channelFrame, recordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackChannelData, type PlaybackRun} from '@/services/recording/playback-data';
+import {recordedKeypoints, recordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackChannelData, type PlaybackRun} from '@/services/recording/playback-data';
 
 import {PlaybackLoadResultSchema} from '@/services/recording/playback-parquet-messages';
 import {fittedSkeletonFrames} from '@/services/recording/fitted-skeleton';
@@ -113,7 +113,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
                 return empty;
             }
         };
-        const raw = channels.find(item => item.channel.sensor_group === group && item.channel.kind === RecordingChannelKind.RawPoints);
         const tick = (): void => {
             const time = mediaAvailable ? getRecordingTime() : dataTimeRef.current;
             if (time === null) {
@@ -130,8 +129,8 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
                         () => [recordedModelFrame(run, {channels}, model, group, time)], []));
                     fittedFrames.current = sample('fitted', time, () => fittedSkeletonFrames(run, channels, group, time), []);
                     fittedFrameSubscribers.current.forEach(cb => cb(fittedFrames.current));
-                    const data = raw ? sample('raw points', time, () => channelFrame(raw, time), null) : null;
-                    state.current.points = raw && data ? {pointNames: raw.channel.names, interleaved: data} : null;
+                    const points = sample('original keypoints', time, () => recordedKeypoints(channels, group, time), null);
+                    state.current.points = points ? {pointNames: points.names, interleaved: points.data} : null;
                     frameSubscribers.current.forEach(callback => callback(state.current.frames));
                     pointSubscribers.current.forEach(callback => callback(state.current.points ?? {pointNames: [], interleaved: new Float32Array()}));
                     emittedTime = time;

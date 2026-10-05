@@ -9,9 +9,10 @@ landmarks (toes, condyles, deep points) ride the segment's rigid solve / transpo
 ## What this covers
 
 The **one interface** between skellytracker (keypoints) and skellyforge (segments): the mapping YAMLs.
-Tracker keypoints in → the named **landmarks** the segment model declares out (the mapping's output is
-always a landmark; the production form — direct / weighted / offset — is the mechanism). Makes
-skellyforge's output identical regardless of which tracker fed it. Four YAMLs ship today: mediapipe
+Tracker keypoints become **mapped keypoint observations**, keyed by the model's canonical
+landmark identities. Direct, weighted, mean and offset rules retain their provenance.
+The identities are shared across trackers; different measurements need not produce
+identical reconstructions. Four YAMLs ship today: mediapipe
 body, mediapipe hand, rtmpose body, rtmpose hand.
 
 ## Key facts 
@@ -34,9 +35,11 @@ body, mediapipe hand, rtmpose body, rtmpose hand.
   `standard_human_mapping(filtered_keypoints)` → `{landmark_name: ndarray}` BEFORE hydration — tracker
   names become standard-human names before any model code sees them.
 - There is no load-time "every landmark must be produced" contract — an articulated model is driven by
-  the AVAILABLE tracker information. Detector-emittable points only: distal segments (metacarpals,
-  phalanges beyond detector reach) are unmapped for now ("no metacarpals for now") and ride partial
-  hydration / transported roll.
+  the AVAILABLE tracker information. Both hand mappings now estimate index, middle, ring and pinky
+  CMC observations using anatomical offsets from wrist/middle-MCP/index-MCP geometry. Thumb CMC
+  and finger joints remain direct observations. Forge's carpal observation frame uses canonical
+  wrist and knuckle observations; this does not rigid-fit the entire palm. Missing or degenerate
+  defining inputs leave that hand chain absent. Live and post hoc use the same reconstruction.
 
 ## Connected fitting: reuse the existing boundary
 
@@ -113,4 +116,4 @@ drift apart (a few frame-unreachable points carry explicit documented allowances
 the cervical segment follows the tracked head. The old skellyforge-side `tracker_info/*.yaml`
 files are **deleted** (they died with the old system).
 skellyforge's `test_tracker_mapping_boundary.py` validates every mapping-YAML key against the live
-landmark set, so renames fail on the skellyforge side too. The mapping's output is a **landmark**.
+landmark set, so renames fail on the skellyforge side too. The mapping's output is a **mapped keypoint observation**, not a rigidified landmark position.

@@ -1,7 +1,7 @@
 """Reconstruct ONE skeleton from one frame's keypoints.
 
 Everything the realtime loop does per tracked skeleton, in one place: map keypoints to
-landmarks, hydrate, resolve roll, fit scale, size every segment, and place the centre of
+observations, hydrate, resolve roll, fit scale, connect rigid segments, and place the centre of
 mass. The aggregator calls it once per skeleton and collects the results.
 
 Pulled out of the aggregator rather than inlined there because "do this for each tracked
@@ -18,10 +18,10 @@ from __future__ import annotations
 import numpy as np
 from skellyforge.core.biomechanics.center_of_mass import (
     compute_segment_coms,
-    landmark_world_positions,
 )
 from skellyforge.core.biomechanics.composite_inertia import whole_body_center_of_mass
 from skellyforge.core.math.geometry.spatial_vectors import Point
+from skellyforge.core.skeleton.chain.synthesis import synthesize_fitted_pose
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 from skellyforge.core.skeleton.pose.model_scale_fitting import scale_voting_segment_names
@@ -39,7 +39,7 @@ def reconstruct_skeleton(
     filtered_keypoints: dict[str, np.ndarray],
     compute_center_of_mass: bool,
 ) -> SkeletonReconstruction | None:
-    """This skeleton's reconstruction for one frame, or `None` if it did not hydrate.
+    """This skeleton's reconstruction for one frame, or `None` if there are no mapped observations.
 
     Args:
         bundle: the skeleton being reconstructed — what it IS, authored once.
@@ -51,8 +51,8 @@ def reconstruct_skeleton(
         compute_center_of_mass: whether to place the centre of mass this frame.
 
     Returns:
-        The reconstruction, or `None` when nothing of this skeleton was visible - which is
-        an absent model this frame, not an empty one.
+        The observations and available reconstruction. Observations survive unsolved poses;
+        `None` means there were no mapped observations.
     """
     mapped_landmarks = bundle.landmark_mapping.apply(tracker_positions=filtered_keypoints)
     if not mapped_landmarks:
@@ -65,7 +65,7 @@ def reconstruct_skeleton(
         skeleton=bundle.skeleton, observed=observed, require_all=False
     )
     if not hydrated_pose.segment_poses:
-        return None
+        return SkeletonReconstruction(model_id=bundle.model_id, mapped_keypoints=mapped_landmarks)
     # A skeleton that measures its own roll (every segment fully specified, as a rigid
     # marked object is) opted out of roll resolution, and applying a continuity convention
     # to it would invent state where there is a measurement.
@@ -74,15 +74,6 @@ def reconstruct_skeleton(
         if state.roll_resolver is not None
         else hydrated_pose
     )
-
-    landmarks = dict(mapped_landmarks)
-    for segment in bundle.skeleton.segments.values():
-        segment_pose = resolved_pose.segment_poses.get(segment.name)
-        if segment_pose is None:
-            # Partial hydration: a segment whose landmarks were not observed this frame is
-            # absent from the pose, so its origin is absent too rather than stale.
-            continue
-        landmarks[segment.frame_definition.origin_point_name] = segment_pose.origin.array
 
     reference_fit = (
         state.scale_source.current_fit() if isinstance(state.scale_source, FrozenModelScale) and state.scale_source.has_model_scale
@@ -105,17 +96,47 @@ def reconstruct_skeleton(
     )
 
     state.diagnostic_reference_fit = scale_fit
+    # Measurement and scale evidence above remain independent of the connected output.
+    # Only measured paths reaching the observed root can be placed without inferring
+    # missing orientations. In particular, a visible hand cannot bridge a missing arm.
+    children: dict[str, list[str]] = {name: [] for name in bundle.rest_pose.parents}
+    for name, parent in bundle.rest_pose.parents.items():
+        if parent is not None:
+            children[parent].append(name)
+    selected: set[str] = set()
+    pending = [bundle.rest_pose.root_segment_name] if scale_fit is not None else []
+    while pending:
+        name = pending.pop()
+        if name not in resolved_pose.segment_poses:
+            continue
+        selected.add(name)
+        pending.extend(children[name])
+
+    relative = resolved_pose.parent_relative_orientations(parents=bundle.rest_pose.parents)
+    world_rotations, origins, landmarks = {}, {}, {}
+    if selected:
+        root_name = bundle.rest_pose.root_segment_name
+        root = resolved_pose.segment_poses[root_name]
+        world_rotations, origins, landmarks = synthesize_fitted_pose(
+            skeleton=bundle.skeleton,
+            fit=scale_fit,
+            segment_relative_orientations={name: relative[name] for name in selected if name != root_name},
+            root_world_orientation=root.orientation,
+            root_origin=root.origin,
+            segment_names=frozenset(selected),
+        )
     reconstruction = SkeletonReconstruction(
         model_id=bundle.model_id,
         rigid_body_residuals=residuals,
-        landmarks=landmarks,
+        mapped_keypoints=mapped_landmarks,
+        landmarks={name: point.array for name, point in landmarks.items()},
+        segment_origins={name: point.array for name, point in origins.items()},
         segment_rotations_world={
-            name: segment_pose.orientation.as_array()
-            for name, segment_pose in resolved_pose.segment_poses.items()
+            name: rotation.as_array() for name, rotation in world_rotations.items()
         },
         segment_rotations_local={
             name: rotation.as_array()
-            for name, rotation in resolved_pose.parent_relative_orientations(parents=bundle.rest_pose.parents).items()
+            for name, rotation in relative.items() if name in selected
         },
         segment_lengths=dict(scale_fit.segment_lengths) if scale_fit else {},
         fitted_scale_mm=scale_fit.fitted_scale if scale_fit else None,
@@ -125,24 +146,18 @@ def reconstruct_skeleton(
                 for joint_name, joint_pose in bundle.skeleton.compute_joint_poses(
                     pose=resolved_pose
                 ).items()
+                if bundle.skeleton.joints[joint_name].parent.name in selected
+                and bundle.skeleton.joints[joint_name].child.name in selected
             }
             if bundle.skeleton.joints
             else None
         ),
     )
 
-    if compute_center_of_mass and scale_fit is not None:
-        # Landmark world positions need the fitted scale: local positions are fractions of
-        # the skeleton's reference unit, so without it every landmark collapses onto its
-        # segment's origin and the centre of mass becomes an average of joint centres.
-        world = landmark_world_positions(
-            skeleton=bundle.skeleton,
-            pose=resolved_pose,
-            segment_scales=scale_fit.segment_scales,
-        )
+    if compute_center_of_mass and landmarks:
         reconstruction.center_of_mass = whole_body_center_of_mass(
             segment_coms=compute_segment_coms(
-                definitions=bundle.center_of_mass_definitions, world=world
+                definitions=bundle.center_of_mass_definitions, world=reconstruction.landmarks
             ),
             segment_masses=bundle.segment_masses,
         )

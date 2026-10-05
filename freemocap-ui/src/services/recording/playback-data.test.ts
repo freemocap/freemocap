@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {ModelDefinitionSchema} from '../server/transport/message-contract';
-import {recordedModelFrame, type PlaybackRun} from './playback-data';
+import {recordedKeypoints, recordedModelFrame, type PlaybackRun} from './playback-data';
 import {test} from 'node:test';
 import {channelFrame, orderedChannelFrame, sampleAtTime, RecordingComponent, RecordingChannelKind, type PlaybackChannelData} from './playback-data';
 
@@ -78,4 +78,29 @@ test('channel arrays preserve nonzero frames and missing components', () => {
     assert.deepEqual(Array.from(channelFrame(series, 0.1)!), [1, 2, 3]);
     assert.ok(Array.from(channelFrame(series, 0.17)!).every(Number.isNaN));
     assert.throws(() => channelFrame({...series, values: new Float64Array([1])}, 0.1), /array length/);
+});
+
+test('playback preserves distinct tracker, mapped and rigid trajectories across missing frames', () => {
+    const model = ModelDefinitionSchema.parse({model_id: 'subject', segments: [],
+        landmarks: [{name: 'wrist'}], connections: []});
+    const run: PlaybackRun = {run_id: 2, models: [model], model_sources: {'model:subject': 'subject'},
+        channels: [], static_channels: [], timelines: [], media: []};
+    const channel = (kind: RecordingChannelKind, source: string, name: string, xyz: number[]): PlaybackChannelData => ({
+        channel: {sensor_group: 'mocap', source, reference_frame: 'world', kind, names: [name],
+            components: {z: 'mm', x: 'mm', y: 'mm'}},
+        frame_numbers: [5, 8], timestamps_s: [0.1, 0.2], values: Float64Array.from([...xyz, NaN, NaN, NaN]),
+    });
+    const channels = [channel(RecordingChannelKind.RawPoints, 'tracker', 'detector_wrist', [3, 1, 2]),
+        channel(RecordingChannelKind.RawPoints, 'board', 'corner', [6, 4, 5]),
+        channel(RecordingChannelKind.MappedKeypoints, 'model:subject', 'wrist', [30, 10, 20]),
+        channel(RecordingChannelKind.Landmarks, 'model:subject', 'wrist', [300, 100, 200])];
+    assert.deepEqual(Array.from(recordedKeypoints(channels, 'mocap', 0.1)!.data), [1, 2, 3, 4, 5, 6]);
+    const frame = recordedModelFrame(run, {channels}, model, 'mocap', 0.1);
+    assert.deepEqual(Array.from(frame.mappedKeypoints!.data), [10, 20, 30]);
+    assert.deepEqual(Array.from(frame.landmarks!.data), [100, 200, 300]);
+    const absent = recordedModelFrame(run, {channels}, model, 'mocap', 0.2);
+    assert.ok(Array.from(absent.mappedKeypoints!.data).every(Number.isNaN));
+    assert.ok(Array.from(absent.landmarks!.data).every(Number.isNaN));
+    assert.equal(recordedKeypoints(channels, 'other-group', 0.1), null);
+    assert.equal(recordedModelFrame(run, {channels}, model, 'other-group', 0.1).mappedKeypoints, null);
 });

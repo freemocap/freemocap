@@ -61,9 +61,6 @@ from freemocap.core.skeletons.tracked_skeleton_set import (
     build_tracked_skeleton_set,
 )
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
-from freemocap.core.streaming.channel_helpers import (
-    origin_landmark_names,
-)
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -146,7 +143,7 @@ def _reproject_segment_origins(
     *,
     calibration,
     skeleton: SkeletonDefinition,
-    solver_landmarks: dict[str, np.ndarray],
+    segment_origins: dict[str, np.ndarray],
 ) -> dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]]:
     """Project one skeleton's segment origins into every camera.
 
@@ -155,11 +152,10 @@ def _reproject_segment_origins(
     ``{camera_id: {segment_name: (x, y)}}`` in capture-resolution px. Origins not hydrated
     this frame project to NaN and are dropped.
     """
-    origin_names = origin_landmark_names(skeleton)
     segment_names = list(skeleton.segments)
     origins = np.full((len(segment_names), 3), np.nan, dtype=np.float64)
     for i, name in enumerate(segment_names):
-        pos = solver_landmarks.get(origin_names[name])
+        pos = segment_origins.get(name)
         if pos is not None and not np.any(np.isnan(pos)):
             origins[i] = np.asarray(pos, dtype=np.float64)[:3]
     origins = RECONSTRUCTION_TO_CALIBRATION.convert_point(
@@ -1023,7 +1019,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                     _reproject_segment_origins(
                                         calibration=calibration,
                                         skeleton=bundle.skeleton,
-                                        solver_landmarks=reconstruction.landmarks,
+                                        segment_origins=reconstruction.segment_origins,
                                     )
                                 )
                             reconstructions[bundle.model_id] = reconstruction

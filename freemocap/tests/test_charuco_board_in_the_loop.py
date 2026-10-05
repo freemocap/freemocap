@@ -216,7 +216,7 @@ def test_a_partially_visible_board_still_reconstructs() -> None:
 def test_a_board_seen_edge_on_reconstructs_nothing_rather_than_guessing() -> None:
     """Only one row visible is COLLINEAR, and a line fixes no pose however long you look.
 
-    The honest answer is an absent model this frame. Worth pinning, because the tempting
+    The honest answer is absent geometry with preserved observations. The tempting
     alternative — falling back to a partial or previous pose — is exactly the kind of
     quiet repair that makes a bad reconstruction look like a good one.
     """
@@ -228,15 +228,15 @@ def test_a_board_seen_edge_on_reconstructs_nothing_rather_than_guessing() -> Non
         for name in board.charuco_corner_names[: board.squares_x - 1]
     }
 
-    assert (
-        reconstruct_skeleton(
-            bundle=bundle,
-            state=_fresh_state(bundle),
-            filtered_keypoints=one_row_only,
-            compute_center_of_mass=False,
-        )
-        is None
+    result = reconstruct_skeleton(
+        bundle=bundle,
+        state=_fresh_state(bundle),
+        filtered_keypoints=one_row_only,
+        compute_center_of_mass=False,
     )
+    assert result is not None and result.mapped_keypoints
+    assert not result.landmarks and not result.segment_origins
+    assert not result.segment_rotations_world and not result.segment_rotations_local
 
 
 # ── both skeletons, on one wire ────────────────────────────────────────────

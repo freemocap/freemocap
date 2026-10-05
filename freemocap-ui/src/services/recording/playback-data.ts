@@ -6,6 +6,7 @@ import {ModelDefinitionSchema, type ModelDefinition} from '@/services/server/tra
 import type {ResolvedModelFrame, PointsFrame} from '@/services/server/transport/frame-types';
 
 export enum RecordingChannelKind {
+    MappedKeypoints = 'MAPPED_KEYPOINTS_3D',
     RawPoints = 'RAW_KEYPOINTS_3D', Landmarks = 'LANDMARKS_3D', Origins = 'SEGMENT_ORIGINS',
     WorldRotations = 'ROTATIONS_WORLD', LocalRotations = 'ROTATIONS_LOCAL',
     Derived = 'DERIVED_POINTS', Lengths = 'SEGMENT_LENGTHS', Scale = 'MODEL_SCALE',
@@ -90,6 +91,20 @@ export function orderedChannelFrame(data: PlaybackChannelData, time: number, lay
         frame[name * components.length + component])));
 }
 
+/** Every original tracker stream in the selected sensor group, in declared xyz order. */
+export function recordedKeypoints(channels: PlaybackChannelData[], group: string, time: number): PointsFrame | null {
+    const names: string[] = [];
+    const values: number[] = [];
+    for (const item of channels) {
+        if (item.channel.sensor_group !== group || item.channel.kind !== RecordingChannelKind.RawPoints) continue;
+        const data = orderedChannelFrame(item, time, {names: item.channel.names, components: POSITION_COMPONENTS});
+        if (!data) continue;
+        names.push(...item.channel.names);
+        values.push(...data);
+    }
+    return names.length ? {names, data: Float32Array.from(values)} : null;
+}
+
 export function recordedModelFrame(run: PlaybackRun, samples: PlaybackSamples, model: ModelDefinition, group: string, time: number): ResolvedModelFrame {
     const find = (kind: RecordingChannelKind): PlaybackChannelData | undefined => {
         const matches = samples.channels.filter(item => run.model_sources[item.channel.source] === model.model_id &&
@@ -103,7 +118,7 @@ export function recordedModelFrame(run: PlaybackRun, samples: PlaybackSamples, m
         const item = find(kind);
         if (!item) return null;
         const names = kind === RecordingChannelKind.Origins ? segmentNames
-            : kind === RecordingChannelKind.Landmarks ? landmarkNames : item.channel.names;
+            : (kind === RecordingChannelKind.Landmarks || kind === RecordingChannelKind.MappedKeypoints) ? landmarkNames : item.channel.names;
         const data = orderedChannelFrame(item, time, {names, components: POSITION_COMPONENTS});
         return data ? {names, data} : null;
     };
@@ -124,6 +139,7 @@ export function recordedModelFrame(run: PlaybackRun, samples: PlaybackSamples, m
     const fittedScaleMm = scale ? scalarValues(scale)[0] : null;
     return {
         modelId: model.model_id, instanceId: 0, fittedScaleMm,
+        mappedKeypoints: points(RecordingChannelKind.MappedKeypoints),
         landmarks: points(RecordingChannelKind.Landmarks), segmentOrigins: points(RecordingChannelKind.Origins),
         rotations: world && worldData ? {boneNames: segmentNames, worldQuaternions: worldData,
             localQuaternions: localData ?? new Float32Array(worldData.length).fill(NaN)} : null,

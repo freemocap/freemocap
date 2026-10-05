@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
-from freemocap.core.streaming.channel_helpers import assemble_channel_bytes, origin_landmark_names
+from freemocap.core.streaming.channel_helpers import assemble_channel_bytes
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
@@ -28,9 +28,7 @@ class SegmentProducer(ChannelProducer):
             return []
         reconstruction = message.reconstructions.get(skeleton.model_id)
         segment_names = tuple(skeleton.skeleton.segments)
-        origin_names = origin_landmark_names(skeleton.skeleton)
-        positions = reconstruction.landmarks if reconstruction else {}
-        origin_positions = {name: positions.get(origin_names[name]) for name in segment_names}
+        origin_positions = reconstruction.segment_origins if reconstruction else {}
         lengths = {
             name: np.array([length], dtype=np.float32)
             for name, length in (

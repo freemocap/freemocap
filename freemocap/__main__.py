@@ -34,8 +34,10 @@ async def main(force_preferred_port:bool=True) -> None:
         format_port_sentinel,
     )
     from freemocap.app.app import create_fastapi_app
-    from freemocap.system.logging.log_queue_consumer import start_log_queue_consumer
-    from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
+    from freemocap.system.logging.log_queue_consumer import (
+        start_log_queue_consumer,
+        stop_log_queue_consumer,
+    )    from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
 
 
     if force_preferred_port:
@@ -108,6 +110,7 @@ async def main(force_preferred_port:bool=True) -> None:
             await await_1s()
 
         worker_registry.shutdown_all()
+        stop_log_queue_consumer()
         logger.success("Done! Thank you for using FreeMocap")
 
 def run_main() -> None:

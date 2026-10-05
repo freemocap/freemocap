@@ -76,3 +76,6 @@ def start_log_queue_consumer() -> None:
 
 def stop_log_queue_consumer() -> None:
     _stop_event.set()
+
+    if _consumer_thread is not None:
+        _consumer_thread.join(timeout=1.0)

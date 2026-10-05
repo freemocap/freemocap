@@ -99,3 +99,8 @@ class TrackedSkeletonBundle:
     center_of_mass_definitions: CenterOfMassDefinitions
     segment_masses: dict[str, float]
     scale_reference_name: str
+    anchor_segment_name: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.anchor_segment_name is not None and self.anchor_segment_name not in self.skeleton.segments:
+            raise ValueError(f"Unknown reconstruction anchor: {self.anchor_segment_name!r}")

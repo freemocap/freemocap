@@ -253,6 +253,20 @@ not proof of anatomical accuracy.
 
 ## Trajectory products
 
+Reconstruction stores `anchor_segment_name` with the recorded model. Placement walks
+the connected measured component from that segment in either direction; anatomical
+parents, local-rotation conventions and joint-angle definitions remain unchanged.
+The anchor does not affect scale evidence, so changing it can reuse a saved scale fit
+while invalidating reconstruction and dependent outputs. Live anchor changes preserve
+the current scale windows and roll history. Missing anchor observations produce no
+connected geometry; missing intermediate poses still break the chain.
+
+Live dimensions are refitted every frame from up to 30 valid readings per segment
+by default, using medians and shrinkage toward a pooled model scale. This is not a
+fixed-duration window when observations are intermittent, and absent segments retain
+their previous readings. There is no hard per-frame bound on length changes. Post hoc
+fits dimensions over the recording and holds those dimensions fixed during reconstruction.
+
 - `RAW_KEYPOINTS_3D` and `KEYPOINTS_3D` retain tracker identities and raw/filtered provenance.
 - `MAPPED_KEYPOINTS_3D` retains mapping observations keyed by canonical model landmark names.
   Its model source identifies the tracker; `RecordedModel.mappings` stores the mapping definitions.

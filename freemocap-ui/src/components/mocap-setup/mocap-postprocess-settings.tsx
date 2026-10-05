@@ -4,7 +4,8 @@ import ValueSelector from '@/components/ui-components/ValueSelector';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingsGroupHeading from '@/components/common/settings-layout/settings-group-heading';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
-import {skeletonFitEnabledUpdated} from '@/store/slices/mocap/mocap-slice';
+import SkeletonAnchorSetting from './skeleton-anchor-setting';
+import {skeletonFitEnabledUpdated, anchorSegmentNameUpdated} from '@/store/slices/mocap/mocap-slice';
 
 const SKELETON_FIT_INFO = {
     title: 'Connected skeleton fit',
@@ -49,8 +50,10 @@ export default function PosthocFilterSettings() {
     const dispatch = useAppDispatch();
     const config = useAppSelector(selectPosthocFilterConfig);
     const skeletonFitEnabled = useAppSelector(state => state.mocap.config.skeletonFitEnabled ?? false);
+    const anchor = useAppSelector(state => state.mocap.config.anchorSegmentName);
 
     return <>
+        <SkeletonAnchorSetting value={anchor} onChange={value => dispatch(anchorSegmentNameUpdated(value))}/>
         <SettingsGroupHeading text="Connected skeleton fit" info={SKELETON_FIT_INFO}/>
         <SettingRow label="Fit skeleton" info={SKELETON_FIT_INFO} control={<SettingToggleSwitch label="Fit skeleton"
             isToggled={skeletonFitEnabled} onToggle={enabled => dispatch(skeletonFitEnabledUpdated(enabled))}/>}/>

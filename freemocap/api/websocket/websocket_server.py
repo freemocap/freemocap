@@ -268,6 +268,7 @@ class WebsocketServer:
             if pipeline.alive:
                 return self._skeletons_for(
                     camera_node_config=pipeline.config.camera_node_config,
+                    anchor_segment_name=pipeline.config.aggregator_config.anchor_segment_name,
                 )
         # No pipeline yet: describe what the defaults would track, so a client connecting
         # early still receives a coherent model list.
@@ -277,15 +278,16 @@ class WebsocketServer:
             self,
             *,
             camera_node_config: CameraNodeConfig,
+            anchor_segment_name: str | None = None,
     ) -> tuple:
         # This server DESCRIBES skeletons on the wire; it never reconstructs one, so it
         # needs bundles only. The scale window belongs to a reconstruction state, which is
         # the aggregator's business.
-        cache_key = camera_node_config.model_dump_json()
+        cache_key = camera_node_config.model_dump_json() + str(anchor_segment_name)
         cached = self._tracked_skeletons_cache
         if cached is not None and cached[0] == cache_key:
             return cached[1]
-        skeletons = build_tracked_skeletons(camera_node_config=camera_node_config)
+        skeletons = build_tracked_skeletons(camera_node_config=camera_node_config, anchor_segment_name=anchor_segment_name)
         self._tracked_skeletons_cache = (cache_key, skeletons)
         return skeletons
 

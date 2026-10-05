@@ -35,7 +35,8 @@ class RecordingFitInputs(BaseModel):
             algorithm_version=1,
             keypoint_names=names,
             points=point_array_signature(values),
-            model=definition_signature(model),
+            # Placement does not change scale evidence or fitted dimensions.
+            model=definition_signature(model.model_dump(exclude={"anchor_segment_name"})),
         )
 
 

@@ -2407,7 +2407,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#33f7f608d4fc783c5e1097c972c1eccdc8e19022" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#8a28aab7f57a6d7e268e5e67baca026bccaf6bcd" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

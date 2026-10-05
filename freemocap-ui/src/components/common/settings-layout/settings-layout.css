@@ -197,6 +197,17 @@
   min-width: 0;
 }
 
+/* Live flyouts are narrower than the full settings sidebar. Stack the label
+   above the control instead of reserving the sidebar's 224px control column. */
+.RTP-settings-flyout .setting-row {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 6px;
+}
+
+.RTP-settings-flyout .setting-row-control {
+  width: 100%;
+}
+
 /* The one leading decision in a section: the choice that reframes
    every row beneath it. */
 .setting-row-promoted {

@@ -47,7 +47,7 @@ Only the RATIOS between segment masses affect the centre of mass, so this cancel
 the CoM entirely; it matters for inertia, which is why it is named rather than inlined."""
 
 
-def build_standard_human_bundle(*, detector_type: str) -> TrackedSkeletonBundle:
+def build_standard_human_bundle(*, detector_type: str, anchor_segment_name: str | None = None) -> TrackedSkeletonBundle:
     """The human this run is tracking, wired to the detector that feeds it.
 
     Rebuilt when the detector changes: a different detector measures different landmarks,
@@ -77,4 +77,5 @@ def build_standard_human_bundle(*, detector_type: str) -> TrackedSkeletonBundle:
         center_of_mass_definitions=com_definitions,
         segment_masses=segment_masses,
         scale_reference_name=BODY_HEIGHT_SCALE_REFERENCE,
+        anchor_segment_name=anchor_segment_name,
     )

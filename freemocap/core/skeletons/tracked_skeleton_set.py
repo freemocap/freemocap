@@ -25,7 +25,7 @@ from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBund
 
 
 def build_tracked_skeletons(
-    *, camera_node_config: CameraNodeConfig
+    *, camera_node_config: CameraNodeConfig, anchor_segment_name: str | None = None
 ) -> tuple[TrackedSkeletonBundle, ...]:
     """Every skeleton this configuration tracks, in wire order.
 
@@ -41,6 +41,7 @@ def build_tracked_skeletons(
         bundles.append(
             build_standard_human_bundle(
                 detector_type=camera_node_config.detector_type,
+                anchor_segment_name=anchor_segment_name,
             )
         )
     if camera_node_config.charuco_tracking_enabled:
@@ -85,6 +86,7 @@ def build_tracked_skeleton_set(
     *,
     camera_node_config: CameraNodeConfig,
     scale_source_for: Callable[[TrackedSkeletonBundle], ModelScaleSource],
+    anchor_segment_name: str | None = None,
 ) -> TrackedSkeletonSet:
     """Every skeleton this configuration tracks, with a fresh state for each.
 
@@ -94,7 +96,7 @@ def build_tracked_skeleton_set(
             stream, a whole-recording fit for a batch one. The only thing the two pipelines
             change about reconstruction.
     """
-    bundles = build_tracked_skeletons(camera_node_config=camera_node_config)
+    bundles = build_tracked_skeletons(camera_node_config=camera_node_config, anchor_segment_name=anchor_segment_name)
     return TrackedSkeletonSet(
         bundles=bundles,
         states=build_reconstruction_states(

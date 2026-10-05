@@ -48,8 +48,10 @@ def test_filter_then_reconstruct_preserves_raw_and_timing(saved_request, monkeyp
     assert read_metadata(path=saved_request.structure.data_parquet_path).runs[3].scale_fits == fits
     monkeypatch.setattr(processing, 'reconstruct_skeletons_for_recording', Mock(side_effect=AssertionError('Scale must be reused')))
     processing.run_saved_numerical_stages(structure=saved_request.structure,
-        config=config.model_copy(update={'start_stage': 'reconstruction'}), reporter=TaskProgressReporter.noop())
+        config=config.model_copy(update={'start_stage': 'reconstruction', 'anchor_segment_name': 'skull'}), reporter=TaskProgressReporter.noop())
     assert read_metadata(path=saved_request.structure.data_parquet_path).runs[3].scale_fits == fits
+    # The human setting must not overwrite an independently tracked board's anchor.
+    assert read_metadata(path=saved_request.structure.data_parquet_path).runs[3].models['charuco_board'].anchor_segment_name is None
     assert [row for row in rows(saved_request) if row['channel'] == 'RAW_KEYPOINTS_3D'] == before
 
 

@@ -9,6 +9,7 @@ import {
   RealtimeFilterConfig,
 } from "@/store/slices/mocap";
 import IconButton from "@/components/ui-components/IconButton";
+import SkeletonAnchorSetting from "@/components/mocap-setup/skeleton-anchor-setting";
 interface RTPthreeDReconstructionSettingsProps {
   open: boolean;
   onClose: () => void;
@@ -84,6 +85,11 @@ const RTPthreeDReconstructionSettings: React.FC<
       className="RTP-settings-flyout pos-abs top-5 right-0 draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
     >
       <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
+        <SkeletonAnchorSetting value={aggregatorConfig.anchor_segment_name}
+            onChange={(value) => applyOrUpdatePipelineConfig({
+              ...pipelineConfig,
+              aggregator_config: { ...aggregatorConfig, anchor_segment_name: value },
+            })}/>
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
           <SubactionHeader text="Point Gate settings" />

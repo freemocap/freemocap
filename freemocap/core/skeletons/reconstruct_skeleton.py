@@ -21,7 +21,7 @@ from skellyforge.core.biomechanics.center_of_mass import (
 )
 from skellyforge.core.biomechanics.composite_inertia import whole_body_center_of_mass
 from skellyforge.core.math.geometry.spatial_vectors import Point
-from skellyforge.core.skeleton.chain.synthesis import synthesize_fitted_pose
+from skellyforge.core.skeleton.chain.synthesis import synthesize_anchored_pose
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 from skellyforge.core.skeleton.pose.model_scale_fitting import scale_voting_segment_names
@@ -97,17 +97,19 @@ def reconstruct_skeleton(
 
     state.diagnostic_reference_fit = scale_fit
     # Measurement and scale evidence above remain independent of the connected output.
-    # Only measured paths reaching the observed root can be placed without inferring
+    # Only measured paths reaching the observed anchor can be placed without inferring
     # missing orientations. In particular, a visible hand cannot bridge a missing arm.
     children: dict[str, list[str]] = {name: [] for name in bundle.rest_pose.parents}
     for name, parent in bundle.rest_pose.parents.items():
         if parent is not None:
             children[parent].append(name)
+            children[name].append(parent)
     selected: set[str] = set()
-    pending = [bundle.rest_pose.root_segment_name] if scale_fit is not None else []
+    anchor_name = bundle.anchor_segment_name or bundle.rest_pose.root_segment_name
+    pending = [anchor_name] if scale_fit is not None else []
     while pending:
         name = pending.pop()
-        if name not in resolved_pose.segment_poses:
+        if name in selected or name not in resolved_pose.segment_poses:
             continue
         selected.add(name)
         pending.extend(children[name])
@@ -115,15 +117,13 @@ def reconstruct_skeleton(
     relative = resolved_pose.parent_relative_orientations(parents=bundle.rest_pose.parents)
     world_rotations, origins, landmarks = {}, {}, {}
     if selected:
-        root_name = bundle.rest_pose.root_segment_name
-        root = resolved_pose.segment_poses[root_name]
-        world_rotations, origins, landmarks = synthesize_fitted_pose(
+        anchor = resolved_pose.segment_poses[anchor_name]
+        world_rotations, origins, landmarks = synthesize_anchored_pose(
             skeleton=bundle.skeleton,
             fit=scale_fit,
-            segment_relative_orientations={name: relative[name] for name in selected if name != root_name},
-            root_world_orientation=root.orientation,
-            root_origin=root.origin,
-            segment_names=frozenset(selected),
+            segment_world_orientations={name: resolved_pose.segment_poses[name].orientation for name in selected},
+            anchor_segment_name=anchor_name,
+            anchor_origin=anchor.origin,
         )
     reconstruction = SkeletonReconstruction(
         model_id=bundle.model_id,

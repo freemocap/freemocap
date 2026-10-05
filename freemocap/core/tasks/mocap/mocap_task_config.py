@@ -31,6 +31,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoard
 
 
 class PosthocMocapPipelineConfig(BaseModel):
+    anchor_segment_name: str = Field(default="pelvis", min_length=1, alias="anchorSegmentName")
     model_config = ConfigDict(populate_by_name=True)
 
     start_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction', 'skeleton_fit'] = Field(

@@ -118,6 +118,7 @@ export interface MocapConfig {
 
     bodyAlignmentMode: 'auto' | 'calibration' | 'person';
     skeletonFitEnabled: boolean;
+    anchorSegmentName: string;
     exportTallCsv: boolean;
     /** Row-major rigid offset applied after posthoc alignment, with translation in mm. */
     referenceTransform: number[] | null;
@@ -267,6 +268,7 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     mediapipeNumFaces: 1,
     bodyAlignmentMode: 'auto',
     skeletonFitEnabled: false,
+    anchorSegmentName: "pelvis",
     exportTallCsv: true,
     referenceTransform: null,
     referenceTransformEnabled: false,
@@ -326,6 +328,9 @@ export const mocapSlice = createSlice({
         },
         skeletonFitEnabledUpdated: (state, action: PayloadAction<boolean>) => {
             state.config.skeletonFitEnabled = action.payload;
+        },
+        anchorSegmentNameUpdated: (state, action: PayloadAction<string>) => {
+            state.config.anchorSegmentName = action.payload;
         },
         /** Row-major 4x4, or null when no additional transformation is defined. */
         referenceTransformUpdated: (state, action: PayloadAction<number[] | null>) => {
@@ -542,6 +547,7 @@ export const selectCanProcessMocapRecording = createSelector(
 export const {
     bodyAlignmentModeUpdated,
     skeletonFitEnabledUpdated,
+    anchorSegmentNameUpdated,
     exportTallCsvUpdated,
     referenceTransformUpdated,
     referenceTransformEnabledUpdated,

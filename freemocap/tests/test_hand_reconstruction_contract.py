@@ -44,14 +44,16 @@ def assert_hand_connected(bundle, result, side):
 
 
 @pytest.mark.parametrize('tracker', ['rtmpose', 'mediapipe'])
-def test_complete_hands_in_live_posthoc_and_recorded_model(tracker):
-    bundle = build_standard_human_bundle(detector_type=tracker)
+@pytest.mark.parametrize('anchor', ['pelvis', 'skull', 'left_carpals'])
+def test_complete_hands_in_live_posthoc_and_recorded_model(tracker, anchor):
+    bundle = build_standard_human_bundle(detector_type=tracker, anchor_segment_name=anchor)
     points = tracked_hands(bundle)
     live = reconstruct_skeleton(bundle=bundle, state=state_for(bundle), filtered_keypoints=points, compute_center_of_mass=False)
     names = tuple(points)
     # Exercise saved model definitions as playback/reprocessing do, including
     # anatomical offsets and the carpal observation frames.
     saved_bundle = RecordedModel.from_bundle(bundle).to_bundle()
+    assert saved_bundle.anchor_segment_name == anchor
     request = RecordingReconstructionInput(bundles=(saved_bundle,), keypoint_names=names,
         keypoints_3d=np.array([[points[n] for n in names]] * 3), compute_center_of_mass=False,
         timing=PosthocTimingReport())

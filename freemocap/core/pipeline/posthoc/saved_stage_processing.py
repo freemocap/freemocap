@@ -1,6 +1,7 @@
 """Resume numerical processing from validated canonical recording channels."""
 
 from concurrent.futures import CancelledError
+from dataclasses import replace
 from collections.abc import Callable
 from pathlib import Path
 
@@ -127,6 +128,8 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
             bundles = tuple(model.to_bundle() for model in base.models.values()
                 if model_source_name(model.model_id) not in base.sources
                 or base.sources[model_source_name(model.model_id)].definition.get('tracker') == points.channel.source)
+            bundles = tuple(replace(bundle, anchor_segment_name=config.anchor_segment_name)
+                if bundle.model_id == 'standard_human' else bundle for bundle in bundles)
             if not bundles:
                 raise ValueError('Saved scientific models are missing; rerun triangulation')
             numerical = RecordingReconstructionInput(bundles=bundles, keypoint_names=points.channel.names,
@@ -158,6 +161,9 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
             for reconstruction in reconstructions:
                 series.extend(reconstruction.series())
             data = retained.model_dump()
+            from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
+            for bundle in bundles:
+                data['models'][bundle.model_id] = RecordedModel.from_bundle(bundle)
             data['channels'] = (*retained.channels, *(item.channel for item in series))
             for reconstruction in reconstructions:
                 data['sources'][reconstruction.definition.source_name] = reconstruction.definition.to_source()
@@ -175,7 +181,8 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
             fit_signatures = {item.definition.model_id: definition_signature(item.to_scale_fit()) for item in reconstructions}
             model_signatures = {item.definition.model_id: definition_signature(dict(
                 fit=fit_signatures[item.definition.model_id], points=prepared_signature,
-                compute_center_of_mass=item.result.compute_center_of_mass)) for item in reconstructions}
+                compute_center_of_mass=item.result.compute_center_of_mass,
+                anchor_segment_name=config.anchor_segment_name)) for item in reconstructions}
             signatures = {
                 ProcessingStage.FILTERING: definition_signature(dict(version=2,
                     raw_points={name: points.signature() for name in point_signatures},

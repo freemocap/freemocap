@@ -28,8 +28,8 @@ class SkeletonReconstruction:
         model_id: which skeleton this is, matching a `TrackedSkeletonBundle`.
         mapped_keypoints: mapping observations, keyed by canonical landmark identity.
         landmarks: scaled model-local geometry transformed by its owning solved segment.
-        segment_origins: root-anchored translations keyed by segment; children attach to
-            the parent's rigid landmark. Geometry requires a measured path to the root.
+        segment_origins: anchor-positioned translations keyed by segment; children attach to
+            the parent's rigid landmark. Geometry requires a measured path to the anchor.
         segment_rotations_world: per-segment world quaternions (wxyz).
         segment_rotations_local: per-segment parent-relative quaternions (wxyz).
         segment_lengths: fitted length per segment, in millimetres, for EVERY segment -

@@ -24,6 +24,7 @@ class RecordedModel(BaseModel):
     center_of_mass: CenterOfMassDefinitions
     segment_masses: dict[str, float]
     scale_reference_name: str
+    anchor_segment_name: str | None = None
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -79,6 +80,7 @@ class RecordedModel(BaseModel):
             center_of_mass=bundle.center_of_mass_definitions,
             segment_masses=dict(bundle.segment_masses),
             scale_reference_name=bundle.scale_reference_name,
+            anchor_segment_name=bundle.anchor_segment_name,
         )
 
     def to_bundle(self) -> TrackedSkeletonBundle:
@@ -96,4 +98,5 @@ class RecordedModel(BaseModel):
             center_of_mass_definitions=self.center_of_mass,
             segment_masses=dict(self.segment_masses),
             scale_reference_name=self.scale_reference_name,
+            anchor_segment_name=self.anchor_segment_name,
         )

@@ -26,7 +26,7 @@ import multiprocessing.synchronize
 import queue
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
@@ -465,6 +465,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         # opposed to constructed from authored ratios) is a property of its mapping.
         skeleton_set: TrackedSkeletonSet = build_tracked_skeleton_set(
             camera_node_config=pipeline_config.camera_node_config,
+            anchor_segment_name=aggregator_config.anchor_segment_name,
             scale_source_for=streaming_model_scale_source(
                 window_frames=filter_config.segment_scale_window_frames
             ),
@@ -601,6 +602,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # readings and roll carry must not survive into the new mapping.
                         skeleton_set = build_tracked_skeleton_set(
                             camera_node_config=pipeline_config.camera_node_config,
+                            anchor_segment_name=aggregator_config.anchor_segment_name,
                             scale_source_for=streaming_model_scale_source(
                                 window_frames=filter_config.segment_scale_window_frames
                             ),
@@ -610,6 +612,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"(re)loaded body biomechanics for detector_type={detector_type}"
                         )
 
+                    # Anchor changes preserve scale windows and roll history, so the
+                    # user can compare placement without restarting dimension fitting.
+                    skeleton_set = replace(skeleton_set, bundles=tuple(
+                        replace(bundle, anchor_segment_name=aggregator_config.anchor_segment_name)
+                        if bundle.model_id == "standard_human" else bundle
+                        for bundle in skeleton_set.bundles
+                    ))
                     # Skeleton fitting is stateless — nothing to recreate.
                     skeleton_fitting_enabled = (
                         aggregator_config.skeleton_fitting_enabled

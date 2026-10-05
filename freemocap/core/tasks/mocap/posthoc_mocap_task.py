@@ -109,7 +109,8 @@ def run_posthoc_mocap_task(
             raise CancelledError('Mocap processing cancelled; completed stages remain on disk')
 
     check_cancelled()
-    bundles = (build_standard_human_bundle(detector_type=task_config.detector_type),)
+    bundles = (build_standard_human_bundle(detector_type=task_config.detector_type,
+        anchor_segment_name=task_config.anchor_segment_name),)
     if selected_board is not None:
         bundles += (build_charuco_board_bundle(board=selected_board),)
     group_name = (task_config.sensor_group if saved_timing is not None else None) or camera_group_name(camera_ids)

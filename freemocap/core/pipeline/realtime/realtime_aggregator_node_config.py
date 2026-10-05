@@ -7,6 +7,8 @@ from freemocap.core.tasks.calibration.camera_matching.matching_models import Cam
 
 
 class RealtimeAggregatorNodeConfig(BaseModel):
+    anchor_segment_name: str = Field(default="pelvis", min_length=1,
+        description="Human segment whose measured origin anchors connected reconstruction.")
     reference_transform: ReferenceTransform | None = None
     camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig)
     calibration_toml_path: str | None = Field(

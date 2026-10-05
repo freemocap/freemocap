@@ -2,16 +2,10 @@
 
 from freemocap.core.playback.media_selection import PlaybackVideoSource
 from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
-from contextlib import contextmanager
-from collections.abc import Iterator
-from dataclasses import dataclass
-import hashlib
 import math
-import os
 from pathlib import Path
 
 import pyarrow.compute as pc
-import pyarrow.parquet as pq
 from pydantic import Field, JsonValue, field_serializer, model_validator
 
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionSourceDefinition
@@ -23,9 +17,9 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
     SourceKind,
 )
 from freemocap.core.recording.result_processing.observation_inputs import CameraRecordingDefinition
-from freemocap.core.recording.parquet_storage.parquet_reader import read_static_channels, metadata_from_schema
+from freemocap.core.recording.parquet_storage.recording_view import RecordingView, recording_view
+from freemocap.core.recording.parquet_storage.parquet_reader import read_static_channels
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
-from freemocap.core.recording.parquet_storage.shared_file import shared_recording_file
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import ModelDefinition
 from freemocap.core.streaming.producers.producer_contexts import StreamContext
@@ -86,28 +80,6 @@ class PlaybackManifest(Descriptor):
     revision: str
     selected_run_id: int
     runs: tuple[PlaybackRun, ...]
-
-
-@dataclass(frozen=True)
-class RecordingView:
-    parquet: pq.ParquetFile
-    metadata: RecordingMetadata
-    revision: str
-
-
-@contextmanager
-def recording_view(path: Path) -> Iterator[RecordingView]:
-    # One open file binds descriptor, revision and rows to the same published result.
-    with shared_recording_file(path) as source:
-        stat = os.fstat(source.fileno())
-        revision = hashlib.sha256(
-            f"{stat.st_dev}:{stat.st_ino}:{stat.st_size}:{stat.st_mtime_ns}".encode()
-        ).hexdigest()
-        with pq.ParquetFile(source) as parquet:
-            metadata = metadata_from_schema(schema=parquet.schema_arrow, path=path)
-            if metadata.recording_id != path.parent.name:
-                raise ValueError("Recording identity does not match its folder")
-            yield RecordingView(parquet=parquet, metadata=metadata, revision=revision)
 
 
 def playback_manifest(path: Path) -> PlaybackManifest:

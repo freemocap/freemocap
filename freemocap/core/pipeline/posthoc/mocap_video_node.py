@@ -2,6 +2,7 @@
 
 from concurrent.futures import Future
 from contextlib import ExitStack
+from freemocap.core.pipeline.performance_report import PerformanceReport
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import Empty, Queue
@@ -36,6 +37,7 @@ class VideoWorkerConfig:
     tracker_config: TrackerConfig
     ipc: PipelineIPC
     progress: Queue[PipelineProgressMessage]
+    performance: PerformanceReport = field(default_factory=PerformanceReport)
 
 
 @dataclass
@@ -86,6 +88,7 @@ class MocapVideoNode:
                 output = AnnotationVideoOutput(AnnotationOutputRequest(
                     recording_path=self.config.recording_path, pipeline_id=self.config.ipc.pipeline_id,
                     video=self.config.video, input_mode=AnnotationInput.RAW,
+                    performance=self.config.performance, camera_id=self.config.camera_id,
                 ))
                 cleanup.callback(output.close)
                 progress_bar = cleanup.enter_context(tqdm(
@@ -105,24 +108,28 @@ class MocapVideoNode:
                     if not command.result.set_running_or_notify_cancel():
                         raise RuntimeError("Video commands must be canceled through the pipeline")
                     if isinstance(command, ReadFrame):
-                        command.result.set_result(reader.read_bgr(frame_number=command.number))
+                        with self.config.performance.measure(f"camera.{self.config.camera_id}.decode"):
+                            image = reader.read_bgr(frame_number=command.number)
+                        command.result.set_result(image)
                     elif isinstance(command, AnnotateFrame):
-                        if command.board is not None:
-                            if board_tracker is None:
-                                board_tracker, _ = build_charuco_tracker(board_def=command.board)
-                                cleanup.callback(board_tracker.close)
-                                annotator = build_observation_annotator(TrackerConfig(stages=[
-                                    *self.config.tracker_config.stages,
-                                    DetectionStageConfig(name=CHARUCO_STAGE_NAME,
-                                        keypoint_detectors=[CharucoDetectorConfig(board=command.board)]),
-                                ]))
-                            board_observation, board_state = board_tracker.process_image(
-                                image=command.image, frame_number=command.observation.frame_number, state=board_state,
-                            )
-                            if command.observation.stages.keys() & board_observation.stages.keys():
-                                raise ValueError("Board and skeleton observation stages must be distinct")
-                            command.observation.stages.update(board_observation.stages)
-                        output.write_frame(image=command.image, observation=command.observation, annotator=annotator)
+                        with self.config.performance.measure(f"camera.{self.config.camera_id}.charuco"):
+                            if command.board is not None:
+                                if board_tracker is None:
+                                    board_tracker, _ = build_charuco_tracker(board_def=command.board)
+                                    cleanup.callback(board_tracker.close)
+                                    annotator = build_observation_annotator(TrackerConfig(stages=[
+                                        *self.config.tracker_config.stages,
+                                        DetectionStageConfig(name=CHARUCO_STAGE_NAME,
+                                            keypoint_detectors=[CharucoDetectorConfig(board=command.board)]),
+                                    ]))
+                                board_observation, board_state = board_tracker.process_image(
+                                    image=command.image, frame_number=command.observation.frame_number, state=board_state,
+                                )
+                                if command.observation.stages.keys() & board_observation.stages.keys():
+                                    raise ValueError("Board and skeleton observation stages must be distinct")
+                                command.observation.stages.update(board_observation.stages)
+                        with self.config.performance.measure(f"camera.{self.config.camera_id}.annotate_encode"):
+                            output.write_frame(image=command.image, observation=command.observation, annotator=annotator)
                         progress_bar.update(1)
                         count = command.observation.frame_number + 1
                         if count % max(1, self.config.video.frame_count // 50) == 0:
@@ -132,7 +139,8 @@ class MocapVideoNode:
                         command.result.set_result(command.observation)
                     else:
                         if command.publish:
-                            output.publish()
+                            with self.config.performance.measure(f"camera.{self.config.camera_id}.video_finalize"):
+                                output.publish()
                             self.report(phase=VideoNodePhase.COMPLETE, detail="Annotated video saved", fraction=1.0)
                             command.result.set_result(None)
                             return

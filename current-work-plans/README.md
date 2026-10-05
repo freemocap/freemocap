@@ -1,5 +1,9 @@
 # Current Work Plans
 
+The maintained [Recording contract](../RECORDING_CONTRACT.md) is the source of
+truth for recording-folder and provenance work. Start there; the
+[dated audit](03-transport/recording-folder-contract.md) records implementation gaps.
+
 Camera matching design for discussion: [camera geometry matching](02-pipeline/camera-geometry-matching.md).
 Includes the numerical objective, bounded search, acceptance gates and shared live/posthoc setting.
 Numerical implementation has started; pipeline integration and app testing remain pending.
@@ -11,6 +15,10 @@ the Mocap/posthoc walkthrough and recording output contract.
 
 Current posthoc review entry point: [posthoc architecture review](02-pipeline/posthoc-architecture-review.md).
 This separates agreed boundaries from provisional layout/API decisions before further implementation.
+
+2026-10-05 graph-first redesign proposal: [executable graphs and their inspector](02-pipeline/executable-graph-architecture.md).
+Includes the SkellySpeak source audit, shared execution/visualization contracts, keyed streaming
+and resource policies, and staged migration. Proposed design; not an implemented scheduler.
 
 > **STATUS — the realtime pipeline runs the rebuilt core end to end.** The standard human is the
 > VRM-aligned re-authoring: **61 segments / 124 landmarks / 52 face blendshapes / 60 joints /

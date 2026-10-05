@@ -11,6 +11,7 @@ from freemocap.core.pipeline.posthoc.processing_request import (
     STAGE_ORDER,
 )
 from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata, RunDescriptor
+from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance, set_stage_provenance
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from freemocap.core.pipeline.posthoc.stage_dependencies import (
     dependency_closure,
@@ -95,6 +96,11 @@ def build_execution_plan(
 def retained_run(*, base: RunDescriptor, plan: StageExecutionPlan) -> RunDescriptor:
     """Remove invalid dynamic/static outputs and their completion records together."""
     data = base.model_dump()
+    for group in plan.sensor_groups:
+        entries = stage_provenance(base.processing, group).stages
+        if entries:
+            data['processing'] = set_stage_provenance(data['processing'], group,
+                {stage: record for stage, record in entries.items() if stage not in plan.invalidate})
     data["calibration_updates"] = {
         group: update.model_dump()
         for group, update in base.calibration_updates.items()

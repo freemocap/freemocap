@@ -1,6 +1,7 @@
 """Managed Mocap recording task: group detection, annotation, and reconstruction."""
 
 from contextlib import ExitStack, closing
+from freemocap.core.pipeline.performance_report import PerformanceReport
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
@@ -19,7 +20,7 @@ from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.mocap_detection import MocapDetectionRequest, detect_mocap_recording
 from freemocap.core.pipeline.posthoc.mocap_video_node import MocapVideoNode
-from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, PosthocPipelineType
+from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, MocapStage, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
@@ -40,6 +41,7 @@ class MocapWorkerRequest:
     registry: WorkerRegistry
     inference_service: InferenceService
     video_nodes: list[MocapVideoNode]
+    performance: PerformanceReport = field(default_factory=PerformanceReport)
 
     def report(self, stage: str, detail: str, fraction: float) -> None:
         self.progress_queue.put(AggregatorNodeProgressMessage(
@@ -50,7 +52,38 @@ class MocapWorkerRequest:
         ))
 
 
+def complete_mocap(request: MocapWorkerRequest) -> None:
+    """Publish optional exports after successful processing, preserving its outcome."""
+    detail = 'Mocap processing complete'
+    if request.config.export_tall_csv:
+        from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv
+        from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure
+        try:
+            request.report(MocapStage.EXPORTING_CSV, 'Saving tall CSV to exports folder', 0.0)
+            result = export_tall_csv(
+                structure=recording_structure(str(request.recording.full_recording_path)),
+                request=TallCsvRequest(), cancelled=lambda: not request.ipc.should_continue)
+            detail += f'; tall CSV saved to {result.manifest_path.parent}'
+        except CancelledError:
+            detail += '; tall CSV export cancelled'
+        except Exception as error:
+            detail += f'; tall CSV export failed: {error}. Retry in Exports.'
+    request.report(AggregatorPhase.COMPLETE, detail, 1.0)
+
+
 def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
+    outcome = "failed"
+    try:
+        _run_mocap_pipeline(request=request)
+        outcome = "complete" if request.ipc.should_continue else "cancelled"
+    except CancelledError:
+        outcome = "cancelled"
+        return
+    finally:
+        request.performance.log(pipeline_id=request.pipeline_id, outcome=outcome)
+
+
+def _run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
     try:
         if request.config.start_stage != 'observations':
             from freemocap.core.pipeline.posthoc.saved_stage_processing import (
@@ -77,21 +110,21 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
                 run_posthoc_mocap_task(frame_observations=saved.frames, recording_info=request.recording,
                     video_metadata=saved.videos, task_config=config, selected_board=board,
                     reporter=TaskProgressReporter(callback=request.report), cancelled=lambda: not request.ipc.should_continue,
-                    saved_timing=saved.timing)
+                    saved_timing=saved.timing, performance=request.performance)
             if request.ipc.should_continue:
-                request.report(AggregatorPhase.COMPLETE, 'Mocap processing complete', 1.0)
+                complete_mocap(request)
             return
         request.report(AggregatorPhase.SETTING_UP, "Loading recording and detectors", 0.0)
         observations: list[dict[str, Observation]] = []
         video_metadata: dict[str, VideoMetadata] = {}
         selected_board: CharucoBoardDefinition | None = None
         resolved_config = request.config
-        with ExitStack() as cleanup:
+        with request.performance.measure("detection.total"), ExitStack() as cleanup:
             frames = cleanup.enter_context(closing(detect_mocap_recording(MocapDetectionRequest(
                 recording_path=Path(request.recording.full_recording_path),
                 config=request.config, ipc=request.ipc, progress=request.progress_queue,
                 registry=request.registry, inference_service=request.inference_service,
-                video_nodes=request.video_nodes,
+                video_nodes=request.video_nodes, performance=request.performance,
             ))))
             for frame in frames:
                 video_metadata = frame.video_metadata
@@ -120,12 +153,12 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
             frame_observations=observations, recording_info=request.recording,
             video_metadata=video_metadata, task_config=resolved_config, selected_board=selected_board,
             reporter=TaskProgressReporter(callback=request.report),
-            cancelled=lambda: not request.ipc.should_continue,
+            cancelled=lambda: not request.ipc.should_continue, performance=request.performance,
         )
         if request.ipc.should_continue:
-            request.report(AggregatorPhase.COMPLETE, "Mocap processing complete", 1.0)
+            complete_mocap(request)
     except CancelledError:
-        return
+        raise
     except Exception as error:
         request.report(AggregatorPhase.FAILED, f"{type(error).__name__}: {error}", 0.0)
         request.ipc.shutdown_pipeline()

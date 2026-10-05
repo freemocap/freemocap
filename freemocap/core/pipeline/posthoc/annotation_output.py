@@ -1,7 +1,9 @@
 """Frame-preserving annotation encoding and publication for recording videos."""
 
 from dataclasses import dataclass
+from contextlib import nullcontext
 from pathlib import Path
+from freemocap.core.pipeline.performance_report import PerformanceReport
 
 import cv2
 import numpy as np
@@ -22,6 +24,8 @@ class AnnotationOutputRequest:
     pipeline_id: str
     video: VideoMetadata
     input_mode: AnnotationInput
+    performance: PerformanceReport | None = None
+    camera_id: str | None = None
 
 
 class AnnotationVideoOutput:
@@ -71,7 +75,12 @@ class AnnotationVideoOutput:
             success, image = self.base_reader.read()
             if not success or image is None:
                 raise RuntimeError(f"Annotated input ends before frame {self.frames_written}: {self.destination}")
-        self.writer.write(annotator.annotate(image=image, observation=observation))
+        performance = self.request.performance
+        label = f"camera.{self.request.camera_id or self.request.video.file_path.name}"
+        with performance.measure(f"{label}.draw") if performance is not None else nullcontext():
+            annotated = annotator.annotate(image=image, observation=observation)
+        with performance.measure(f"{label}.encode_write") if performance is not None else nullcontext():
+            self.writer.write(annotated)
         self.frames_written += 1
 
     def publish(self) -> None:

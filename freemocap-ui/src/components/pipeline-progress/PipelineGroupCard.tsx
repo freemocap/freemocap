@@ -239,6 +239,10 @@ export default function PipelineGroupCard({
         </div>
       )}
 
+      {group.isComplete && group.aggregator?.detail && (
+        <p role="status" className="text sm" style={{overflowWrap: 'anywhere'}}>{group.aggregator.detail}</p>
+      )}
+
       {group.aggregator && (
         <div className="flex flex-col gap-2 p-2 br-2 bg-darkgray ">
           {group.pipelineType === PipelineType.CALIBRATION &&

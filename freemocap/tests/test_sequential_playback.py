@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from freemocap.api.http.playback.playback_router import playback_router, _validate_video_source, preferred_video_source, VideoSourceInfo, PlaybackVideoSource
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
 from freemocap.core.playback.media_selection import discover_video_paths, video_source_folder
+from freemocap.core.recording.recording_access import RecordingAccess
 
 
 def test_root_media_discovery_keeps_matching_stems(tmp_path: Path) -> None:
@@ -35,6 +36,7 @@ def test_annotations_inherit_inferred_source_timing(video_path: Path, tmp_path: 
     finally:
         writer.release()
     app = FastAPI()
+    app.state.recording_access = RecordingAccess()
     app.include_router(playback_router)
     with TestClient(app) as client:
         response = client.get("/playback/recording/media", params={"recording_parent_directory": str(tmp_path)})
@@ -85,6 +87,7 @@ def test_playback_serves_video_bytes(video_path: Path, tmp_path: Path, source: s
         folder.mkdir()
         copyfile(src=video_path, dst=folder / video_path.name)
     app = FastAPI()
+    app.state.recording_access = RecordingAccess()
     app.include_router(playback_router)
     query = {"recording_parent_directory": str(tmp_path), "source": source}
     with TestClient(app) as client:

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from filelock import FileLock
+import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
@@ -14,6 +15,7 @@ from freemocap.core.reconstruction.posthoc_reconstruction import reconstruct_ske
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
 from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata, RunDescriptor
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
+from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance, set_stage_provenance
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.parquet_storage.parquet_writer import publish_recording, recording_write_lock
 from freemocap.core.recording.result_processing.saved_reconstruction import (
@@ -71,13 +73,23 @@ def refresh_reconstruction(structure, bundle):
             bundle, tracker_source=definition.tracker, point_kind=definition.point_kind,
         ), result=result,
     )
-    invalidated = {ProcessingStage.SCALE_FIT, ProcessingStage.RECONSTRUCTION, ProcessingStage.BIOMECHANICS}
+    invalidated = {ProcessingStage.SCALE_FIT, ProcessingStage.RECONSTRUCTION, ProcessingStage.BIOMECHANICS,
+                   ProcessingStage.SKELETON_FIT}
+    stale_sources = {name for name, value in run.sources.items()
+                     if value.kind == 'solver' and value.definition.get('input_source') == source}
+    replaced_sources = stale_sources | {source}
+    # This legacy refresh has its own report, not a full stage execution context.
+    # Remove invalidated claims rather than attaching the old settings to new data.
+    entries = {stage: record for stage, record in stage_provenance(run.processing, group).stages.items()
+               if stage not in invalidated}
     updated_run = RunDescriptor.model_validate({
         **run.model_dump(),
         "models": {**run.models, bundle.model_id: RecordedModel.from_bundle(bundle)},
-        "sources": {**run.sources, source: recording.definition.to_source()},
+        "sources": {**{name: value for name, value in run.sources.items() if name not in stale_sources},
+                    source: recording.definition.to_source()},
+        "processing": set_stage_provenance(run.processing, group, entries),
         "reference_frames": {**run.reference_frames, **recording.reference_frames()},
-        "channels": tuple(c for c in run.channels if c.source != source) + tuple(recording.channels()),
+        "channels": tuple(c for c in run.channels if c.source not in replaced_sources) + tuple(recording.channels()),
         "scale_fits": tuple(f for f in run.scale_fits if f.source != source) + (recording.to_scale_fit(),),
         "checkpoints": tuple(c for c in run.checkpoints if not (c.sensor_group == group and c.stage in invalidated)),
     })
@@ -88,7 +100,8 @@ def refresh_reconstruction(structure, bundle):
     def batches():
         with pq.ParquetFile(path) as parquet:
             for batch in parquet.iter_batches(batch_size=65536):
-                selected = pc.and_(pc.equal(batch.column("run_id"), run_id), pc.equal(batch.column("source"), source))
+                selected = pc.and_(pc.equal(batch.column("run_id"), run_id),
+                                   pc.is_in(batch.column("source"), value_set=pa.array(sorted(replaced_sources))))
                 retained = batch.filter(pc.invert(selected)).replace_schema_metadata(None)
                 if retained.num_rows:
                     yield retained

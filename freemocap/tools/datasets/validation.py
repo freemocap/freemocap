@@ -8,7 +8,8 @@ from freemocap.tools.datasets.preparation import validate_parquet
 
 def validate_outputs(recording: Path, *, expected_frames: int, require_fit: bool,
                      run_id: int | None = None, sensor_group: str | None = None,
-                     require_alignment: bool = False) -> dict:
+                     require_alignment: bool = False,
+                     require_provenance_stages: tuple[str, ...] = ()) -> dict:
     from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure, select_group
     from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
     from freemocap.core.recording.result_processing.saved_reconstruction import read_saved_channel
@@ -58,4 +59,16 @@ def validate_outputs(recording: Path, *, expected_frames: int, require_fit: bool
             raise ValueError('Fitted rotations are not unit quaternions')
     report.update(run_id=run_id, sensor_group=group, alignment_outcomes=outcomes,
                   skeleton_fit_checked=require_fit, fitted_frame_count=int(present.sum()) if require_fit else None)
+    from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance
+    provenance = stage_provenance(run.processing, group).stages
+    missing = set(require_provenance_stages) - set(provenance)
+    if missing:
+        raise ValueError(f'Missing executed-stage provenance: {sorted(missing)}')
+    if 'filtering' in provenance:
+        actual = run.processing[group]['filtering']['config']
+        if provenance['filtering'].effective_settings != actual:
+            raise ValueError('Filter provenance disagrees with the published filtering report')
+    report['provenance_stages'] = {stage: dict(attempt_id=entry.attempt_id,
+        recorded_at=entry.recorded_at.isoformat(), defaults_saved=entry.default_settings is not None)
+        for stage, entry in provenance.items()}
     return report

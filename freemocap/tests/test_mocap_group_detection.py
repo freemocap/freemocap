@@ -46,6 +46,21 @@ def body_batch(
 
 
 class MocapGroupDetectionTests(unittest.TestCase):
+    def test_performance_report_covers_real_video_workers_and_batched_inference(self) -> None:
+        self.write_recording(camera_count=3, board_at=None, frame_count=3)
+        frames = list(detect_mocap_recording(self.request))
+        report = self.request.performance
+        rows = report.snapshot()
+        self.assertEqual(len(frames), 3)
+        self.assertEqual((report.frames, report.images), (3, 9))
+        for name in ("coordinator.decode_wait", "coordinator.inference_wait", "coordinator.annotation_wait",
+                     "inference.queue_wait", "inference.process_batch.images=3"):
+            self.assertEqual(rows[name]["count"], 3, name)
+        for camera in frames[0].observations:
+            for operation in ("decode", "draw", "encode_write", "annotate_encode"):
+                self.assertEqual(rows[f"camera.{camera}.{operation}"]["count"], 3)
+            self.assertEqual(rows[f"camera.{camera}.video_finalize"]["count"], 1)
+
     def test_invalid_filter_fails_before_inference_or_video_writes(self) -> None:
         self.write_recording(camera_count=3, board_at=None)
         config = self.config.model_copy(update={"filter_config": PosthocFilterConfig(cutoff=30.0)})

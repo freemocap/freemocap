@@ -20,6 +20,21 @@ from freemocap.core.pipeline.inference_service import (
 
 
 class InferenceServiceTests(unittest.TestCase):
+    def test_diagnostics_preserve_three_camera_batches_and_separate_setup(self) -> None:
+        from freemocap.core.pipeline.performance_report import PerformanceReport
+        report = PerformanceReport()
+        client = self.client(name="diagnostics")
+        images = {str(i): np.zeros((8, 12, 3), dtype=np.uint8) for i in range(3)}
+        for frame in range(2):
+            result = client.submit(InferenceRequest(frame_number=frame, images=images, performance=report)).result(timeout=2)
+            self.assertEqual(set(result), set(images))
+        rows = report.snapshot()
+        self.assertEqual(rows["inference.session_setup"]["count"], 1)
+        self.assertEqual(rows["inference.queue_wait"]["count"], 2)
+        self.assertEqual(rows["inference.process_batch.images=3"]["count"], 2)
+        self.assertEqual(self.leases[0].tracker.process_batch.call_count, 2)
+        self.assertIs(self.leases[0].tracker.process_batch.call_args.kwargs["images"], images)
+
     def setUp(self) -> None:
         self.global_shutdown = multiprocessing.Value("b", False)
         self.registry = WorkerRegistry(global_kill_flag=self.global_shutdown, worker_mode=WorkerMode.THREAD)

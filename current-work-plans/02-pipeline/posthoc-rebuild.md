@@ -1,5 +1,10 @@
 # Mocap/posthoc pipeline rebuild
 
+Current audit, 2026-09-30: [recording folder contract](../03-transport/recording-folder-contract.md)
+distinguishes implemented persistence from earlier plans. In particular, publication
+does not maintain a dataset JSON mirror, and lower-level keep support is not an
+app-wide keep/overwrite control. Treat dated progress claims below as historical.
+
 Scope: mocap task in posthoc mode. Calibration/posthoc is a separate existing task;
 calibration/realtime is deferred. Shared primitives do not merge task ownership.
 

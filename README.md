@@ -1,6 +1,10 @@
 
 # SPECIAL INSTRUCTIONS FOR THE `/development` BRANCH 
 
+Recording storage and processing work starts with the maintained
+[Recording contract](RECORDING_CONTRACT.md): folder ownership, per-run settings,
+retention, compatibility, and reproducible validation.
+
 ## Installation
 ### Python server
 0. Install `uv` 

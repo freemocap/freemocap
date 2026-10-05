@@ -1,8 +1,8 @@
 """Canonical folder layout for a freemocap recording.
 
-This module is the authoritative source of truth for "what files live where
-in a recording folder". Every path reference in the backend should flow
-through `RecordingStructure` rather than being hand-assembled from strings.
+The maintained target and compatibility rules live in RECORDING_CONTRACT.md at
+the repository root. This module owns backend path construction. Contract tests
+check its paths against the frontend and shared/recording-contract/paths.json.
 
 The frontend mirrors this layout in
 `freemocap-ui/src/store/slices/active-recording/recording-structure.ts` — keep
@@ -15,6 +15,7 @@ Layout (target):
     │   ├── synchronized/                     # was synchronized_videos/
     │   └── annotated/                        # was annotated_videos/
     ├── output/                               # per-stage processed artifacts
+    ├── exports/                              # optional, created by exporter
     ├── logs/                                 # per-recording logs
     ├── {recording_name}_calibration.toml     # authoritative TOML for this recording
     ├── {recording_name}_recording_info.json  # camera configs + recording_type tags
@@ -99,6 +100,12 @@ class RecordingStructure(BaseModel):
     @property
     def output_dir(self) -> Path:
         return self.full_path / "output"
+
+    @computed_field
+    @property
+    def exports_dir(self) -> Path:
+        """Derived exports; resolving this path does not create the directory."""
+        return self.full_path / "exports"
 
     @computed_field
     @property

@@ -26,6 +26,7 @@ function buildPosthocConfig(state: RootState) {
         },
         cameraMatching: config.cameraMatching,
         skeletonFitEnabled: config.skeletonFitEnabled ?? false,
+        exportTallCsv: config.exportTallCsv ?? true,
         charucoTrackingEnabled: config.charucoTrackingEnabled,
         boardMode: state.calibration.config.boardMode,
         charucoBoard: state.calibration.config.charucoBoard,

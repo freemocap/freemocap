@@ -1,5 +1,9 @@
 # Recording data model
 
+Current audit, 2026-09-30: see [recording folder contract](recording-folder-contract.md)
+for actual paths, metadata authority, saved parameters and run/export retention.
+Its findings supersede the older folder tree and metadata-placement claims below.
+
 Review note, 2026-09-06: the scientific direction remains the starting point; the directory tree,
 descriptor placement and processing metadata boundaries below are under renewed review. See
 [posthoc architecture review](../02-pipeline/posthoc-architecture-review.md) before implementation.

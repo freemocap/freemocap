@@ -3,6 +3,7 @@
 from collections.abc import Iterable, Iterator
 
 import pyarrow as pa
+from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance
 
 from freemocap.core.pipeline.posthoc.stage_execution_plan import (
     StageExecutionPlan,
@@ -124,6 +125,14 @@ def publish_checkpoint(
     for checkpoint in retained.checkpoints:
         if checkpoint not in result.checkpoints:
             raise ValueError("Result must preserve reusable checkpoints")
+    for group in retained.sensor_groups:
+        previous = stage_provenance(retained.processing, group).stages
+        current = stage_provenance(result.processing, group).stages
+        if any(current.get(stage) != record for stage, record in previous.items()):
+            raise ValueError("Result must preserve reusable stage provenance")
+        for stage, record in current.items():
+            if record != previous.get(stage) and (group not in plan.sensor_groups or stage not in plan.execute):
+                raise ValueError("Result records provenance outside executed stages")
     for checkpoint in result.checkpoints:
         if checkpoint not in retained.checkpoints and (
             checkpoint.sensor_group not in plan.sensor_groups

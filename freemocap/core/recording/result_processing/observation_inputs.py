@@ -23,6 +23,7 @@ from pydantic import JsonValue
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.timestamps.recording_timing_reader import TimingMethod
 from skellytracker.core.data_primitives.observation import Observation
+from freemocap.core.recording.result_processing.provenance import ProvenanceContext
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
@@ -53,7 +54,7 @@ class TrackerRecordingDefinition(Descriptor):
     """The keypoint model that measured the points, e.g. `keypoint_model:rtmw-x-l_256x192`.
 
     `name` is the recording's source identity, so it names the MODEL rather than the
-    pipeline that ran it — the exact weights are what a reader needs to reproduce the
+    pipeline that ran it â€” the exact weights are what a reader needs to reproduce the
     numbers. The full configuration rides in the Source definition blob.
     """
 
@@ -73,7 +74,7 @@ class DetectorRecordingDefinition(Descriptor):
     points measured inside it needs to know which produced which.
 
     A tracker with no object detector has no such source, and therefore records no boxes
-    — which is the right answer, because `DetectionStage` synthesizes a full-image box in
+    â€” which is the right answer, because `DetectionStage` synthesizes a full-image box in
     that case and a box covering the whole frame says nothing about where the subject is.
     """
 
@@ -121,6 +122,8 @@ class ObservationRecordingRequest:
     base_run_id: int = 0
     reuse_observations: bool = False
     resolved_timing: RecordingGroupTiming | None = None
+    provenance_context: ProvenanceContext | None = None
+    provenance_defaults: dict[str, object] | None = None
 
     def __post_init__(self) -> None:
         if self.reprojection is not None:
@@ -234,7 +237,7 @@ class CameraObservationChannels:
 
 # One row per detection stage per frame. `detector_ran` is 1.0 when the object detector
 # produced this box on this frame and 0.0 when it was carried forward from the tracked
-# keypoints — the provenance that makes an over-eager redetect policy legible offline.
+# keypoints â€” the provenance that makes an over-eager redetect policy legible offline.
 BOX_COMPONENTS: dict[str, str] = {
     SampleComponent.X1: SampleUnit.PIXELS,
     SampleComponent.Y1: SampleUnit.PIXELS,

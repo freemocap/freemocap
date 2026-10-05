@@ -1,6 +1,7 @@
 """Triangulate recording observations and reconstruct the selected tracked models."""
 from __future__ import annotations
 import json
+from freemocap.core.pipeline.performance_report import PerformanceReport
 import time
 from freemocap.utilities.numerical_statistics import DISTRIBUTION_COLUMNS, distribution_row
 from collections.abc import Callable  # noqa: TC003 - runtime type checking
@@ -57,6 +58,7 @@ from freemocap.core.skeletons.standard_human_skeleton import (
 )
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.core.recording.result_processing.observation_publication import publish_posthoc_observations
+from freemocap.core.recording.result_processing.provenance import ProvenanceContext
 from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # noqa: TC001
@@ -86,6 +88,7 @@ def run_posthoc_mocap_task(
         reporter: TaskProgressReporter | None = None,
         cancelled: Callable[[], bool] | None = None,
         saved_timing: RecordingGroupTiming | None = None,
+        performance: PerformanceReport | None = None,
 ) -> None:
     """
     Reconstruct the selected models from collected recording observations.
@@ -97,6 +100,7 @@ def run_posthoc_mocap_task(
         reporter: Progress reporter for named stage updates.
         task_config: Resolved Mocap detector configuration.
     """
+    performance = performance if performance is not None else PerformanceReport()
     _reporter = reporter or TaskProgressReporter.noop()
     camera_ids = list(video_metadata.keys())
 
@@ -124,10 +128,13 @@ def run_posthoc_mocap_task(
                 for stage in obs.stages.values()))) if detector_source else None,
         base_run_id=task_config.base_run_id, reuse_observations=saved_timing is not None,
         resolved_timing=saved_timing,
+        provenance_context=ProvenanceContext.create(),
+        provenance_defaults=PosthocMocapPipelineConfig().model_dump(mode='json'),
     )
     if saved_timing is None:
         _reporter.report(stage=MocapStage.BUILDING_RECORDERS, detail='Saving completed 2D tracking')
-        publish_posthoc_observations(observation_checkpoint)
+        with performance.measure("checkpoint.observations"):
+            publish_posthoc_observations(observation_checkpoint)
     check_cancelled()
 
     # ---- Build observation buffers ----
@@ -204,6 +211,7 @@ def run_posthoc_mocap_task(
         timing=timing,
     )
     triangulation_seconds = time.perf_counter() - triangulation_started
+    performance.record("triangulation.total", triangulation_seconds)
     diagnostics = triangulation.reconstruction.diagnostics
     if diagnostics is not None:
         count_rows, error_rows, legend = [], [], []
@@ -275,20 +283,23 @@ def run_posthoc_mocap_task(
                 (ChannelKind.RAW_KEYPOINTS_3D, triangulation.reconstruction.points_3d),
                 (ChannelKind.KEYPOINTS_3D, aligned.filtered_points))),
     )
-    publish_posthoc_observations(spatial_checkpoint)
+    with performance.measure("checkpoint.spatial"):
+        publish_posthoc_observations(spatial_checkpoint)
     check_cancelled()
     _reporter.report(stage=MocapStage.RECONSTRUCTING, detail=(
         f"Reconstructing skeletons; filtered {filtered.report.filtered_runs} trajectory runs, "
         f"preserved {filtered.report.preserved_short_runs} short runs"
     ))
-    reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
-        bundles=bundles,
-        keypoint_names=triangulation.keypoint_names,
-        keypoints_3d=aligned.filtered_points,
-        measured_support=filtered.report.gap_filling.measured_support(aligned.filtered_points),
-        compute_center_of_mass=True,
-        timing=timing,
-    ))
+    with performance.measure("reconstruction.total"):
+        reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
+            bundles=bundles,
+            keypoint_names=triangulation.keypoint_names,
+            keypoints_3d=aligned.filtered_points,
+            measured_support=filtered.report.gap_filling.measured_support(aligned.filtered_points),
+            compute_center_of_mass=True,
+            timing=timing,
+        ))
+
 
     publication = replace(spatial_checkpoint,
         calibration_update=CalibrationUpdateRequest(
@@ -307,7 +318,8 @@ def run_posthoc_mocap_task(
         ) for bundle in bundles),
     )
     check_cancelled()
-    published = publish_posthoc_observations(publication)
+    with performance.measure("checkpoint.final"):
+        published = publish_posthoc_observations(publication)
     if task_config.skeleton_fit_enabled:
         from freemocap.core.recording.result_processing.skeleton_fitting import fit_saved_skeleton
         from freemocap.system.recording_structure.recording_structure import RecordingStructure

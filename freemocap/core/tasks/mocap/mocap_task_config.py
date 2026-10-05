@@ -133,6 +133,8 @@ class PosthocMocapPipelineConfig(BaseModel):
     )
 
 
+    export_tall_csv: bool = Field(default=True, alias="exportTallCsv")
+
     export_to_blender: bool = Field(
         default=True,
         alias="exportToBlender",

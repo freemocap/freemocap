@@ -27,6 +27,8 @@ from freemocap.core.recording.sample_encoding.reconstruction_samples import Reco
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
+from freemocap.core.recording.result_processing.provenance import ProvenanceContext, stage_settings
+from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance, set_stage_provenance
 
 
 RESUME_STAGES = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction', 'skeleton_fit')
@@ -99,6 +101,8 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
             # The solver manages its own lock below.
             pass
         else:
+            provenance = ProvenanceContext.create()
+            defaults = PosthocMocapPipelineConfig().model_dump(mode='json')
             kind = ChannelKind.RAW_KEYPOINTS_3D if start == ProcessingStage.FILTERING else ChannelKind.KEYPOINTS_3D
             channels = [c for c in base.channels if c.sensor_group == group and c.kind == kind]
             if len(channels) != 1:
@@ -182,6 +186,18 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
             }
             data['checkpoints'] = (*retained.checkpoints, *(StageCheckpoint(sensor_group=group,
                 stage=stage, signature=signatures[stage]) for stage in executed))
+            entries = dict(stage_provenance(retained.processing, group).stages)
+            for stage in executed:
+                entries[stage] = provenance.record(
+                    settings=stage_settings(stage, config.model_dump(mode='json'), filtering=report),
+                    defaults=stage_settings(stage, defaults),
+                    inputs=dict(points=points.signature(), models=base.models,
+                        prepared_points=prepared_signature, fits=fit_signatures,
+                        filtering_report=report),
+                    sources=tuple(item.definition.source_name for item in reconstructions)
+                        if stage != ProcessingStage.FILTERING else (points.channel.source,),
+                    base_run_id=config.base_run_id, base_descriptor=base)
+            data['processing'] = set_stage_provenance(data['processing'], group, entries)
             result = RunDescriptor.model_validate(data)
             sampling = SeriesSampling(points.frames, points.timestamps_s, config.base_run_id)
             check_cancelled()

@@ -2,7 +2,8 @@
 
 from collections.abc import Iterator
 from concurrent.futures import CancelledError, Future, TimeoutError
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from freemocap.core.pipeline.performance_report import PerformanceReport
 from pathlib import Path
 from queue import Queue
 from typing import TypeVar
@@ -35,6 +36,7 @@ class MocapDetectionRequest:
     registry: WorkerRegistry
     inference_service: InferenceService
     video_nodes: list[MocapVideoNode]
+    performance: PerformanceReport = field(default_factory=PerformanceReport)
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,12 @@ def detect_mocap_recording(request: MocapDetectionRequest) -> Iterator[MocapDete
         frame_count = group.frame_count
     finally:
         group.close()
+    request.performance.details.append(
+        f"Detector={request.config.detector_type}; pose model={request.config.rtmpose_model_name}; "
+        f"camera batch size={len(metadata)}; ChArUco enabled={request.config.charuco_tracking_enabled}")
+    request.performance.details.extend(
+        f"Video {camera}: {video.width}x{video.height}, source fps={video.fps}, frames={video.frame_count}"
+        for camera, video in metadata.items())
     if request.config.filter_config.enabled:
         timing = RecordingGroupTiming.resolve(recording_folder=request.recording_path, videos=metadata,
             frame_numbers=tuple(range(frame_count)))
@@ -91,7 +99,7 @@ def detect_mocap_recording(request: MocapDetectionRequest) -> Iterator[MocapDete
         for camera_id, video in metadata.items():
             node = MocapVideoNode(config=VideoWorkerConfig(camera_id=camera_id, video=video,
                 recording_path=request.recording_path, tracker_config=request.config.tracker_config,
-                ipc=request.ipc, progress=request.progress), registry=request.registry)
+                ipc=request.ipc, progress=request.progress, performance=request.performance), registry=request.registry)
             node.worker.start()
             nodes.append(node)
         selected = request.config.charuco_board if request.config.charuco_tracking_enabled and request.config.board_mode == CharucoBoardMode.EXPLICIT else None
@@ -102,23 +110,29 @@ def detect_mocap_recording(request: MocapDetectionRequest) -> Iterator[MocapDete
         for number in range(frame_count):
             if not request.ipc.should_continue:
                 raise CancelledError("Mocap pipeline stopped")
-            images = {camera: _wait(future=command.result, request=request, nodes=nodes) for camera, command in reads.items()}
-            inference = client.submit(InferenceRequest(frame_number=number, images=images))
+            with request.performance.measure("coordinator.decode_wait"):
+                images = {camera: _wait(future=command.result, request=request, nodes=nodes) for camera, command in reads.items()}
+            inference = client.submit(InferenceRequest(frame_number=number, images=images, performance=request.performance))
             # Decode one multiframe ahead while inference owns the current images.
             if number + 1 < frame_count:
                 reads = {node.config.camera_id: ReadFrame(number=number + 1) for node in nodes}
                 for node in nodes:
                     node.commands.put_nowait(reads[node.config.camera_id])
             if selector is not None and selected is None:
-                detected = selector.search_frame(frame_number=number, images=images.values())
+                with request.performance.measure("coordinator.board_search"):
+                    detected = selector.search_frame(frame_number=number, images=images.values())
                 if detected is not None:
                     selected = detected.model_copy(update={"square_length_mm": request.config.charuco_board.square_length_mm})
-            observations = _wait(future=inference, request=request, nodes=nodes)
+            with request.performance.measure("coordinator.inference_wait"):
+                observations = _wait(future=inference, request=request, nodes=nodes)
             annotations = {camera: AnnotateFrame(image=images[camera], observation=observation, board=selected)
                            for camera, observation in observations.items()}
             for node in nodes:
                 node.commands.put_nowait(annotations[node.config.camera_id])
-            merged = {camera: _wait(future=command.result, request=request, nodes=nodes) for camera, command in annotations.items()}
+            with request.performance.measure("coordinator.annotation_wait"):
+                merged = {camera: _wait(future=command.result, request=request, nodes=nodes) for camera, command in annotations.items()}
+            request.performance.frames += 1
+            request.performance.images += len(images)
             yield MocapDetectionFrame(frame_number=number, frame_count=frame_count,
                 observations=merged, selected_board=selected, video_metadata=metadata)
         for publish in (False, True):

@@ -3,6 +3,12 @@
 A recording describes a capture volume. Its subjects, trackers and scientific models describe
 particular measurement sources. Capture metadata JSON is separate from the descriptor in Parquet.
 
+For the maintained on-disk folder and per-run settings target, start with the
+[Recording contract](../../../RECORDING_CONTRACT.md). The
+[dated audit](../../../current-work-plans/03-transport/recording-folder-contract.md)
+records known writer differences and provenance gaps.
+The folder map below describes Python packages, not recording output directories.
+
 ## Folder map
 
 ```text

@@ -20,6 +20,7 @@ import pyarrow.compute as pc
 from skellyforge import _native
 from skellyforge.core.skeleton import fitting
 from skellyforge.core.skeleton.fitting import fit_human
+from skellyforge.core.skeleton.fitting import human as human_fitting, settings as fitting_settings
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.pipeline.posthoc.stage_execution_plan import StageExecutionPlan, retained_run
@@ -28,10 +29,12 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
 )
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
+from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance, set_stage_provenance
 from freemocap.core.recording.parquet_storage.parquet_reader import read_batches, read_metadata
 from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
 from freemocap.core.recording.parquet_storage.checkpoint_publication import publish_checkpoint
 from freemocap.core.recording.result_processing.input_signatures import definition_signature, point_array_signature
+from freemocap.core.recording.result_processing.provenance import ProvenanceContext
 from freemocap.core.recording.sample_encoding.arrow_schema import SampleValidator
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
 from freemocap.core.recording.sample_encoding.reconstruction_samples import model_source_name
@@ -40,7 +43,6 @@ from freemocap.system.recording_structure.recording_structure import RecordingSt
 
 logger = logging.getLogger(__name__)
 STAGE = ProcessingStage.SKELETON_FIT
-
 
 def _json_value(value):
     """Serialize actual Forge outputs; no second model or solver schema."""
@@ -290,6 +292,14 @@ def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_gro
             logger.info('Reusing skeleton fit: run=%d, sensor_group=%s', run_id, sensor_group)
             return metadata
         logger.info('Fitting saved skeleton: run=%d, sensor_group=%s, frames=%d', run_id, sensor_group, len(inputs.records))
+        provenance = ProvenanceContext.create()
+        # The accepted API has no settings overrides: preserve its actual defaults,
+        # including fixed residual and window-controller constants, at execution.
+        fit_settings = json.loads(json.dumps(dict(
+            options=human_fitting.human_fit_options(),
+            constants={module.__name__: {key: value for key, value in vars(module).items() if key.isupper()}
+                       for module in (human_fitting, fitting_settings)},
+            interval_policy='independent_visible_intervals_minimum_three_frames_root_seed'), default=_json_value))
         fitted = fit_visible_intervals(inputs, progress=on_progress)
         solved = perf_counter()
         logger.info('Skeleton solve complete: frames=%d, seconds=%.3f', len(inputs.records), solved - loaded)
@@ -309,6 +319,11 @@ def fit_saved_skeleton(*, structure: RecordingStructure, run_id: int, sensor_gro
         result_data['sources'][source] = Source(kind=SourceKind.SOLVER, definition=definition).model_dump()
         result_data['channels'] = (*retained.channels, *(s.channel for s in series))
         result_data['checkpoints'] = (*retained.checkpoints, StageCheckpoint(sensor_group=sensor_group, stage=STAGE, signature=inputs.signature))
+        entries = dict(stage_provenance(retained.processing, sensor_group).stages)
+        entries[STAGE] = provenance.record(settings=fit_settings, defaults=fit_settings,
+            inputs=dict(prepared_input_signature=inputs.signature, solver=definition['solver']),
+            sources=(source,), base_run_id=run_id, base_descriptor=base)
+        result_data['processing'] = set_stage_provenance(result_data['processing'], sensor_group, entries)
         result = type(retained).model_validate(result_data)
         sampling = SeriesSampling(tuple(r['number'] for r in inputs.records), tuple(r['time'] for r in inputs.records), plan.target_run_id)
         check_cancelled()

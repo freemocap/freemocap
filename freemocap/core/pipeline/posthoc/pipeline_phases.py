@@ -37,6 +37,7 @@ class MocapStage(_StrValueEnum):
     RECONSTRUCTING = "reconstructing"
     FITTING_SKELETON = "fitting_skeleton"
     EXPORTING_BLENDER = "exporting_blender"
+    EXPORTING_CSV = "exporting_csv"
 
 
 class CalibrationStage(_StrValueEnum):

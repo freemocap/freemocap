@@ -12,6 +12,8 @@ from freemocap.core.recording.result_processing.reconstruction_completion import
 )
 
 import pyarrow as pa
+from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance, set_stage_provenance
+from freemocap.core.recording.result_processing.observation_provenance import observation_provenance
 from freemocap.core.recording.result_processing.observation_inputs import (
     ObservationRecordingRequest,
     CameraRecordingDefinition,
@@ -161,6 +163,10 @@ def publish_posthoc_observations(
         channels=tuple(channels),
     )
 
+    entries = observation_provenance(request=request, run=run, timestamps_s=synchronized)
+    if entries:
+        run = run.model_copy(update={"processing": set_stage_provenance(run.processing, request.group.name, entries)})
+
     def batches() -> Iterator[pa.RecordBatch]:
         for series in diagnostics:
             yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=request.base_run_id))
@@ -285,6 +291,13 @@ def publish_posthoc_observations(
             raise ValueError(
                 "Observation overwrite cannot change the saved sample grid"
             )
+        # Reused observations keep the provenance from their actual detector run.
+        combined_processing = {**{group: settings for group, settings in retained.processing.items()
+            if group != request.group.name}, **run.processing}
+        retained_entries = stage_provenance(retained.processing, request.group.name).stages
+        if retained_entries or entries:
+            combined_processing = set_stage_provenance(combined_processing, request.group.name,
+                {**retained_entries, **entries})
         result = RunDescriptor(
             calibration_updates={
                 **{group: update for group, update in retained.calibration_updates.items()
@@ -297,8 +310,7 @@ def publish_posthoc_observations(
             sources={**retained.sources, **sources},
             reference_frames={**retained.reference_frames, **references},
             models={**retained.models, **run.models},
-            processing={**{group: settings for group, settings in retained.processing.items()
-                if group != request.group.name}, **run.processing},
+            processing=combined_processing,
             channels=(*retained.channels, *channels),
             static_channels=retained.static_channels,
             checkpoints=(*retained.checkpoints, *run.checkpoints),

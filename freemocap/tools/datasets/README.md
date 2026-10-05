@@ -187,7 +187,19 @@ Acceptance validates recording structure, frame grids, calibration/alignment,
 and fitted channel completeness, finite values, and unit rotations. It does not
 claim anatomical accuracy or enforce experimental fit-quality thresholds.
 
-## Current integration blocker (2026-09-29)
+New workflow publications also require versioned provenance for every executed
+stage and check the filtering settings against the saved processing report.
+Historical files remain readable without invented provenance. The
+[recording-contract acceptance tests](../../tests/reference_recordings/README.md#recording-contract-and-provenance-acceptance)
+consume fresh outputs and exercise numerical replay while preserving upstream data.
+These production-generated outputs are the shared acceptance fixtures for future
+CSV/NPZ and Blender integration, alongside focused structural and logic tests.
+
+## Historical integration blocker (2026-09-29; resolved)
+
+Fresh test and sample processing passed on 2026-09-30 with installed Forge
+revision `cbae21e`, including fitting and channel validation. The earlier failure
+below is retained as history, not a current prerequisite for running the suite.
 
 A fresh `test_data` run completed calibration, tracking, triangulation, person
 alignment (`foot_support`), and reconstruction, then failed in SkellyForge
@@ -199,6 +211,6 @@ SkellyForge change before the default full run can pass.
 
 The failed attempt retained the previous accepted recording. The runner does
 not fill those observations, drop frames, or disable fitting automatically.
-The sample-data full run and real saved-stage restart checks remain pending
-that dependency fix. The explicit `--no-skeleton-fit` option is not evidence
+At that point, sample-data full processing and real saved-stage restart checks
+were pending the dependency fix. The explicit `--no-skeleton-fit` option is not evidence
 that the default full workflow passes.

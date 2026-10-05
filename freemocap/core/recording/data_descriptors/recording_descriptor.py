@@ -12,6 +12,7 @@ from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
+from freemocap.core.recording.data_descriptors.stage_provenance import PROVENANCE_KEY, stage_provenance
 
 
 class Descriptor(BaseModel):
@@ -174,6 +175,17 @@ class RunDescriptor(Descriptor):
             raise ValueError("Duplicate stage checkpoint")
         if any(group not in self.sensor_groups for group, _ in checkpoints):
             raise ValueError("Unknown checkpoint sensor group")
+        for group, settings in self.processing.items():
+            if not isinstance(settings, dict) or PROVENANCE_KEY not in settings:
+                continue
+            if group not in self.sensor_groups:
+                raise ValueError("Unknown provenance sensor group")
+            for stage, record in stage_provenance(self.processing, group).stages.items():
+                if not set(record.output_sources).issubset(self.sources):
+                    raise ValueError("Unknown provenance output source")
+                if (group, stage) not in checkpoints and not any(
+                        channel.sensor_group == group and channel.stage == stage for channel in self.channels):
+                    raise ValueError("Provenance requires published stage outputs")
         return self
 
 

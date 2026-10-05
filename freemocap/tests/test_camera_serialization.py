@@ -14,6 +14,7 @@ from freemocap.tests.test_recording_store import metadata_fixture, sample_batch
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.recording.result_processing.provenance import provenance_signature
 
 
 def test_camera_geometry_json_round_trip_preserves_projection(tmp_path: Path) -> None:
@@ -40,6 +41,7 @@ def test_camera_geometry_json_round_trip_preserves_projection(tmp_path: Path) ->
     )
     np.testing.assert_allclose(restored.world_orientation, camera.world_orientation)
     assert restored == camera
+    assert provenance_signature(restored) == provenance_signature(camera)
     assert CameraModel.model_json_schema()
     assert RecordingMetadata.model_json_schema()
     CameraExecutionInputs(camera_ids=(camera.id,), geometry=(camera,)).validate_for((ProcessingStage.REPROJECTION,))

@@ -1,0 +1,25 @@
+{
+  "contract_version": 1,
+  "canonical": {
+    "videosSynchronizedDir": {"python": "videos_synchronized_dir", "relative": "videos/synchronized"},
+    "videosAnnotatedDir": {"python": "videos_annotated_dir", "relative": "videos/annotated"},
+    "outputDir": {"python": "output_dir", "relative": "output"},
+    "exportsDir": {"python": "exports_dir", "relative": "exports"},
+    "logsDir": {"python": "logs_dir", "relative": "logs"},
+    "calibrationTomlPath": {"python": "calibration_toml_path", "relative": "{recordingName}_calibration.toml"},
+    "recordingInfoPath": {"python": "recording_info_path", "relative": "{recordingName}_recording_info.json"},
+    "dataParquetPath": {"python": "data_parquet_path", "relative": "{recordingName}_data.parquet"},
+    "blendPath": {"python": "blend_path", "relative": "{recordingName}.blend"}
+  },
+  "legacy_v1": {
+    "videosSynchronizedDir": "synchronized_videos",
+    "videosAnnotatedDir": "annotated_videos",
+    "outputDir": "output_data",
+    "exportsDir": "exports",
+    "logsDir": "logs",
+    "calibrationTomlPath": "{recordingName}_camera_calibration.toml",
+    "recordingInfoPath": "{recordingName}_recording_info.json",
+    "dataParquetPath": "output_data/freemocap_data_by_frame.parquet",
+    "blendPath": "{recordingName}.blend"
+  }
+}

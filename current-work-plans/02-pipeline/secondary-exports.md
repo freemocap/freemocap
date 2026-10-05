@@ -1,5 +1,246 @@
 # Secondary recording exports
 
+## Current implementation plan — 2026-09-30
+
+The owner selected the next milestone: optional tall CSV, wide CSV and NumPy NPZ
+exports from canonical saved Parquet, exposed in the post-hoc mocap panel's
+existing **Exports** section. All artifacts live beneath the recording's
+`exports/` directory. This plan supersedes the implementation order and open
+format questions in the historical investigation below. Tall CSV backend/CLI,
+snapshot reading, metadata and recoverable publication are implemented. Tall CSV
+is available in the posthoc Exports panel, enabled by default after processing,
+with a separate saved-run export action. Wide CSV and NPZ remain subsequent stages.
+
+Folder ownership and provenance rules are defined in the maintained
+[Recording contract](../../RECORDING_CONTRACT.md). Current implementation gaps
+are recorded in the [audit](../03-transport/recording-folder-contract.md).
+The agreed default/retained layout below replaces the initial unique-folder proposal.
+
+The larger branch milestone is a complete post-hoc recording, optional final
+skeleton fitting, canonical Parquet, these optional data exports, and a working
+connection to the existing Blender add-on. Blender adaptation follows this work.
+BVH, glTF, additional fitting research, and standalone NPY files are deferred.
+NPZ contains ordinary NumPy arrays; separate NPY files can be added later using
+the same array contract.
+
+### Shared selection and output contract
+
+- Export one explicitly resolved run, defaulting to the recording's selected
+  run. Initial UI exports the full run: all its groups and available channels,
+  including original reconstruction and fitted channels when present. Advanced
+  channel/time-range selection is deferred.
+- Preserve recorded values, timestamps, frame numbers, names, components, units,
+  coordinate references and scientific definitions. Export never filters,
+  interpolates, fits, realigns, resamples or replaces missing measurements.
+- Read metadata and numerical rows from one open Parquet snapshot. Reuse or
+  extract `recording_view` into the storage layer rather than introducing a
+  second snapshot implementation. Capture source revision and selected run.
+  Reject an export-now request whose expected revision has changed.
+- A channel context is `(run_id, sensor_group, source, reference_frame, channel)`.
+  Sources and clocks remain distinct. Do not invent person IDs or an entity axis
+  that the recording does not declare. Source identity belongs in the manifest.
+- Export existing static channels and frozen scale-fit views separately, using
+  `read_static_channels`; do not repeat static values at every frame.
+- Stream tall output in batches. Build wide/NumPy output one context at a time;
+  use disk-backed scratch arrays for large contexts. Never materialize the whole
+  recording as Python row dictionaries. Duplicate sample/component identities
+  are errors, not values to average or silently overwrite.
+
+Default exports use simple filenames directly under `exports/`. Explicitly
+retained exports use a run subfolder and run-qualified filenames:
+
+```text
+<recording-id>/exports/
+    <recording-id>.tall.csv
+    <recording-id>.static.tall.csv
+    <recording-id>.landmarks.wide.csv
+    <recording-id>.segment-rotations-world.wide.csv
+    <recording-id>.npz
+    <recording-id>.metadata.json
+    run-0/
+        <recording-id>.run-0.tall.csv
+        <recording-id>.run-0.landmarks.wide.csv
+        <recording-id>.run-0.npz
+        <recording-id>.run-0.metadata.json
+```
+
+Only selected formats are written. Wide/static table qualifiers describe their
+content, with additional group/source qualifiers where required for uniqueness.
+Default filenames do not imply run zero: metadata records the actual selected run.
+An explicit retained export is protected from normal export replacement. An
+existing retained destination must not be silently overwritten or mixed with a
+different revision of the same run. Export retention does not allocate a new run.
+
+`<recording-id>[.run-<id>].metadata.json` combines a versioned export manifest and
+the exact embedded recording descriptor snapshot. The manifest records selection,
+source revision/content hash, software version,
+format outcomes, files, context identities, axis/column dictionaries, units and
+missing-value conventions. Hash the same open snapshot used for data reading.
+Filesystem-safe readable filename suffixes have deterministic collision handling;
+full context identities remain in metadata. Track descriptor/revision/hash per
+artifact so replacing one format cannot relabel an older unselected format.
+
+Write to unique staging beneath `exports/`, then publish completed artifacts by
+same-filesystem replacement for defaults and no-clobber publication for retained
+outputs, under an export lock. Selected default formats replace their older files;
+unselected formats remain with their original provenance. Multi-file replacement
+is not atomic as a set: hashes/publication status must detect incomplete updates.
+A manifest lists only
+complete files as successful. Each format has a separate outcome; one writer's
+failure must not discard another format's successful output. Cancellation stops
+remaining work and cleans only owned incomplete artifacts. Export never changes
+Parquet, capture metadata, or scientific processing checkpoints.
+
+### Tall CSV
+
+`<recording-id>[.run-<id>].tall.csv` uses the exact Parquet field names and order:
+
+```text
+timestamp_s,sensor_group,frame_number,source,reference_frame,channel,name,component,value,units,run_id
+```
+
+Write the selected run's existing rows without pivoting or expanding static data.
+Use normal CSV quoting, decimal points and round-trip float64 precision. Null
+values/reference frames are empty fields. Use UTF-8 with BOM for Excel. Preserve
+text identities without automatic date or number conversion by the exporter.
+
+`<recording-id>[.run-<id>].static.tall.csv` has `sensor_group,source,reference_frame,channel,name,component,value,units,run_id`;
+there is no fabricated timestamp or frame number. Record its schema explicitly.
+Tall files may exceed spreadsheet row limits; they remain full scientific exports.
+Both CSV files are emitted, including a header-only static file when no static
+values exist. Replacing an export therefore never leaves an older static table
+appearing current. See the [export usage guide](../../freemocap/core/recording/exports/README.md).
+
+### Wide CSV
+
+One table per channel context, with one row per recorded sample on that context's
+clock. First columns: `frame_number,timestamp_s`. Each subsequent column is one
+named scalar, for example `left_wrist.x,left_wrist.y,left_wrist.z`. Quaternion
+columns explicitly use `w,x,y,z`. Scalar channels retain their component label.
+Use the recorded name/component ordering; do not sort anatomical labels alphabetically.
+
+Escape literal dots/backslashes in labels so headers are reversible; validate
+uniqueness. The manifest maps every column to its exact name, component and units.
+Context identity is in the filename/manifest rather than repeated in every header.
+Static tables use one row per name and one column per component.
+
+Missing numerical cells are empty. If a declared item/component has no row at a
+sample, leave its cell empty and preserve the distinction from explicit nulls in
+the NPZ presence mask. Contexts with no samples produce headers and an explicit
+zero-sample manifest entry. Never join independent clocks by frame number.
+
+For Excel-sized output, split tables exceeding 1,048,575 data rows or 16,382
+value columns into numbered parts, repeating the time/frame columns. The manifest
+records the row/column ranges for every part; no data are silently truncated.
+
+### NumPy NPZ
+
+One archive contains independently described arrays for every context. The normal
+dynamic shape is `(sample, name, component)`, including scalar channels with a
+component axis of length one. Examples:
+
+- 3D points: `(frames, landmarks_or_keypoints, 3)` with components `x,y,z`.
+- Rotations: `(frames, segments, 4)` with components `w,x,y,z`.
+- 2D observations: one camera/source context per array, retaining all declared
+  components, including confidence/visibility when stored.
+- Scalar quantities: `(frames, names, 1)` when one component is declared.
+- Static quantities: `(names, components)`, with no synthetic time axis.
+
+Per dynamic context, save `<id>_values` (float64), `<id>_frame_numbers` (int64),
+`<id>_timestamps_s` (float64), `<id>_names` (Unicode), `<id>_components` (Unicode),
+`<id>_units` (Unicode, aligned with components), and `<id>_present` (boolean, same
+shape as values). Null or absent values become NaN; `present` distinguishes an
+explicitly stored null from an absent row. Finite validity is `np.isfinite(values)`.
+Static contexts have values/names/components/units arrays without frame/time arrays.
+
+Embed scalar Unicode strings `manifest_json` and `metadata_json` inside the NPZ.
+The manifest describes every array key, shape, dtype, axis meaning, label-array
+keys, context identity, unit convention and missing-value policy. It must be
+possible to understand the archive without its neighboring files:
+
+```python
+with np.load(path, allow_pickle=False) as data:
+    description = json.loads(data['manifest_json'].item())
+```
+
+No object arrays or pickled Python values. No artificial common array shape for
+different sources, lengths, clocks or component sets. Stream arrays into the NPZ
+archive where practical rather than accumulating every context in memory.
+
+### Post-hoc panel and execution
+
+Extend `mocap-setup-modal.tsx`'s existing Exports section with independent
+**Tall CSV**, **Wide CSV**, and **NumPy (.npz)** checkboxes, initially off. Show
+the destination beneath the selected recording. Preserve the existing Blender
+controls in the same section, with their current capability restrictions.
+
+Checked formats run after successful processing/publication, including optional
+fitting when enabled. Add **Export saved result** for the selected saved run,
+without requiring videos, calibration, detector readiness or reprocessing.
+Provide an explicit saved-run selector when multiple runs exist. Disable this
+action when no saved result or no format is selected, with an explanatory label.
+
+Provide an explicit **Keep export for this run** option targeting `exports/run-<id>/`;
+default automatic exports use the simple root filenames. This option preserves
+exports, not a new processing run. Report retained-destination conflicts explicitly.
+
+Persist format preferences with mocap settings; pass one typed export-options
+object through TypeScript request construction and Python configuration. Reuse
+the post-hoc task lifecycle where appropriate, with an independent export task
+and per-format outcomes. Show queued/running/completed/failed/cancelled status,
+progress, useful error messages and an open-exports-folder action.
+
+Processing success remains distinct from export success. Export failures must
+not enter the mocap worker's general failure handler. Automatic exports capture
+the actual published run/revision, not whichever run happens to be selected
+later. Full and saved-stage processing paths must both reach the export trigger;
+the current worker has early returns on saved-stage paths. Cancelled/failed
+processing does not automatically start exports. Existing successful checkpoints
+remain exportable manually after a later optional fit failure.
+
+### Implementation stages and acceptance
+
+At each stage, pair focused structural tests with consumers of the existing
+production dataset workflow. Use fresh test/sample processing and its verified
+ready markers as the integration baseline, then work on copies of those Parquet
+files. The [reference acceptance guide](../../freemocap/tests/reference_recordings/README.md)
+documents the producer/replay chain. Real-data acceptance is incremental throughout
+implementation, as well as a final milestone check; it is not deferred to stage 4.
+
+0. **Recording contract alignment (FreeMoCap).** Complete the path/provenance
+   decisions and bounded changes in the recording folder contract before wiring
+   exports into processing. Preserve legacy readers and distinguish unknown
+   historical settings from execution-time defaults. No recording migration.
+1. **Snapshot, contracts and tall CSV (FreeMoCap).** Implement the typed request,
+   manifest, context inventory, coherent snapshot reader, static export and atomic
+   publication. Test exact rows/metadata, float precision, nulls, run selection,
+   mixed clocks, cancellation, source revision changes and failure preservation.
+2. **Shared array reader, wide CSV and NPZ (FreeMoCap).** Reuse one pivot/ordering
+   implementation. Test round trips, scalar/XYZ/WXYZ/static shapes, two sources
+   with overlapping names, empty channels, irregular frames, explicit-null versus
+   absent rows, escaped labels, part splitting and standalone NPZ descriptions.
+   Verify `allow_pickle=False` and bounded processing on a real sample recording.
+3. **Task/API and post-hoc UI (FreeMoCap).** Add export-now and after-processing
+   using the same backend service. Test selection persistence, request mapping,
+   full/saved-stage triggers, fitting off/on, independent format failures,
+   cancellation and unchanged successful mocap status. Run TypeScript checks and
+   browser interaction checks for the actual Exports section.
+4. **Reference acceptance and handoff (FreeMoCap).** Export both prepared datasets,
+   reload CSV/NPZ and compare all selected scientific values and identities to
+   source Parquet. Inspect representative wide tables for readability. Confirm
+   zero detection/reconstruction calls, source hashes unchanged, repeated default
+   exports safely replaced, retained exports protected, and all artifacts beneath
+   `exports/`. Document use and limitations.
+   Present diffs/checks for the human-owned commit/push handoff before downstream
+   Blender integration.
+
+Before tests or generated examples, check the owning repository's ignore rules;
+use ignored `.test-artifacts/` recording copies or external temporary directories.
+Do not modify canonical prepared recordings as part of export testing. No new
+dependency installation or cross-repository change is anticipated for this work.
+
+## Historical investigation — 2026-09-22
+
 Status: investigation and proposal, 2026-09-22. No implementation or format decisions are approved by this document.
 
 Follow-up numerical evidence (2026-09-23): [saved hierarchy findings](secondary-export-hierarchy-findings.md).

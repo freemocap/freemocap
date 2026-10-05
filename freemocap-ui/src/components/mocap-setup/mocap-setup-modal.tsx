@@ -11,6 +11,7 @@ import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processi
 import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
 import MocapDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
+import MocapCsvSettings from './mocap-csv-settings';
 import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-settings";
 import {useMocap} from "@/hooks/useMocap";
 import {useAppSelector} from "@/store/hooks";
@@ -121,7 +122,9 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
         },
         {
             name: SetupSection.Exports,
-            content: <MOCAPBlenderSettings open onClose={() => {}}/>,
+            summary: <SettingsSummaryChip>{(config.exportTallCsv ?? true) ? 'Tall CSV on' : 'Tall CSV off'}</SettingsSummaryChip>,
+            content: <><MocapCsvSettings key={mocapRecordingPath} path={mocapRecordingPath} processing={isLoading || isRecording}/>
+                <MOCAPBlenderSettings open onClose={() => {}}/></>,
         },
     ];
 

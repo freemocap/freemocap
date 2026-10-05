@@ -1,6 +1,9 @@
 """Application-owned inference scheduling with isolated pipeline tracking state."""
 
 import multiprocessing
+from contextlib import nullcontext
+from time import perf_counter
+from freemocap.core.pipeline.performance_report import PerformanceReport
 from collections import deque
 from concurrent.futures import CancelledError, Future
 from dataclasses import dataclass, field
@@ -38,11 +41,13 @@ class InferenceRequest:
 
     frame_number: int
     images: dict[str, NDArray[np.uint8]]
+    performance: PerformanceReport | None = None
 
 
 @dataclass(slots=True)
 class PendingInference:
     request: InferenceRequest
+    submitted_at: float = field(default_factory=perf_counter)
     result: Future[dict[str, Observation]] = field(default_factory=Future)
 
 
@@ -184,13 +189,18 @@ class InferenceService:
                 try:
                     if client._closed or client.registration.shutdown_flag.value:
                         raise CancelledError("Pipeline stopped before inference")
+                    performance = pending.request.performance
+                    if performance is not None:
+                        performance.record("inference.queue_wait", perf_counter() - pending.submitted_at)
                     if client._lease is None:
-                        client._lease = pool.create_tracker(
-                            config=client.registration.tracker_config, requests=client.registration.sessions,
+                        with performance.measure("inference.session_setup") if performance is not None else nullcontext():
+                            client._lease = pool.create_tracker(
+                                config=client.registration.tracker_config, requests=client.registration.sessions,
+                            )
+                    with performance.measure(f"inference.process_batch.images={len(pending.request.images)}") if performance is not None else nullcontext():
+                        observations, client._states = client._lease.tracker.process_batch(
+                            images=pending.request.images, frame_number=pending.request.frame_number, states=client._states,
                         )
-                    observations, client._states = client._lease.tracker.process_batch(
-                        images=pending.request.images, frame_number=pending.request.frame_number, states=client._states,
-                    )
                     if observations.keys() != pending.request.images.keys():
                         raise ValueError("Inference results do not match the requested sources")
                     if any(observation.frame_number != pending.request.frame_number for observation in observations.values()):

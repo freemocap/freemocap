@@ -1,5 +1,6 @@
 """Real Forge solve -> canonical Parquet -> reload, without touching prepared data."""
 import hashlib
+import os
 from concurrent.futures import CancelledError
 from pathlib import Path
 import shutil
@@ -24,7 +25,8 @@ def digest(path):
 @pytest.fixture(params=['freemocap_test_data', 'freemocap_sample_data'])
 def recording(tmp_path, request):
     name = request.param
-    path = Path.home() / 'freemocap_data/testing/prepared' / name / 'current/recordings' / name / f'{name}_data.parquet'
+    root = Path(os.environ.get('FREEMOCAP_PROVENANCE_PREPARED_ROOT', Path.home() / 'freemocap_data/testing/prepared'))
+    path = root / name / 'current/recordings' / name / f'{name}_data.parquet'
     if not path.is_file():
         pytest.skip(f'Prepare {name} through the production pipeline first')
     structure = RecordingStructure(base_directory=tmp_path, recording_name=name)
@@ -39,21 +41,23 @@ def test_real_solver_checkpoint_round_trip_and_reuse(recording, monkeypatch):
     run_id = before.selected_run_id
     group = next(iter(before.runs[run_id].sensor_groups))
     captured = []
-    solver = stage.fit_human
+    solver = stage.fit_visible_intervals
 
     def capture(*args, **kwargs):
         result = solver(*args, **kwargs)
         captured.append(result)
         return result
 
-    monkeypatch.setattr(stage, 'fit_human', capture)
+    monkeypatch.setattr(stage, 'fit_visible_intervals', capture)
     progress = []
     published = stage.fit_saved_skeleton(structure=recording, run_id=run_id,
-        sensor_group=group, progress=lambda window, total: progress.append((window['index'], total)))
+        sensor_group=group, force=True, progress=lambda window, total: progress.append((window['index'], total)))
     assert len(captured) == 1
     frame_count = before.runs[run_id].sensor_groups[group].sample_count
-    assert progress[-1] == (frame_count - 3, frame_count - 2)
     fitted = captured[0]
+    windows = fitted.sequence.processing['windows']
+    assert progress[-1] == (len(windows) - 1, len(windows))
+    assert len(fitted.sequence.quaternions) == frame_count
     run = published.runs[run_id]
     source = next(name for name, value in run.sources.items() if value.kind == 'solver')
     saved = run.sources[source].definition
@@ -102,5 +106,5 @@ def test_failure_and_cancellation_preserve_recording(recording, monkeypatch):
 
     monkeypatch.setattr(stage, 'fit_human', fail)
     with pytest.raises(RuntimeError, match='Injected solver failure'):
-        stage.fit_saved_skeleton(**kwargs)
+        stage.fit_saved_skeleton(**kwargs, force=True)
     assert digest(recording.data_parquet_path) == before

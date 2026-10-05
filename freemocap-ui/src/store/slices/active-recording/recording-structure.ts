@@ -19,14 +19,15 @@ import {
  *   │   ├── synchronized/                     (camera-sync raw videos)
  *   │   └── annotated/                        (videos with keypoint overlays)
  *   ├── output/                               (split mocap artifacts)
+ *   ├── exports/                              (optional derived exports)
  *   ├── logs/
  *   ├── {recording_name}_calibration.toml     (may be copied from another recording)
  *   ├── {recording_name}_recording_info.json  (camera configs, type tags, metadata)
  *   ├── {recording_name}_data.parquet         (primary mocap data store)
  *   └── {recording_name}.blend                (optional Blender export)
  *
- * Matches the backend `RecordingStructure` Pydantic model (source of truth spec
- * lives alongside that file). Any change here should be mirrored server-side.
+ * The maintained specification is RECORDING_CONTRACT.md at the repository root.
+ * Contract tests compare backend paths and presets with shared path cases.
  *
  * Path resolution is preset-driven: see ./layout-presets/layout-presets.yaml for
  * the canonical + legacy preset definitions.
@@ -47,6 +48,7 @@ export interface RecordingStructure {
     videosSynchronizedDir: string;
     videosAnnotatedDir: string;
     outputDir: string;
+    exportsDir: string;
     diagnosticsReportPath: string;
     logsDir: string;
     calibrationTomlPath: string;

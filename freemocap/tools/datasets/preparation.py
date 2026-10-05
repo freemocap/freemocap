@@ -208,9 +208,18 @@ def run_worker(request_path: Path) -> None:
             validation = validate_parquet(recording, expected_frames=request["frames"])
             if request.get('validate_workflow'):
                 from freemocap.tools.datasets.validation import validate_outputs
+                stage_order = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction', 'skeleton_fit')
+                executed = list(stage_order[stage_order.index(request.get('start_stage', 'observations')):])
+                if not request['skeleton_fit']:
+                    executed.remove('skeleton_fit')
+                if 'observations' in executed:
+                    executed.append('timing')
+                if 'reconstruction' in executed:
+                    executed.append('biomechanics')
                 validation = validate_outputs(recording, expected_frames=request['frames'],
                     require_fit=request['skeleton_fit'], run_id=request.get('run_id'),
                     sensor_group=request.get('sensor_group'),
+                    require_provenance_stages=tuple(executed),
                     require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
                                        and request.get('alignment', 'auto') != 'calibration'))
             logger.info('validation: Recording checks passed (complete)')

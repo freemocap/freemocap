@@ -491,7 +491,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a24"
+version = "2.0.0a25"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -2195,7 +2195,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=main#ddf24f3aaa4388e5883afada217137223546c24e" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=main#b96272b1ef06546c1a55d404a5f4a92f1fad1b0f" }
 dependencies = [
     { name = "numpy" },
     { name = "pandas" },

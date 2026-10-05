@@ -37,7 +37,8 @@ async def main(force_preferred_port:bool=True) -> None:
     from freemocap.system.logging.log_queue_consumer import (
         start_log_queue_consumer,
         stop_log_queue_consumer,
-    )    from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
+    )    
+    from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
 
 
     if force_preferred_port:

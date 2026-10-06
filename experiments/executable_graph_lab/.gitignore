@@ -1,0 +1,4 @@
+# Generated reports and historical screenshots; source and checks remain visible.
+/evidence/
+/runs/
+__pycache__/

@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FreeMoCap · Graph Lab</title>
+<style>
+:root{
+ color-scheme:dark;
+ --bg:#14171c;--bar:#101216;--sheet:#1a1e24;--node:#1f242c;--node-annot:#25231f;--field:#232932;--hover:#2b323d;
+ --line:#343c48;--line-soft:#272d36;
+ --ink:#e9edf2;--ink-2:#b9c2ce;--ink-3:#8c97a6;
+ --accent:#8ab6ff;--accent-fill:#2f5ecc;--accent-line:#5079cc;--accent-tint:#1f2c44;
+ --ok:#6fd39b;--ok-line:#3d7457;--ok-tint:#1b3026;
+ --warn:#f0bd62;--warn-tint:#3a2f1a;
+ --bad:#f58b8b;--bad-line:#7a3a3d;--bad-tint:#3b2124;
+ --read:#7ec8ff;--write:#d6a6f5;--read-tint:#16273a;--write-tint:#28203a;
+ --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+ --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+ --r-md:6px;--r-lg:10px;--r-pill:999px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:13px/1.45 var(--sans);overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h2,h3,p{margin:0}
+code{font:11.5px var(--mono)}
+
+/* Buttons */
+.btn{height:32px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--field);font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:background .12s,border-color .12s}
+.btn:hover:not(:disabled){background:var(--hover)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:#fff}
+.btn.primary:hover:not(:disabled){background:#3a6be0}
+.btn.danger{color:var(--bad);border-color:var(--bad-line);background:transparent}
+.btn.danger:hover:not(:disabled){background:var(--bad-tint)}
+.btn.quiet{background:transparent;border-color:transparent}
+.btn.quiet:hover:not(:disabled){background:var(--hover)}
+.btn.icon{width:32px;padding:0;justify-content:center}
+.btn[aria-pressed=true]{background:var(--accent-tint);border-color:var(--accent-line);color:var(--accent)}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.seg{display:inline-flex}
+.seg .btn{border-radius:0}.seg .btn+.btn{margin-left:-1px}
+.seg .btn:first-child{border-radius:var(--r-md) 0 0 var(--r-md)}.seg .btn:last-child{border-radius:0 var(--r-md) var(--r-md) 0}
+.seg .btn[aria-pressed=true]{position:relative;z-index:1}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;gap:20px;padding:8px 16px;background:var(--bar);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.7}
+.brand h1{font-size:15px;font-weight:600;margin:0;letter-spacing:-.2px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r-pill);font-size:11px;color:var(--ink-2);white-space:nowrap}
+.digest{font:11px var(--mono);color:var(--ink-3)}
+.runbar{display:flex;align-items:center;gap:18px;margin-left:auto;flex-wrap:wrap}
+.stats{display:flex;align-items:center;gap:18px}
+.stat{display:flex;flex-direction:column;line-height:1.2}
+.stat span{font-size:10.5px;color:var(--ink-3)}
+.stat strong{font:500 13px var(--mono)}
+.status-pill{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 11px;border-radius:var(--r-pill);background:var(--field);border:1px solid var(--line);font-weight:600;font-size:12px;text-transform:capitalize}
+.status-pill i{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
+.status-pill[data-state=running] i{background:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
+.status-pill[data-state=paused] i,.status-pill[data-state=partial] i{background:var(--warn)}
+.status-pill[data-state=complete] i{background:var(--ok)}
+.status-pill[data-state=failed] i{background:var(--bad)}
+.controls{display:flex;align-items:center;gap:6px}
+.check-inline{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);margin-right:4px;cursor:pointer}
+.check-inline input{accent-color:var(--accent-fill);margin:0}
+.vsep{width:1px;height:24px;background:var(--line)}
+
+#contract-error{padding:8px 16px;background:var(--bad-tint);color:#ffd9dc;border-bottom:1px solid var(--bad-line);font-size:12px;font-family:var(--mono)}
+#error{display:none;padding:10px 16px;background:var(--bad-tint);color:#ffd9dc;border-bottom:1px solid var(--bad-line);font-size:12.5px}
+
+/* Shell */
+.shell{flex:1;display:grid;grid-template-columns:276px minmax(0,1fr) 352px;min-height:0}
+[hidden]{display:none!important}
+.side{background:var(--sheet);border-right:1px solid var(--line);overflow:auto;padding:16px}
+body.node-expanded .inspector{position:fixed;inset:5vh 5vw;z-index:1000;border:1px solid var(--line);border-radius:12px;box-shadow:0 0 0 100vmax #0009;padding:28px} body.node-expanded .inspector pre{max-height:45vh;overflow:auto}
+.inspector{background:var(--sheet);border-left:1px solid var(--line);overflow:auto;padding:18px}
+body.graph-focused .shell{grid-template-columns:minmax(0,1fr)}
+body.graph-focused .side,body.graph-focused .inspector{display:none}
+
+/* Config panel */
+.side h2{font-size:13px;font-weight:600}
+.group{padding:14px 0;border-bottom:1px solid var(--line-soft)}
+.group:first-of-type{padding-top:10px}
+.group h3{font-size:11px;font-weight:600;color:var(--ink-3);margin-bottom:10px;letter-spacing:.2px}
+.field label,.field .lbl{display:block;font-size:11.5px;color:var(--ink-2);margin-bottom:4px}
+.field+.field{margin-top:10px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pair .field+.field{margin-top:0}
+select,input[type=number],input[type=text]{width:100%;height:32px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--field);padding:0 9px;font-size:12.5px}
+input[type=number]{font-family:var(--mono)}
+input[readonly]{color:var(--ink-3)}
+.help{font-size:11.5px;color:var(--ink-3);line-height:1.45}
+.group .help{margin-top:8px}
+.toggle{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:4px 0}
+.toggle+.toggle{margin-top:6px}
+.toggle input{appearance:none;flex:none;width:30px;height:18px;border-radius:var(--r-pill);background:var(--line);position:relative;margin:1px 0 0;cursor:pointer;transition:background .12s}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--ink-2);transition:transform .12s}
+.toggle input:checked{background:var(--accent-fill)}
+.toggle input:checked::after{transform:translateX(12px);background:#fff}
+.toggle span{font-size:12.5px}
+.toggle small{display:block;font-size:11px;color:var(--ink-3)}
+#preview{width:100%;justify-content:center;margin-top:14px}
+.about{margin-top:16px}
+.about summary{font-size:11.5px;color:var(--ink-3);cursor:pointer}
+.about p{margin-top:8px}
+
+/* Canvas */
+.center{display:grid;grid-template-rows:minmax(0,1fr) auto;min-width:0;min-height:0}
+.canvas{position:relative;min-height:0}
+.graph-scroll{position:absolute;inset:0;overflow:hidden;cursor:grab;touch-action:none;outline:none;
+ background-color:var(--bg);background-image:radial-gradient(#2a313b 1px,transparent 1.2px);background-size:24px 24px}
+.graph-scroll:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+.graph-scroll.dragging{cursor:grabbing}
+.graph-scroll svg{display:block;width:100%;height:100%;user-select:none}
+.overlay{position:absolute;z-index:2;background:rgba(26,30,36,.92);border:1px solid var(--line);border-radius:var(--r-lg);backdrop-filter:blur(6px)}
+.toolbar{top:12px;left:12px;right:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px;background:none;border:none;backdrop-filter:none;pointer-events:none}
+.toolbar>*{pointer-events:auto}
+.tool-group{display:flex;align-items:center;gap:4px;padding:4px;background:rgba(26,30,36,.92);border:1px solid var(--line);border-radius:var(--r-lg)}
+.tool-group .btn{height:28px;font-size:12px;border-color:transparent;background:transparent}
+.tool-group .btn:hover:not(:disabled){background:var(--hover)}
+.tool-group .btn[aria-pressed=true]{background:var(--accent-tint);color:var(--accent);border-color:transparent}
+.tool-group .btn.icon{width:28px}
+#zoom-level{font:12px var(--mono);color:var(--ink-2);min-width:44px;text-align:center}
+#graph-meta{margin-left:auto;font-size:11px;color:var(--ink-3);padding:4px 10px;background:rgba(20,23,28,.85);border-radius:var(--r-pill)}
+.legend{left:12px;bottom:12px;max-width:min(560px,calc(100% - 300px));font-size:11.5px}
+.legend summary{padding:7px 12px;cursor:pointer;color:var(--ink-2);font-weight:500;list-style:none;display:flex;align-items:center;gap:8px}
+.legend summary::-webkit-details-marker{display:none}
+.legend summary::before{content:"";width:6px;height:6px;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg);transition:transform .12s}
+.legend[open] summary::before{transform:rotate(45deg)}
+.legend-body{padding:2px 12px 10px;display:grid;gap:8px}
+.legend-row{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--ink-2)}
+.legend-row>b{font-weight:500;color:var(--ink-3);min-width:52px}
+.key{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.key svg{overflow:visible}
+.type-chip{display:inline-flex;align-items:center;gap:5px;font:11px var(--mono);white-space:nowrap}
+.type-chip i{width:8px;height:8px;border-radius:50%}
+.resources{right:12px;bottom:12px;padding:8px 12px;display:grid;gap:4px;font-size:11.5px;min-width:200px}
+.meter{display:grid;grid-template-columns:62px 1fr auto;align-items:center;gap:8px;color:var(--ink-2)}
+.meter b{font:500 11px var(--mono);color:var(--ink)}
+.pips{display:flex;gap:3px}
+.pips i{width:12px;height:6px;border-radius:2px;background:var(--line)}
+.pips i.on{background:var(--accent)}
+.meter.mem{grid-template-columns:62px 1fr}
+.meter.mem b{text-align:right}
+#notice{position:absolute;left:50%;transform:translateX(-50%);top:62px;z-index:2;font-size:12px;color:var(--ink-2);padding:5px 12px;border-radius:var(--r-pill);background:rgba(26,30,36,.92);border:1px solid var(--line);white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+#notice[data-tone='']{display:none}
+#notice[data-tone=warn]{color:var(--warn);border-color:#5d4a26}
+#notice[data-tone=ok]{color:var(--ok);border-color:var(--ok-line)}
+
+/* Graph SVG */
+.node{cursor:pointer;outline:none;transition:opacity .12s}
+.node .body{fill:var(--node);stroke:var(--line);stroke-width:1}
+.node.annotation .body{fill:var(--node-annot)}
+.node .halo{fill:none;stroke:transparent;stroke-width:2}
+.node:hover .body{stroke:#4a5462}
+.node.complete .body{stroke:var(--ok-line)}
+.node.running .body{stroke:var(--accent-line)}
+.node.running .halo{stroke:rgba(138,182,255,.28);stroke-width:5}
+.node.held .body{stroke:var(--warn)}
+.node.failed .body,.node.blocked .body{stroke:var(--bad)}
+.node.cancelled .body{stroke-dasharray:4 3}
+.node.selected .halo{stroke:var(--accent);stroke-width:2}
+.node:focus-visible .halo{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 4}
+.node .divider{stroke:var(--line-soft);stroke-width:1}
+.node .divider.soft{stroke-dasharray:2 3}
+.node text{font-family:var(--sans);pointer-events:none}
+.node .title{fill:var(--ink);font-size:13px;font-weight:600}
+.node .meta{fill:var(--ink-3);font-family:var(--mono);font-size:10.5px}
+.node .port-name{fill:var(--ink-2);font-size:12px}
+.node .port-type{font-family:var(--mono);font-size:10.5px}
+.node .port-off{fill:var(--ink-3);font-size:11px;font-style:italic}
+.node .port-none{fill:var(--ink-3);font-size:11px;font-style:italic}
+.node .badge{fill:var(--ink-3);font-family:var(--mono);font-size:10px}
+.node .count{fill:var(--ink-3);font-family:var(--mono);font-size:10.5px}
+.node .track{fill:var(--line-soft)}
+.node .bar{fill:var(--accent);transition:width .25s ease-out}
+.node.complete .bar{fill:var(--ok)}
+.node.held .bar{fill:var(--warn)}
+.node.failed .bar,.node.blocked .bar{fill:var(--bad)}
+.node .socket{stroke-width:2}
+.slot{pointer-events:all}
+.node.io-read{--io:var(--read);--io-tint:var(--read-tint)}
+.node.io-write{--io:var(--write);--io-tint:var(--write-tint)}
+.node.io .body{fill:var(--io-tint);stroke-width:1.75}
+.node.io:not(.running):not(.held):not(.failed):not(.blocked):not(.complete) .body{stroke:var(--io)}
+.node .io-tag{fill:var(--io);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1px}
+.disk{--io:var(--write)}.disk-read{--io:var(--read)}
+.disk .rail-out{fill:none;stroke:var(--io);stroke-width:9;stroke-linecap:butt}
+.disk .rail-in{fill:none;stroke:var(--bg);stroke-width:3}
+.disk .rail-head{fill:var(--io)}
+.disk .folder{stroke:var(--io);stroke-width:2;stroke-linejoin:round}
+.disk-read .folder{fill:var(--read-tint)}.disk-write .folder{fill:var(--write-tint)}
+.disk .folder-lip{stroke:var(--io);stroke-width:1.25;opacity:.6}
+.disk .folder-arrow{fill:none;stroke:var(--io);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.node .disk-label{fill:var(--io);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.8px}
+.disk{cursor:pointer;outline:none}
+.disk .disk-hit{fill:transparent;stroke:transparent}
+.disk:hover .disk-hit,.disk:focus-visible .disk-hit{fill:rgba(255,255,255,.03);stroke:var(--io);stroke-dasharray:3 3}
+.node .disk-file{fill:var(--ink-2);font-family:var(--mono);font-size:11px}
+.node .disk-file.more{fill:var(--ink-3)}
+.node .disk-file.missing{fill:var(--bad);font-weight:600}
+.disk-missing .folder{stroke:var(--bad);stroke-dasharray:4 3}
+.path-pop{z-index:5;width:min(460px,calc(100% - 16px));padding:10px 12px 12px;box-shadow:0 12px 32px rgba(0,0,0,.45);background:var(--sheet)}
+.path-pop.io-read{--io:var(--read)}.path-pop.io-write{--io:var(--write)}
+.pp-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pp-head b{font-size:13px;flex:1}
+.pp-role{font:600 10.5px var(--mono);letter-spacing:.8px;color:var(--io)}
+.pp-file{padding:8px 0;border-top:1px solid var(--line-soft)}
+.pp-name{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pp-name b{font:600 12.5px var(--mono);color:var(--io)}
+.pp-copy{height:24px;font-size:11.5px;padding:0 8px}
+.pp-contents{font-size:12px;color:var(--ink-2);margin:2px 0 6px}
+.pp-path{display:block;font:11.5px/1.5 var(--mono);color:var(--ink-3);background:var(--bg);border:1px solid var(--line-soft);border-radius:var(--r-md);padding:6px 8px;word-break:break-all;user-select:all}
+.pp-path b{color:var(--ink);font-weight:500}
+.pp-missing{color:var(--bad);font-size:12px}
+.disk-row{padding:9px 10px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--bg)}
+.disk-row+.disk-row{margin-top:6px}
+.disk-row.io-read{--io:var(--read)}.disk-row.io-write{--io:var(--write)}
+.dr-name{font:600 12.5px var(--mono);color:var(--io)}
+.dr-contents{font-size:11.5px;color:var(--ink-2);margin:2px 0 6px}
+.dr-path{display:block;font:11px/1.5 var(--mono);color:var(--ink-3);word-break:break-all;user-select:all}
+.disk-row.missing{color:var(--bad);font-size:12px;border-color:var(--bad-line)}
+.node.running .disk .rail-in{stroke:var(--io);stroke-dasharray:3 4;animation:flow .7s linear infinite}
+.eyebrow-io{font-weight:600;letter-spacing:.6px}.eyebrow-io.io-read{color:var(--read)}.eyebrow-io.io-write{color:var(--write)}
+.st path,.st circle,.st rect{vector-effect:non-scaling-stroke}
+.st-pulse{transform-box:fill-box;transform-origin:center;animation:pulse 1.2s ease-out infinite}
+@keyframes pulse{from{transform:scale(1);opacity:.7}to{transform:scale(2.4);opacity:0}}
+.edge{fill:none;stroke:var(--wire);stroke-width:1.75;opacity:.7;transition:opacity .12s,stroke-width .12s}
+.edge:hover{opacity:1;stroke-width:3}
+.edge.annotation{stroke-dasharray:6 5}
+.edge.flow{stroke-dasharray:3 5;animation:flow .7s linear infinite;opacity:1}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.edge.lit{opacity:1;stroke-width:2.75}
+svg.focusing .edge:not(.lit){opacity:.08}
+svg.focusing .node:not(.near){opacity:.35}
+svg.lod-low .slot text,svg.lod-low .meta,svg.lod-low .disk-label,svg.lod-low .disk-file,svg.lod-low .badge,svg.lod-low .count,svg.lod-low .port-none{display:none}
+@media (prefers-reduced-motion:reduce){.edge.flow,.st-pulse,.node.running .disk .rail-in{animation:none}}
+
+/* Events drawer */
+.events{border-top:1px solid var(--line);background:var(--sheet)}
+.events summary{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink-2);list-style:none}
+.events summary::-webkit-details-marker{display:none}
+.events summary::before{content:"";width:6px;height:6px;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg);transition:transform .12s}
+.events[open] summary::before{transform:rotate(45deg)}
+.events summary .help{font-weight:400}
+#event-count{font:11px var(--mono);color:var(--ink-3);margin-left:auto}
+.event-list{max-height:170px;overflow:auto;font:11px/1.75 var(--mono);color:var(--ink-3);padding:0 16px 10px}
+.ev{display:grid;grid-template-columns:64px 120px 170px 1fr;gap:10px;border-bottom:1px solid var(--line-soft)}
+.ev .t{text-align:right}
+.ev .k{color:var(--ink-2)}
+.ev .n{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev .d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev[data-kind*=fail] .k,.ev[data-kind*=block] .k,.ev[data-kind*=cancel] .k{color:var(--bad)}
+.ev[data-kind*=complete] .k,.ev[data-kind*=finish] .k{color:var(--ok)}
+.ev[data-kind*=hold] .k,.ev[data-kind*=pause] .k,.ev[data-kind*=release] .k{color:var(--warn)}
+
+/* Inspector */
+.empty{color:var(--ink-3);font-size:12.5px;padding:24px 0}
+.eyebrow{font-size:11px;color:var(--ink-3);margin-bottom:4px}
+.insp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.insp-head h2{font-size:17px;font-weight:600;letter-spacing:-.2px;line-height:1.25}
+.state-pill{flex:none;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:var(--r-pill);font-size:11px;font-weight:600;text-transform:capitalize;background:var(--field);color:var(--ink-2);border:1px solid var(--line)}
+.state-pill[data-state=running]{background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+.state-pill[data-state=complete]{background:var(--ok-tint);color:var(--ok);border-color:var(--ok-line)}
+.state-pill[data-state=held]{background:var(--warn-tint);color:var(--warn);border-color:#5d4a26}
+.state-pill[data-state=failed],.state-pill[data-state=blocked]{background:var(--bad-tint);color:var(--bad);border-color:var(--bad-line)}
+.desc{color:var(--ink-2);font-size:12.5px;margin-top:8px}
+.insp-actions{display:flex;gap:8px;margin-top:14px}
+.insp-actions .btn{flex:1;justify-content:center}
+.armed{color:var(--warn);font-weight:600}
+.insp h3{font-size:11px;font-weight:600;color:var(--ink-3);margin:20px 0 8px;letter-spacing:.2px;display:flex;justify-content:space-between}
+.insp h3 span{font-weight:400}
+.progress-block{margin-top:16px;padding:12px;border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--bg)}
+.progress-block .big{font:500 18px var(--mono)}
+.progress-block .big small{font-size:12px;color:var(--ink-3)}
+.pbar{height:6px;border-radius:3px;background:var(--line-soft);margin:8px 0;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent);transition:width .25s ease-out}
+.pbar.complete i{background:var(--ok)}
+.counts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--ink-3)}
+.counts b{font:500 11px var(--mono);color:var(--ink-2)}
+.slot-row{display:grid;grid-template-columns:14px 1fr;gap:8px;padding:9px 10px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--bg)}
+.slot-row+.slot-row{margin-top:6px}
+.slot-row .dot{width:10px;height:10px;border-radius:50%;margin-top:4px;background:var(--c);border:2px solid var(--c)}
+.slot-row .dot.hollow{background:transparent}
+.slot-row .dot.off{border-color:var(--ink-3);border-style:dashed;background:transparent}
+.slot-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
+.slot-title b{font-weight:600;font-size:12.5px}
+.slot-title code{color:var(--c)}
+.tag{font-size:10.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:var(--r-pill);padding:0 6px;line-height:16px}
+.slot-sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.slot-sub code{color:var(--ink-2)}
+.rule{color:var(--ink-2);border-bottom:1px dotted var(--ink-3);cursor:help}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:5px 10px;font-size:12px}
+.kv dt{color:var(--ink-3)}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.reason{display:flex;justify-content:space-between;padding:6px 10px;border-radius:var(--r-md);background:var(--bg);border:1px solid var(--line-soft);font-size:12px}
+.reason+.reason{margin-top:4px}
+.reason b{font:500 11.5px var(--mono)}
+.insp details{margin-top:10px}
+.insp summary{cursor:pointer;font-size:12px;color:var(--ink-2)}
+pre{font:11px/1.5 var(--mono);white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line-soft);padding:10px;border-radius:var(--r-md);max-height:220px;overflow:auto;margin:8px 0 0;color:var(--ink-2)}
+
+@media(max-width:1180px){
+ body{overflow:auto;height:auto;display:block}
+ .shell{display:flex;flex-direction:column}
+ .side,.inspector{border:none;border-bottom:1px solid var(--line)}
+ .center{height:78vh}
+ .legend{max-width:calc(100% - 24px);bottom:auto;top:110px}
+}
+@media(max-width:640px){.topbar{padding:8px 12px;gap:10px}.stats{gap:12px}.resources{display:none}.ev{grid-template-columns:56px 1fr}.ev .n,.ev .d{display:none}}
+</style></head><body>
+
+<header class="topbar">
+ <div class="brand">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2.4"/><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="12" r="2.4"/><path d="M7.4 6.4c5 .6 5.4 4.8 9.2 5.4M7.4 17.6c5-.6 5.4-4.8 9.2-5.4"/></svg>
+  <h1>Graph Lab</h1>
+  <span class="chip" title="HTTP commands; WebSocket reports; isolated execution process.">Real core execution</span>
+  <span class="digest" id="graph-id">Connecting to local backend…</span>
+ </div>
+ <div class="runbar">
+  <span class="status-pill" id="status-pill" data-state="preview"><i></i><strong id="status">Preview</strong></span>
+  <div class="stats">
+   <div class="stat"><span>Elapsed</span><strong id="elapsed">—</strong></div>
+   <div class="stat"><span>Work items</span><strong id="done">0 / 0</strong></div>
+   <div class="stat"><span>Scientific branch</span><strong id="science">—</strong></div>
+  </div>
+  <div class="vsep"></div>
+  <div class="controls">
+   <label class="check-inline"><input id="start-paused" type="checkbox"> Start paused</label>
+   <button class="btn primary" id="start"><svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>Start run</button>
+   <button class="btn" id="pause" disabled><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>Pause</button>
+   <button class="btn" id="resume" disabled hidden><svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>Resume</button>
+   <button hidden style="display:none" class="btn" id="step" title="Admit exactly one work item"><svg viewBox="0 0 24 24"><path d="M6 5l9 7-9 7zM18 5v14"/></svg>Step</button>
+   <button class="btn danger" id="cancel" disabled>Cancel</button>
+   <button class="btn icon quiet" id="download" title="Download snapshot (graph and run state)" aria-label="Download snapshot"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+  </div>
+ </div>
+</header>
+<div id="error" role="alert"></div>
+<div id="contract-error" role="alert" hidden></div>
+
+<div class="shell">
+ <aside class="side" aria-label="Run configuration">
+  <h2>Compose a run</h2>
+  <form id="config">
+   <section class="group">
+    <h3>Task</h3>
+    <div class="field"><label for="task" hidden>Task</label><select id="task" name="task"></select></div>
+    <p class="help" id="task-desc"></p>
+   </section>
+   <section class="group">
+    <h3>Sources</h3>
+    <div class="pair">
+     <div class="field"><label for="cameras">Cameras</label><input id="cameras" name="cameras" type="number" readonly></div>
+     <div class="field"><label for="frames">Frames / camera</label><input id="frames" name="frames" type="number" readonly></div>
+    </div>
+   </section>
+   <button type="button" class="btn" id="preview">Resolve graph</button>
+  </form>
+  <details class="about">
+   <summary>About this lab</summary>
+   <p class="help">Pause stops new work; active calls finish. Cancel stops new work and closes resources after active calls finish. A save that has already started may finish.</p>
+   <p class="help">A separate Python process owns execution. HTTP configures and controls it; WebSocket reports update this view. Closing or slowing this page does not pause processing.</p>
+  </details>
+ </aside>
+
+ <main class="center">
+  <section class="canvas" id="graph-panel">
+   <div class="overlay toolbar" role="toolbar" aria-label="Graph view">
+    <div class="tool-group">
+     <div class="seg">
+      <button class="btn" id="left-right" aria-pressed="true" title="Left to right">→ Left to right</button>
+      <button class="btn" id="top-down" aria-pressed="false" title="Top down">↓ Top down</button>
+     </div>
+    </div>
+    <div class="tool-group"><button class="btn" id="expand" aria-pressed="false" title="Project work into camera lanes">Expand cameras</button></div>
+    <div class="tool-group">
+     <button class="btn icon" id="zoom-out" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+     <span id="zoom-level">100%</span>
+     <button class="btn icon" id="zoom-in" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg></button>
+     <button class="btn" id="fit">Fit all</button>
+     <button class="btn" id="actual-size">100%</button>
+     <button class="btn" id="focus-node">Focus node</button>
+    </div>
+    <div class="tool-group"><button class="btn" id="workspace" aria-pressed="false">Expand workspace</button></div>
+    <span id="graph-meta"></span>
+   </div>
+   <p id="notice" role="status">Click a node to inspect it.</p>
+   <div class="graph-scroll" id="viewport" tabindex="0" role="region" aria-label="Graph canvas. Drag to pan, scroll to zoom, or use arrow keys."><svg id="graph" aria-label="Executable processing graph"></svg></div>
+   <details class="overlay legend">
+    <summary>Legend</summary>
+    <div class="legend-body">
+     <div class="legend-row"><b>Wires</b>
+      <span class="key"><svg width="26" height="8"><path d="M1 4h24" stroke="var(--ink-2)" stroke-width="1.75"/></svg>scientific</span>
+      <span class="key"><svg width="26" height="8"><path d="M1 4h24" stroke="var(--ink-2)" stroke-width="1.75" stroke-dasharray="6 5"/></svg>annotation</span>
+      <span class="key"><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--ink-2)" stroke="var(--ink-2)" stroke-width="2"/></svg>required</span>
+      <span class="key"><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="var(--ink-2)" stroke-width="2"/></svg>optional</span>
+     </div>
+     <div class="legend-row"><b>State</b>
+      <span class="key" style="color:var(--accent)">● running</span>
+      <span class="key" style="color:var(--ok)">✓ complete</span>
+      <span class="key" style="color:var(--warn)">‖ held</span>
+      <span class="key" style="color:var(--bad)">× failed / blocked</span>
+     </div>
+     <div class="legend-row"><b>Disk</b>
+      <span class="key" style="color:var(--read)"><svg width="18" height="26" viewBox="0 0 18 26"><path d="M9 14V5" stroke="var(--read)" stroke-width="5"/><path d="M9 14V5" stroke="var(--bg)" stroke-width="1.6"/><path d="M9 0l5 6H4z" fill="var(--read)"/><path d="M1 17a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z" fill="var(--read-tint)" stroke="var(--read)" stroke-width="1.4"/></svg>load from disk</span>
+      <span class="key" style="color:var(--write)"><svg width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v8" stroke="var(--write)" stroke-width="5"/><path d="M9 0v8" stroke="var(--bg)" stroke-width="1.6"/><path d="M9 14l5-6H4z" fill="var(--write)"/><path d="M1 17a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z" fill="var(--write-tint)" stroke="var(--write)" stroke-width="1.4"/></svg>save to disk</span>
+      <span class="key">Cut-corner cards touch disk; rounded cards are in-memory only. I/O is simulated.</span>
+     </div>
+     <div class="legend-row"><b>Keys</b>
+      <span class="key" title="Fan-in: gathers every camera for one frame"><code>3→1</code> fan-in</span>
+      <span class="key" title="Fan-out: one frame result feeds each camera item"><code>1→3</code> fan-out</span>
+      <span class="key" title="One recording-wide artifact supplies every item"><code>bcast</code> broadcast</span>
+      <span class="key" title="Waits for every item in the finite upstream stream"><code>barrier</code> sealed</span>
+     </div>
+     <div class="legend-row" id="edge-legend"></div>
+    </div>
+   </details>
+   <div class="overlay resources" id="resources" aria-label="Resource usage"></div>
+   <div id="path-pop" class="overlay path-pop" role="dialog" aria-label="Disk file paths" hidden></div>
+  </section>
+  <details class="events" id="events-drawer">
+   <summary>Execution events <span class="help">most recent 120 retained</span><span id="event-count"></span></summary>
+   <div class="event-list" id="events">No run started.</div>
+  </details>
+ </main>
+
+ <aside class="inspector insp" id="inspector" aria-label="Node inspector"><div class="empty">Select a node in the graph.</div></aside>
+</div>
+
+<script type="module">
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let graph=null, run=null, selected=null, hovered=null, zoom=1, held=new Set(), dirty=false, fetching=false, layout=new Map(), tasks=[];
+let readOnly=false, realBackend=false;
+let direction='right', expanded=false, viewKey='';
+let camera={x:0,y:0}, drag=null, bounds={w:1,h:1}, typeColors=new Map();
+const viewport=$('#viewport');
+
+const viewNodes=()=>expanded?graph.partition_nodes:graph.nodes;
+const viewEdges=()=>expanded?graph.partition_edges:graph.edges;
+const terminal=()=>!run||['complete','partial','failed','cancelled'].includes(run.status);
+async function api(path,body){const r=await fetch(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||data.detail||r.statusText);return data}
+function error(e){$('#error').textContent=e.message;$('#error').style.display='block'}
+function clearError(){$('#error').style.display='none'}
+function config(){return {recording:$('#recording-path').value,frames:null,video_subfolder:$('#video-subfolder').value}}
+function accept(g){graph=g;if(realBackend)$('#frames').value=g.config.frames;readOnly=!!g.read_only;dirty=false;held=new Set([...held].filter(id=>g.nodes.some(n=>n.id===id)));const ids=viewNodes().map(n=>n.id);if(!selected||!ids.includes(selected))selected=ids[0];buildGraph();render()}
+async function preview(){if(!terminal())throw Error('Finish or cancel the current run before changing its graph.');clearError();run=null;accept(await api('/api/preview',config()))}
+
+/* ---------- Vocabulary ---------- */
+const PALETTE=['#8ab6ff','#f2a65a','#6fd3a8','#e892d4','#e6d36c','#a394ff','#62cde3','#f28b8b','#b9dc6f','#d9a77e','#9fc2d6','#cfa2f2','#ffd0a1','#7fe0d0'];
+function assignTypeColors(){const types=[];for(const n of graph.nodes)for(const s of [...n.outputs,...n.input_slots])if(!types.includes(s.data_type))types.push(s.data_type);typeColors=new Map(types.map((t,i)=>[t,PALETTE[i%PALETTE.length]]))}
+function typeColor(t){const c=typeColors.get(t);if(!c)throw Error(`Unknown slot type "${t}"`);return c}
+const RULES={
+ same_key:{label:'same key',text:'Consumes the producer item at the same camera/frame key.'},
+ all_sources:{label:'fan-in',text:'Gathers every camera for one frame.'},
+ frame:{label:'fan-out',text:'One frame result feeds each camera-specific item.'},
+ broadcast:{label:'broadcast',text:'One recording-wide artifact supplies every consumer item.'},
+ sealed:{label:'barrier',text:'Waits for every item in the finite upstream stream.'}};
+function rule(name){const r=RULES[name];if(!r)throw Error(`Unknown key rule "${name}"`);return r}
+function ruleBadge(name,edge){rule(name);if(name==='same_key')return '';if(name==='all_sources')return `${edge.inputs_per_item}→1`;if(name==='frame')return `1→${edge.consumers_per_item}`;if(name==='broadcast')return 'bcast';return 'barrier'}
+const SCOPE={recording:'once',frame:'per frame',camera_frame:'per cam × frame'};
+function workUnit(n){return n.work_unit||(n.scope==='camera_frame'?'camera frames':n.scope==='frame'?'frame groups':'operations')}
+function workExplanation(n){const cameras=n.camera!=null?1:graph.config.cameras,frames=graph.config.frames;return n.scope==='camera_frame'?`${cameras} camera(s) x ${frames} frames = ${cameras*frames} camera frames. One item handles one image from one camera.`:n.scope==='frame'?`${frames} synchronized frame groups. Each group contains ${graph.config.cameras} camera images; ${frames*graph.config.cameras} images in total.`:'Runs once for the recording. Counts show completed operations, not frames or a frame rate.'}
+function scopeText(n){if(!(n.scope in SCOPE))throw Error(`Unknown scope "${n.scope}"`);return n.camera!=null&&n.scope==='camera_frame'?'per frame':SCOPE[n.scope]}
+const logicalOf=n=>graph.nodes.find(g=>g.id===(n.logical_id||n.id));
+const itemTotal=n=>n.camera!=null?graph.config.frames:n.work_count;
+const STATE_ICON={
+ defined:'<circle r="5" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>',
+ pending:'<circle r="5" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>',
+ running:'<circle class="st-pulse" r="5" fill="var(--accent)"/><circle r="5" fill="var(--accent)"/>',
+ complete:'<circle r="7" fill="var(--ok-tint)" stroke="var(--ok)" stroke-width="1.5"/><path d="M-3 0l2 2.2 4-4.4" fill="none" stroke="var(--ok)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+ held:'<circle r="7" fill="var(--warn-tint)" stroke="var(--warn)" stroke-width="1.5"/><path d="M-1.8-3v6M1.8-3v6" stroke="var(--warn)" stroke-width="1.6" stroke-linecap="round"/>',
+ failed:'<circle r="7" fill="var(--bad-tint)" stroke="var(--bad)" stroke-width="1.5"/><path d="M-2.5-2.5l5 5M2.5-2.5l-5 5" stroke="var(--bad)" stroke-width="1.6" stroke-linecap="round"/>',
+ blocked:'<circle r="7" fill="var(--bad-tint)" stroke="var(--bad)" stroke-width="1.5"/><path d="M-3.5 3.5l7-7" stroke="var(--bad)" stroke-width="1.6" stroke-linecap="round"/>',
+ cancelled:'<circle r="7" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/><path d="M-2.5-2.5l5 5M2.5-2.5l-5 5" stroke="var(--ink-3)" stroke-width="1.6" stroke-linecap="round"/>'};
+function stateIcon(state){const s=STATE_ICON[state];if(!s)throw Error(`Unknown node state "${state}"`);return `<title>${esc(state)}</title>`+s}
+/* Disk I/O is drawn as a terminal hanging off the node, perpendicular to data flow
+   (like a ground symbol in a schematic): a folder joined to the node by a double rail.
+   Load: the arrow leaves the folder and enters the node. Save: the arrow leaves the node and enters the folder. */
+const IO={read:{label:'LOAD FROM DISK',short:'load',tag:'LOAD',verb:'Loads from disk'},write:{label:'SAVE TO DISK',short:'save',tag:'SAVE',verb:'Saves to disk'}};
+function ioRole(n){if(n.io_role==='none')return null;const r=IO[n.io_role];if(!r)throw Error(`Unknown I/O role "${n.io_role}"`);return r}
+const TERM={rail:34,folderW:52,folderH:40,row:16,maxRows:3,tdW:132,lrNameChars:27,tdNameChars:16};
+const folderPath=(x,y,w,h)=>`M${x} ${y+6}a4 4 0 0 1 4-4h${w*.3}l5 5h${w*.7-13}a4 4 0 0 1 4 4v${h-15}a4 4 0 0 1-4 4h${-(w-8)}a4 4 0 0 1-4-4z`;
+const chamfer=(x,y,w,h,c)=>`M${x+c} ${y}H${x+w-c}L${x+w} ${y+c}V${y+h-c}L${x+w-c} ${y+h}H${x+c}L${x} ${y+h-c}V${y+c}Z`;
+/* Backend contract: a node whose io_role is read/write declares io_files = [{path, contents}].
+   `{camera}` in a path is filled with the camera number in camera-lane view.
+   Returns [] for in-memory nodes and null for a disk node that declares no paths. */
+function diskFiles(n){
+ if(!ioRole(n))return [];
+ if(n.io_files===undefined||n.io_files.length===0)return null;
+ if(!Array.isArray(n.io_files))throw Error(`io_files on ${n.id} must be a list`);
+ return n.io_files.map(f=>{if(typeof f.path!=='string'||!f.path||typeof f.contents!=='string')throw Error(`Malformed io_files entry on ${n.id}: needs string path and contents`);
+  const path=n.camera!=null?f.path.replaceAll('{camera}',String(n.camera+1)):f.path,name=path.split(/[\\/]/).pop();
+  return {path,name,folder:path.slice(0,Math.max(0,path.length-name.length-1)),contents:f.contents}});
+}
+function middleTruncate(text,max){if(text.length<=max)return text;const keep=max-1,head=Math.ceil(keep*.45);return text.slice(0,head)+'…'+text.slice(text.length-(keep-head))}
+const diskRows=n=>{const f=diskFiles(n);return f===null?1:Math.min(f.length,TERM.maxRows)+(f.length>TERM.maxRows?1:0)};
+const termHeightLR=n=>TERM.rail+Math.max(TERM.folderH,30+diskRows(n)*TERM.row)+12;
+function diskTerminal(n,W,H){
+ const role=n.io_role,r=ioRole(n),side=direction==='right',into=role==='write',files=diskFiles(n);
+ // LR: folder hangs below the card's left side. TD: folder hangs off the card's right side, near the top.
+ const fx=side?14:W+TERM.rail,fy=side?H+TERM.rail:8;
+ const a=side?{x:fx+TERM.folderW/2,y:H}:{x:W,y:fy+22},b=side?{x:fx+TERM.folderW/2,y:fy}:{x:fx,y:fy+22};
+ // a = card edge, b = folder edge; the rail is drawn in the direction data moves.
+ const [from,to]=into?[a,b]:[b,a],dx=Math.sign(to.x-from.x),dy=Math.sign(to.y-from.y);
+ const tip={x:to.x-dx*1,y:to.y-dy*1},base={x:tip.x-dx*13,y:tip.y-dy*13},px=dy*9,py=dx*9;
+ const rail=`M${from.x} ${from.y}L${base.x} ${base.y}`;
+ const gx=fx+TERM.folderW/2,gy=fy+27,glyph=into?`M${gx} ${gy-8}V${gy+7}M${gx-6} ${gy+1}L${gx} ${gy+7}L${gx+6} ${gy+1}`:`M${gx} ${gy+7}V${gy-8}M${gx-6} ${gy-2}L${gx} ${gy-8}L${gx+6} ${gy-2}`;
+ const tx=side?fx+TERM.folderW+12:gx,anchor=side?'start':'middle',ty=side?fy+13:fy+TERM.folderH+16,chars=side?TERM.lrNameChars:TERM.tdNameChars;
+ let list='';
+ if(files===null)list=`<text class="disk-file missing" x="${tx}" y="${ty+18}" text-anchor="${anchor}">no path declared</text>`;
+ else{files.slice(0,TERM.maxRows).forEach((f,i)=>{list+=`<text class="disk-file" x="${tx}" y="${ty+18+i*TERM.row}" text-anchor="${anchor}">${esc(middleTruncate(f.name,chars))}</text>`});
+  if(files.length>TERM.maxRows)list+=`<text class="disk-file more" x="${tx}" y="${ty+18+TERM.maxRows*TERM.row}" text-anchor="${anchor}">+${files.length-TERM.maxRows} more</text>`}
+ const tip_=files===null?'No disk path declared by the backend':files.map(f=>f.path).join('\n');
+ return `<g class="disk disk-${role}${files===null?' disk-missing':''}" data-disk="${esc(n.id)}" tabindex="0" role="button" aria-label="${r.verb}: show file paths"><title>${esc(r.verb)} ${graph.synthetic?'(simulated)':'(real I/O)'} · click for full paths\n${esc(tip_)}</title>`+
+  `<rect class="disk-hit" x="${side?fx-6:fx-40}" y="${fy-6}" width="${side?W-fx:TERM.tdW+20}" height="${side?termHeightLR(n)-TERM.rail:diskRows(n)*TERM.row+TERM.folderH+40}" rx="8"/>`+
+  `<path class="rail-out" d="${rail}"/><path class="rail-in" d="${rail}"/><path class="rail-head" d="M${tip.x} ${tip.y}L${base.x+px} ${base.y+py}L${base.x-px} ${base.y-py}Z"/>`+
+  `<path class="folder" d="${folderPath(fx,fy,TERM.folderW,TERM.folderH)}"/><path class="folder-lip" d="M${fx} ${fy+13}H${fx+TERM.folderW}"/><path class="folder-arrow" d="${glyph}"/>`+
+  `<text class="disk-label" x="${tx}" y="${ty}" text-anchor="${anchor}">${side?r.label:r.short}</text>${list}</g>`;
+}
+
+/* ---------- Node geometry ---------- */
+const LR={w:264,head:50,row:26,pad:6,foot:28};
+const TD={col:128,strip:26,head:50,foot:28,min:240};
+function cameraLanes(n){return n.scope==='camera_frame'&&n.camera==null?n.partition_count:0}
+function geometry(n){
+ const extra=cameraLanes(n)*24;
+ const ins=n.input_slots,outs=n.outputs,ports=new Map();
+ if(direction==='right'){
+  const inRows=Math.max(ins.length,1),top=LR.head+LR.pad,rowY=i=>top+i*LR.row+LR.row/2;
+  ins.forEach((s,i)=>ports.set('in:'+s.name,{x:0,y:rowY(i)}));
+  outs.forEach((s,j)=>ports.set('out:'+s.name,{x:LR.w,y:rowY(inRows+j)}));
+  const h=top+(inRows+outs.length)*LR.row+LR.pad+LR.foot+extra;
+  return {w:LR.w,h:h+(ioRole(n)?termHeightLR(n):0),bw:LR.w,bh:h,ports,headTop:0,footTop:h-LR.foot-extra,split:top+inRows*LR.row,sourceY:rowY(0)};
+ }
+ const w=Math.max(TD.min,Math.max(ins.length,outs.length)*TD.col),h=TD.strip*2+TD.head+TD.foot+extra;
+ ins.forEach((s,i)=>ports.set('in:'+s.name,{x:w*(i+.5)/ins.length,y:0}));
+ outs.forEach((s,j)=>ports.set('out:'+s.name,{x:w*(j+.5)/outs.length,y:h}));
+ return {w:w+(ioRole(n)?TERM.rail+TERM.folderW/2+TERM.tdW/2+8:0),h:Math.max(h,ioRole(n)?TERM.folderH+40+diskRows(n)*TERM.row:0),bw:w,bh:h,ports,headTop:TD.strip,footTop:TD.strip+TD.head,split:0,sourceY:0};
+}
+
+/* ---------- Layered layout (rank, crossing reduction, coordinate assignment) ---------- */
+function computeLayout(nodes,edges){
+ const side=direction==='right',DUMMY=8,MARGIN=48,MAIN_GAP=side?128:100,CROSS_GAP=side?28:40;
+ const byId=new Map(nodes.map(n=>[n.id,n])),geo=new Map(nodes.map(n=>[n.id,geometry(n)]));
+ const parents=new Map(nodes.map(n=>[n.id,[]])),children=new Map(nodes.map(n=>[n.id,[]]));
+ for(const e of edges){if(!byId.has(e.source)||!byId.has(e.target))throw Error(`Edge ${e.id} references an unknown node`);parents.get(e.target).push(e.source);children.get(e.source).push(e.target)}
+ const rank=new Map();
+ const visit=(id,stack)=>{if(rank.has(id))return rank.get(id);if(stack.has(id))throw Error('Backend graph contains a cycle');const next=new Set(stack).add(id),ps=parents.get(id);const r=ps.length?1+Math.max(...ps.map(p=>visit(p,next))):0;rank.set(id,r);return r};
+ nodes.forEach(n=>visit(n.id,new Set()));
+ // Pull producers forward so they sit beside their earliest consumer.
+ for(const n of [...nodes].sort((a,b)=>rank.get(b.id)-rank.get(a.id))){const kids=children.get(n.id);if(kids.length)rank.set(n.id,Math.min(...kids.map(k=>rank.get(k)))-1)}
+ const portCross=(id,key)=>{const p=geo.get(id).ports.get(key);if(!p)throw Error(`Missing declared slot ${key} on ${id}`);return side?p.y:p.x};
+ const items=new Map();
+ nodes.forEach((n,i)=>{const g=geo.get(n.id);items.set(n.id,{id:n.id,rank:rank.get(n.id),dummy:false,main:side?g.w:g.h,cross:side?g.h:g.w,key:[n.camera??-1,i]})});
+ const chains=[],links=[];
+ edges.forEach((e,ei)=>{const chain=[e.source];for(let r=rank.get(e.source)+1;r<rank.get(e.target);r++){const id=`~${e.id}~${r}`;items.set(id,{id,rank:r,dummy:true,main:0,cross:DUMMY,key:[byId.get(e.target).camera??-1,nodes.length+ei]});chain.push(id)}chain.push(e.target);chains.push({edge:e,chain});
+  for(let i=0;i<chain.length-1;i++)links.push({a:chain[i],b:chain[i+1],aOff:i===0?portCross(e.source,'out:'+e.source_slot):DUMMY/2,bOff:i===chain.length-2?portCross(e.target,'in:'+e.target_slot):DUMMY/2})});
+ const maxRank=Math.max(...[...items.values()].map(it=>it.rank));
+ let layers=Array.from({length:maxRank+1},()=>[]);
+ [...items.values()].sort((a,b)=>a.key[0]-b.key[0]||a.key[1]-b.key[1]).forEach(it=>layers[it.rank].push(it.id));
+ const up=new Map(),down=new Map(),push=(m,k,v)=>{if(!m.has(k))m.set(k,[]);m.get(k).push(v)};
+ for(const l of links){push(down,l.a,{o:l.b,self:l.aOff,other:l.bOff});push(up,l.b,{o:l.a,self:l.bOff,other:l.aOff})}
+ const pos=new Map(),index=()=>layers.forEach(L=>L.forEach((id,i)=>pos.set(id,i)));
+ const frac=(id,off)=>off/items.get(id).cross;
+ const sweep=(r,m)=>{const L=layers[r],bc=new Map(L.map(id=>{const ns=m.get(id)||[];return [id,ns.length?ns.reduce((s,nb)=>s+pos.get(nb.o)+frac(nb.o,nb.other),0)/ns.length:pos.get(id)+.5]}));L.sort((a,b)=>bc.get(a)-bc.get(b));L.forEach((id,i)=>pos.set(id,i))};
+ const crossings=()=>{let c=0;for(let r=0;r<maxRank;r++){const ls=links.filter(l=>items.get(l.a).rank===r).map(l=>[pos.get(l.a)+frac(l.a,l.aOff),pos.get(l.b)+frac(l.b,l.bOff)]);for(let i=0;i<ls.length;i++)for(let j=i+1;j<ls.length;j++)if((ls[i][0]-ls[j][0])*(ls[i][1]-ls[j][1])<0)c++}return c};
+ index();let best=layers.map(L=>[...L]),bestC=crossings();
+ for(let it=0;it<16&&bestC>0;it++){if(it%2===0)for(let r=1;r<=maxRank;r++)sweep(r,up);else for(let r=maxRank-1;r>=0;r--)sweep(r,down);const c=crossings();if(c<bestC){bestC=c;best=layers.map(L=>[...L])}}
+ layers=best;index();
+ // Cross-axis placement: pull each item toward its neighbours' ports while keeping order and gaps.
+ const cross=new Map(),size=id=>items.get(id).cross;
+ const gap=(a,b)=>items.get(a).dummy&&items.get(b).dummy?10:items.get(a).dummy||items.get(b).dummy?18:CROSS_GAP;
+ layers.forEach(L=>{let y=0;const d=L.map((id,i)=>{const v=y;y+=size(id)+(i<L.length-1?gap(id,L[i+1]):0);return v});L.forEach((id,i)=>cross.set(id,d[i]-y/2))});
+ const place=(L,want)=>{const n=L.length,f=[],b=[],out=[];
+  for(let i=0;i<n;i++)f[i]=i?Math.max(want[i],f[i-1]+size(L[i-1])+gap(L[i-1],L[i])):want[i];
+  for(let i=n-1;i>=0;i--)b[i]=i<n-1?Math.min(want[i],b[i+1]-size(L[i])-gap(L[i],L[i+1])):want[i];
+  for(let i=0;i<n;i++){const a=(f[i]+b[i])/2;out[i]=i?Math.max(a,out[i-1]+size(L[i-1])+gap(L[i-1],L[i])):a}
+  L.forEach((id,i)=>cross.set(id,out[i]))};
+ const want=(id,maps)=>{let s=0,k=0;for(const m of maps)for(const nb of m.get(id)||[]){s+=cross.get(nb.o)+nb.other-nb.self;k++}return k?s/k:cross.get(id)};
+ for(let it=0;it<28;it++){const maps=it<18?(it%2?[down]:[up]):[up,down],order=it%2?[...layers.keys()].reverse():[...layers.keys()];for(const r of order){const L=layers[r];place(L,L.map(id=>want(id,maps)))}}
+ const layerSize=layers.map(L=>Math.max(0,...L.map(id=>items.get(id).main))),layerPos=[];let m=MARGIN;
+ layerSize.forEach((s,r)=>{layerPos[r]=m;m+=s+MAIN_GAP});
+ const totalMain=m-MAIN_GAP+MARGIN;
+ let lo=Infinity,hi=-Infinity;for(const [id,c] of cross){lo=Math.min(lo,c);hi=Math.max(hi,c+size(id))}
+ const shift=MARGIN-lo,totalCross=hi-lo+2*MARGIN,pt=(a,c)=>side?{x:a,y:c}:{x:c,y:a};
+ const boxes=new Map();
+ for(const n of nodes){const it=items.get(n.id),g=geo.get(n.id),p=pt(layerPos[it.rank],cross.get(n.id)+shift);boxes.set(n.id,{x:p.x,y:p.y,w:g.w,h:g.h,g})}
+ const portAbs=(id,key)=>{const b=boxes.get(id),p=b.g.ports.get(key);if(!p)throw Error(`Missing declared slot ${key} on ${id}`);return {x:b.x+p.x,y:b.y+p.y}};
+ const r1=v=>Math.round(v*10)/10;
+ const curve=(p,q)=>{if(side){const k=Math.max(28,(q.x-p.x)*.5);return ` C${r1(p.x+k)},${r1(p.y)} ${r1(q.x-k)},${r1(q.y)} ${r1(q.x)},${r1(q.y)}`}const k=Math.max(28,(q.y-p.y)*.5);return ` C${r1(p.x)},${r1(p.y+k)} ${r1(q.x)},${r1(q.y-k)} ${r1(q.x)},${r1(q.y)}`};
+ const paths=chains.map(({edge,chain})=>{let cur=portAbs(edge.source,'out:'+edge.source_slot),d=`M${r1(cur.x)},${r1(cur.y)}`;
+  for(const id of chain.slice(1,-1)){const r=items.get(id).rank,c=cross.get(id)+shift+DUMMY/2,entry=pt(layerPos[r],c),exit=pt(layerPos[r]+layerSize[r],c);d+=curve(cur,entry);if(layerSize[r])d+=` L${r1(exit.x)},${r1(exit.y)}`;cur=exit}
+  d+=curve(cur,portAbs(edge.target,'in:'+edge.target_slot));return {edge,d}});
+ return {boxes,paths,width:side?totalMain:totalCross,height:side?totalCross:totalMain};
+}
+
+/* ---------- SVG rendering ---------- */
+function truncate(text,max){return text.length>max?text.slice(0,max-1)+'…':text}
+function nodeSvg(n,box){
+ const g=box.g,W=g.bw,H=g.bh,side=direction==='right',logical=logicalOf(n),ht=g.headTop,io=ioRole(n);
+ const label=logical.label,cam=n.camera!=null?`cam ${n.camera+1} · `:'';
+ const meta=cameraLanes(n)?`${n.resource} · ${n.partition_count} videos · in order per video`:`${cam}${n.resource} · ${scopeText(n)}${n.ordered?' · ordered':''}`;
+ const titleChars=Math.floor((W-28-(io?66:26))/7.2);
+ let s=`<g class="node${n.branch==='annotation'?' annotation':''}${io?' io io-'+n.io_role:''}" data-id="${esc(n.id)}" data-io="${esc(n.io_role)}" tabindex="0" role="button" aria-label="Inspect ${esc(label)}${n.camera!=null?' camera '+(n.camera+1):''}" transform="translate(${box.x},${box.y})">`;
+ s+=`<title>${esc(label)}${n.camera!=null?' · camera '+(n.camera+1):''}</title>`;
+ if(io)s+=diskTerminal(n,W,H);
+ s+=io?`<path class="halo" d="${chamfer(-4,-4,W+8,H+8,16)}"/><path class="body" d="${chamfer(0,0,W,H,13)}"/>`
+      :`<rect class="halo" x="-4" y="-4" width="${W+8}" height="${H+8}" rx="13"/><rect class="body" width="${W}" height="${H}" rx="10"/>`;
+ s+=`<text class="title" x="14" y="${ht+22}">${esc(truncate(label,titleChars))}</text><text class="meta" x="14" y="${ht+39}">${esc(meta)}</text>`;
+ s+=`<g class="st" transform="translate(${W-20},${ht+18})"></g>`;
+ if(io)s+=`<text class="io-tag" x="${W-34}" y="${ht+22}" text-anchor="end">${io.tag}</text>`;
+ if(side){s+=`<path class="divider" d="M0 ${g.headTop+LR.head}H${W}M0 ${g.footTop}H${W}"/>`;if(n.input_slots.length&&n.outputs.length)s+=`<path class="divider soft" d="M14 ${g.split}H${W-14}"/>`}
+ else s+=`<path class="divider" d="M0 ${TD.strip}H${W}M0 ${H-TD.strip}H${W}"/>`;
+ if(!n.input_slots.length)s+=`<text class="port-none" x="${side?14:W/2}" y="${side?g.sourceY+4:17}" text-anchor="${side?'start':'middle'}">source · no inputs</text>`;
+ for(const slot of n.input_slots){
+  const p=g.ports.get('in:'+slot.name),binding=n.inputs.find(b=>b.port===slot.name),edge=graph.edges.find(e=>e.target===logical.id&&e.target_slot===slot.name),color=typeColor(slot.data_type);
+  if(binding&&!edge)throw Error(`Binding ${logical.id}.${slot.name} has no resolved edge`);
+  const badge=binding?ruleBadge(binding.rule,edge):'',tip=`${slot.name} : ${slot.data_type} · ${slot.required?'required':'optional'}${binding?` · from ${binding.source}.${binding.source_slot} · ${rule(binding.rule).label}`:' · unconnected (receives an empty input)'}`;
+  const type=slot.data_type!==slot.name?`<tspan class="port-type" fill="${color}"> ${esc(slot.data_type)}</tspan>`:'';
+  const off=binding?'':'<tspan class="port-off"> · off</tspan>';
+  const fill=slot.required?color:'var(--node)',stroke=binding?color:'var(--ink-3)';
+  s+=`<g class="slot" data-slot="${esc(slot.name)}" data-direction="input" data-type="${esc(slot.data_type)}"><title>${esc(tip)}</title><circle class="socket" cx="${p.x}" cy="${p.y}" r="5" fill="${fill}" stroke="${stroke}"${binding?'':' stroke-dasharray="2 2"'}/>`;
+  if(side)s+=`<text x="14" y="${p.y+4}"><tspan class="port-name">${esc(slot.name)}</tspan>${type}${off}</text>${badge?`<text class="badge" x="${W-14}" y="${p.y+4}" text-anchor="end">${esc(badge)}</text>`:''}`;
+  else s+=`<text x="${p.x}" y="17" text-anchor="middle"><tspan class="port-name">${esc(slot.name)}</tspan>${off}${badge?`<tspan class="badge"> ${esc(badge)}</tspan>`:''}</text>`;
+  s+='</g>'}
+ for(const slot of n.outputs){
+  const p=g.ports.get('out:'+slot.name),color=typeColor(slot.data_type);
+  s+=`<g class="slot" data-slot="${esc(slot.name)}" data-direction="output" data-type="${esc(slot.data_type)}"><title>${esc(slot.name)} : ${esc(slot.data_type)} · output</title><circle class="socket" cx="${p.x}" cy="${p.y}" r="5" fill="${color}" stroke="${color}"/>`;
+  s+=side?`<text x="${W-14}" y="${p.y+4}" text-anchor="end"><tspan class="port-name">${esc(slot.name)} </tspan><tspan class="port-type" fill="${color}">${esc(slot.data_type)}</tspan></text>`
+         :`<text x="${p.x}" y="${H-9}" text-anchor="middle"><tspan class="port-name">${esc(slot.name)} </tspan><tspan class="port-type" fill="${color}">${esc(slot.data_type)}</tspan></text>`;
+  s+='</g>'}
+ const trackW=36;
+ s+=`<rect class="track" x="14" y="${g.footTop+12}" width="${trackW}" height="4" rx="2"/><rect class="bar progress" x="14" y="${g.footTop+12}" width="0" height="4" rx="2" data-track="${trackW}"/>`;
+ s+=`<text class="count" x="${W-14}" y="${g.footTop+17}" text-anchor="end">${itemTotal(n)} items</text>`;
+ for(let i=0;i<cameraLanes(n);i++){const y=g.footTop+38+i*24;s+=`<text class=meta x=14 y=${y}>Video ${i+1}</text><rect x=68 y=${y-7} width=${W-178} height=5 rx=2 fill="var(--line)"/><rect class=camera-progress data-camera=${i} x=68 y=${y-7} width=0 height=5 rx=2 fill="var(--ok)" data-track="${W-178}"/><text class=meta data-camera-count=${i} x=${W-14} y=${y} text-anchor=end>0/${graph.config.frames}</text>`}
+ return s+'</g>';
+}
+function buildGraph(){
+ assignTypeColors();
+ const nodes=viewNodes(),edges=viewEdges(),byId=new Map(nodes.map(n=>[n.id,n]));
+ const L=computeLayout(nodes,edges);layout=L.boxes;bounds={w:L.width,h:L.height};
+ let html='<g class="edges">';
+ for(const {edge:e,d} of L.paths){const source=byId.get(e.source),target=byId.get(e.target);
+  html+=`<path class="edge${target.branch==='annotation'?' annotation':''}" style="--wire:${typeColor(e.data_type)}" data-edge="${esc(e.id)}" data-source="${esc(e.source)}" data-target="${esc(e.target)}" data-source-slot="${esc(e.source_slot)}" data-target-slot="${esc(e.target_slot)}" d="${d}"><title>${esc(logicalOf(source).label)}.${esc(e.source_slot)} → ${esc(logicalOf(target).label)}.${esc(e.target_slot)} · ${esc(e.data_type)} · ${esc(rule(e.rule).label)}</title></path>`}
+ html+='</g><g class="nodes">'+nodes.map(n=>nodeSvg(n,layout.get(n.id))).join('')+'</g>';
+ const svg=$('#graph');svg.innerHTML=html;
+ svg.querySelectorAll('.disk').forEach(d=>{const open=ev=>{ev.stopPropagation();selected=d.dataset.disk;render();openPaths(d.dataset.disk,d.querySelector('.folder'))};d.onclick=open;d.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open(ev)}}});
+ const uniq=[...new Set(nodes.filter(n=>diskFiles(n)===null).map(n=>n.logical_id||n.id))];
+ $('#contract-error').hidden=!uniq.length;$('#contract-error').textContent=uniq.length?`Backend contract violation: ${uniq.join(', ')} ${uniq.length>1?'declare':'declares'} a disk io_role but no io_files. Each disk node must declare io_files=[{path, contents}] in graph.py.`:'';
+ svg.querySelectorAll('.node').forEach(e=>{const pick=()=>{selected=e.dataset.id;render()};e.onclick=pick;e.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();pick()}};e.onmouseenter=()=>{hovered=e.dataset.id;highlight()};e.onmouseleave=()=>{hovered=null;highlight()}});
+ const shown=[...new Set(edges.map(e=>e.data_type).concat(nodes.flatMap(n=>n.outputs.map(o=>o.data_type))))];
+ $('#edge-legend').innerHTML='<b>Types</b>'+shown.map(t=>`<span class="type-chip"><i style="background:${typeColor(t)}"></i>${esc(t)}</span>`).join('');
+ const key=`${graph.digest}|${direction}|${expanded}`;if(key!==viewKey){viewKey=key;initialView()}else sizeGraph();
+}
+function highlight(){
+ const svg=$('#graph'),focus=hovered||selected,lit=new Set([focus]);
+ svg.querySelectorAll('.edge').forEach(p=>{const on=!!focus&&(p.dataset.source===focus||p.dataset.target===focus);p.classList.toggle('lit',on);if(on){lit.add(p.dataset.source);lit.add(p.dataset.target)}});
+ svg.querySelectorAll('.node').forEach(n=>n.classList.toggle('near',lit.has(n.dataset.id)));
+ svg.classList.toggle('focusing',!!hovered);
+}
+
+/* ---------- Disk path popover ---------- */
+function openPaths(id,anchor){
+ const n=viewNodes().find(v=>v.id===id),r=ioRole(n),files=diskFiles(n),pop=$('#path-pop'),canvas=$('#graph-panel').getBoundingClientRect(),a=anchor.getBoundingClientRect();
+ pop.className=`overlay path-pop io-${n.io_role}`;
+ pop.innerHTML=`<div class="pp-head"><span class="pp-role">${r.label}</span><b>${esc(logicalOf(n).label)}${n.camera!=null?` · cam ${n.camera+1}`:''}</b><button class="btn icon quiet" id="pp-close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`+
+  (files===null?`<p class="pp-missing">The backend declares no file paths for this node.</p>`:files.map((f,i)=>`<div class="pp-file"><div class="pp-name"><b>${esc(f.name)}</b><button class="btn quiet pp-copy" data-i="${i}">Copy path</button></div><div class="pp-contents">${esc(f.contents)}</div><code class="pp-path">${esc(f.folder)}${f.folder?'/':''}<b>${esc(f.name)}</b></code></div>`).join(''));
+ pop.hidden=false;
+ // Beside the terminal (right, else left) so the node and its folder stay visible.
+ const right=a.right-canvas.left+10,left=a.left-canvas.left-pop.offsetWidth-10,x=right+pop.offsetWidth<=canvas.width-8?right:Math.max(8,left),y=Math.min(a.top-canvas.top,canvas.height-pop.offsetHeight-8);
+ pop.style.left=`${x}px`;pop.style.top=`${Math.max(8,y)}px`;
+ $('#pp-close').onclick=closePaths;
+ pop.querySelectorAll('.pp-copy').forEach(b=>b.onclick=()=>guard(async()=>{await navigator.clipboard.writeText(files[Number(b.dataset.i)].path);b.textContent='Copied'}));
+ $('#pp-close').focus({preventScroll:true});
+}
+function closePaths(){$('#path-pop').hidden=true}
+document.addEventListener('pointerdown',e=>{if(!$('#path-pop').hidden&&!e.target.closest('#path-pop')&&!e.target.closest('.disk'))closePaths()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePaths()});
+
+/* ---------- Camera ---------- */
+function sizeGraph(){const svg=$('#graph');svg.setAttribute('viewBox',`${camera.x} ${camera.y} ${viewport.clientWidth/zoom} ${viewport.clientHeight/zoom}`);svg.classList.toggle('lod-low',zoom<.5);$('#zoom-level').textContent=`${Math.round(zoom*100)}%`;viewport.style.backgroundSize=`${24*zoom}px ${24*zoom}px`;viewport.style.backgroundPosition=`${-camera.x*zoom}px ${-camera.y*zoom}px`}
+function zoomAt(value,x=viewport.clientWidth/2,y=viewport.clientHeight/2){const old=zoom;zoom=Math.min(2.5,Math.max(.06,value));camera.x+=x/old-x/zoom;camera.y+=y/old-y/zoom;sizeGraph()}
+function focusNode(){const p=layout.get(selected)||layout.values().next().value;if(!p)return;zoom=1;camera={x:p.x+p.w/2-viewport.clientWidth/2,y:p.y+p.h/2-viewport.clientHeight/2};sizeGraph()}
+// Fit inside the band left free by the toolbar (top) and the legend/resource overlays (bottom).
+const BAND={top:104,bottom:64,side:24};
+const fitZoom=()=>Math.min((viewport.clientWidth-2*BAND.side)/bounds.w,(viewport.clientHeight-BAND.top-BAND.bottom)/bounds.h);
+function fitAll(){zoom=Math.min(1,Math.max(.06,fitZoom()));const yc=(BAND.top+viewport.clientHeight-BAND.bottom)/2;camera={x:(bounds.w-viewport.clientWidth/zoom)/2,y:bounds.h/2-yc/zoom};sizeGraph()}
+// Readable first view: fit when the graph fits at >=75%, otherwise start at the sources at 75%.
+function initialView(){if(fitZoom()>=.75){fitAll();return}zoom=.75;const vw=viewport.clientWidth/zoom,yc=(BAND.top+viewport.clientHeight-BAND.bottom)/2;camera=direction==='right'?{x:-BAND.side/zoom,y:bounds.h/2-yc/zoom}:{x:(bounds.w-vw)/2,y:-BAND.top/zoom};sizeGraph()}
+viewport.addEventListener('wheel',e=>{e.preventDefault();closePaths();const r=viewport.getBoundingClientRect(),delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?viewport.clientHeight:1);zoomAt(zoom*Math.exp(-Math.max(-300,Math.min(300,delta))*.002),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+viewport.addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('.node'))return;e.preventDefault();viewport.focus({preventScroll:true});drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y};viewport.setPointerCapture(e.pointerId);viewport.classList.add('dragging')});
+viewport.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;camera.x=drag.cx-(e.clientX-drag.x)/zoom;camera.y=drag.cy-(e.clientY-drag.y)/zoom;sizeGraph()});
+function endDrag(){drag=null;viewport.classList.remove('dragging')}
+viewport.addEventListener('pointerup',endDrag);viewport.addEventListener('pointercancel',endDrag);viewport.addEventListener('lostpointercapture',endDrag);
+viewport.addEventListener('keydown',e=>{if(e.target!==viewport)return;const movement={ArrowLeft:[-80,0],ArrowRight:[80,0],ArrowUp:[0,-80],ArrowDown:[0,80]}[e.key];if(movement){e.preventDefault();camera.x+=movement[0]/zoom;camera.y+=movement[1]/zoom;sizeGraph()}});
+new ResizeObserver(()=>{if(graph)sizeGraph()}).observe(viewport);
+function workspace(on){document.body.classList.toggle('graph-focused',on);$('#workspace').textContent=on?'Exit expanded workspace':'Expand workspace';$('#workspace').setAttribute('aria-pressed',on);requestAnimationFrame(()=>{sizeGraph();focusNode()})}
+$('#workspace').onclick=()=>workspace(!document.body.classList.contains('graph-focused'));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('graph-focused'))workspace(false)});
+
+/* ---------- Live state ---------- */
+function render(){if(!graph)return;
+ const states=new Map([...(run?.nodes||[]),...(run?.partition_nodes||[])].map(n=>[n.id,n]));
+ $('#graph-id').textContent=`definition ${graph.digest} · schema ${graph.schema_version}`;
+ $('#graph-meta').textContent=`${graph.nodes.length} operations · ${viewNodes().length} shown · ${graph.edges.length} bindings · ${graph.work_items} work items`;
+ const running=new Set();
+ for(const e of $('#graph').querySelectorAll('.node')){
+  const s=states.get(e.dataset.id),n=viewNodes().find(v=>v.id===e.dataset.id),logical=n.logical_id||n.id,state=s?.state||(held.has(logical)?'held':'defined');
+  if(state==='running')running.add(e.dataset.id);
+  e.setAttribute('class',`node ${n.branch==='annotation'?'annotation ':''}${n.io_role!=='none'?'io io-'+n.io_role+' ':''}${state}${selected===e.dataset.id?' selected':''}`);
+  e.querySelector('.st').innerHTML=stateIcon(state);
+  e.querySelector('.count').textContent=s?`${s.counts.complete||0}/${s.total} ${workUnit(n)}`:held.has(logical)?'held on start':`${itemTotal(n)} ${workUnit(n)}`;
+  if(cameraLanes(n)){e.querySelector('.count').textContent=`${n.partition_count} videos x ${graph.config.frames} frames each`;e.querySelector('.track').setAttribute('visibility','hidden');}
+  for(const b of e.querySelectorAll('.camera-progress')){const i=Number(b.dataset.camera),part=(run?.partition_nodes||[]).find(p=>p.logical_id===logical&&p.camera===i),done=part?.counts.complete||0,total=part?.total||graph.config.frames;b.setAttribute('width',Number(b.dataset.track)*done/total);e.querySelector(`[data-camera-count="${i}"]`).textContent=`${done}/${total}`;}
+  const bar=e.querySelector('.progress');bar.setAttribute('width',!cameraLanes(n)&&s&&s.total?Number(bar.dataset.track)*(s.counts.complete||0)/s.total:0)}
+ $('#graph').querySelectorAll('.edge').forEach(p=>p.classList.toggle('flow',running.has(p.dataset.target)));
+ highlight();
+ const status=run?(run.paused&&!terminal()?'paused':run.status):'preview';
+ $('#status').textContent=status;$('#status-pill').dataset.state=status;
+ $('#elapsed').textContent=run?`${run.elapsed_s.toFixed(1)}s`:'—';
+ $('#done').textContent=`${(run?.nodes||[]).reduce((a,n)=>a+(n.counts.complete||0),0)} / ${graph.work_items}`;
+ $('#science').textContent=run?(run.science_complete?'complete':['failed','cancelled'].includes(run.status)?run.status:'in progress'):'—';
+ const kib=((run?.retained_bytes||0)/1024).toFixed(1);
+ $('#resources').innerHTML=Object.entries(graph.resources).map(([r,cap])=>{const used=run?.resources[r]||0;return `<div class="meter" title="${esc(r)}: ${used} of ${cap} slots admitted"><span>${esc(r)}</span><span class="pips">${Array.from({length:cap},(_,i)=>`<i class="${i<used?'on':''}"></i>`).join('')}</span><b>${used}/${cap}</b></div>`}).join('')+`<div class="meter mem" title="Retained artifact payloads"><span>artifacts</span><b>${run?.artifacts||0} · ${kib} / 8192 KiB</b></div>`;
+ const live=!terminal();
+ $('#start').disabled=live||readOnly;$('#preview').disabled=live||readOnly;for(const e of $('#config').elements)e.disabled=live||readOnly;$('#start-paused').disabled=readOnly;
+ for(const id of ['pause','resume','step','cancel'])$('#'+id).disabled=!live||readOnly;
+ if(realBackend){$('#step').disabled=true;$('#cameras').disabled=true;$('#task').disabled=true;}
+ $('#pause').hidden=!!run?.paused&&live;$('#resume').hidden=!(run?.paused&&live);
+ const notice=$('#notice');
+ const [tone,text]=dirty?['warn','Configuration changed. Resolve graph or start a new run.']:run?.science_complete&&live?['ok','Scientific results are ready. Other branches are still running or held.']:held.size&&!run?['warn',`${held.size} node(s) will start held. Release them from the inspector.`]:['', 'Click a node to inspect its contract and control dispatch.'];
+ notice.dataset.tone=tone;notice.textContent=realBackend?('Real execution · '+(run?.output_directory||'Resolve a recording to preview its graph')):readOnly?'Real core execution · read-only inspector':text;
+ if(realBackend||readOnly){$('.chip').textContent=readOnly?'Real core execution · read-only':'Real core execution';$('.chip').title='HTTP commands; WebSocket reports; isolated execution process';$('.key').textContent='Real I/O. Connections derive from executable bindings.';$('#resources').hidden=true;$('.side h2').textContent='Run details';$('.about').hidden=false;for(const section of $('#config').querySelectorAll('.group')){if(!section.querySelector('#task,#cameras,#recording-path'))section.hidden=true;}}
+ if(run){$('#events').innerHTML=[...run.events].reverse().map(e=>`<div class="ev" data-kind="${esc(e.kind)}"><span class="t">${e.at.toFixed(3)}s</span><span class="k">${esc(e.kind)}</span><span class="n">${esc(e.node||'')}</span><span class="d" title="${esc(e.detail)}">${esc(e.detail)}</span></div>`).join('');$('#event-count').textContent=`${run.events.length} events`}
+ inspector(states.get(selected));
+}
+function slotRow({name,type,dotClass,tags,sub}){return `<div class="slot-row" style="--c:${typeColor(type)}"><i class="dot ${dotClass}"></i><div><div class="slot-title"><b>${esc(name)}</b><code>${esc(type)}</code>${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div><div class="slot-sub">${sub}</div></div></div>`}
+function inspector(s){
+ const display=viewNodes().find(n=>n.id===selected);if(!display){$('#inspector').innerHTML='<div class="empty">Select a node in the graph.</div>';return}
+ const n=logicalOf(display),isHeld=s?s.held:held.has(n.id),t=s?.timing,state=s?.state||(isHeld?'held':'defined'),label=id=>esc(graph.nodes.find(g=>g.id===id)?.label||id);
+ const inputs=n.input_slots.map(slot=>{const b=n.inputs.find(b=>b.port===slot.name),e=graph.edges.find(e=>e.target===n.id&&e.target_slot===slot.name);
+  const sub=b?`from <code>${label(b.source)}.${esc(b.source_slot)}</code> · <span class="rule" title="${esc(rule(b.rule).text)}">${esc(rule(b.rule).label)}</span> · ${e.inputs_per_item>1?`${e.inputs_per_item}:1 fan-in`:e.consumers_per_item>1?`1:${e.consumers_per_item} fan-out`:'1:1'}`:'Not connected; receives an empty input.';
+  return slotRow({name:slot.name,type:slot.data_type,dotClass:b?(slot.required?'':'hollow'):'off',tags:[slot.required?'required':'optional'],sub})}).join('')||'<p class="help">Source operation: no inputs.</p>';
+ const outputs=n.outputs.map(slot=>{const to=graph.edges.filter(e=>e.source===n.id&&e.source_slot===slot.name);return slotRow({name:slot.name,type:slot.data_type,dotClass:'',tags:[],sub:to.length?'to '+to.map(e=>`<code>${label(e.target)}.${esc(e.target_slot)}</code>`).join(', '):'No consumers in this graph.'})}).join('');
+ const counts=s?Object.entries(s.counts).filter(([,v])=>v).map(([k,v])=>`<span>${esc(k)} <b>${v}</b></span>`).join(''):'';
+ const done=s?(s.counts.complete||0):0,total=s?s.total:itemTotal(display);
+ const saved=s?.sample?JSON.parse(s.sample.payload_json):null;
+ const lifetimes=(n.resource_uses||[]).map(use=>{
+  const entries=(run?.resource_lifetimes||[]).filter(r=>r.key.startsWith(use.name+'/')&&(display.camera==null||use.scope==='recording'||r.key===use.name+'/'+display.camera));
+  return `<div class="reason"><span>${esc(use.name)} · ${esc(use.scope)}</span></div>${entries.length?entries.map(r=>`<p class="help">${esc(r.key)}: <b>${esc(r.state)}</b>${r.error?' · '+esc(r.error):''}</p>`).join(''):'<p class="help">No resource lifetime record available yet.</p>'}`;
+ }).join('');
+ const payloads=[...new Set([...n.input_slots,...n.outputs].map(slot=>slot.data_type))].map(type=>{
+  const contract=graph.contracts?.[type];
+  return `<h4>${esc(type)} · ${esc(contract?.validation||'undeclared')}</h4><pre>${esc(JSON.stringify(contract||{},null,2))}</pre>`;
+ }).join('');
+ const openDetails=[...$('#inspector').querySelectorAll('details[open]')].map(d=>d.querySelector('summary')?.textContent);
+ const inspectorScroll=$('#inspector').scrollTop;
+ $('#inspector').innerHTML=`
+ <div class="eyebrow">${ioRole(n)?`<b class="eyebrow-io io-${n.io_role}">${ioRole(n).label}</b> · `:''}${esc(n.branch)} branch · ${display.camera!=null?`camera ${display.camera+1}`:'all cameras'}</div>
+ <button class="btn" id="expand-node">${document.body.classList.contains('node-expanded')?'Close expanded details':'Expand node details'}</button><div class="insp-head"><h2>${esc(n.label)}</h2><span class="state-pill" data-state="${esc(state)}">${esc(state)}</span></div>
+ <p class="desc">${esc(n.description||'Declared graph operation.')}</p>
+ <div class="insp-actions"><button class="btn" id="hold-node">${isHeld?'Release node':'Hold node'}</button><button class="btn danger" id="fail-node" ${terminal()?'disabled':''}>Fail next item</button></div>
+ <p class="help" style="margin-top:8px">${s?.fail_armed?'<span class="armed">Failure armed.</span> ':''}${realBackend?'Node-level controls are not connected; use run controls above.':readOnly?'Read-only: execution controls are unavailable.':'Controls apply to every camera partition of this operation.'}</p>
+ <div class="progress-block"><div class="big">${cameraLanes(display)?`${n.partition_count} videos <small> x ${graph.config.frames} frames each</small>`:`${done} <small>/ ${total} ${esc(workUnit(display))}${display.camera!=null?' (this camera)':''}</small>`}</div><div style="display:${cameraLanes(display)?'none':'block'}" class="pbar ${state==='complete'?'complete':''}"><i style="width:${total?100*done/total:0}%"></i></div><div class="counts">${counts||`<span>${n.partition_count} partition(s) · ${n.work_count} items total</span>`}</div></div>
+ <p class="help">${esc(workExplanation(display))}</p>${s?.camera_counts?.length?`<h3>Camera progress</h3>${s.camera_counts.filter(c=>c.total).map(c=>`<div class="reason" style="display:block"><div style="display:flex;gap:12px;justify-content:space-between"><span style="overflow-wrap:anywhere;min-width:0">${esc(c.camera)}</span><b style="white-space:nowrap">${c.complete}/${c.total} frames</b></div><div class="pbar complete"><i style="width:${100*c.complete/c.total}%"></i></div></div>`).join('')}`:''}
+ ${saved?.path?`<h3>Saved result</h3><p class="help">${esc(saved.frames)} synchronized frames from ${saved.cameras?.length||0} cameras saved.</p><code class="dr-path">${esc(saved.path)}</code>`:''}
+ <h3>Inputs <span>${n.input_slots.length}</span></h3>${inputs}
+ <h3>Outputs <span>${n.outputs.length}</span></h3>${outputs}
+ ${lifetimes?`<h3>Resource lifetime</h3>${lifetimes}<p class="help">Run-owned ${graph.synthetic?'synthetic':'native'} handles. Separate from dispatch capacity; cleanup waits for declared users, not unrelated branches.</p>`:''}
+ <details><summary>Payload contracts</summary>${payloads}</details>
+ ${ioRole(display)?`<h3>${ioRole(display).verb} <span>${diskFiles(display)===null?'undeclared':diskFiles(display).length+' file(s)'}</span></h3>${diskFiles(display)===null?'<div class="disk-row missing">The backend declares no file paths for this node.</div>':diskFiles(display).map(f=>`<div class="disk-row io-${display.io_role}"><div class="dr-name">${esc(f.name)}</div><div class="dr-contents">${esc(f.contents)}</div><code class="dr-path">${esc(f.path)}</code></div>`).join('')}`:''}
+ <h3>Why work is waiting</h3>${s?Object.entries(s.reasons).map(([k,v])=>`<div class="reason"><span>${esc(k)}</span><b>${v}</b></div>`).join('')||'<p class="help">No pending work.</p>':'<p class="help">Run the graph to inspect readiness.</p>'}
+ <h3>Execution</h3><dl class="kv"><dt>Resource</dt><dd>${esc(n.resource)}</dd><dt>Scope</dt><dd>${esc(n.scope)}</dd><dt>Ordering</dt><dd>${n.ordered?'Sequential per partition':'Independent ready items'}</dd><dt>Partitions</dt><dd>${n.partition_count} · ${n.work_count} items</dd><dt>Disk role</dt><dd>${ioRole(n)?ioRole(n).verb+(graph.synthetic?' (simulated)':' (real I/O)'):'none · in-memory only'}</dd><dt>Time across all cameras</dt><dd>${t?.count?`${t.count} calls · mean ${(t.total_ms/t.count).toFixed(1)} ms · max ${t.max_ms.toFixed(1)} ms`:'no completed calls'}</dd><dt>Processing rate</dt><dd>${t?.span_s?`${(t.count/t.span_s).toFixed(1)} ${esc(workUnit(n))}/s over ${t.span_s.toFixed(1)}s`:'not measured yet'}</dd><dt>Identity</dt><dd><code>${esc(n.id)}</code> · <code>${esc(n.handler)}</code></dd></dl>
+ ${s?.examples?.length?`<details><summary>Work records (first 100; zero-based frame numbers)</summary><pre>${esc(JSON.stringify(s.examples,null,2))}</pre></details>`:''}
+ <details ${s?.sample?'open':''}><summary>${realBackend||readOnly?'Recorded runtime details':'Latest immutable artifact'}</summary><pre>${s?.sample?esc(JSON.stringify(JSON.parse(s.sample.payload_json),null,2)):'No output sample was captured for this node. Completion does not imply an image preview is available.'}</pre></details>`;
+ for(const d of $('#inspector').querySelectorAll('details'))if(openDetails.includes(d.querySelector('summary')?.textContent))d.open=true;
+ $('#inspector').scrollTop=inspectorScroll;
+ $('#expand-node').onclick=()=>{document.body.classList.toggle('node-expanded');inspector(s)};
+ $('#hold-node').disabled=realBackend||readOnly||!!run&&terminal();$('#fail-node').disabled=realBackend||readOnly||terminal();
+ $('#hold-node').onclick=()=>guard(async()=>{if(!run){if(held.has(n.id))held.delete(n.id);else held.add(n.id);render()}else await control(isHeld?'release':'hold',n.id)});
+ $('#fail-node').onclick=()=>guard(()=>control('fail',n.id));
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.body.classList.remove('node-expanded');render()}});
+/* ---------- Wiring ---------- */
+async function control(action,node){await api(`/api/runs/${run.id}/control`,{action,node})}
+async function guard(fn){try{clearError();await fn()}catch(e){error(e)}}
+function taskDescription(){const t=tasks.find(t=>t.id===$('#task').value);if(!t)throw Error(`Unknown task "${$('#task').value}"`);$('#task-desc').textContent=t.description}
+$('#preview').onclick=()=>guard(preview);$('#config').onsubmit=e=>e.preventDefault();
+$('#config').onchange=()=>guard(async()=>{taskDescription();dirty=true;render()});
+$('#start').onclick=()=>guard(async()=>{await api('/api/runs',{config:config(),held:[...held],paused:$('#start-paused').checked});$('#start').disabled=true});
+for(const action of ['pause','resume','step','cancel'])$('#'+action).onclick=()=>guard(()=>control(action));
+function relayout(){buildGraph();render()}
+for(const [id,value] of [['top-down','down'],['left-right','right']])$('#'+id).onclick=()=>guard(async()=>{direction=value;$('#top-down').setAttribute('aria-pressed',direction==='down');$('#left-right').setAttribute('aria-pressed',direction==='right');relayout()});
+$('#expand').onclick=()=>guard(async()=>{const old=viewNodes().find(n=>n.id===selected),logical=old?.logical_id||selected;expanded=!expanded;selected=viewNodes().find(n=>(n.logical_id||n.id)===logical)?.id;$('#expand').setAttribute('aria-pressed',expanded);$('#expand').textContent=expanded?'Collapse cameras':'Expand cameras';relayout()});
+$('#zoom-in').onclick=()=>zoomAt(zoom*1.2);$('#zoom-out').onclick=()=>zoomAt(zoom/1.2);$('#fit').onclick=fitAll;$('#actual-size').onclick=()=>zoomAt(1);$('#focus-node').onclick=focusNode;
+$('#download').onclick=()=>{const blob=new Blob([JSON.stringify({graph,run},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='graph-lab-snapshot.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+let socket, reconnectTimer, lastRevision=-1;
+function connectReports(){
+ const indicator=$('#report-connection');indicator.textContent='Connecting reports';
+ socket=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/websocket/connect`);
+ socket.onopen=()=>{indicator.textContent='Live reports · WebSocket';lastRevision=-1};
+ socket.onmessage=e=>guard(async()=>{
+  const event=JSON.parse(e.data);if(event.type!=='pipeline_state')throw Error('Unknown report type');
+  if(event.revision<=lastRevision)return;lastRevision=event.revision;
+  const value=event.value;if(!value)return;
+  run=value.run;indicator.textContent=run?.worker_pid?`Live reports · worker process ${run.worker_pid}`:'Live reports · WebSocket';
+  if(!graph||graph.digest!==value.graph.digest)accept(value.graph);else render();
+  if(run?.diagnostic_error)error(Error(run.diagnostic_error));
+ });
+ socket.onclose=()=>{indicator.textContent='Reports disconnected · processing continues';clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connectReports,1000)};
+ socket.onerror=()=>socket.close();
+}
+const reportIndicator=document.createElement('span');reportIndicator.id='report-connection';reportIndicator.className='help';document.querySelector('.brand').append(reportIndicator);
+await guard(async()=>{const catalog=await api('/api/catalog');readOnly=!!catalog.read_only;realBackend=!!catalog.real_runtime;if(realBackend){const section=document.createElement('section');section.className='group';section.innerHTML='<h3>Recording</h3><div class=field><label for=recording-path>Folder path</label><input id=recording-path name=recording type=text></div><div class=field><label for=video-subfolder>Video subfolder</label><input id=video-subfolder name=video_subfolder type=text value=synchronized_videos></div>';$('#config').prepend(section);$('#frames').removeAttribute('max');$('#frames').min=1;$('#frames').readOnly=true;document.querySelector('label[for=frames]').textContent='Frames / camera (from video)';}tasks=catalog.tasks;$('#task').innerHTML=tasks.map(t=>`<option value="${esc(t.id)}">${esc(t.label)}</option>`).join('');const current=await api('/api/current');if(current){for(const e of $('#config').elements){if(!e.name)continue;const value=current.graph.config[e.name];if(e.type==='checkbox')e.checked=value;else e.value=value}taskDescription();run=current.run;accept(current.graph)}else{taskDescription();}});connectReports();
+</script></body></html>

@@ -117,6 +117,10 @@ def skeleton_from_mediapipe_observation_recorders(
         tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
     )
 
+    skeleton.add_reprojection_error_numpy(
+    reprojection_error_data=filtered_trajectory_3d.reprojection_error,
+    )
+
     print("DETECTOR: ", detector)
     print("MODEL INFO: ", model_info)
     print(f"SKELETON: {skeleton}")

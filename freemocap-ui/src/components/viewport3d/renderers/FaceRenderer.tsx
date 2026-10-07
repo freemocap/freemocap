@@ -154,7 +154,7 @@ export function FaceRenderer() {
         }
 
         dirtyRef.current = false;
-        statsRef.current.facePoints = count;
+        statsRef.current.face = count;
         const elapsed = performance.now() - t0;
         if (elapsed > 8) console.warn(`FaceRenderer useFrame: ${elapsed.toFixed(1)}ms`);
     });

@@ -27,7 +27,12 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument('--calibration', help='fresh, existing, or a TOML path; full runs default to fresh')
             sub.add_argument('--alignment', choices=('auto', 'calibration', 'person'), help='Default: auto')
             sub.add_argument('--from', dest='start', choices=workflow.STARTS, default='observations')
-            sub.add_argument('--no-skeleton-fit', dest='skeleton_fit', action='store_false')
+            fitting = sub.add_mutually_exclusive_group()
+            fitting.add_argument('--skeleton-fit', dest='skeleton_fit', action='store_true',
+                                 help='Enable optional skeleton fitting (default: off)')
+            fitting.add_argument('--no-skeleton-fit', dest='skeleton_fit', action='store_false',
+                                 help='Disable optional skeleton fitting (the default)')
+            sub.set_defaults(skeleton_fit=False)
             sub.add_argument('--run-id', type=int)
             sub.add_argument('--sensor-group')
     return command

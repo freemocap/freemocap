@@ -38,7 +38,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     // Connectedness is the websocket, full stop — the server is reachable iff the
     // websocket is open. The launched-process state never feeds this.
     const getOverallStatus = () => {
-        if (isFailed) return { text: 'Connection failed — check server log', iconClass: 'warning-icon' };
+        if (isFailed) return { text: 'Not connected', iconClass: 'warning-icon' };
         if (wsState === STATES.CONNECTED) return { text: t('connected'), iconClass: 'connected-icon' };
         if (wsState === STATES.CONNECTING) return { text: t('connecting'), iconClass: 'loader-icon' };
         return { text: 'Not Connected', iconClass: 'warning-icon' };

@@ -118,7 +118,7 @@ def test_processing_replaces_old_result_but_calibration_only_does_not(recording_
     workflow.process(name, operation='calibrate', **options)
     assert parquet.read_text() == 'result 2'
     assert calls[0]['alignment'] == 'auto'
-    assert calls[0]['skeleton_fit'] is True
+    assert calls[0]['skeleton_fit'] is False
     assert calls[0]['filtering_enabled'] is False
     assert (options['recordings_root'] / workflow.TEST_DATA.name / 'synchronized_videos/camera.mp4').read_bytes() == b'original video'
 
@@ -133,6 +133,33 @@ def test_worker_failure_leaves_current_recording_and_marker(recording_workflow, 
         workflow.process(name, **options)
     assert marker.read_bytes() == before
     assert (current / f'{current.name}_data.parquet').read_text() == 'result 1'
+
+
+def test_skeleton_fit_can_be_explicitly_enabled(recording_workflow):
+    name, options, calls = recording_workflow
+    workflow.process(name, skeleton_fit=True, **options)
+    assert calls[0]['skeleton_fit'] is True
+
+
+@pytest.mark.parametrize('command', [['process', 'test_data'], ['process-all']])
+@pytest.mark.parametrize('flags, enabled', [([], False), (['--skeleton-fit'], True), (['--no-skeleton-fit'], False)])
+def test_cli_passes_explicit_fitting_policy_to_processing(monkeypatch, command, flags, enabled):
+    process = Mock(return_value=Path('saved'))
+    monkeypatch.setattr(workflow, 'process', process)
+    assert main(command + flags) == 0
+    assert process.called
+    assert all(call.kwargs['skeleton_fit'] is enabled for call in process.call_args_list)
+
+
+def test_conflicting_fitting_flags_are_rejected():
+    with pytest.raises(SystemExit):
+        parser().parse_args(['process', 'test_data', '--skeleton-fit', '--no-skeleton-fit'])
+
+
+def test_realtime_fitting_defaults_off_but_can_be_enabled():
+    from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import RealtimeAggregatorNodeConfig
+    assert RealtimeAggregatorNodeConfig().skeleton_fitting_enabled is False
+    assert RealtimeAggregatorNodeConfig(skeleton_fitting_enabled=True).skeleton_fitting_enabled is True
 
 
 def test_all_runs_test_data_first_and_stops_on_failure(monkeypatch):

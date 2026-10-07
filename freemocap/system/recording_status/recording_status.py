@@ -219,9 +219,49 @@ def _build_calibration_stage(recording_folder: Path) -> tuple[StageStatus, Path 
     )
 
 
+def _parquet_blender_stage(recording_folder: Path) -> StageStatus | None:
+    paths = sorted(recording_folder.glob('*_data.parquet'))
+    if not paths:
+        return None
+    files = [_file_status(p) for p in paths]
+    error = None
+    try:
+        import json
+        import pyarrow.parquet as pq
+        if len(paths) != 1:
+            raise ValueError('Select exactly one recording Parquet')
+        metadata = pq.read_schema(paths[0]).metadata or {}
+        descriptor = json.loads(metadata[b'freemocap.recording'])
+        if descriptor['schema_version'] != 1:
+            raise ValueError('Unsupported recording schema')
+        run = descriptor['runs'][str(descriptor['selected_run_id'])]
+        groups = [c for c in run['channels'] if c['source'] == 'model:standard_human' and c['kind'] == 'LANDMARKS_3D']
+        if len(groups) != 1:
+            raise ValueError('Selected run needs an unambiguous standard_human landmark channel')
+        selected = groups[0]
+        for kind in ('SEGMENT_ORIGINS', 'ROTATIONS_WORLD'):
+            matches = [c for c in run['channels'] if c['kind'] == kind and
+                       all(c[k] == selected[k] for k in ('source', 'sensor_group', 'reference_frame'))]
+            if len(matches) != 1:
+                raise ValueError('Selected run needs ' + kind)
+        if run['reference_frames'][selected['reference_frame']]['basis'] != 'blender_x_right_y_forward_z_up':
+            raise ValueError('Unsupported Blender coordinate basis')
+        if run['models']['standard_human']['skeleton']['coordinate_system'] != 'blender':
+            raise ValueError('Unsupported model coordinate system')
+    except (KeyError, ValueError, OSError, TypeError) as exc:
+        error = str(exc)
+    if error:
+        files.append(FileStatus(name='Parquet Blender inputs: ' + error, exists=False))
+    return StageStatus(name='Blender input data (Parquet)', complete=error is None,
+                       present_count=sum(f.exists for f in files), total_count=len(files), files=files)
+
+
 def _build_blender_inputs_stage(
     recording_folder: Path,
 ) -> StageStatus:
+    parquet_stage = _parquet_blender_stage(recording_folder)
+    if parquet_stage is not None:
+        return parquet_stage
     output_data = recording_folder / OUTPUT_DATA_FOLDER_NAME
     detector = detect_blender_input_detector(output_data)
 

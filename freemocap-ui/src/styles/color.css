@@ -285,6 +285,16 @@
   /* A row whose governing switch is off: still real, still readable.
      Measured >= 4.5:1 on all three surfaces. */
   --color-text-inactive: #8a8a8a;
+
+  /* ========================================
+     ICON INK
+     ======================================== */
+
+  /* Fill colours for icons drawn as masks (icons.css). Idle sits between
+     --gray-500 and --gray-400 and reads at 5.8:1 on --color-bg-secondary. */
+  --color-icon-idle: #9b9b9b;
+  --color-icon-primary: var(--color-text-primary);
+  --color-icon-active: var(--color-info-strong);
 }
 
 /* ========================================

@@ -76,7 +76,8 @@ poe process-all-data
 
 These commands run the standard production pipelines: fresh calibration, RTMPose
 tracking, triangulation, trajectory preparation, automatic coordinate alignment,
-skeleton reconstruction, and the accepted SkellyForge skeleton fit. They rerun
+skeleton reconstruction. Optional skeleton fitting is off by default; scale fitting
+and landmark/segment reconstruction still run. They rerun
 processing even if old results exist. `process-all-data` runs **test_data first,
 then sample_data**, stopping at the first failure. It does not run pytest.
 
@@ -91,7 +92,7 @@ its version-4 provenance and still reads version-2/3 reports. Interpolation runs
 before smoothing; filled samples never vote as measured evidence for scale or
 alignment. Entirely blank frames remain blank and separate visible intervals.
 
-Skeleton fitting runs independently in each visible interval, retaining original
+When explicitly enabled with `--skeleton-fit`, skeleton fitting runs independently in each visible interval, retaining original
 frame numbers and timestamps. An interval shorter than three frames or without
 any root-pose seed is left null and reported in `skipped_intervals`; root seeds
 are never borrowed across absence. The fitted source saves every modeled landmark
@@ -112,13 +113,16 @@ poe datasets process test_data --from triangulation --calibration existing
 poe datasets process test_data --from filtering
 poe datasets process test_data --from scale_fit
 poe datasets process test_data --from reconstruction
-poe datasets process test_data --from skeleton_fit
+poe datasets process test_data --skeleton-fit
+poe datasets process test_data --from skeleton_fit --skeleton-fit
 poe datasets validate test_data
 ```
 
 The complete commands are aliases for `poe datasets process test_data`,
 `poe datasets process sample_data`, and `poe datasets process-all`.
-`--no-skeleton-fit` omits the final fit. `--timeout SECONDS` sets the limit for each
+`--skeleton-fit` opts into the final fit. `--no-skeleton-fit` remains accepted and
+explicitly selects the default (off). `--from skeleton_fit` requires `--skeleton-fit`.
+`--timeout SECONDS` sets the limit for each
 pipeline. `--run-id` and `--sensor-group` select saved inputs when restarting;
 the default is the selected saved run and its sole eligible sensor group.
 
@@ -212,5 +216,6 @@ SkellyForge change before the default full run can pass.
 The failed attempt retained the previous accepted recording. The runner does
 not fill those observations, drop frames, or disable fitting automatically.
 At that point, sample-data full processing and real saved-stage restart checks
-were pending the dependency fix. The explicit `--no-skeleton-fit` option is not evidence
-that the default full workflow passes.
+were pending the dependency fix. At that time fitting was enabled by default;
+the explicit `--no-skeleton-fit` option did not demonstrate that the fitting-enabled
+workflow passed. Fitting is now opt-in as documented above.

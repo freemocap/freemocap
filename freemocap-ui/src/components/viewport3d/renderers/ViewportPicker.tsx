@@ -5,6 +5,9 @@ import { useViewportState } from "../scene/ViewportStateContext";
 import type { InspectionKind } from "../helpers/viewport3d-types";
 import { getPickingEntries } from "./PickingRegistry";
 
+/** A press that travels further than this before release is a drag, not a click. */
+const CLICK_MAX_TRAVEL_PX = 4;
+
 /**
  * Manual raycast picking: the worker's R3F root has no pointer event manager
  * (events: undefined), so this component listens on the canvas EventTarget and
@@ -20,6 +23,7 @@ export function ViewportPicker() {
     const raycaster = useMemo(() => new Raycaster(), []);
     const pointer = useMemo(() => new Vector2(), []);
     const lastHoverRef = useRef<{ kind: InspectionKind; name: string } | null>(null);
+    const pressRef = useRef<{ x: number; y: number } | null>(null);
 
     useEffect(() => {
         const canvas = gl.domElement;
@@ -67,17 +71,38 @@ export function ViewportPicker() {
             }
         };
 
+        const onLeave = () => {
+            if (lastHoverRef.current) {
+                lastHoverRef.current = null;
+                setHovered(null);
+            }
+        };
+
+        // Pin on a click, not on every press: a press that turns into an orbit drag
+        // must not pin whatever happened to be under the cursor when it started.
         const onDown = (e: Event) => {
             const { clientX, clientY } = e as unknown as { clientX: number; clientY: number };
+            pressRef.current = { x: clientX, y: clientY };
+        };
+        const onUp = (e: Event) => {
+            const press = pressRef.current;
+            pressRef.current = null;
+            if (!press) return;
+            const { clientX, clientY } = e as unknown as { clientX: number; clientY: number };
+            if (Math.hypot(clientX - press.x, clientY - press.y) > CLICK_MAX_TRAVEL_PX) return;
             const t = pick(clientX, clientY);
             if (t) setPinned(t);
         };
 
         canvas.addEventListener("pointermove", onMove);
+        canvas.addEventListener("pointerleave", onLeave);
         canvas.addEventListener("pointerdown", onDown);
+        canvas.addEventListener("pointerup", onUp);
         return () => {
             canvas.removeEventListener("pointermove", onMove);
+            canvas.removeEventListener("pointerleave", onLeave);
             canvas.removeEventListener("pointerdown", onDown);
+            canvas.removeEventListener("pointerup", onUp);
         };
     }, [camera, gl, size, raycaster, pointer, setHovered, setPinned]);
 

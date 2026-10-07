@@ -148,6 +148,13 @@
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
+  /* icon classes draw their glyph as a mask (see icons.css); size it like the background */
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
   /* filter animation in */
   transition: filter var(--speed-1) ease-in-out;
 }

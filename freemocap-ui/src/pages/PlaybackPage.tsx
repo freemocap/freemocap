@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import RecordingPlaybackSession from '@/components/playback/RecordingPlaybackSession';
 import PlaybackStatusPanel from '@/components/playback/PlaybackStatusPanel';
+import IconButton from '@/components/ui-components/IconButton';
 import {useAppDispatch, useAppSelector} from '@/store';
 import {fetchTaskSnapshot} from '@/store/slices/pipelines/pipelines-thunks';
 import {fetchPlaybackBundle, selectPlaybackBundle, selectPlaybackBundleError} from '@/store/slices/playback-data/playback-data-slice';
@@ -29,6 +30,7 @@ export default function PlaybackPage(): React.ReactElement {
     const bundleError = useAppSelector(selectPlaybackBundleError(recordingId, parent));
     const [checked, setChecked] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [dismissedFailureId, setDismissedFailureId] = useState<string | null>(null);
     useEffect(() => {
         setChecked(false); setError(null);
         if (!isConnected) return;
@@ -52,8 +54,12 @@ export default function PlaybackPage(): React.ReactElement {
     if (!checked || !isConnected || (recordingId && !bundle)) return <PlaybackStatusPanel title="Preparing playback" recording={recordingId ?? ''}
         detail="Loading the recording’s videos and reconstruction data." failed={false} />;
     return <div className="flex flex-col h-full min-h-0">
-        {failure && <div role="alert" style={{padding: '12px 16px', marginBottom: 8, borderRadius: 8,
+        {failure && failure.pipelineId !== dismissedFailureId && <div role="alert" style={{position: 'relative', zIndex: 3,
+            padding: '12px 48px 12px 16px', marginBottom: 8, borderRadius: 8,
             background: 'var(--color-danger-surface)', border: '1px solid var(--color-danger)', color: 'var(--color-text-primary)'}}>
+            <IconButton icon="close-icon" title="Dismiss processing error" ariaLabel="Dismiss processing error"
+                style={{position: 'absolute', top: 8, right: 8}}
+                onClick={() => setDismissedFailureId(failure.pipelineId)} />
             <strong>Processing failed</strong><p style={{margin: '4px 0 0', fontSize: 13}}>{failure.detail}</p>
         </div>}
         <RecordingPlaybackSession />

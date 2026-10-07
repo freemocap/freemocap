@@ -1,53 +1,73 @@
-import inspect
-import subprocess
-from importlib.metadata import distribution
-from pathlib import Path
+"""Explicit installation of a prebuilt, self-contained add-on ZIP."""
+import hashlib
+import json
+from pathlib import Path, PurePosixPath
+import tomllib
+import zipfile
 
-from freemocap_blender_addon.main import ajc27_run_as_main_function
-
-from freemocap.core.blender.helpers.bpy_install_addon import \
-    INSTALL_ADDON_SCRIPT_PATH
-from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-
-FREEMOCAP_BLENDER_ADDON_PACKAGE_NAME = "freemocap_blender_addon"
+from freemocap.core.blender.runtime import inspect_blender, run_blender
 
 
-def get_package_path(package_name: str):
-    try:
-        package_dist = distribution(package_name)
-        package_path = package_dist.locate_file("")
-        return package_path
-    except Exception:
-        print(f"{package_name} not found.")
-        return None
+def validate_archive(path, runtime):
+    path = Path(path).expanduser().resolve()
+    if not path.is_file() or path.suffix.lower() != '.zip':
+        raise ValueError('Select a built FreeMoCap add-on ZIP containing bundled dependencies')
+    with zipfile.ZipFile(path) as archive:
+        names = archive.namelist()
+        if len(names) != len(set(names)):
+            raise ValueError('Archive contains duplicate paths')
+        for name in [i.orig_filename for i in archive.infolist()]:
+            p = PurePosixPath(name)
+            if p.is_absolute() or '..' in p.parts or '\\' in name or ':' in name:
+                raise ValueError('Unsafe archive path')
+        manifests = [n for n in names if n.endswith('blender_manifest.toml')]
+        if manifests:
+            if len(manifests) != 1 or tuple(runtime['blender']) < (4, 2, 0):
+                raise ValueError('Extension ZIP requires Blender 4.2 or newer')
+            manifest = tomllib.loads(archive.read(manifests[0]).decode())
+            if manifest['id'] != 'freemocap_blender_addon':
+                raise ValueError('Not a FreeMoCap package')
+            version = tuple(runtime['blender'])
+            for key, valid in [('blender_version_min', lambda v: version >= v), ('blender_version_max', lambda v: version < v)]:
+                if key in manifest and not valid(tuple(map(int, manifest[key].split('.')))):
+                    raise ValueError('Package Blender version range does not match selected Blender')
+            machine = runtime['machine'].lower()
+            arch = {'amd64': 'x64', 'x86_64': 'x64', 'arm64': 'arm64', 'aarch64': 'arm64'}.get(machine)
+            system = {'Windows': 'windows', 'Linux': 'linux', 'Darwin': 'macos'}.get(runtime['system'])
+            if system + '-' + str(arch) not in manifest.get('platforms', []):
+                raise ValueError('Package operating system/architecture does not match selected Blender')
+            prefix = manifests[0].removesuffix('blender_manifest.toml')
+            entries = json.loads(archive.read(prefix + 'dependency-lock.json'))
+            expected_tag = 'cp' + runtime['python'].replace('.', '')
+            for entry in entries:
+                filename = entry['filename']
+                if filename.startswith('pyarrow-') and ('-' + expected_tag + '-') not in filename:
+                    raise ValueError('Bundled PyArrow does not match Blender Python')
+                content = archive.read(prefix + 'wheels/' + filename)
+                if hashlib.sha256(content).hexdigest() != entry['sha256']:
+                    raise ValueError('Bundled wheel checksum mismatch')
+            if not any(e['filename'].startswith('pyarrow-') for e in entries):
+                raise ValueError('Package does not bundle PyArrow')
+            return path, 'extension'
+        prefix = 'freemocap_blender_addon/'
+        try:
+            target = json.loads(archive.read(prefix + '_legacy_dependencies.json'))['runtime']
+        except KeyError as error:
+            raise ValueError('Raw source ZIP is unsupported; select a package with bundled dependencies') from error
+        machine = {'amd64': 'x86_64', 'aarch64': 'arm64'}.get(runtime['machine'].lower(), runtime['machine'].lower())
+        if target != [runtime['system'], machine, runtime['python']]:
+            raise ValueError('Legacy package Python/OS/architecture does not match Blender')
+        if prefix + '_dependencies/pyarrow/__init__.py' not in names:
+            raise ValueError('Legacy package does not bundle PyArrow')
+        return path, 'legacy'
 
 
-def install_freemocap_blender_addon(blender_exe_path: str, ajc_addon_main_file_path: str):
-    addon_root_directory = Path(ajc_addon_main_file_path).parent
-    addon_name = Path(addon_root_directory).name
-
-    # Define your addon's name and root directory
-    subprocess_command = [
-        blender_exe_path,
-        "--background",
-        "--python",
-        INSTALL_ADDON_SCRIPT_PATH,
-        "--",
-        addon_root_directory,
-        addon_name,
-    ]
-    # use CLI to install the addon passing in the addon name and zip file path
-    subprocess.run(subprocess_command)
-
-
-if __name__ == "__main__":
-
-
-    ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
-
-    blender_path_in = get_best_guess_of_blender_path()
-
-    install_freemocap_blender_addon(
-        blender_exe_path=blender_path_in, ajc_addon_main_file_path=inspect.getfile(ajc27_run_as_main_function)
-    )
-    print("Done!")
+def install_freemocap_blender_addon(blender_exe_path, archive_path):
+    runtime = inspect_blender(blender_exe_path)
+    archive, kind = validate_archive(archive_path, runtime)
+    result = run_blender(blender_exe_path, dict(action='install', archive=str(archive), kind=kind))
+    # Confirm a fresh process loads saved preferences and the exact installed name.
+    after = inspect_blender(blender_exe_path)
+    if result['package'] not in after['packages']:
+        raise RuntimeError('Installed package did not remain enabled after restarting Blender')
+    return dict(**result, runtime=after)

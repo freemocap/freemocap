@@ -92,7 +92,10 @@ persistenceListenerMiddleware.startListening({
     predicate: (_, curr, prev) => {
         const c = (curr as RootState).blender;
         const p = (prev as RootState).blender;
-        return c.blenderExePath !== p.blenderExePath
+        return c.exportConfig !== p.exportConfig
+            || c.importRoute !== p.importRoute
+            || c.packageName !== p.packageName
+            || c.blenderExePath !== p.blenderExePath
             || c.exportToBlenderEnabled !== p.exportToBlenderEnabled
             || c.autoOpenBlendFile !== p.autoOpenBlendFile;
     },
@@ -101,6 +104,9 @@ persistenceListenerMiddleware.startListening({
         await api.delay(DEBOUNCE_MS);
         const s = api.getState() as RootState;
         saveToStorage('blender.settings', {
+            exportConfig: s.blender.exportConfig,
+            importRoute: s.blender.importRoute,
+            packageName: s.blender.packageName,
             blenderExePath: s.blender.blenderExePath,
             exportToBlenderEnabled: s.blender.exportToBlenderEnabled,
             autoOpenBlendFile: s.blender.autoOpenBlendFile,

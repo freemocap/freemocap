@@ -9,6 +9,34 @@ import {fetchTaskSnapshot} from "@/store/slices/pipelines/pipelines-thunks";
 import {getTimestampString} from "@/store/slices/recording/getTimestampString";
 import {pipelineConfigUpdated} from '@/store/slices/realtime/realtime-slice';
 import type {RealtimePipelineConfig} from '@/store/slices/realtime/realtime-types';
+import {selectActiveRecordingFullPath} from '@/store/slices/active-recording/active-recording-slice';
+
+/** Discover and load as one request so a subsequent manual selection always wins. */
+export const loadRecordingCalibrationDefault = createAsyncThunk<
+    LoadedCalibration | null, string, {state: RootState; rejectValue: string}
+>(
+    'calibration/loadRecordingDefault',
+    async (directory, {getState, requestId, rejectWithValue}) => {
+        const isCurrent = () => getState().calibration.loadRequestId === requestId
+            && selectActiveRecordingFullPath(getState()) === directory;
+        try {
+            const query = new URLSearchParams({recording_directory: directory});
+            const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/calibration/files?${query}`);
+            if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
+            const {recording_path: path}: {recording_path: string | null} = await response.json();
+            if (!isCurrent()) throw Object.assign(new Error('Recording selection changed'), {name: 'AbortError'});
+            // A recording without a calibration can still use the existing selection.
+            const calibration = path ? await readCalibration(path) : getState().calibration.loadedCalibration;
+            if (!isCurrent()) throw Object.assign(new Error('Recording selection changed'), {name: 'AbortError'});
+            return calibration;
+        } catch (error) {
+            if (!isCurrent()) throw Object.assign(new Error('Recording selection changed'), {name: 'AbortError'});
+            if (error instanceof Error && error.name === 'AbortError') throw error;
+            return rejectWithValue(error instanceof Error ? error.message : String(error));
+        }
+    },
+    {condition: (directory, {getState}) => getState().calibration.defaultRecordingPath !== directory},
+);
 
 export const loadCalibrationForRecording = createAsyncThunk<
     LoadedCalibration | null,

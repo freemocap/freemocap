@@ -63,7 +63,7 @@ def selected_calibration(root: Path, raw: Path, choice: str, ready: dict | None)
 
 def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operation: str = 'process',
               start: str = 'observations', calibration: str | None = None, alignment: str | None = None,
-              skeleton_fit: bool = True, run_id: int | None = None, sensor_group: str | None = None,
+              skeleton_fit: bool = False, run_id: int | None = None, sensor_group: str | None = None,
               timeout: float = 1800.0) -> dict:
     dataset = DATASETS[name]
     if not math.isfinite(timeout) or timeout <= 0:
@@ -71,7 +71,7 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
     if start not in STARTS or operation not in ('process', 'calibrate'):
         raise ValueError('Unsupported operation or starting stage')
     if start == 'skeleton_fit' and not skeleton_fit:
-        raise ValueError('--no-skeleton-fit conflicts with --from skeleton_fit')
+        raise ValueError('--from skeleton_fit requires --skeleton-fit')
     later = start not in ('observations', 'triangulation')
     if later and (calibration is not None or alignment is not None):
         raise ValueError('Changing calibration/alignment requires restarting from triangulation or observations')

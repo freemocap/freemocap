@@ -222,9 +222,9 @@ function WorkerStatsForwarder() {
 // ---------------------------------------------------------------------------
 
 function WorkerInspectionForwarder() {
-    const { hovered, pinned } = useViewportState();
+    const { hovered, pinned, setPinned } = useViewportState();
+    useEffect(() => workerDataStore.subscribeToUnpin(() => setPinned(null)), [setPinned]);
     useEffect(() => {
-        if (pinned) console.log("[worker] posting pinned:", pinned.kind + ":" + pinned.name);
         (self as unknown as Worker).postMessage({
             type: "inspection",
             data: { hovered, pinned },

@@ -12,8 +12,10 @@ import {useRecordingStatus} from "@/hooks/useRecordingStatus";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 import IconButton from "@/components/ui-components/IconButton";
+import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
 export const MocapPanel: React.FC = () => {
+    useRecordingCalibrationDefault();
     const {setOverlayVisibility} = useServer();
     const [localError, setLocalError] = useState<string | null>(null);
     const {api, isElectron} = useElectronIPC();
@@ -142,7 +144,8 @@ export const MocapPanel: React.FC = () => {
 
 
 
-    const displayError = error || localError || directoryInfo?.errorMessage;
+    const calibrationError = useAppSelector(state => state.calibration.error);
+    const displayError = error || localError || calibrationError || directoryInfo?.errorMessage;
 
     const {
         status: recordingStatus,

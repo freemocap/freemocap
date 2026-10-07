@@ -16,7 +16,7 @@ export function FittedSkeletonRenderer() {
     const invalidate = useThree(state => state.invalidate);
     const update = useCallback(() => {
         for (const item of instances.current) item.update(frames.current.find(f => f.source === item.saved.source),
-            visibilityRef.current.fittedSkeleton, visibilityRef.current.fittedAxes);
+            visibilityRef.current.savedSkeleton, visibilityRef.current.savedSkeletonAxes);
         invalidate();
     }, [invalidate]);
     useEffect(() => {
@@ -29,6 +29,6 @@ export function FittedSkeletonRenderer() {
         const unsubFrames = source.subscribeToFittedFrames?.(values => {frames.current = values; update();});
         return () => {unsubDefinitions?.(); unsubFrames?.(); clear();};
     }, [source, group, update]);
-    useEffect(update, [update, visibility.fittedSkeleton, visibility.fittedAxes]);
+    useEffect(update, [update, visibility.savedSkeleton, visibility.savedSkeletonAxes]);
     return <primitive object={group}/>;
 }

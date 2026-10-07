@@ -6,18 +6,19 @@ import {useViewportState} from "@/components/viewport3d/scene/ViewportStateConte
 import {useKeypointsSource} from "@/components/viewport3d/KeypointsSourceContext";
 import type {ResolvedModelFrame} from "@/services/server/transport/frame-types";
 import type {Point3d} from "@/components/viewport3d";
+import {LAYER_HEX} from "@/components/viewport3d/helpers/layer-colors";
 
 // Effective radius = 50 × 0.25 = 12.5 world units — about 2× keypoint size.
 const COM_SCALE = 0.35;
 const COM_PROJECTION_SCALE = COM_SCALE * 0.25; // quarter radius
-const COM_COLOR = "#ffffff"; // white
-const COM_COLOR_NUM = 0xffffff; // LineMaterial needs a number
+const COM_COLOR = LAYER_HEX.centerOfMass;
+const COM_COLOR_NUM = Number.parseInt(COM_COLOR.slice(1), 16); // LineMaterial needs a number
 const COM_COLOR_DARK = "#002200"; // near-black green — checker quadrants
 
 // XCoM (Hof 2008) — extrapolated center of mass on the ground plane.
 // Amber/orange to distinguish from the green CoM family.
-const XCOM_COLOR = "#ffaa00";
-const XCOM_COLOR_NUM = 0xffaa00;
+const XCOM_COLOR = LAYER_HEX.xcom;
+const XCOM_COLOR_NUM = Number.parseInt(XCOM_COLOR.slice(1), 16);
 
 /** The balance display's subject: the model whose derived points this draws.
  *
@@ -42,8 +43,8 @@ function asPoint(triple: [number, number, number] | null): Point3d | null {
 /**
  * Renders CoM sphere, vertical projection dot, CoM→projection connection
  * line, XCoM sphere, and VP→XCoM connection line. Each sub-element is
- * individually gated by visibility.centerOfMass{Sphere,Projection,
- * Connection,Xcom,XcomConnection}.
+ * individually gated by visibility.{comMarker, comFloorPoint, comDropLine,
+ * xcom, xcomLine}.
  */
 export function CenterOfMassRenderer() {
     const { visibility, statsRef } = useViewportState();
@@ -182,7 +183,7 @@ export function CenterOfMassRenderer() {
 
         // CoM sphere
         if (sphere) {
-            if (hasCom && visibility.centerOfMassSphere) {
+            if (hasCom && visibility.comMarker) {
                 sphere.position.set(com.x, com.y, com.z);
                 sphere.scale.setScalar(COM_SCALE);
                 sphere.visible = true;
@@ -193,7 +194,7 @@ export function CenterOfMassRenderer() {
 
         // Vertical projection dot (on ground plane)
         if (projection) {
-            if (hasCom && visibility.centerOfMassProjection) {
+            if (hasCom && visibility.comFloorPoint) {
                 projection.position.set(com.x, com.y, 0);
                 projection.scale.setScalar(COM_PROJECTION_SCALE);
                 projection.visible = true;
@@ -204,7 +205,7 @@ export function CenterOfMassRenderer() {
 
         // CoM → vertical projection dashed line
         if (line) {
-            if (hasCom && visibility.centerOfMassConnection) {
+            if (hasCom && visibility.comDropLine) {
                 lineGeo.setPositions([com.x, com.y, com.z, com.x, com.y, 0]);
                 line.visible = true;
             } else {
@@ -214,7 +215,7 @@ export function CenterOfMassRenderer() {
 
         // XCoM sphere (on ground plane, amber)
         if (xcomMesh) {
-            if (hasXcom && visibility.centerOfMassXcom) {
+            if (hasXcom && visibility.xcom) {
                 xcomMesh.position.set(xcom.x, xcom.y, 0);
                 xcomMesh.scale.setScalar(COM_PROJECTION_SCALE);
                 xcomMesh.visible = true;
@@ -225,7 +226,7 @@ export function CenterOfMassRenderer() {
 
         // VP → XCoM connection line (solid, amber)
         if (xcomLine) {
-            if (hasCom && hasXcom && visibility.centerOfMassXcomConnection) {
+            if (hasCom && hasXcom && visibility.xcomLine) {
                 xcomLineGeo.setPositions([com.x, com.y, 0, xcom.x, xcom.y, 0]);
                 xcomLine.visible = true;
             } else {

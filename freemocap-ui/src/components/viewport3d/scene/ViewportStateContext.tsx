@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import {
     DEFAULT_VISIBILITY,
+    EMPTY_STATS,
     InspectionTarget,
     ViewportStats,
     ViewportVisibility,
@@ -25,15 +26,7 @@ export function ViewportStateProvider({ children }: { children: React.ReactNode 
     const [visibility, setVisibility] = useState<ViewportVisibility>(DEFAULT_VISIBILITY);
     const [hovered, setHovered] = useState<InspectionTarget | null>(null);
     const [pinned, setPinned] = useState<InspectionTarget | null>(null);
-    const statsRef = useRef<ViewportStats>({
-        keypoints: 0,
-        skeleton: 0,
-        mappedKeypoints: 0,
-        facePoints: 0,
-        connections: 0,
-        cameras: 0,
-        centerOfMass: 0,
-    });
+    const statsRef = useRef<ViewportStats>({ ...EMPTY_STATS });
 
     const value = useMemo(
         () => ({ visibility, setVisibility, statsRef, hovered, setHovered, pinned, setPinned }),

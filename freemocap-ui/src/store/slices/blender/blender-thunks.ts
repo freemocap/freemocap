@@ -68,6 +68,9 @@ export const exportRecordingToBlender = createAsyncThunk<
                     recordingFolderPath,
                     blenderExePath,
                     autoOpenBlendFile: blender.autoOpenBlendFile,
+                    route: blender.importRoute,
+                    package: blender.packageName,
+                    blenderExportConfig: blender.exportConfig,
                 }),
             });
 

@@ -28,6 +28,7 @@ import { useKeypointsSource, useModelDefinitionsById } from "../KeypointsSourceC
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { BONE_SIDE_COLORS, classifyBone } from "./RigidBodyBoneInstances";
+import { useViewportState } from "../scene/ViewportStateContext";
 
 const LINE_WIDTH = 2;
 /** Parked far off-screen — an edge whose endpoints are missing this frame. */
@@ -124,6 +125,7 @@ function isFinitePoint(data: Float32Array, index: number): boolean {
 export function ModelConnectionRenderer() {
     const { subscribeToModelFrames } = useKeypointsSource();
     const definitionsById = useModelDefinitionsById();
+    const { statsRef } = useViewportState();
     const { size } = useThree();
 
     const [plannedEdges, setPlannedEdges] = useState<PlannedEdge[]>([]);
@@ -187,6 +189,7 @@ export function ModelConnectionRenderer() {
             });
         }
 
+        let drawnCount = 0;
         for (let i = 0; i < plannedEdges.length; i++) {
             const edge = plannedEdges[i];
             const base = i * 6;
@@ -216,7 +219,9 @@ export function ModelConnectionRenderer() {
             const [r, g, b] = edge.color;
             colors[base] = r; colors[base + 1] = g; colors[base + 2] = b;
             colors[base + 3] = r; colors[base + 4] = g; colors[base + 5] = b;
+            drawnCount++;
         }
+        statsRef.current.boneLines = drawnCount;
 
         positionAttribute.needsUpdate = true;
         colorAttribute.needsUpdate = true;

@@ -1,3 +1,6 @@
+import configparser
+import os
+import re
 import logging
 import platform
 from pathlib import Path
@@ -26,6 +29,20 @@ def guess_blender_exe_path_from_path(base_path: Union[str, Path]) -> Optional[Pa
 
 def get_best_guess_of_blender_path():
     if platform.system() == "Windows":
+        library = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData/Local')) / 'Blender Launcher'
+        settings = library / 'Blender Launcher.ini'
+        if settings.is_file():
+            parser = configparser.ConfigParser(interpolation=None)
+            parser.read(settings, encoding='utf-8-sig')
+            custom = parser.get('General', 'library_folder', fallback='')
+            if custom:
+                library = Path(custom.replace('\\\\', '\\'))
+        builds = list((library / 'stable').glob('*/blender.exe'))
+        def version(path):
+            match = re.search(r'blender-(\d+)\.(\d+)\.(\d+)', path.parent.name)
+            return tuple(map(int, match.groups())) if match else (0, 0, 0)
+        if builds:
+            return str(max(builds, key=version))
         # check all lettered drives and the user's home directory
         paths_to_check = [
             Path(f"{letter}:/Program Files/Blender Foundation") for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

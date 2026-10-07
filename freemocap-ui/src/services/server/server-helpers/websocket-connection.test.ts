@@ -16,14 +16,19 @@ class SocketStub {
     send(): void {}
 }
 
-test('reconnect and disposal retain a single owned socket and reject stale callbacks', () => {
+test('reconnect and disposal retain a single owned socket and reject stale callbacks', (t) => {
+    const consoleSpies = (['log', 'info', 'warn', 'error', 'debug'] as const).map(
+        method => t.mock.method(console, method, () => {}),
+    );
     const originalSocket = globalThis.WebSocket;
     const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
     const originalClearTimeout = globalThis.clearTimeout;
     const originalClearInterval = globalThis.clearInterval;
     const timers = new Map<number, () => void>();
     let nextTimer = 0;
-    const schedule = (callback: () => void): number => {
+    let lastDelay = 0;
+    const schedule = (callback: () => void, delay: number): number => {
+        lastDelay = delay;
         timers.set(++nextTimer, callback);
         return nextTimer;
     };
@@ -57,38 +62,62 @@ test('reconnect and disposal retain a single owned socket and reject stale callb
         assert.notEqual(first.url.searchParams.get('connection_id'), second.url.searchParams.get('connection_id'));
         second.readyState = SocketStub.OPEN;
         second.onopen!();
-        assert.equal(timers.size, 2);
+        assert.equal(timers.size, 1);
         connection.disconnect();
         assert.equal(timers.size, 0);
         assert.equal(second.onopen, null);
         assert.equal(second.onmessage, null);
         assert.equal(connection.getState(), ConnectionState.DISCONNECTED);
 
-        // Each connection opens, then fails before it becomes stable.
+        // Stay offline well beyond the old five-retry limit, including server errors.
         connection.connect();
-        for (let attempt = 0; attempt <= 5; attempt++) {
+        for (let attempt = 0; attempt < 30; attempt++) {
             const socket = SocketStub.instances.at(-1)!;
-            socket.readyState = SocketStub.OPEN;
-            socket.onopen!();
-            socket.onclose!({code: 1006, reason: ''} as CloseEvent);
-            if (attempt < 5) {
-                assert.equal(connection.getState(), ConnectionState.RECONNECTING);
-                assert.equal(timers.size, 1);
-                const retryCallback = timers.values().next().value!;
-                timers.clear();
-                retryCallback();
+            if (attempt % 2 === 0) {
+                socket.readyState = SocketStub.OPEN;
+                socket.onopen!();
             }
+            socket.readyState = 3;
+            socket.onerror!(new Event('error'));
+            socket.onclose!({code: attempt % 2 === 0 ? 1011 : 1006, reason: ''} as CloseEvent);
+            assert.equal(connection.getState(), ConnectionState.RECONNECTING);
+            assert.equal(connection.send({test: true}), false);
+            assert.equal(timers.size, 1);
+            assert.equal(lastDelay, 5000, 'every retry waits five seconds');
+            const retryCallback = timers.values().next().value!;
+            timers.clear();
+            retryCallback();
         }
-        assert.equal(connection.getState(), ConnectionState.FAILED);
-        assert.equal(timers.size, 0, 'short-lived handshakes must exhaust retries');
+        const recovered = SocketStub.instances.at(-1)!;
+        recovered.readyState = SocketStub.OPEN;
+        recovered.onopen!();
+        assert.equal(connection.getState(), ConnectionState.CONNECTED);
+        assert.equal(connection.send({test: true}), true);
+        recovered.send = () => { throw new Error('send failed'); };
+        assert.equal(connection.send({test: true}), false);
+        assert.equal(connection.sendRaw('ping'), false);
+        recovered.readyState = 3;
+        recovered.onclose!({code: 1000, reason: ''} as CloseEvent);
+        assert.equal(timers.size, 1, 'even a clean server close retries');
+        connection.disconnect();
+        assert.equal(timers.size, 0, 'explicit disconnect cancels pending recovery');
 
+        // Constructor failures must also recover without throwing or logging.
+        Object.defineProperty(globalThis, 'WebSocket', {value: class {
+            constructor() { throw new Error('temporarily unavailable'); }
+        }});
         connection.connect();
-        const fatalSocket = SocketStub.instances.at(-1)!;
-        fatalSocket.readyState = SocketStub.OPEN;
-        fatalSocket.onopen!();
-        fatalSocket.onclose!({code: 1011, reason: 'Fatal server error'} as CloseEvent);
-        assert.equal(connection.getState(), ConnectionState.FAILED);
-        assert.equal(timers.size, 0, 'fatal server errors must not reconnect');
+        assert.equal(connection.getState(), ConnectionState.RECONNECTING);
+        assert.equal(lastDelay, 5000);
+        Object.defineProperty(globalThis, 'WebSocket', {value: SocketStub});
+        const retryCallback = timers.values().next().value!;
+        timers.clear();
+        retryCallback();
+        const finalSocket = SocketStub.instances.at(-1)!;
+        finalSocket.readyState = SocketStub.OPEN;
+        finalSocket.onopen!();
+        assert.equal(connection.getState(), ConnectionState.CONNECTED);
+        for (const spy of consoleSpies) assert.equal(spy.mock.callCount(), 0);
     } finally {
         connection.disconnect();
         Object.defineProperty(globalThis, 'WebSocket', {value: originalSocket});

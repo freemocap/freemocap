@@ -18,6 +18,7 @@ import {useAppSelector} from "@/store/hooks";
 import {RTMPOSE_MODELS} from "@/store/slices/mocap";
 import MocapStageSelection from './mocap-stage-selection';
 import type {StageSelection} from '@/services/recording/posthoc-processing';
+import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
 enum SetupSection {
     Directory = 'Recording directory',
@@ -37,6 +38,7 @@ interface MocapSetupModalProps {
 }
 
 const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playback"}) => {
+    useRecordingCalibrationDefault(mode === 'playback');
     const {
         canProcessMocapRecording,
         isLoading,

@@ -1,0 +1,500 @@
+/* =========================================================
+   3D VIEWPORT OVERLAY
+   Viewport panel (top-left), pinned details (top-right),
+   camera actions (bottom-right), controls hint (bottom-left).
+   ========================================================= */
+
+.vp-root {
+  --vp-gap: 12px;
+  --vp-layers-width: 264px;
+  --vp-inspect-width: 340px;
+  --vp-bottom-bar: 56px;
+  --vp-panel-bg: rgba(14, 14, 14, 0.88);
+  --vp-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  container-type: size;
+  container-name: viewport;
+}
+
+/* ---------- shared panel surface ---------- */
+
+.vp-layers,
+.vp-inspect {
+  position: absolute;
+  top: var(--vp-gap);
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - var(--vp-gap) - var(--vp-bottom-bar));
+  background: var(--vp-panel-bg);
+  border: 1px solid var(--color-border-muted);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 18px;
+  user-select: none;
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- Viewport panel ---------- */
+
+.vp-layers {
+  left: var(--vp-gap);
+  width: var(--vp-layers-width);
+}
+
+.vp-layers:not(.is-open) {
+  width: auto;
+}
+
+.vp-layers-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vp-layers-header:hover {
+  background: var(--color-surface-hover);
+}
+
+.vp-layers-title {
+  font-weight: 600;
+}
+
+.vp-chevron {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 1.5px solid var(--color-text-muted);
+  border-bottom: 1.5px solid var(--color-text-muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--speed-2, 0.15s);
+}
+
+.vp-layers.is-open .vp-chevron {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.vp-layers-body {
+  overflow-y: auto;
+  padding: 0 6px 6px;
+  border-top: 1px solid var(--color-border-muted);
+}
+
+.vp-layer-group + .vp-layer-group {
+  border-top: 1px solid var(--color-border-muted);
+}
+
+.vp-layer-group-title {
+  padding: 10px 6px 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vp-layer-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vp-layer-group-title .vp-link-button {
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* Label / control rows in the Recording section. */
+.vp-field {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 2px 6px;
+}
+
+.vp-field-label {
+  color: var(--color-text-secondary);
+}
+
+.vp-field-value {
+  font-family: var(--vp-mono);
+  font-size: 12px;
+}
+
+.vp-select {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  font-family: var(--vp-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.vp-select:hover:not(:disabled) {
+  border-color: var(--color-border-primary);
+}
+
+.vp-select:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: -1px;
+}
+
+.vp-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vp-layer-row:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.vp-layer-row:focus-visible,
+.vp-layers-header:focus-visible,
+.vp-small-button:focus-visible,
+.vp-link-button:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: -2px;
+}
+
+.vp-layer-row.is-nested {
+  padding-left: 26px;
+  min-height: 26px;
+  font-size: 12px;
+}
+
+.vp-layer-row.is-off .vp-layer-label {
+  color: var(--color-text-muted);
+}
+
+.vp-layer-row.is-off .vp-swatch {
+  opacity: 0.3;
+}
+
+.vp-layer-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.vp-layer-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vp-layer-count {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The switch itself is styled by toggle.css; these spans need block boxes for its sizes to apply. */
+.vp-layer-row .toggle-container,
+.vp-layer-row .toggle-circle {
+  display: block;
+  flex: none;
+}
+
+.vp-layer-row .toggle-container.off {
+  border-color: var(--color-border-primary);
+}
+
+/* Legend swatch: its shape says how the layer draws (points, lines or solid bars). */
+.vp-swatch {
+  flex: none;
+  width: 16px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.vp-swatch.is-dot {
+  width: 10px;
+  margin: 0 3px;
+  border-radius: 50%;
+}
+
+.vp-swatch.is-line {
+  height: 3px;
+  border-radius: 2px;
+}
+
+.vp-swatch.is-bar {
+  height: 7px;
+  border-radius: 4px;
+}
+
+.vp-swatch.is-empty {
+  height: 10px;
+  border: 1px dashed var(--color-border-primary);
+  background: transparent;
+}
+
+.vp-layers-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 6px 0;
+  border-top: 1px solid var(--color-border-muted);
+}
+
+.vp-link-button {
+  padding: 2px 4px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--color-info);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vp-link-button:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+/* ---------- Pinned details card ---------- */
+
+.vp-inspect {
+  right: var(--vp-gap);
+  width: var(--vp-inspect-width);
+  max-width: calc(100% - var(--vp-layers-width) - 3 * var(--vp-gap));
+  user-select: text;
+}
+
+/* Too narrow to sit beside the viewport panel: drop to the bottom-right, above the camera actions. */
+@container viewport (max-width: 640px) {
+  .vp-inspect {
+    top: auto;
+    bottom: var(--vp-bottom-bar);
+    max-width: calc(100% - 2 * var(--vp-gap));
+    max-height: 55%;
+  }
+}
+
+.vp-inspect-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--color-border-muted);
+}
+
+.vp-inspect-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vp-inspect-name {
+  font-family: var(--vp-mono);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.vp-kind-badge {
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vp-inspect-actions {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.vp-small-button {
+  height: 24px;
+  padding: 0 10px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vp-small-button:hover {
+  background: var(--color-bg-elevated);
+}
+
+.vp-small-button.is-icon {
+  width: 24px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.vp-detail-list {
+  margin: 0;
+  padding: 6px 12px 10px;
+  overflow-y: auto;
+}
+
+.vp-detail-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 5px 0;
+}
+
+.vp-detail-row.is-inline {
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.vp-detail-row.is-inline dd {
+  text-align: right;
+}
+
+.vp-detail-row.is-inline .vp-detail-numbers {
+  justify-content: flex-end;
+}
+
+.vp-detail-row.is-inline .vp-num {
+  min-width: 0;
+}
+
+.vp-detail-row + .vp-detail-row {
+  border-top: 1px solid var(--color-border-muted);
+}
+
+.vp-detail-row dt {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.vp-detail-row dd {
+  margin: 0;
+}
+
+.vp-detail-text {
+  font-family: var(--vp-mono);
+  font-size: 13px;
+}
+
+.vp-detail-text.is-missing {
+  color: var(--color-text-disabled);
+}
+
+.vp-detail-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.vp-num {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 8ch;
+  font-family: var(--vp-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vp-num-axis {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+/* ---------- Hover label ---------- */
+
+.vp-hover-label {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px;
+  background: var(--vp-panel-bg, rgba(14, 14, 14, 0.9));
+  border: 1px solid var(--color-border-muted);
+  border-radius: 5px;
+  color: var(--color-text-primary);
+  pointer-events: none;
+}
+
+.vp-hover-kind {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vp-hover-name {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 13px;
+}
+
+/* ---------- Bottom bar ---------- */
+
+.vp-actions {
+  position: absolute;
+  right: var(--vp-gap);
+  bottom: var(--vp-gap);
+  z-index: 100;
+  display: flex;
+  gap: 4px;
+}
+
+.vp-controls-hint {
+  position: absolute;
+  left: var(--vp-gap);
+  bottom: var(--vp-gap);
+  max-width: calc(100% - 160px);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 16px;
+  pointer-events: none;
+}
+
+@container viewport (max-width: 520px) {
+  .vp-controls-hint {
+    display: none;
+  }
+}

@@ -1,12 +1,15 @@
-import inspect
 import logging
 import subprocess
 from pathlib import Path
+from typing import Literal
+
+from freemocap.core.blender.runtime import inspect_blender, executable, environment
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from freemocap.core.blender.export_to_blender import export_to_blender
+from freemocap.core.blender.blender_export_config import BlenderExportConfig
 from freemocap.core.blender.helpers.install_blender_addon import \
     install_freemocap_blender_addon
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
@@ -34,10 +37,13 @@ class InstallAddonRequest(BaseModel):
     )
     blender_exe_path: str | None = Field(alias="blenderExePath", default=None, examples=[None])
 
+    archive_path: str = Field(alias="archivePath")
+
 
 class InstallAddonResponse(BaseModel):
     success: bool
     message: str | None = None
+    package: str | None = None
 
 
 class ExportToBlenderRequest(BaseModel):
@@ -54,6 +60,14 @@ class ExportToBlenderRequest(BaseModel):
     recording_folder_path: str = Field(alias="recordingFolderPath", default=FREEMOCAP_TEST_DATA_PATH)
     blender_exe_path: str | None = Field(alias="blenderExePath", default=None, examples=[None])
     auto_open_blend_file: bool = Field(alias="autoOpenBlendFile", default=True)
+
+    route: Literal['auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints'] = 'auto'
+    package: str | None = None
+    trajectory_channel: Literal['LANDMARKS_3D', 'MAPPED_KEYPOINTS_3D'] = Field(default='LANDMARKS_3D', alias='trajectoryChannel')
+    run_id: int | None = Field(default=None, alias='runId')
+    sensor_group: str | None = Field(default=None, alias='sensorGroup')
+
+    blender_export_config: BlenderExportConfig = Field(default_factory=BlenderExportConfig, alias="blenderExportConfig")
 
     @property
     def blend_file_path(self):
@@ -111,49 +125,50 @@ def detect_blender() -> DetectBlenderResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@blender_router.post("/addon/install")
-def install_addon(request: InstallAddonRequest) -> InstallAddonResponse:
-    """Install the freemocap_blender_addon into Blender (optional, not required for export)."""
+class InspectBlenderRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    blender_exe_path: str | None = Field(alias='blenderExePath', default=None)
+
+
+@blender_router.post('/inspect')
+def inspect_blender_endpoint(request: InspectBlenderRequest):
     try:
-        if request.blender_exe_path is None:
-            request.blender_exe_path = get_best_guess_of_blender_path()
-        blender_exe = Path(request.blender_exe_path)
-        if not blender_exe.is_file():
+        return inspect_blender(request.blender_exe_path)
+    except (ValueError, FileNotFoundError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
 
-            raise HTTPException(status_code=400, detail=f"Blender executable not found at: {request.blender_exe_path}")
 
-        from freemocap_blender_addon.main import ajc27_run_as_main_function
-        ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
-
-        install_freemocap_blender_addon(
-            blender_exe_path=str(blender_exe),
-            ajc_addon_main_file_path=ajc_addon_main_file_path,
-        )
-        return InstallAddonResponse(success=True, message="Addon installed successfully")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(f"Error installing addon: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@blender_router.post('/addon/install')
+def install_addon(request: InstallAddonRequest) -> InstallAddonResponse:
+    """Explicitly install a self-contained ZIP into the selected Blender profile."""
+    try:
+        result = install_freemocap_blender_addon(str(executable(request.blender_exe_path)), request.archive_path)
+        return InstallAddonResponse(success=True, package=result['package'], message='Bundled add-on installed and verified')
+    except (ValueError, FileNotFoundError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        logger.exception('Blender installation failed')
+        raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @blender_router.post("/export")
 def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlenderResponse:
-    """Export a recording session to a .blend file. Works without addon installation."""
+    """Export a recording session to a .blend file. Uses an explicitly installed and enabled bundled add-on."""
     try:
         recording_folder = Path(request.recording_folder_path)
         if not recording_folder.is_dir():
             raise HTTPException(status_code=400, detail=f"Recording folder not found: {request.recording_folder_path}")
-        if request.blender_exe_path is None:
-            request.blender_exe_path = get_best_guess_of_blender_path()
-        blender_exe = Path(request.blender_exe_path)
-        if not blender_exe.is_file():
-            raise HTTPException(status_code=400, detail=f"Blender executable not found at: {request.blender_exe_path}")
+        blender_exe = executable(request.blender_exe_path)
 
         export_to_blender(
             recording_folder_path=str(recording_folder),
             blend_file_path=request.blend_file_path,
             blender_exe_path=str(blender_exe),
+            route=request.route, package=request.package, trajectory_channel=request.trajectory_channel,
+            run_id=request.run_id, sensor_group=request.sensor_group,
+            blender_export_config=request.blender_export_config.model_dump(),
             open_file_on_completion=request.auto_open_blend_file,
         )
         return ExportToBlenderResponse(
@@ -163,7 +178,7 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
         )
     except HTTPException:
         raise
-    except FileNotFoundError as e:
+    except (ValueError, FileNotFoundError) as e:
         logger.exception(f"Missing required files for export: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -191,7 +206,7 @@ def open_in_blender_endpoint(request: OpenInBlenderRequest) -> OpenInBlenderResp
             raise HTTPException(status_code=400, detail=f"No .blend file found in {recording_folder}")
 
         logger.info(f"Launching Blender ({blender_exe}) with {status.blend_file_path}")
-        subprocess.Popen([str(blender_exe), status.blend_file_path], shell=False)
+        subprocess.Popen([str(blender_exe), status.blend_file_path], cwd=recording_folder, env=environment(), shell=False)
 
         return OpenInBlenderResponse(
             success=True,

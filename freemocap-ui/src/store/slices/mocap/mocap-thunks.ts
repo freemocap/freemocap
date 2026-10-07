@@ -13,10 +13,6 @@ function buildPosthocConfig(state: RootState) {
     const blender = state.blender;
     if (state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
     const calibrationTomlPath = selectLoadedCalibration(state)?.path ?? null;
-    // The freemocap_blender_addon only understands MediaPipe output so far - gate the
-    // request payload here rather than clobbering the user's toggle preference in the
-    // UI, so switching the detector away and back doesn't lose their selection.
-    const blenderSupported = config.detectorType === "mediapipe";
     return {
         bodyAlignment: {
             mode: config.bodyAlignmentMode,
@@ -48,9 +44,12 @@ function buildPosthocConfig(state: RootState) {
             cutoff: config.posthoc_filter.cutoff,
             order: config.posthoc_filter.order,
         },
-        exportToBlender: blenderSupported && blender.exportToBlenderEnabled,
+        exportToBlender: blender.exportToBlenderEnabled,
+        blenderImportRoute: blender.importRoute,
+        blenderPackage: blender.packageName,
+        blenderExportConfig: blender.exportConfig,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
-        autoOpenBlendFile: blenderSupported && blender.autoOpenBlendFile,
+        autoOpenBlendFile: blender.autoOpenBlendFile,
     };
 }
 

@@ -43,7 +43,7 @@ def test_completion_exports_only_when_enabled_and_preserves_processing_success(s
             raise OSError('Disk full')
         return SimpleNamespace(manifest_path=saved_request.structure.exports_dir / 'metadata.json')
     monkeypatch.setattr(tall_csv, 'export_tall_csv', export)
-    request = Mock(spec=MocapWorkerRequest, config=PosthocMocapPipelineConfig(exportTallCsv=enabled),
+    request = Mock(spec=MocapWorkerRequest, config=PosthocMocapPipelineConfig(exportTallCsv=enabled, exportToBlender=False),
         recording=SimpleNamespace(full_recording_path=saved_request.structure.full_path),
         ipc=SimpleNamespace(should_continue=True), report=lambda *args: reports.append(args))
     complete_mocap(request)

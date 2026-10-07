@@ -3,10 +3,16 @@ import type {RootState} from './root-state-types';
 import {applyRealtimePipeline} from './slices/realtime/realtime-thunks';
 import {restoreCalibrationSelection} from './slices/calibration/calibration-thunks';
 import {saveCalibrationTransform} from './slices/calibration/calibration-save';
+import {selectActiveRecordingFullPath} from './slices/active-recording/active-recording-slice';
+import {recordingCalibrationDefaultReset} from './slices/calibration/calibration-slice';
 
 export const calibrationSelectionListenerMiddleware = createListenerMiddleware();
 
 const startListening = calibrationSelectionListenerMiddleware.startListening.withTypes<RootState>();
+startListening({
+    predicate: (_, current, previous) => selectActiveRecordingFullPath(current) !== selectActiveRecordingFullPath(previous),
+    effect: (_, api) => { api.dispatch(recordingCalibrationDefaultReset()); },
+});
 startListening({
     predicate: (action, current, previous) => !restoreCalibrationSelection.fulfilled.match(action)
         && !restoreCalibrationSelection.rejected.match(action)

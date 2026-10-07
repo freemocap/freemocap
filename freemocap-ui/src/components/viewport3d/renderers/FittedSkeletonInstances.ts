@@ -2,10 +2,11 @@ import {Color, CylinderGeometry, Group, InstancedMesh, Material, MeshBasicMateri
 import type {FittedSkeletonDefinition, FittedSkeletonFrame} from '@/services/recording/fitted-skeleton-types';
 import {fittedWorldPoint} from '@/services/recording/fitted-skeleton';
 import {registerPickingMesh, unregisterPickingMesh} from './PickingRegistry';
+import {AXIS_HEX, LAYER_HEX} from '../helpers/layer-colors';
 
 const UP = new Vector3(0, 1, 0);
 const AXES = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
-const COLORS = ['#f36a62', '#63d879', '#649cff'];
+const COLORS = AXIS_HEX;
 
 /** Saved segment transforms, drawn independently of the original reconstruction. */
 export class FittedSkeletonInstances {
@@ -29,8 +30,8 @@ export class FittedSkeletonInstances {
         geometry.display.forEach((points, body) => points.forEach((p, point) => {
             if (Math.hypot(...p) > 1e-8) this.rods.push({body, point});
         }));
-        this.sticks = new InstancedMesh(new CylinderGeometry(1, 1, 1, 8), new MeshStandardMaterial({color: '#00ff00', roughness: 0.65, metalness: 0, emissiveIntensity: 0}), Math.max(1, this.rods.length));
-        this.origins = new InstancedMesh(new SphereGeometry(1, 10, 6), new MeshStandardMaterial({color: '#00ff00', roughness: 0.65, metalness: 0, emissiveIntensity: 0}), geometry.names.length);
+        this.sticks = new InstancedMesh(new CylinderGeometry(1, 1, 1, 8), new MeshStandardMaterial({color: LAYER_HEX.savedSkeleton, roughness: 0.65, metalness: 0, emissiveIntensity: 0}), Math.max(1, this.rods.length));
+        this.origins = new InstancedMesh(new SphereGeometry(1, 10, 6), new MeshStandardMaterial({color: LAYER_HEX.savedSkeleton, roughness: 0.65, metalness: 0, emissiveIntensity: 0}), geometry.names.length);
         this.axes = new InstancedMesh(new CylinderGeometry(1, 1, 1, 6), new MeshBasicMaterial(), geometry.names.length * 3);
         for (let b = 0; b < geometry.names.length; b++) for (let a = 0; a < 3; a++) this.axes.setColorAt(b * 3 + a, new Color(COLORS[a]));
         for (const mesh of [this.sticks, this.origins, this.axes]) {mesh.count = 0; mesh.frustumCulled = false; this.group.add(mesh);}

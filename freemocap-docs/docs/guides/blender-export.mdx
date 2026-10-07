@@ -3,73 +3,103 @@ sidebar_position: 3
 title: Blender Export
 ---
 
-import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
-
-<AiGeneratedBanner />
-
 # Blender Export
 
-FreeMoCap can export processed mocap data directly to Blender, creating a complete 3D scene with skeleton mesh, camera frustums, and lighting.
+FreeMoCap exports a processed recording through a self-contained package installed
+in the selected Blender runtime. Blender uses its own bundled dependencies; core
+never injects its Python environment or installs packages during export.
 
-:::note MediaPipe only (for now)
-Blender export currently works with **MediaPipe** mocap output only — RTMPose 3D data does not yet have a working Blender export. See the [Post-Hoc Motion Capture guide](/docs/guides/posthoc-mocap).
-:::
+## Set up Blender
 
-## Prerequisites
+1. Select a Blender executable in the Blender settings. Windows autodetection also
+   checks stable installations managed by Blender Launcher.
+2. Choose **Check Blender package**. A package installed in another Blender
+   version or in a private VS Code development profile is not necessarily available
+   to this runtime's normal profile.
+3. If needed, close that Blender instance, expand **Install bundled add-on ZIP**,
+   enter the full path to a trusted, built FreeMoCap package, and install it.
+   Use a package matching Blender's Python version, OS and architecture.
+   Raw repository ZIPs do not contain the required dependencies.
+4. If multiple FreeMoCap packages are enabled, select the intended package.
 
-- **Blender** installed on your system (detected automatically or specified manually)
-- A **processed recording** with mocap data (all required `.npy` files present in the recording's output data directory)
-- The `freemocap_blender_addon` (installed automatically by the backend)
+Blender 4.2 and newer support Extension packages. Earlier Blender versions use
+legacy add-on packages with privately bundled dependencies. Installation is an
+explicit action that saves preferences for the selected Blender runtime. Export
+never downloads dependencies. Package inspection and installation use background
+Blender processes; installation is verified again in a fresh process.
 
-## Export Flow
+## Choose the import route
 
-1. **Process mocap data** — Run the mocap pipeline on a recording to generate `.npy` files
-2. **Detect Blender** — The backend auto-detects installed Blender via `GET /freemocap/blender/detect`
-3. **Export** — Click "Export to Blender" or call `POST /freemocap/blender/export`
-4. **Open** — Optionally auto-open the `.blend` file in Blender's GUI
+| Route | Input and behavior |
+| --- | --- |
+| Automatic | Uses saved Parquet segment poses when a recording Parquet exists; otherwise legacy NPY |
+| Parquet: saved landmarks and segment poses | Imports SkellyForge landmarks and segment poses directly |
+| Parquet: landmarks with Blender constraints | Uses landmark trajectories to drive the legacy Blender constraint reconstruction |
+| Legacy NPY | Uses the original MediaPipe output files and Blender constraints |
 
-## What Gets Exported
+Parquet input is tracker-independent once it has been mapped to the standard human
+model. The Parquet recording must contain an unambiguous selected run and sensor
+group. API callers may supply `runId`, `sensorGroup` and `trajectoryChannel`;
+`MAPPED_KEYPOINTS_3D` is available for the constraint comparison route.
 
-The Blender addon reads the `.npy` output files and builds a complete 3D scene:
+The export always saves a `.blend`. Optional FBX is available on all routes; BVH
+requires legacy NPY. T/A rest poses and optional foot locking/hand motion limits
+require a constraint route. The automatic route exposes conservative settings;
+select a constraint route explicitly to enable cleanup. Additional formats default
+to none, and cleanup defaults to off. The saved-segment route preserves recorded
+poses. Unsupported requests fail rather than silently falling back.
 
-| Element | Source Data |
-|---|---|
-| **Skeleton mesh** | `mediapipe_body_3d_xyz.npy` — body keypoints connected as a skeleton |
-| **Hand meshes** | `mediapipe_right_hand_3d_xyz.npy`, `mediapipe_left_hand_3d_xyz.npy` |
-| **Face mesh** | `mediapipe_face_3d_xyz.npy` |
-| **Center of mass** | `mediapipe_body_total_body_center_of_mass.npy` — whole-body COM trajectory |
-| **Camera frustums** | Calibration data — shows where each camera was in 3D space |
-| **Ground plane** | Calibration groundplane alignment — Z=0 reference plane |
-| **Lighting** | Default three-point lighting setup |
+Cleanup edits Blender animation targets, not the source Parquet. COM continues to
+represent the original recording. The calibration/alignment persistence workflow
+is a separate deferred issue; export does not try to correct calibration geometry.
 
-## Technical Details
+Click **Process Recording with Blender**, or enable export after processing.
+The backend confirms successful completion and a nonempty output before optionally
+opening Blender. An old `.blend` cannot hide a subprocess failure.
 
-The export process runs Blender in `--background` mode:
+## HTTP interface
 
-1. Backend resolves the `.blend` output path from the recording folder
-2. Injects `freemocap_blender_addon` into Blender's `sys.path` (no manual addon installation needed)
-3. Runs `run_blender_export.py` via `--python`
-4. The addon reads `.npy` files, builds the scene, and saves the `.blend`
-5. Backend verifies the `.blend` file was created
+Endpoints are under `/freemocap/blender`:
 
-## API Endpoints
+- `GET /detect`: locate a Blender executable.
+- `POST /inspect`: inspect the selected runtime and enabled FreeMoCap packages.
+- `POST /addon/install`: install an explicit `archivePath` into that runtime.
+- `POST /export`: export `recordingFolderPath`, optionally selecting `route`,
+  `package`, and `blenderExportConfig`.
+- `POST /open`: open a previously exported scene.
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /freemocap/blender/detect` | Find installed Blender |
-| `POST /freemocap/blender/addon/install` | Install addon into Blender |
-| `POST /freemocap/blender/export` | Export recording to `.blend` |
-| `POST /freemocap/blender/open` | Open `.blend` in Blender GUI |
+`blenderExportConfig` retains main's flat fields: `formats`, `rest_pose`,
+`apply_foot_locking`, and `limit_hand_markers_range_of_motion` (camelCase aliases
+are also accepted). Core translates these to the add-on's nested sections.
 
-## Troubleshooting
+## Development validation
 
-**"Blender not detected"**
-→ Install Blender from blender.org, or specify the path manually in the UI settings.
+The published add-on revision used for this integration is
+`d0dd5ef745db6a6f7523acf333da6bf15c66ea32`. Core's lockfile and installed host
+package were verified at that revision; actual exports use the installed Blender
+package, not that host import.
 
-**"Export fails — missing .npy files"**
-→ Run the mocap processing pipeline first. The export readiness check verifies all required files exist.
+On Windows, core HTTP tests passed installation, restart, exports and scene
+reopening for both prepared datasets through both Parquet routes on Blender 3.0.0
+(legacy package) and 5.2.2 (Extension). Constraint tests also exercised A-pose,
+foot locking and FBX output. Source publication hashes remained unchanged.
+Fourteen host export tests passed, plus thirteen related provenance/CSV tests.
+Completion-handler coverage includes enabled/disabled exports, cancellation and
+export failure while preserving the processing result. A browser test exercised package setup, route
+capabilities and export request options with mocked HTTP responses. UI TypeScript
+checking passed. The tests use disposable preferences and recording copies.
 
-**"Addon failed to load"**
-→ The addon is injected at export time, not installed into Blender's user preferences. Ensure the `freemocap_blender_addon` package is available in the Python environment.
+Local evidence is under `.test-artifacts/blender-core/`. Re-run host tests with:
 
-<Tip shortInfo="The freemocap_blender_addon is a separate package in the FreeMoCap GitHub org. It's installed as a git dependency alongside the main freemocap package." />
+```powershell
+.venv/Scripts/python.exe -B -m pytest freemocap/tests/test_blender_export.py -p no:cacheprovider
+```
+
+For integration tests, set `FREEMOCAP_BLENDER_EXE` and `FREEMOCAP_BLENDER_ZIP`,
+then run `freemocap/tests/test_blender_integration.py`. They use the core prepared
+publication workflow and skip when the runtime/package variables are absent.
+
+macOS/Linux runtime testing, a complete historical NPY recording and a full
+interactive Electron session remain outside this measured coverage. Existing
+Windows Extension DLL-cleanup warnings can require restarting Blender after
+updating a loaded package.

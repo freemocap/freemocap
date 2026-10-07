@@ -6,6 +6,7 @@ import {saveCalibrationTransform} from './calibration-save';
 import {
     calibrateRecording,
     loadCalibrationForRecording,
+    loadRecordingCalibrationDefault,
     loadCalibrationToml,
     loadMostRecentCalibration, restoreCalibrationSelection,
     startCalibrationRecording,
@@ -45,6 +46,7 @@ export interface CalibrationState {
     directoryInfo: CalibrationDirectoryInfo | null;
     loadedCalibration: LoadedCalibration | null;
     loadRequestId: string | null;
+    defaultRecordingPath: string | null;
     mostRecentLoadAttempted: boolean;
     dismissedCalibrationPath: string | null;
 }
@@ -82,6 +84,7 @@ const initialState: CalibrationState = {
     directoryInfo: null,
     loadedCalibration: null,
     loadRequestId: null,
+    defaultRecordingPath: null,
     mostRecentLoadAttempted: false,
     dismissedCalibrationPath: null,
 };
@@ -90,6 +93,9 @@ export const calibrationSlice = createSlice({
     name: 'calibration',
     initialState,
     reducers: {
+        recordingCalibrationDefaultReset: (state) => {
+            state.defaultRecordingPath = null;
+        },
         calibrationConfigUpdated: (state, action: PayloadAction<Partial<CalibrationConfig>>) => {
             const config = { ...state.config, ...action.payload };
             config.alignmentMethod = CalibrationCreationAlignmentMethodSchema.nullable().parse(config.alignmentMethod);
@@ -179,18 +185,19 @@ export const calibrationSlice = createSlice({
             });
 
         builder
-            .addMatcher(isAnyOf(loadCalibrationToml.pending, loadCalibrationForRecording.pending, loadMostRecentCalibration.pending, restoreCalibrationSelection.pending), (state, action) => {
+            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.pending, loadCalibrationToml.pending, loadCalibrationForRecording.pending, loadMostRecentCalibration.pending, restoreCalibrationSelection.pending), (state, action) => {
+                if (loadRecordingCalibrationDefault.pending.match(action)) state.defaultRecordingPath = action.meta.arg;
                 state.loadRequestId = action.meta.requestId;
                 state.error = null;
                 if (isAnyOf(loadMostRecentCalibration.pending, restoreCalibrationSelection.pending)(action)) state.mostRecentLoadAttempted = true;
             })
-            .addMatcher(isAnyOf(loadCalibrationToml.fulfilled, loadCalibrationForRecording.fulfilled, loadMostRecentCalibration.fulfilled, restoreCalibrationSelection.fulfilled), (state, action) => {
+            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.fulfilled, loadCalibrationToml.fulfilled, loadCalibrationForRecording.fulfilled, loadMostRecentCalibration.fulfilled, restoreCalibrationSelection.fulfilled), (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
                 state.loadedCalibration = action.payload;
                 state.dismissedCalibrationPath = null;
             })
-            .addMatcher(isAnyOf(loadCalibrationToml.rejected, loadCalibrationForRecording.rejected, loadMostRecentCalibration.rejected, restoreCalibrationSelection.rejected), (state, action) => {
+            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.rejected, loadCalibrationToml.rejected, loadCalibrationForRecording.rejected, loadMostRecentCalibration.rejected, restoreCalibrationSelection.rejected), (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
                 if (action.meta.aborted) return;
@@ -218,6 +225,7 @@ export const selectIsUsingManualCalibrationPath = createSelector(
 );
 
 export const {
+    recordingCalibrationDefaultReset,
     calibrationConfigUpdated,
     calibrationProgressUpdated,
     calibrationErrorCleared,

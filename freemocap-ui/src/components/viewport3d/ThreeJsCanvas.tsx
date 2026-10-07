@@ -99,7 +99,6 @@ function InspectionReceiver() {
       e: MessageEvent<{ type?: string; data?: { hovered: InspectionTarget | null; pinned: InspectionTarget | null } }>,
     ) => {
       if (e.data?.type === "inspection" && e.data.data) {
-        if (e.data.data.pinned) console.log("[main] received pinned:", e.data.data.pinned.kind + ":" + e.data.data.pinned.name);
         setHovered(e.data.data.hovered);
         setPinned(e.data.data.pinned);
       }
@@ -108,6 +107,17 @@ function InspectionReceiver() {
     return () => VIEWPORT_WORKER.removeEventListener("message", handler);
   }, [setHovered, setPinned]);
   return null;
+}
+
+/** The details card, wired so closing it also clears the worker's pin — the worker owns
+ *  picking state and re-sends its pin with every hover change. */
+function PinnedInspection() {
+  const { setPinned } = useViewportState();
+  const unpin = useCallback(() => {
+    setPinned(null);
+    VIEWPORT_WORKER.postMessage({ type: "unpin" });
+  }, [setPinned]);
+  return <ViewportInspection onUnpin={unpin} />;
 }
 
 function WorkerStatsReceiver() {
@@ -338,12 +348,7 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
 
     const onPointer = (e: PointerEvent) => {
       if (e.type === "pointerdown") {
-        console.log("[main] forwarding pointerdown to worker");
-        try {
-          canvas.setPointerCapture(e.pointerId);
-        } catch {
-          /* noop */
-        }
+        canvas.setPointerCapture(e.pointerId);
       }
       const rect = canvas.getBoundingClientRect();
       VIEWPORT_WORKER.postMessage({
@@ -407,7 +412,7 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
       <div
         ref={containerRef}
         tabIndex={0}
-        className="3d-viewport-container pos-rel w-full h-full"
+        className="3d-viewport-container vp-root pos-rel w-full h-full"
         style={{ outline: "none" }}
       >
         <canvas
@@ -421,7 +426,7 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
       
         />
         <ViewportOverlay onFitCamera={handleFit} onResetCamera={handleReset} />
-        <ViewportInspection />
+        <PinnedInspection />
       </div>
     </ViewportStateProvider>
   );

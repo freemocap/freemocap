@@ -197,7 +197,6 @@ export function useServerPanel(): ServerPanelState {
         setServerLoading(true);
         setError(null);
         try {
-            disconnect();
             await api.pythonServer.stop.mutate();
             await pollServerStatus();
         } catch (err) {
@@ -206,14 +205,13 @@ export function useServerPanel(): ServerPanelState {
         } finally {
             setServerLoading(false);
         }
-    }, [isElectron, api, pollServerStatus, disconnect]);
+    }, [isElectron, api, pollServerStatus]);
 
     const resetServer = useCallback(async () => {
         if (!isElectron || !api) return;
         setServerLoading(true);
         setError(null);
         try {
-            disconnect();
             await api.pythonServer.stop.mutate();
             await new Promise((resolve) => setTimeout(resolve, 500));
             await api.pythonServer.start.mutate({ exePath: selectedExePath || null });
@@ -224,7 +222,7 @@ export function useServerPanel(): ServerPanelState {
         } finally {
             setServerLoading(false);
         }
-    }, [isElectron, api, selectedExePath, pollServerStatus, disconnect]);
+    }, [isElectron, api, selectedExePath, pollServerStatus]);
 
     // ── Initial load + polling ──
 

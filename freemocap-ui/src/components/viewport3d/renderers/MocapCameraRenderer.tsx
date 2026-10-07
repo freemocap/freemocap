@@ -11,11 +11,12 @@ import type { CalibrationCameraData } from "@/store/slices/calibration/calibrati
 import { useWorkerData } from "../WorkerDataContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 import {useReferenceTransform} from '../scene/ReferenceFrame';
+import {LAYER_HEX} from '../helpers/layer-colors';
 
 const FRUSTUM_DEPTH_MM = 75;
 const BODY_SIZE_MM = 20;
-const FRUSTUM_COLOR = "#08855e";
-const BODY_COLOR = "#08855e";
+const FRUSTUM_COLOR = LAYER_HEX.cameras;
+const BODY_COLOR = LAYER_HEX.cameras;
 
 interface CameraPose {
     position: Vector3;

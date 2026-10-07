@@ -1,38 +1,82 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useKeypointsSource, useModelDefinitionsById, type KeypointsSource } from "../KeypointsSourceContext";
 import { useViewportState } from "./ViewportStateContext";
-import type { InspectionTarget } from "../helpers/viewport3d-types";
+import type { InspectionKind, InspectionTarget } from "../helpers/viewport3d-types";
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 
 /**
- * Hover tooltip + click-to-pin info panel for the 3D viewport. The worker does
- * the raycast picking and forwards {hovered, pinned} to this main-thread
- * component (via the message bridge); this component resolves the name into
- * concrete numbers by reading the live frame data.
+ * Hover label + click-to-pin details card for the 3D viewport. The worker does the
+ * raycast picking and forwards {hovered, pinned} to the main thread; this component
+ * resolves the pinned name into live numbers by reading the latest frame data.
  */
 
-const fmt = (v: number, digits = 3) => (Number.isFinite(v) ? v.toFixed(digits) : "—");
+const PINNED_REFRESH_MS = 100;
+const COPIED_FEEDBACK_MS = 1200;
 
-function vec3(v: readonly [number, number, number] | number[] | Float32Array | undefined, digits = 3): string {
-    if (!v || v.length < 3) return "—";
-    return `(${fmt(v[0], digits)}, ${fmt(v[1], digits)}, ${fmt(v[2], digits)})`;
-}
+const KIND_LABEL: Record<InspectionKind, string> = {
+    keypoint: "Raw keypoint",
+    "mapped keypoint": "Mapped keypoint",
+    landmark: "Landmark",
+    segment: "Segment",
+};
 
-function quat(v: readonly number[] | Float32Array | undefined): string {
-    if (!v || v.length < 4) return "—";
-    return `w=${fmt(v[0], 4)}, x=${fmt(v[1], 4)}, y=${fmt(v[2], 4)}, z=${fmt(v[3], 4)}`;
-}
+/** A labeled row: plain text, or a short vector of numbers with per-component labels. */
+type DetailValue =
+    | { kind: "text"; text: string }
+    | { kind: "numbers"; components: readonly string[]; values: readonly number[] | null; digits: number };
 
-interface DetailLine {
+interface DetailRow {
     label: string;
-    value: string;
+    value: DetailValue;
 }
 
-function findIndex(names: readonly string[] | undefined, name: string): number {
-    if (!names) return -1;
-    for (let i = 0; i < names.length; i++) if (names[i] === name) return i;
-    return -1;
+const XYZ = ["x", "y", "z"] as const;
+const WXYZ = ["w", "x", "y", "z"] as const;
+
+const text = (t: string): DetailValue => ({ kind: "text", text: t });
+const scalar = (v: number | null, digits: number): DetailValue => ({
+    kind: "numbers",
+    components: [""],
+    values: v === null ? null : [v],
+    digits,
+});
+const vec3 = (v: ArrayLike<number> | null, digits: number): DetailValue => ({
+    kind: "numbers",
+    components: XYZ,
+    values: v === null ? null : [v[0], v[1], v[2]],
+    digits,
+});
+const quat = (v: ArrayLike<number> | null): DetailValue => ({
+    kind: "numbers",
+    components: WXYZ,
+    values: v === null ? null : [v[0], v[1], v[2], v[3]],
+    digits: 3,
+});
+
+function formatNumber(v: number, digits: number): string {
+    return Number.isFinite(v) ? v.toFixed(digits) : "—";
+}
+
+function valueAsText(value: DetailValue): string {
+    if (value.kind === "text") return value.text;
+    if (value.values === null) return "—";
+    const values = value.values;
+    return value.components
+        .map((c, i) => (c ? `${c}=${formatNumber(values[i], value.digits)}` : formatNumber(values[i], value.digits)))
+        .join(", ");
+}
+
+/** "body_height" → "Body height". */
+function humanize(identifier: string): string {
+    const spaced = identifier.replace(/_/g, " ");
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function pointAt(data: ArrayLike<number> | undefined, index: number): number[] | null {
+    if (!data || index < 0) return null;
+    return [data[index * 3], data[index * 3 + 1], data[index * 3 + 2]];
 }
 
 function computeDetails(
@@ -40,35 +84,29 @@ function computeDetails(
     source: KeypointsSource,
     models: ResolvedModelFrame[] | null,
     definitionsById: Map<string, ModelDefinition>,
-): DetailLine[] {
+): DetailRow[] {
     if (target.kind === "keypoint") {
         const frame = source.getLatestKeypoints?.();
-        const i = findIndex(frame?.pointNames, target.name);
-        const xyz = i >= 0 && frame ? [frame.interleaved[i * 3], frame.interleaved[i * 3 + 1], frame.interleaved[i * 3 + 2]] : undefined;
-        return [{ label: "world", value: vec3(xyz) }];
+        const index = frame ? frame.pointNames.indexOf(target.name) : -1;
+        return [{ label: "Position (mm)", value: vec3(pointAt(frame?.interleaved, index), 1) }];
     }
 
-    // Which MODEL owns this name. A frame carries several, so the numbers have to be read
-    // out of the one that declares the target — reading models[0] reported a board
-    // landmark's position out of the human's arrays.
+    // A frame carries several models, so the numbers are read from the one that declares the target.
     if (target.kind === "landmark" || target.kind === "mapped keypoint") {
         const entry = models?.find(
             (m) => definitionsById.get(m.modelId)?.landmarks.some((l) => l.name === target.name),
         );
         const points = target.kind === "mapped keypoint" ? entry?.mappedKeypoints : entry?.landmarks;
-        const i = findIndex(points?.names, target.name);
-        const data = points?.data;
-        const xyz = i >= 0 && data ? [data[i * 3], data[i * 3 + 1], data[i * 3 + 2]] : undefined;
+        const index = points ? points.names.indexOf(target.name) : -1;
         const definition = entry ? definitionsById.get(entry.modelId) : undefined;
-        const lm = definition?.landmarks.find((l) => l.name === target.name);
+        const landmark = definition?.landmarks.find((l) => l.name === target.name);
         return [
-            { label: "model", value: entry?.modelId ?? "—" },
-            { label: "world", value: vec3(xyz) },
-            { label: "rest (local)", value: vec3(lm?.rest_position) },
+            { label: "Model", value: text(entry?.modelId ?? "—") },
+            { label: "Position (mm)", value: vec3(pointAt(points?.data, index), 1) },
+            { label: "Rest position (model units)", value: vec3(landmark?.rest_position ?? null, 3) },
         ];
     }
 
-    // segment
     const entry = models?.find(
         (m) => definitionsById.get(m.modelId)?.segments.some((s) => s.name === target.name),
     );
@@ -76,141 +114,181 @@ function computeDetails(
     const origins = entry?.segmentOrigins ?? null;
     const rotations = entry?.rotations ?? null;
     const lengths = entry?.segmentLengths ?? null;
-    const oi = findIndex(origins?.names, target.name);
-    const qi = findIndex(rotations?.boneNames, target.name);
-    const li = findIndex(lengths?.names, target.name);
-    const seg = definition?.segments.find((s) => s.name === target.name);
-    const scaleReference = definition?.scale_reference_name ?? "scale reference";
+    const originIndex = origins ? origins.names.indexOf(target.name) : -1;
+    const rotationIndex = rotations ? rotations.boneNames.indexOf(target.name) : -1;
+    const lengthIndex = lengths ? lengths.names.indexOf(target.name) : -1;
+    const segment = definition?.segments.find((s) => s.name === target.name);
+    const scaleReference = humanize(definition?.scale_reference_name ?? "scale reference");
     const fittedScaleMm = entry?.fittedScaleMm ?? null;
+
+    // A model is dimensionless, so a length in mm always comes from the fit: the segment's
+    // own fitted length where the wire carries one, otherwise its authored proportion times
+    // the model's fitted scale.
+    const lengthMm =
+        lengthIndex >= 0 && lengths
+            ? lengths.data[lengthIndex]
+            : segment && fittedScaleMm !== null
+              ? segment.length_proportion * fittedScaleMm
+              : null;
+
     return [
-        { label: "model", value: entry?.modelId ?? "—" },
+        { label: "Model", value: text(entry?.modelId ?? "—") },
+        { label: "Origin (mm)", value: vec3(pointAt(origins?.data, originIndex), 1) },
+        { label: "Length (mm)", value: scalar(lengthMm, 1) },
+        { label: `Length (× ${scaleReference.toLowerCase()})`, value: scalar(segment?.length_proportion ?? null, 3) },
+        { label: `${scaleReference} (mm)`, value: fittedScaleMm !== null ? scalar(fittedScaleMm, 1) : text("not measured") },
         {
-            label: "world origin",
-            value: oi >= 0 && origins ? vec3([origins.data[oi * 3], origins.data[oi * 3 + 1], origins.data[oi * 3 + 2]]) : "—",
+            label: "Rotation, world",
+            value: quat(rotationIndex >= 0 && rotations ? rotations.worldQuaternions.slice(rotationIndex * 4, rotationIndex * 4 + 4) : null),
         },
-        { label: "world quaternion", value: qi >= 0 && rotations ? quat(Array.from(rotations.worldQuaternions.slice(qi * 4, qi * 4 + 4))) : "—" },
-        { label: "local quaternion", value: qi >= 0 && rotations ? quat(Array.from(rotations.localQuaternions.slice(qi * 4, qi * 4 + 4))) : "—" },
-        // A model is dimensionless, so a length in mm always comes from the fit: this
-        // segment's own fitted length where the wire carries one, otherwise its authored
-        // proportion times this model's fitted scale.
         {
-            label: "length (mm)",
-            value:
-                li >= 0 && lengths
-                    ? fmt(lengths.data[li])
-                    : seg && fittedScaleMm != null
-                      ? fmt(seg.length_proportion * fittedScaleMm)
-                      : "—",
+            label: "Rotation, local",
+            value: quat(rotationIndex >= 0 && rotations ? rotations.localQuaternions.slice(rotationIndex * 4, rotationIndex * 4 + 4) : null),
         },
-        { label: `length (${scaleReference}s)`, value: seg ? fmt(seg.length_proportion) : "—" },
-        { label: `${scaleReference} (mm)`, value: fittedScaleMm != null ? fmt(fittedScaleMm) : "not measured" },
-        { label: "rest orientation", value: seg ? quat(seg.rest_orientation) : "—" },
-        { label: "primary axis", value: seg ? JSON.stringify(seg.primary_axis) : "—" },
+        { label: "Rest orientation", value: quat(segment?.rest_orientation ?? null) },
+        {
+            label: "Primary axis",
+            value: !segment
+                ? text("—")
+                : typeof segment.primary_axis === "string"
+                  ? text(segment.primary_axis)
+                  : vec3(segment.primary_axis, 3),
+        },
     ];
 }
 
-function detailText(target: InspectionTarget, lines: DetailLine[]): string {
-    return [target.name + ` (${target.kind})`, ...lines.map((l) => `  ${l.label}: ${l.value}`)].join("\n");
+function detailsAsText(target: InspectionTarget, rows: DetailRow[]): string {
+    return [`${target.name} (${KIND_LABEL[target.kind]})`, ...rows.map((r) => `  ${r.label}: ${valueAsText(r.value)}`)].join("\n");
 }
 
-/** Small floating label following the cursor while hovering a point/bone. */
-function HoverTooltip() {
+/** Name label that follows the cursor while it is over a point or bone. */
+function HoverLabel() {
     const { hovered } = useViewportState();
-    const [mouse, setMouse] = useState({ x: 0, y: 0 });
+    const ref = useRef<HTMLDivElement>(null);
+    const pointer = useRef({ x: 0, y: 0 });
 
+    // Positioned by writing the transform directly, so following the mouse never re-renders React.
     useEffect(() => {
-        const fn = (e: MouseEvent) => setMouse({ x: e.clientX, y: e.clientY });
-        window.addEventListener("mousemove", fn);
-        return () => window.removeEventListener("mousemove", fn);
+        const place = (e: MouseEvent) => {
+            pointer.current = { x: e.clientX, y: e.clientY };
+            const el = ref.current;
+            if (el) el.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 14}px)`;
+        };
+        window.addEventListener("mousemove", place);
+        return () => window.removeEventListener("mousemove", place);
     }, []);
 
+    useLayoutEffect(() => {
+        const el = ref.current;
+        if (el) el.style.transform = `translate(${pointer.current.x + 14}px, ${pointer.current.y + 14}px)`;
+    }, [hovered]);
+
     if (!hovered) return null;
-    return (
-        <div
-            className="pos-fixed"
-            style={{
-                left: mouse.x + 14,
-                top: mouse.y + 14,
-                zIndex: 200,
-                pointerEvents: "none",
-                background: "rgba(0,0,0,0.85)",
-                color: "#fff",
-                padding: "2px 8px",
-                borderRadius: 4,
-                fontSize: "0.72rem",
-                fontFamily: "monospace",
-            }}
-        >
-            {hovered.name}
-        </div>
+    // Portaled to <body>: the viewport root is a size container, which would otherwise
+    // become the containing block for this fixed-position label.
+    return createPortal(
+        <div ref={ref} className="vp-hover-label" role="tooltip">
+            <span className="vp-hover-kind">{KIND_LABEL[hovered.kind]}</span>
+            <span className="vp-hover-name">{hovered.name}</span>
+        </div>,
+        document.body,
     );
 }
 
-/** Pinned info panel with the resolved numbers + copy button. */
-function InspectionPanel() {
-    const { pinned, setPinned } = useViewportState();
+/** Single values sit on the label's line; vectors get a line of their own. */
+function isInline(value: DetailValue): boolean {
+    return value.kind === "text" || value.components.length === 1;
+}
+
+function DetailValueCell({ value }: { value: DetailValue }) {
+    if (value.kind === "text") return <span className="vp-detail-text">{value.text}</span>;
+    if (value.values === null) return <span className="vp-detail-text is-missing">—</span>;
+    const values = value.values;
+    return (
+        <span className="vp-detail-numbers">
+            {value.components.map((component, i) => (
+                <span key={i} className="vp-num">
+                    {component && <span className="vp-num-axis">{component}</span>}
+                    {formatNumber(values[i], value.digits)}
+                </span>
+            ))}
+        </span>
+    );
+}
+
+/** Card with the pinned item's live numbers, a copy button and a close button. */
+function PinnedDetails({ onUnpin }: { onUnpin: () => void }) {
+    const { pinned } = useViewportState();
     const source = useKeypointsSource();
     const definitionsById = useModelDefinitionsById();
     const [, setTick] = useState(0);
+    const [copied, setCopied] = useState(false);
 
-    // Read at render time rather than subscribed per frame. Calling setState on every
-    // frame here forced a React reconcile at frame rate for a panel that is usually not
-    // even open; the 100ms tick below is what keeps a PINNED panel live.
-    const models = source.getLatestModelFrames();
-
-    // Re-resolve the numbers on a timer so a pinned panel tracks the live subject.
+    // Re-resolve on a timer so a pinned card tracks the live subject without re-rendering per frame.
     useEffect(() => {
         if (!pinned) return;
-        const id = setInterval(() => setTick((t) => t + 1), 100);
+        const id = setInterval(() => setTick((t) => t + 1), PINNED_REFRESH_MS);
         return () => clearInterval(id);
     }, [pinned]);
 
-    const [copied, setCopied] = useState(false);
+    useEffect(() => {
+        if (!pinned) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onUnpin();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [pinned, onUnpin]);
+
+    useEffect(() => {
+        if (!copied) return;
+        const id = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+        return () => clearTimeout(id);
+    }, [copied]);
 
     if (!pinned) return null;
-    const lines = computeDetails(pinned, source, models, definitionsById.current);
-    const text = detailText(pinned, lines);
+    const rows = computeDetails(pinned, source, source.getLatestModelFrames(), definitionsById.current);
 
     const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(text);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1200);
-        } catch {
-            /* clipboard unavailable */
-        }
+        await navigator.clipboard.writeText(detailsAsText(pinned, rows));
+        setCopied(true);
     };
 
     return (
-        <div
-            className="pos-abs top-0 right-0 m-2"
-            style={{ zIndex: 150, background: "rgba(0,0,0,0.88)", color: "#eee", borderRadius: 6, padding: 8, fontSize: "0.7rem", fontFamily: "monospace", maxWidth: 380 }}
-        >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <span style={{ fontWeight: "bold" }}>{pinned.name} <span style={{ color: "#888" }}>({pinned.kind})</span></span>
-                <span style={{ display: "flex", gap: 4 }}>
-                    <button onClick={handleCopy} style={{ background: "#333", color: "#eee", border: "none", borderRadius: 3, padding: "1px 6px", cursor: "pointer", fontSize: "0.65rem" }}>
-                        {copied ? "copied" : "copy"}
+        <section className="vp-inspect" aria-label={`${KIND_LABEL[pinned.kind]} ${pinned.name}`}>
+            <header className="vp-inspect-header">
+                <div className="vp-inspect-heading">
+                    <span className={`vp-kind-badge is-${pinned.kind.replace(" ", "-")}`}>{KIND_LABEL[pinned.kind]}</span>
+                    <span className="vp-inspect-name">{pinned.name}</span>
+                </div>
+                <div className="vp-inspect-actions">
+                    <button type="button" className="vp-small-button" onClick={handleCopy}>
+                        {copied ? "Copied" : "Copy"}
                     </button>
-                    <button onClick={() => setPinned(null)} style={{ background: "#333", color: "#eee", border: "none", borderRadius: 3, padding: "1px 6px", cursor: "pointer", fontSize: "0.65rem" }}>
+                    <button type="button" className="vp-small-button is-icon" aria-label="Close (Esc)" title="Close (Esc)" onClick={onUnpin}>
                         ×
                     </button>
-                </span>
-            </div>
-            {lines.map((l) => (
-                <div key={l.label} style={{ marginTop: 2 }}>
-                    <span style={{ color: "#aaa" }}>{l.label}:</span> {l.value}
                 </div>
-            ))}
-        </div>
+            </header>
+            <dl className="vp-detail-list">
+                {rows.map((row) => (
+                    <div key={row.label} className={isInline(row.value) ? "vp-detail-row is-inline" : "vp-detail-row"}>
+                        <dt>{row.label}</dt>
+                        <dd>
+                            <DetailValueCell value={row.value} />
+                        </dd>
+                    </div>
+                ))}
+            </dl>
+        </section>
     );
 }
 
-export function ViewportInspection() {
+export function ViewportInspection({ onUnpin }: { onUnpin: () => void }) {
     return (
         <>
-            <HoverTooltip />
-            <InspectionPanel />
+            <HoverLabel />
+            <PinnedDetails onUnpin={onUnpin} />
         </>
     );
 }

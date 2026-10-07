@@ -62,7 +62,7 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         skeleton_enabled: true,
         anchor_segment_name: "pelvis",
         center_of_mass_enabled: true,
-        skeleton_fitting_enabled: true,
+        skeleton_fitting_enabled: false,
     },
 };
 

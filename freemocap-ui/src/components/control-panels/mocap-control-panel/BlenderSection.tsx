@@ -1,3 +1,4 @@
+import {BlenderPackageSettings} from '@/components/common/BlenderPackageSettings';
 import React from 'react';
 import {useBlender} from '@/hooks/useBlender';
 import {useElectronIPC} from '@/services';
@@ -10,7 +11,7 @@ interface BlenderSectionProps {
     disabled?: boolean;
     /** When provided, the "Open .blend in Blender" button is disabled unless true. */
     hasBlendFile?: boolean;
-    /** The freemocap_blender_addon only understands MediaPipe output so far. */
+    /** Detector identity is retained for callers; Parquet export is tracker-independent. */
     detectorType?: DetectorType;
 }
 
@@ -20,7 +21,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
     hasBlendFile,
     detectorType,
 }) => {
-    const blenderSupported = detectorType === undefined || detectorType === 'mediapipe';
+    const blenderSupported = true;
 
     const {api, isElectron} = useElectronIPC();
     const {
@@ -136,12 +137,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     </p>
                 </div>
 
-                {!blenderSupported && (
-                    <p className="text sm text-gray">
-                        Blender export only supports MediaPipe output right now - switch the
-                        detector to MediaPipe to enable it.
-                    </p>
-                )}
+                <BlenderPackageSettings />
 
                 <div className="flex flex-col gap-1">
                     <ToggleComponent

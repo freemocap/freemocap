@@ -1,46 +1,74 @@
+"""Executed only by Blender; use its installed package and dependencies."""
+import importlib
+import json
+import platform
+from pathlib import Path
 import sys
-import traceback
 
 
-def run_blender_export(site_packages_path: str, recording_path_input: str, blender_file_save_path_input: str):
-    # Inject the freemocap venv's site-packages so freemocap_blender_addon is importable
-    # without needing to install the addon into Blender
-    if site_packages_path not in sys.path:
-        sys.path.insert(0, site_packages_path)
-
-    # Blender's addons directory may contain a stale/broken `freemocap_blender_addon`
-    # that Blender preloads as a namespace package, hijacking the name and causing
-    # `from freemocap_blender_addon.main import ...` to fail silently. Evict any
-    # preloaded copy and strip the addons path so our venv copy wins the import.
-    for mod_name in [m for m in list(sys.modules) if m == "freemocap_blender_addon" or m.startswith("freemocap_blender_addon.")]:
-        print(f"Evicting preloaded module from sys.modules: {mod_name}")
-        del sys.modules[mod_name]
-    sys.path[:] = [p for p in sys.path if "Blender Foundation" not in p or "addons" not in p.replace("\\", "/")]
-
-    print(f"sys.path[0:3] = {sys.path[0:3]}")
-    from freemocap_blender_addon.main import ajc27_run_as_main_function
-    print(f"Imported ajc27_run_as_main_function from: {ajc27_run_as_main_function.__module__}")
-
-    ajc27_run_as_main_function(recording_path=str(recording_path_input),
-                               blend_file_path=str(blender_file_save_path_input))
+def enabled_packages():
+    import bpy
+    packages = []
+    for name in bpy.context.preferences.addons.keys():
+        if name.split('.')[-1] != 'freemocap_blender_addon':
+            continue
+        module = importlib.import_module(name)
+        if getattr(module, '__freemocap_export_api__', False):
+            packages.append(name)
+    return packages
 
 
-if __name__ == "__main__":
-    try:
-        print(f"\nRunning {__file__} as a subprocess...\n", flush=True)
-        argv = sys.argv
-        print(f"Received command line arguments: {argv}", flush=True)
-        argv = argv[argv.index("--") + 1:]
-        site_packages_path_input = str(argv[0])
-        recording_path_input = str(argv[1])
-        blender_file_save_path_input = str(argv[2])
-        run_blender_export(site_packages_path=site_packages_path_input,
-                           recording_path_input=recording_path_input,
-                           blender_file_save_path_input=blender_file_save_path_input)
+def select_package(requested=None):
+    packages = enabled_packages()
+    if requested is not None:
+        if requested not in packages:
+            raise ValueError('Requested FreeMoCap package is not enabled: ' + requested)
+        return requested
+    if len(packages) != 1:
+        raise ValueError('Install and enable one bundled FreeMoCap add-on in this Blender version, '
+                         'or select its exact package name. Enabled packages: ' + repr(packages))
+    return packages[0]
 
-        print("\nDone!\n", flush=True)
-    except Exception:
-        print("\n!!! Blender export script FAILED with exception:\n", flush=True)
-        traceback.print_exc()
-        sys.stderr.flush()
-        sys.exit(1)
+
+def execute(request):
+    import bpy
+    if request['action'] == 'inspect':
+        return dict(blender=list(bpy.app.version), python='{}.{}'.format(*sys.version_info[:2]),
+                    system=platform.system(), machine=platform.machine(), packages=enabled_packages())
+    if request['action'] == 'install':
+        archive = request['archive']
+        if request['kind'] == 'extension':
+            repos = bpy.context.preferences.extensions.repos
+            repo = next((r for r in repos if r.module == 'freemocap_local'), None)
+            if repo is None:
+                repo = repos.new(name='FreeMoCap local packages', module='freemocap_local')
+                repo.use_remote_url = False
+            if repo.use_remote_url:
+                raise ValueError('FreeMoCap local repository is configured as remote')
+            result = bpy.ops.extensions.package_install_files(filepath=archive, repo=repo.module, enable_on_install=True)
+            package = 'bl_ext.' + repo.module + '.freemocap_blender_addon'
+        else:
+            result = bpy.ops.preferences.addon_install(filepath=archive, overwrite=True)
+            package = 'freemocap_blender_addon'
+            bpy.ops.preferences.addon_enable(module=package)
+        if result != {'FINISHED'}:
+            raise RuntimeError('Blender did not finish installing the package')
+        select_package(package)
+        # Verify bundled binary dependencies before reporting success.
+        importlib.import_module(package + '.utilities.dependencies').parquet_module()
+        bpy.ops.wm.save_userpref()
+        return dict(package=package)
+    if request['action'] != 'export':
+        raise ValueError('Unknown Blender action')
+    package = select_package(request.get('package'))
+    api = importlib.import_module(package + '.export_api')
+    output = api.export_recording(recording_path=request['recording'], blend_file_path=request['output'],
+                                  route=request['route'], config=request.get('config'), trajectory_channel=request['trajectory_channel'],
+                                  run_id=request.get('run_id'), sensor_group=request.get('sensor_group'))
+    return dict(output=output, package=package)
+
+
+if __name__ == '__main__':
+    request_path, result_path = sys.argv[sys.argv.index('--') + 1:]
+    result = execute(json.loads(Path(request_path).read_text(encoding='utf-8')))
+    Path(result_path).write_text(json.dumps(result), encoding='utf-8')

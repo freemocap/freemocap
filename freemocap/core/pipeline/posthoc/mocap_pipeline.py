@@ -68,6 +68,22 @@ def complete_mocap(request: MocapWorkerRequest) -> None:
             detail += '; tall CSV export cancelled'
         except Exception as error:
             detail += f'; tall CSV export failed: {error}. Retry in Exports.'
+    if request.config.export_to_blender and request.ipc.should_continue:
+        from freemocap.core.blender.export_to_blender import export_to_blender
+        try:
+            request.report(MocapStage.EXPORTING_BLENDER, 'Exporting the published recording to Blender', 0.0)
+            output = export_to_blender(
+                recording_folder_path=request.recording.full_recording_path,
+                blender_exe_path=request.config.blender_exe_path,
+                open_file_on_completion=request.config.auto_open_blend_file,
+                route=request.config.blender_import_route,
+                package=request.config.blender_package,
+                sensor_group=request.config.sensor_group,
+                blender_export_config=request.config.blender_export.model_dump(),
+            )
+            detail += f'; Blender scene saved to {output}'
+        except Exception as error:
+            detail += f'; Blender export failed: {error}. Retry in Blender settings.'
     request.report(AggregatorPhase.COMPLETE, detail, 1.0)
 
 

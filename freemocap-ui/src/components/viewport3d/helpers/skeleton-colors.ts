@@ -18,7 +18,7 @@ export const SKELETON_COLORS = {
 export const SKELETON_KEYPOINT_COLORS = {
     left:       new Color('#7788BB'),   // muted blue-grey
     right:      new Color('#BB7777'),   // muted red-grey
-    center:     new Color('#888888'),   // muted grey
+    center:     new Color('#A3965A'),   // muted sand (matches the center bones)
     leftHand:   new Color('#00FFFF'),   // cyan
     rightHand:  new Color('#FF00FF'),   // magenta
     face:       new Color('#CCAA44'),   // muted gold

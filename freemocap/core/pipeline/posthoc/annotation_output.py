@@ -93,7 +93,18 @@ class AnnotationVideoOutput:
         if self.base_reader is not None:
             self.base_reader.release()
             self.base_reader = None
-        self.temporary.replace(self.destination)
+        try:
+            self.temporary.replace(self.destination)
+        except OSError as error:
+            if not isinstance(error, PermissionError) and getattr(error, 'winerror', None) not in (32, 33):
+                raise
+            raise PermissionError(
+                f'Could not replace annotated video "{self.destination}". '
+                'Access was denied; the file may be in use by another program. '
+                'Is this recording open in Blender? Close the recording in Blender '
+                'or any other program using this video, then retry processing. '
+                'If the problem continues, check the file and folder write permissions.'
+            ) from error
 
     def close(self) -> None:
         try:

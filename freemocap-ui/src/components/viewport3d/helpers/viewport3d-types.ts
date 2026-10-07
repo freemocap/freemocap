@@ -12,58 +12,83 @@ export interface PointStyle {
     scale: number;
 }
 
-/** Viewport layer visibility toggles. */
+/** Viewport layer visibility toggles. One key per toggle in the viewport panel. */
 export interface ViewportVisibility {
-    fittedSkeleton: boolean;
-    fittedAxes: boolean;
-    environment: boolean;
-    keypoints: boolean;
-    skeleton: boolean;
-    mappedKeypoints: boolean;
-    face: boolean;
-    connections: boolean;
-    cameras: boolean;
-    centerOfMass: boolean;
-    centerOfMassSphere: boolean;
-    centerOfMassProjection: boolean;
-    centerOfMassConnection: boolean;
-    centerOfMassXcom: boolean;
-    centerOfMassXcomConnection: boolean;
-    rigidBodyBones: boolean;
-    /** Per-segment orientation triads (x/y/z axes at each segment origin). */
+    /** Solid rigid-body segments of the tracked model, colored by body side. */
+    bones: boolean;
+    /** Thin lines joining parent → child segment origins. */
+    boneLines: boolean;
+    /** Anatomical points on the tracked model. */
+    landmarks: boolean;
+    /** Per-segment x/y/z orientation triads. */
     segmentAxes: boolean;
+    /** Face contour lines. */
+    face: boolean;
+    /** Triangulated 3D detector output, before model fitting. */
+    rawKeypoints: boolean;
+    /** Detector keypoints placed under the model's landmark names. */
+    mappedKeypoints: boolean;
+    /** Skeleton loaded from a recording's saved fit. */
+    savedSkeleton: boolean;
+    /** Orientation triads on the saved skeleton. */
+    savedSkeletonAxes: boolean;
+    /** Master switch for every center-of-mass element below. */
+    centerOfMass: boolean;
+    comMarker: boolean;
+    comFloorPoint: boolean;
+    comDropLine: boolean;
+    xcom: boolean;
+    xcomLine: boolean;
+    /** Floor grid and origin axes. */
+    floorGrid: boolean;
+    /** Calibrated camera bodies and frustums. */
+    cameras: boolean;
 }
 
+export type LayerKey = keyof ViewportVisibility;
+
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
-    fittedSkeleton: true,
-    fittedAxes: false,
-    environment: true,
-    keypoints: true,
-    skeleton: true,
-    mappedKeypoints: true,
-    face: true,
-    connections: true,
-    cameras: true,
-    centerOfMass: true,
-    centerOfMassSphere: true,
-    centerOfMassProjection: true,
-    centerOfMassConnection: true,
-    centerOfMassXcom: true,
-    centerOfMassXcomConnection: true,
-    rigidBodyBones: true,
+    bones: true,
+    boneLines: true,
+    landmarks: true,
     segmentAxes: true,
+    face: true,
+    rawKeypoints: true,
+    mappedKeypoints: true,
+    savedSkeleton: true,
+    savedSkeletonAxes: false,
+    centerOfMass: true,
+    comMarker: true,
+    comFloorPoint: true,
+    comDropLine: true,
+    xcom: true,
+    xcomLine: true,
+    floorGrid: true,
+    cameras: true,
 };
 
-/** Live stats from each renderer. */
+/** Live per-layer item counts, written by the renderers, shown in the viewport panel. */
 export interface ViewportStats {
-    keypoints: number;
-    skeleton: number;
+    rawKeypoints: number;
+    landmarks: number;
     mappedKeypoints: number;
-    facePoints: number;
-    connections: number;
+    face: number;
+    boneLines: number;
     cameras: number;
     centerOfMass: number;
 }
+
+export type CountedLayerKey = keyof ViewportStats;
+
+export const EMPTY_STATS: ViewportStats = {
+    rawKeypoints: 0,
+    landmarks: 0,
+    mappedKeypoints: 0,
+    face: 0,
+    boneLines: 0,
+    cameras: 0,
+    centerOfMass: 0,
+};
 
 // ---------------------------------------------------------------------------
 // Inspection (hover / click-to-pin a named point or bone).

@@ -18,7 +18,7 @@ class RealtimeAggregatorNodeConfig(BaseModel):
     triangulation_enabled: bool = True
     filter_enabled: bool = False
     center_of_mass_enabled: bool = True
-    skeleton_fitting_enabled: bool = True
+    skeleton_fitting_enabled: bool = False
 
     realtime_filter_config: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
     triangulation_config: TriangulationConfig = Field(default_factory=TriangulationConfig)

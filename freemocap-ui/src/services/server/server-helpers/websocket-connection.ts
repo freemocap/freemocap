@@ -3,7 +3,6 @@ const clientId = crypto.randomUUID();
 export interface WebSocketConfig {
     url: string;
     reconnectDelay?: number;
-    maxReconnectAttempts?: number;
     heartbeatInterval?: number;
 }
 
@@ -20,10 +19,8 @@ type EventCallback = (...args: any[]) => void;
 export class WebSocketConnection {
     private ws: WebSocket | null = null;
     private config: Required<WebSocketConfig>;
-    private reconnectAttempts: number = 0;
     private reconnectTimer: number | null = null;
     private heartbeatTimer: number | null = null;
-    private stabilityTimer: number | null = null;
     private state: ConnectionState = ConnectionState.DISCONNECTED;
     /** Set by disconnect() — the only close that must NOT trigger reconnection. */
     private disconnectRequested: boolean = false;
@@ -33,8 +30,7 @@ export class WebSocketConnection {
 
     constructor(config: WebSocketConfig) {
         this.config = {
-            reconnectDelay: config.reconnectDelay ?? 1000,
-            maxReconnectAttempts: config.maxReconnectAttempts ?? 5,
+            reconnectDelay: config.reconnectDelay ?? 5000,
             heartbeatInterval: config.heartbeatInterval ?? 30000,
             url: config.url
         };
@@ -56,8 +52,8 @@ export class WebSocketConnection {
         this.listeners.get(event)?.forEach(callback => {
             try {
                 callback(...args);
-            } catch (error) {
-                console.error(`Error in event listener for ${event}:`, error);
+            } catch {
+                // A subscriber must not interrupt connection recovery or log every retry.
             }
         });
     }
@@ -68,7 +64,6 @@ export class WebSocketConnection {
         }
         this.clearTimers();
         this.disconnectRequested = false;
-        if (this.state === ConnectionState.FAILED) this.reconnectAttempts = 0;
 
         this.setState(ConnectionState.CONNECTING);
 
@@ -83,15 +78,13 @@ export class WebSocketConnection {
             socket.onclose = (event) => { if (this.ws === socket) this.handleClose(event); };
             socket.onerror = (event) => { if (this.ws === socket) this.handleError(event); };
             socket.onmessage = (event) => { if (this.ws === socket) this.handleMessage(event); };
-        } catch (error) {
-            this.setState(ConnectionState.FAILED);
-            throw error;
+        } catch {
+            this.scheduleReconnect();
         }
     }
 
     public disconnect(): void {
         this.clearTimers();
-        this.reconnectAttempts = 0;
         this.disconnectRequested = true;
 
         if (this.ws) {
@@ -109,7 +102,6 @@ export class WebSocketConnection {
 
     public send(data: string | object): boolean {
         if (!this.isConnected()) {
-            console.warn('WebSocket not connected, queuing message');
             this.emit('send-failed', data);
             return false;
         }
@@ -119,7 +111,6 @@ export class WebSocketConnection {
             this.ws!.send(payload);
             return true;
         } catch (error) {
-            console.error('Failed to send WebSocket message:', error);
             this.emit('send-error', error);
             return false;
         }
@@ -144,29 +135,17 @@ export class WebSocketConnection {
     }
 
     private handleOpen(): void {
-        console.log('WebSocket connected');
-        // A handshake alone does not establish a healthy server connection.
-        this.stabilityTimer = window.setTimeout(() => {
-            this.stabilityTimer = null;
-            this.reconnectAttempts = 0;
-        }, 10000);
         this.setState(ConnectionState.CONNECTED);
         this.startHeartbeat();
         this.emit('open');
     }
 
     private handleClose(event: CloseEvent): void {
-        console.log(`WebSocket closed: code=${event.code}, reason=${event.reason}`);
         this.clearTimers();
 
-        if (event.code === 1011) {
-            this.setState(ConnectionState.FAILED);
-            this.emit('error', new Error(`Server failure: ${event.reason}`));
-        } else if (!this.disconnectRequested && this.reconnectAttempts < this.config.maxReconnectAttempts) {
+        this.ws = null;
+        if (!this.disconnectRequested) {
             this.scheduleReconnect();
-        } else if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-            this.setState(ConnectionState.FAILED);
-            this.emit('max-reconnect-attempts');
         } else {
             this.setState(ConnectionState.DISCONNECTED);
         }
@@ -175,7 +154,6 @@ export class WebSocketConnection {
     }
 
     private handleError(error: Event): void {
-        console.error('WebSocket error:', error);
         this.emit('error', error);
     }
 
@@ -183,23 +161,16 @@ export class WebSocketConnection {
         this.emit('message', event);
     }
 
+    /** Retry quietly until the caller explicitly disconnects, even after server errors. */
     private scheduleReconnect(): void {
         if (this.reconnectTimer) return;
 
         this.setState(ConnectionState.RECONNECTING);
-        const delay = Math.min(
-            this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts),
-            10000 // Max 10 seconds
-        );
-
-        console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.config.maxReconnectAttempts})`);
-
         this.reconnectTimer = window.setTimeout(() => {
             this.reconnectTimer = null;
-            this.reconnectAttempts++;
             this.setState(ConnectionState.DISCONNECTED);
             this.connect();
-        }, delay);
+        }, this.config.reconnectDelay);
     }
 
     private startHeartbeat(): void {
@@ -221,17 +192,12 @@ export class WebSocketConnection {
         try {
             this.ws!.send(text);
             return true;
-        } catch (error) {
-            console.error('Failed to send raw WebSocket message:', error);
+        } catch {
             return false;
         }
     }
 
     private clearTimers(): void {
-        if (this.stabilityTimer !== null) {
-            clearTimeout(this.stabilityTimer);
-            this.stabilityTimer = null;
-        }
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;

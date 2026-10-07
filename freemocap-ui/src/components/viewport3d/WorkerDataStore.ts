@@ -82,6 +82,7 @@ const referenceTransformChan = makeChannel<number[] | null>(null, {replayOnSubsc
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
 const resetCameraChan = makeChannel<null>(null);
+const unpinChan = makeChannel<null>(null);
 let livePresentation = false;
 const modelPresentation = new PresentationBuffer<ResolvedModelFrame>(values => modelFramesChan.dispatch(values), 1000);
 const pointPresentation = new PresentationBuffer<KeypointsFrame>(values => keypointsChan.dispatch(
@@ -104,6 +105,7 @@ export const workerDataStore: KeypointsSource & {
     getVisibility: () => ViewportVisibility;
     subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
+    subscribeToUnpin: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
 } = {
     subscribeToFittedDefinitions: fittedDefinitionsChan.subscribe,
@@ -147,6 +149,7 @@ export const workerDataStore: KeypointsSource & {
     // Camera commands (one-shot)
     subscribeToFitCamera: fitCameraChan.subscribe,
     subscribeToResetCamera: resetCameraChan.subscribe,
+    subscribeToUnpin: unpinChan.subscribe,
 
     dispatch(type: string, data: unknown) {
         switch (type) {
@@ -210,6 +213,9 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "resetCamera":
                 resetCameraChan.dispatch(null);
+                break;
+            case "unpin":
+                unpinChan.dispatch(null);
                 break;
         }
     },

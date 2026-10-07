@@ -8,6 +8,7 @@ import {recordedKeypoints, recordedModelFrame, RecordingChannelKind, type Playba
 import {PlaybackLoadResultSchema} from '@/services/recording/playback-parquet-messages';
 import {fittedSkeletonFrames} from '@/services/recording/fitted-skeleton';
 import type {FittedSkeletonDefinition, FittedSkeletonFrame} from '@/services/recording/fitted-skeleton-types';
+import {RecordingSelectionContext, type RecordingSelection} from './RecordingSelectionContext';
 
 interface PlaybackState {models: ModelDefinition[]; frames: ResolvedModelFrame[]; points: KeypointsFrame | null}
 
@@ -33,7 +34,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const fittedFrameSubscribers = useRef(new Set<(items: FittedSkeletonFrame[]) => void>());
     const run = manifest?.runs.find(item => item.run_id === runId);
     const clock = run?.timelines.find(item => item.sensor_group === group && item.source === `timing:${group}`);
-    const groups = [...new Set(run?.channels.map(channel => channel.sensor_group) ?? [])];
+    const groups = useMemo(() => [...new Set(run?.channels.map(channel => channel.sensor_group) ?? [])], [run]);
     const baseUrl = recordingId ? `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}` : null;
     const parameters = new URLSearchParams();
     if (recordingParentDirectory) parameters.set('recording_parent_directory', recordingParentDirectory);
@@ -176,7 +177,24 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         subscribeToKeypoints: callback => { pointSubscribers.current.add(callback); if (state.current.points) callback(state.current.points); return () => { pointSubscribers.current.delete(callback); }; },
     }), []);
 
-    return <KeypointsSourceProvider source={source}><div className="flex flex-col h-full">
+    const units = Object.values(run?.channels.find(item => item.sensor_group === group && item.kind === RecordingChannelKind.Landmarks)?.components ?? {})[0] ?? null;
+    const runIds = useMemo(() => manifest?.runs.map(item => item.run_id) ?? [], [manifest]);
+    const selection = useMemo<RecordingSelection>(() => ({
+        runIds,
+        runId,
+        selectRun: (nextRunId: number) => {
+            const selected = manifest?.runs.find(item => item.run_id === nextRunId);
+            if (!selected) throw new Error(`Recording result ${nextRunId} is not in the manifest`);
+            setRunId(nextRunId); setGroup(selected.channels[0]?.sensor_group ?? '');
+        },
+        groups,
+        group,
+        selectGroup: setGroup,
+        units,
+        reload: reloadManifest,
+    }), [runIds, runId, manifest, groups, group, units, reloadManifest]);
+
+    return <KeypointsSourceProvider source={source}><RecordingSelectionContext.Provider value={selection}><div className="flex flex-col h-full">
         {!mediaAvailable && clock && <div className="flex items-center gap-2 p-1">
             <button disabled={loaded?.manifest !== manifest || !!error} onClick={() => setDataPlaying(value => !value)}>{dataPlaying ? 'Pause' : 'Play data'}</button>
             <input aria-label="Recording time" type="range" min={clock.timestamps_s[0]} max={clock.timestamps_s[clock.timestamps_s.length - 1]}
@@ -188,28 +206,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         {!manifest && !error && <p className="p-2">No reconstruction loaded.</p>}
         <div className="flex-1 min-h-0" style={{position: 'relative'}}>
         {children}
-        <details style={{position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 10, width: 'max-content', maxWidth: 'calc(100% - 16px)', color: '#eee'}}>
-            <summary aria-label="Recording results" title="Recording results" className="viewport-options br-1"
-                style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, margin: '0 auto', cursor: 'pointer', listStyle: 'none', background: '#20252bee'}}>
-                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M4 6h16M4 12h16M4 18h16" />
-                    <path d="M8 4v4M16 10v4M10 16v4" />
-                </svg>
-            </summary>
-        <div className="viewport-options flex items-center gap-2 p-2 br-1" style={{flexWrap: 'wrap', marginTop: 4, background: '#20252bee'}}>
-            <label>Result <select value={runId ?? ''} onChange={event => {
-                const selected = manifest?.runs.find(item => item.run_id === Number(event.target.value));
-                setRunId(Number(event.target.value)); setGroup(selected?.channels[0]?.sensor_group ?? '');
-            }}>
-                {manifest?.runs.map(item => <option key={item.run_id} value={item.run_id}>{item.run_id}</option>)}
-            </select></label>
-            <label>Sensor group <select value={group} onChange={event => setGroup(event.target.value)}>
-                {groups.map(name => <option key={name} value={name}>{name}</option>)}
-            </select></label>
-            <button onClick={reloadManifest}>Reload result</button>
-            <span>{Object.values(run?.channels.find(item => item.sensor_group === group && item.kind === RecordingChannelKind.Landmarks)?.components ?? {})[0]}</span>
         </div>
-        </details>
-        </div>
-    </div></KeypointsSourceProvider>;
+    </div></RecordingSelectionContext.Provider></KeypointsSourceProvider>;
 }

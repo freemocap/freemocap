@@ -28,18 +28,15 @@ import {
 import { useKeypointsSource, useModelDefinitionsById } from "../KeypointsSourceContext";
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
+import { AXIS_HEX, hexToRgb01 } from "../helpers/layer-colors";
 
 const MAX_SEGMENTS = 256;
 const VERTICES_PER_SEGMENT = 6; // 3 axes × 2 endpoints
 const FLOATS_PER_SEGMENT = VERTICES_PER_SEGMENT * 3;
 
-// Vertex-color RGB per axis index (0=x, 1=y, 2=z). Full-saturation primaries,
-// kept just under the bloom pass threshold so they stay crisp.
-const AXIS_COLORS: readonly [number, number, number][] = [
-    [1.0, 0.3, 0.25],
-    [0.35, 1.0, 0.3],
-    [0.3, 0.55, 1.0],
-];
+// Vertex-color RGB per axis index (0=x, 1=y, 2=z), from the shared layer palette.
+// Kept just under the bloom pass threshold so they stay crisp.
+const AXIS_COLORS: readonly (readonly [number, number, number])[] = AXIS_HEX.map(hexToRgb01);
 
 // Axis length scales with each segment's rest length so a phalanx gets a
 // stubby triad and a thigh gets a long one, clamped to stay legible.

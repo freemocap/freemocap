@@ -1,129 +1,43 @@
-import inspect
-import logging
-import subprocess
+"""Export through an explicitly installed Blender package."""
 from pathlib import Path
-from typing import List
+import subprocess
+from freemocap.core.blender.blender_export_config import BlenderExportConfig
 
-import freemocap_blender_addon
+from freemocap.core.blender.runtime import executable, environment, run_blender
+from freemocap.system.recording_status.recording_status import raise_if_not_blender_ready
 
-from freemocap.core.blender.helpers import run_blender_export as run_blender_export_module
-from freemocap.core.blender.helpers.run_blender_export import run_blender_export
-from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.system.recording_status.recording_status import (
-    raise_if_not_blender_ready,
-    detect_blender_input_detector,
-)
-from freemocap.utilities.open_file import open_file
-
-logger = logging.getLogger(__name__)
-
-RAW_3D_NPY_FILE_NAME = "3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
-REPROJECTION_ERROR_NPY_FILE_NAME = "3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-FULL_REPROJECTION_ERROR_NPY_FILE_NAME = "3dData_numCams_numFrames_numTrackedPoints_reprojectionError.npy"
-REPROJECTION_FILTERED_PREFIX = "reprojection_filtered_"
-
-DATA_3D_NPY_FILE_NAME = "skeleton_3d.npy"
-RIGID_BONES_NPY_FILE_NAME = "rigid_bones_3d.npy"
-BODY_3D_DATAFRAME_CSV_FILE_NAME = "body_3d_xyz.csv"
-RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "right_hand_right_hand.csv" # TODO -  the names are duplicated in the right/left hand, needs fixed in skellyforge.skellymodels.human (i think?)
-LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "left_hand_left_hand.csv" # TODO -  the names are duplicated in the right/left hand, needs fixed in skellyforge.skellymodels.human (i think?)
-FACE_3D_DATAFRAME_CSV_FILE_NAME = "face_3d_xyz.csv"
-
-OLD_DATA_2D_NPY_FILE_NAME = "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
-OLD_RAW_3D_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
-OLD_REPROJECTION_ERROR_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
-OLD_DATA_3D_NPY_FILE_NAME = "mediaPipeSkel_3d_body_hands_face.npy"
+ROUTES = ('auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints')
 
 
-def run_subprocess(command_list: List[str]):
-    logger.debug(f"Running subprocess with command list: {command_list}")
-    process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    return process
-
-
-def export_to_blender(
-        recording_folder_path: str|Path,
-        detector:str,
-        blend_file_path: str|Path|None=None,
-        blender_exe_path: str|Path|None=None,
-        open_file_on_completion:bool=True,
-):
-    if detector != "mediapipe":
-        message = (
-            f"Blender export skipped: recording was processed with '{detector}', but the "
-            "freemocap_blender_addon only supports MediaPipe output so far. Re-process with "
-            "MediaPipe to export to Blender."
-        )
-        logger.warning(message)
-        raise ValueError(message)
-
-    raise_if_not_blender_ready(recording_folder_path, 
-                               detector = detector)
-
-    if blender_exe_path is None:
-        blender_exe_path:Path = Path(get_best_guess_of_blender_path())
-        if not blender_exe_path.is_file():
-            raise RuntimeError(f"Blender executable not found at: {blender_exe_path}")
-    if blend_file_path is None:
-        blend_file_path = Path(recording_folder_path)/f"{Path(recording_folder_path).name}.blend"
-
-    # Resolve the site-packages directory containing freemocap_blender_addon
-    # so we can inject it into Blender's sys.path (no addon installation needed)
-    addon_package_path = Path(inspect.getfile(freemocap_blender_addon))
-    site_packages_path = str(addon_package_path.parent.parent)
-    logger.debug(f"Will inject site-packages path into Blender's sys.path: {site_packages_path}")
-
-    # Use the module's __file__ directly — inspect.getfile() on a @beartype-wrapped
-    # function returns repr() of the wrapper, not the source file path.
-    simple_run_script = run_blender_export_module.__file__
-
-    command_list = [
-        str(blender_exe_path),
-        "--background",
-        "--python",
-        simple_run_script,
-        "--",
-        site_packages_path,
-        str(recording_folder_path),
-        str(blend_file_path),
-    ]
-
-    logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
-
-    blender_process = run_subprocess(command_list=command_list)
-
-    stdout, _ = blender_process.communicate()
-    if stdout:
-        for line in stdout.decode().splitlines():
-            logging.debug(line)
-
-    if blender_process.returncode != 0:
-        logging.error(f"Blender subprocess exited with non-zero return code: {blender_process.returncode}")
-    if not Path(blend_file_path).is_file():
-        raise RuntimeError(f"Blender output file not found at: {blend_file_path}")
-    elif Path(blend_file_path).stat().st_size == 0:
-        raise RuntimeError(f"Blender file was created but is empty at: {blend_file_path}")
-
+def export_to_blender(recording_folder_path, detector=None, blend_file_path=None,
+                      blender_exe_path=None, open_file_on_completion=True, *, route='auto',
+                      package=None, trajectory_channel='LANDMARKS_3D', run_id=None, sensor_group=None, blender_export_config=None):
+    recording = Path(recording_folder_path).expanduser().resolve()
+    if not recording.is_dir():
+        raise ValueError('Recording directory does not exist: ' + str(recording))
+    if route not in ROUTES:
+        raise ValueError('Unknown Blender import route: ' + route)
+    if trajectory_channel not in ('LANDMARKS_3D', 'MAPPED_KEYPOINTS_3D'):
+        raise ValueError('Unknown trajectory channel')
+    parquets = sorted(recording.glob('*_data.parquet'))
+    if route == 'auto':
+        route = 'parquet_segments' if parquets else 'legacy_npy'
+    if route == 'legacy_npy':
+        if detector not in (None, 'mediapipe'):
+            raise ValueError('Legacy NPY export requires MediaPipe; use a Parquet route for other trackers')
+        raise_if_not_blender_ready(recording, detector='mediapipe')
+    elif len(parquets) != 1:
+        raise ValueError('Parquet export requires exactly one *_data.parquet in the recording folder')
+    options = BlenderExportConfig.model_validate(blender_export_config or {}).addon_payload(route)
+    blender = executable(blender_exe_path)
+    output = Path(blend_file_path).expanduser().resolve() if blend_file_path else recording / (recording.name + '.blend')
+    if output.suffix.lower() != '.blend' or not output.parent.is_dir():
+        raise ValueError('Choose a .blend output in an existing directory')
+    result = run_blender(blender, dict(action='export', recording=str(recording), output=str(output),
+                                      route=route, package=package, config=options, trajectory_channel=trajectory_channel,
+                                      run_id=run_id, sensor_group=sensor_group))
+    if result.get('output') != str(output) or not output.is_file() or output.stat().st_size == 0:
+        raise RuntimeError('Blender did not confirm a nonempty output: ' + str(output))
     if open_file_on_completion:
-        logger.info(f"Opening {blend_file_path} with {blender_exe_path}")
-        open_file(str(blend_file_path),)
-
-
-    logger.debug("Done with blender add on")
-    blender_process.terminate()  # manually terminate the process
-
-
-
-
-if __name__ == "__main__":
-
-
-    recording_path_in = r"C:\Users\jonma\freemocap_data\recording_sessions\steen_pantsOn_gait"
-    blend_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).name) + ".blend"))
-    blender_exe_path_in = get_best_guess_of_blender_path()
-
-    export_to_blender(
-        recording_folder_path=recording_path_in,
-        blend_file_path=blend_file_path_in,
-        blender_exe_path=blender_exe_path_in,
-    )
+        subprocess.Popen([str(blender), str(output)], cwd=output.parent, env=environment(), shell=False)
+    return str(output)

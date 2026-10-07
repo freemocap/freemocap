@@ -10,6 +10,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
+import { LAYER_HEX } from "../helpers/layer-colors";
 import { classifyPointName, getPointStyle } from "../helpers/skeleton-config";
 import { registerPickingMesh, unregisterPickingMesh } from "./PickingRegistry";
 import { useKeypointsSource, type KeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
@@ -21,12 +22,12 @@ const DUMMY = new Object3D();
 // Per‑category keypoint radii.
 //
 // The sphere geometry has radius 50, so the visual world‑space radius is
-// roughly <constant> × 50.  Tweak these to taste — the filtered (colored‑by‑
-// body‑part) layer uses the per‑category values, while the raw layer uses
-// RAW_KEYPOINT_RADIUS uniformly.
+// roughly <constant> × 50. Raw keypoints and landmarks are sized per body
+// category; mapped keypoints use MAPPED_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
-const RAW_KEYPOINT_RADIUS = 0.15;
-const SKELETON_POINT_RADIUS = 0.1875;
+const MAPPED_KEYPOINT_RADIUS = 0.12;
+const RAW_KEYPOINT_COLOR = new Color(LAYER_HEX.rawKeypoints);
+const MAPPED_KEYPOINT_COLOR = new Color(LAYER_HEX.mappedKeypoints);
 
 const BODY_KEYPOINT_RADIUS = 0.225;
 const HAND_KEYPOINT_RADIUS = 0.1125;
@@ -68,10 +69,11 @@ interface KeypointLayerProps {
      *  detector, or every tracked model's fitted LANDMARKS. The second is what shows a
      *  charuco board as a reconstructed rigid object rather than a cloud of corners. */
     pointSource: "keypoints" | "modelLandmarks" | "mappedKeypoints";
-    color: Color;
-    radius: number;
-    statsKey: "keypoints" | "skeleton" | "mappedKeypoints";
-    colorMode?: "uniform" | "byBodyPart";
+    /** One color for every point, or each point's body-side color (model hints first). */
+    color: Color | "bySide";
+    /** One radius for every point, or the per-body-category radius. */
+    radius: number | "byBodyPart";
+    statsKey: "rawKeypoints" | "landmarks" | "mappedKeypoints";
     /** Values per point in the interleaved frame data. Every PointsFrame is
      *  3-interleaved xyz: frame-resolution strips the 4th column
      *  (reprojection_error) from KEYPOINTS_3D and SEGMENT_ORIGINS is natively
@@ -81,7 +83,7 @@ interface KeypointLayerProps {
     inspectionKind: "keypoint" | "landmark" | "mapped keypoint";
 }
 
-function KeypointLayer({ pointSource, color, radius, statsKey, colorMode = "uniform", stride, inspectionKind }: KeypointLayerProps) {
+function KeypointLayer({ pointSource, color, radius, statsKey, stride, inspectionKind }: KeypointLayerProps) {
     const keypointsSource: KeypointsSource = useKeypointsSource();
     const { statsRef } = useViewportState();
     const { invalidate } = useThree();
@@ -223,10 +225,10 @@ function KeypointLayer({ pointSource, color, radius, statsKey, colorMode = "unif
             }
 
             if (visible) {
-                const scale = colorMode === "byBodyPart"
+                const scale = radius === "byBodyPart"
                     ? getKeypointRadius(name)
                     : radius;
-                const pointColor = colorMode === "byBodyPart"
+                const pointColor = color === "bySide"
                     ? getPointStyle(name, colorHints).color
                     : color;
 
@@ -274,28 +276,32 @@ export function KeypointsRenderer() {
 
     return (
         <>
-            {visibility.keypoints && (
+            {visibility.rawKeypoints && (
                 <KeypointLayer
                     pointSource="keypoints"
-                    color={COLORS.filtered}
-                    radius={RAW_KEYPOINT_RADIUS}
-                    statsKey="keypoints"
-                    colorMode="byBodyPart"
+                    color={RAW_KEYPOINT_COLOR}
+                    radius="byBodyPart"
+                    statsKey="rawKeypoints"
                     stride={3}
                     inspectionKind="keypoint"
                 />
             )}
             {visibility.mappedKeypoints && (
-                <KeypointLayer pointSource="mappedKeypoints" color={new Color("#00e5ff")}
-                    radius={0.12} statsKey="mappedKeypoints" stride={3} inspectionKind="mapped keypoint" />
+                <KeypointLayer
+                    pointSource="mappedKeypoints"
+                    color={MAPPED_KEYPOINT_COLOR}
+                    radius={MAPPED_KEYPOINT_RADIUS}
+                    statsKey="mappedKeypoints"
+                    stride={3}
+                    inspectionKind="mapped keypoint"
+                />
             )}
-            {visibility.skeleton && (
+            {visibility.landmarks && (
                 <KeypointLayer
                     pointSource="modelLandmarks"
-                    color={COLORS.skeleton}
-                    radius={SKELETON_POINT_RADIUS}
-                    statsKey="skeleton"
-                    colorMode="byBodyPart"
+                    color="bySide"
+                    radius="byBodyPart"
+                    statsKey="landmarks"
                     stride={3}
                     inspectionKind="landmark"
                 />

@@ -1,3 +1,4 @@
+import {BlenderPackageSettings} from '@/components/common/BlenderPackageSettings';
 import React, { useEffect, useRef } from "react";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ButtonSm from "@/components/ui-components/ButtonSm";
@@ -55,9 +56,8 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
     void triggerOpenInBlender(mocapRecordingPath);
   };
 
-  // The freemocap_blender_addon only understands MediaPipe output so far -
-  // an rtmpose recording's Blender export is turned off client-side to match.
-  const blenderSupported = detectorType === "mediapipe";
+  // Parquet export supports every tracker mapped to the standard human model.
+  const blenderSupported = true;
 
   const canExport =
     blenderSupported &&
@@ -150,12 +150,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
               : "Click to browse for blender.exe"}
         </p>
 
-        {!blenderSupported && (
-          <p className="text sm text-gray p-1">
-            Blender export only supports MediaPipe output right now - switch the detector
-            to MediaPipe to enable it.
-          </p>
-        )}
+        <BlenderPackageSettings />
 
         {/* Toggles */}
         <ToggleComponent

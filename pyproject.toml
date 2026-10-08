@@ -46,7 +46,7 @@ cpu = ["skellytracker[all-cpu]"]
 [tool.uv.sources]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development-streaming"}
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development-streaming"}
-skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development-streaming" }
+skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development-skelly-fit" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "development-streaming" }
 skelly_synchronize = { git = "https://github.com/freemocap/skellysync", branch = "philip/rewrite" }
 

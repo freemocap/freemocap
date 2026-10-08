@@ -106,8 +106,10 @@ def test_reference_calibration_and_alignment_provenance(prepared_reference, save
     for update in playback.calibration_updates.values():
         assert update.transformations
     # Reading again must not apply pending alignment transformations or mutate files.
-    assert playback_manifest(prepared_reference.data_parquet_path).model_dump() == manifest.model_dump()
-    assert LoadedCalibration.from_path(path) == calibration
+    assert_json_matches(playback_manifest(prepared_reference.data_parquet_path).model_dump(mode="json"),
+                        manifest.model_dump(mode="json"))
+    assert_json_matches(LoadedCalibration.from_path(path).model_dump(mode="json"),
+                        calibration.model_dump(mode="json"))
 
 
 def test_reference_playback_http_bytes_and_revision(prepared_reference, saved):

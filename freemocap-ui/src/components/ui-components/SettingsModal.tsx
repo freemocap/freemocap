@@ -3,6 +3,7 @@ import {useElectronIPC} from '@/services';
 import {useAppDispatch, useAppSelector} from '@/store';
 import {recordingDirectoryChanged, selectIsAnyRecording} from '@/store/slices/recording';
 import {activeRecordingBaseDirectoryChanged} from '@/store/slices/active-recording';
+import {filterVirtualCamerasToggled, selectFilterVirtualCameras} from '@/store/slices/cameras';
 import {recordingsDirFromBaseFolder} from '@/utils/dataFolder';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import IconButton from '@/components/ui-components/IconButton';
@@ -23,6 +24,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
     const {isElectron, api} = useElectronIPC();
     const dispatch = useAppDispatch();
     const isRecording = useAppSelector(selectIsAnyRecording);
+    const filterVirtualCameras = useAppSelector(selectFilterVirtualCameras);
     const {startTour} = useTutorial();
 
     const [baseFolder, setBaseFolder] = useState<string>('');
@@ -201,6 +203,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
                                 onChange={(e) => handleTelemetryToggle(e.target.checked)}
                             />
                         )}
+                    </div>
+
+                    {/* Cameras */}
+                    <div className="flex flex-col gap-1 bg-secondary p-2 br-1">
+                        <SubactionHeader text="Cameras" className="text-gray"/>
+                        <Checkbox
+                            label="Include virtual cameras when detecting devices"
+                            checked={!filterVirtualCameras}
+                            onChange={() => dispatch(filterVirtualCamerasToggled())}
+                        />
+                        <p className="text sm text-darkgray">
+                            Most users should leave this off — virtual cameras (OBS, Zoom, etc.) are usually noise.
+                            Enable it if your real camera is a virtual device.
+                        </p>
                     </div>
 
                     {/* Getting started */}

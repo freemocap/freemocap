@@ -32,6 +32,8 @@ def recording(tmp_path: Path) -> Path:
 
 def test_browser_stream_http_and_invalid_start(recording: Path) -> None:
     app = FastAPI()
+    from freemocap.core.recording.recording_access import RecordingAccess
+    app.state.recording_access = RecordingAccess()
     app.include_router(playback_router)
     files = set(recording.rglob("*"))
     with TestClient(app) as client:

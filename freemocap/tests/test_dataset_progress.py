@@ -50,9 +50,10 @@ def test_stage_change_clears_old_frame_total_and_preserves_completed_calibration
         assert display.progress.tasks[0].start_time == started
         assert display.progress.tasks[0].elapsed >= 5
         assert display.progress.tasks[1].total == 222
-        display.feed('INFO mocap: Fitting connected human skeleton (running)\n')
+        display.feed('INFO mocap: Reconstructing skeleton (running)\n')
         assert display.progress.tasks[1].total is None
-    assert 'SkellyForge' in stream.getvalue()
+    assert 'FreeMoCap' in stream.getvalue()
+    assert 'Reconstructing skeleton' in stream.getvalue()
 
 
 def test_failure_is_visible_and_terminal_is_restored():

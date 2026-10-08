@@ -1,6 +1,9 @@
 """Calibration selection is explicit and cannot retain unreadable geometry."""
 
 from pathlib import Path
+import numpy as np
+from skellytracker.core.data_primitives.observation import Observation, StageObservation
+from skellytracker.core.data_primitives.keypoints import Keypoints
 
 import pytest
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -49,8 +52,12 @@ def test_multicamera_processing_requires_explicit_calibration(tmp_path: Path) ->
         file_path=tmp_path / f'{camera_id}.mp4', width=1280, height=720,
         fps=30.0, frame_count=1, fourcc='mp4v', duration_seconds=1 / 30, end_frame=1,
     ) for camera_id in ('cam0', 'cam1')}
+    frames = [{camera_id: Observation(frame_number=0, image_size=(720, 1280), stages={
+        'body': StageObservation(name='body', keypoints=Keypoints(names=('left_wrist',),
+            xyz=np.array([[10., 20., 0.]]), visibility=np.ones(1)))
+    }) for camera_id in metadata}]
     with pytest.raises(ValueError, match='explicitly selected calibration'):
         run_posthoc_mocap_task(
-            frame_observations=[], recording_info=recording, video_metadata=metadata,
+            frame_observations=frames, recording_info=recording, video_metadata=metadata,
             task_config=PosthocMocapPipelineConfig(calibration_toml_path=None), selected_board=None,
         )

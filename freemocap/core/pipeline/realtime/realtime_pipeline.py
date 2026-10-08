@@ -208,36 +208,68 @@ class RealtimePipeline:
             global_kill_flag=global_kill_flag,
         )
 
-        # Use the realtime subset if provided, otherwise all cameras in the group.
-        # The camera group is always started with all selected cameras so their
-        # shared memory exists; we just choose which ones feed the pipeline nodes.
-        pipeline_camera_ids: list[CameraIdString] = (
-            [cid for cid in camera_group.configs.keys() if cid in realtime_camera_ids]
-            if realtime_camera_ids is not None
-            else list(camera_group.configs.keys())
-        )
-
-        camera_nodes = {
-            camera_id: CameraNode.create(
-                camera_id=camera_id,
-                worker_registry=worker_registry,
-                camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
-                config=pipeline_config.camera_node_config,
-                ipc=ipc,
-                pubsub=pubsub,
-                skeleton_inference_centralized=(
-                    pipeline_config.use_centralized_inference
-                ),
-                log_pipeline_times=pipeline_config.log_pipeline_times,
+        created_nodes = []
+        try:
+            # Use the realtime subset if provided, otherwise all cameras in the group.
+            # The camera group is always started with all selected cameras so their
+            # shared memory exists; we just choose which ones feed the pipeline nodes.
+            pipeline_camera_ids: list[CameraIdString] = (
+                [cid for cid in camera_group.configs.keys() if cid in realtime_camera_ids]
+                if realtime_camera_ids is not None
+                else list(camera_group.configs.keys())
             )
-            for camera_id in pipeline_camera_ids
-        }
 
-        skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
-        if (pipeline_config.use_centralized_inference
-                and pipeline_config.camera_node_config.skeleton_tracking_enabled):
-            skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
-                inference_service=inference_service,
+            camera_nodes = {}
+            for camera_id in pipeline_camera_ids:
+                camera_nodes[camera_id] = CameraNode.create(
+                    camera_id=camera_id,
+                    worker_registry=worker_registry,
+                    camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
+                    config=pipeline_config.camera_node_config,
+                    ipc=ipc,
+                    pubsub=pubsub,
+                    skeleton_inference_centralized=(
+                        pipeline_config.use_centralized_inference
+                    ),
+                    log_pipeline_times=pipeline_config.log_pipeline_times,
+                )
+                created_nodes.append(camera_nodes[camera_id])
+
+            skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
+            if (pipeline_config.use_centralized_inference
+                    and pipeline_config.camera_node_config.skeleton_tracking_enabled):
+                skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
+                    inference_service=inference_service,
+                    camera_group_id=camera_group.id,
+                    camera_ids=pipeline_camera_ids,
+                    worker_registry=worker_registry,
+                    camera_group_shm_dto=camera_group.shm.to_dto(),
+                    config=pipeline_config,
+                    ipc=ipc,
+                    pubsub=pubsub,
+                )
+
+            if skeleton_inference_node is not None:
+                created_nodes.append(skeleton_inference_node)
+
+            charuco_recorder_node: CharucoRecorderNode | None = None
+
+            # Backpressure events between the aggregator and the websocket consumer.
+            # The aggregator processes one frame, publishes the result, clears
+            # `result_consumed_event`, and sets `result_ready_event`. The consumer
+            # waits on `result_ready_event`, grabs the result, then flips the events
+            # in the opposite order — releasing the aggregator to start the next
+            # frame. Initial state: nothing is ready, but the slot is "consumed"
+            # (free), so the aggregator can produce its first frame immediately.
+            result_ready_event = multiprocessing.Event()
+            result_consumed_event = multiprocessing.Event()
+            result_consumed_event.set()
+
+            skeleton_fitter_reset_sub = pubsub.get_subscription(
+                SkeletonFitterResetTopic,
+            )
+
+            aggregation_node = RealtimeAggregatorNode.create(
                 camera_group_id=camera_group.id,
                 camera_ids=pipeline_camera_ids,
                 worker_registry=worker_registry,
@@ -245,62 +277,43 @@ class RealtimePipeline:
                 config=pipeline_config,
                 ipc=ipc,
                 pubsub=pubsub,
+                result_ready_event=result_ready_event,
+                result_consumed_event=result_consumed_event,
+                skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
             )
 
-        charuco_recorder_node: CharucoRecorderNode | None = None
+            created_nodes.append(aggregation_node)
 
-        # Backpressure events between the aggregator and the websocket consumer.
-        # The aggregator processes one frame, publishes the result, clears
-        # `result_consumed_event`, and sets `result_ready_event`. The consumer
-        # waits on `result_ready_event`, grabs the result, then flips the events
-        # in the opposite order — releasing the aggregator to start the next
-        # frame. Initial state: nothing is ready, but the slot is "consumed"
-        # (free), so the aggregator can produce its first frame immediately.
-        result_ready_event = multiprocessing.Event()
-        result_consumed_event = multiprocessing.Event()
-        result_consumed_event.set()
+            aggregation_output_subscription = pubsub.get_subscription(
+                AggregationNodeOutputTopic,
+            )
+            pipeline_config_subscription = pubsub.get_subscription(
+                PipelineConfigUpdateTopic,
+            )
 
-        skeleton_fitter_reset_sub = pubsub.get_subscription(
-            SkeletonFitterResetTopic,
-        )
-
-        aggregation_node = RealtimeAggregatorNode.create(
-            camera_group_id=camera_group.id,
-            camera_ids=pipeline_camera_ids,
-            worker_registry=worker_registry,
-            camera_group_shm_dto=camera_group.shm.to_dto(),
-            config=pipeline_config,
-            ipc=ipc,
-            pubsub=pubsub,
-            result_ready_event=result_ready_event,
-            result_consumed_event=result_consumed_event,
-            skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
-        )
-
-        aggregation_output_subscription = pubsub.get_subscription(
-            AggregationNodeOutputTopic,
-        )
-        pipeline_config_subscription = pubsub.get_subscription(
-            PipelineConfigUpdateTopic,
-        )
-
-        return cls(
-            id=pipeline_id,
-            camera_group=camera_group,
-            config=pipeline_config,
-            camera_nodes=camera_nodes,
-            aggregation_node=aggregation_node,
-            skeleton_inference_node=skeleton_inference_node,
-            charuco_recorder_node=charuco_recorder_node,
-            aggregation_output_subscription=aggregation_output_subscription,
-            pipeline_config_subscription=pipeline_config_subscription,
-            result_ready_event=result_ready_event,
-            result_consumed_event=result_consumed_event,
-            ipc=ipc,
-            pubsub=pubsub,
-            worker_registry=worker_registry,
-            inference_service=inference_service,
-        )
+            return cls(
+                id=pipeline_id,
+                camera_group=camera_group,
+                config=pipeline_config,
+                camera_nodes=camera_nodes,
+                aggregation_node=aggregation_node,
+                skeleton_inference_node=skeleton_inference_node,
+                charuco_recorder_node=charuco_recorder_node,
+                aggregation_output_subscription=aggregation_output_subscription,
+                pipeline_config_subscription=pipeline_config_subscription,
+                result_ready_event=result_ready_event,
+                result_consumed_event=result_consumed_event,
+                ipc=ipc,
+                pubsub=pubsub,
+                worker_registry=worker_registry,
+                inference_service=inference_service,
+            )
+        except BaseException:
+            try:
+                _shutdown_pipeline_nodes(ipc=ipc, nodes=created_nodes, pubsub=pubsub)
+            except Exception:
+                logger.exception("Cleanup after realtime pipeline construction failure also failed")
+            raise
 
     def start(self) -> None:
         if self.started:
@@ -312,65 +325,49 @@ class RealtimePipeline:
             f"[{self.camera_group_id}] with cameras {self.camera_ids}"
         )
 
-        if not self.camera_group.started:
-            logger.debug("Starting camera group...")
-            self.camera_group.start()
+        try:
+            if not self.camera_group.started:
+                logger.debug("Starting camera group...")
+                self.camera_group.start()
 
-        self.aggregation_node.start()
+            self.aggregation_node.start()
 
-        # Start the centralized GPU inference node before camera nodes so its
-        # session (including any TRT engine compilation) is ready by the time
-        # the first frame request lands. First-run TRT compile can take 1–3
-        # minutes; subsequent runs are cache-hits.
-        if self.skeleton_inference_node is not None:
-            logger.info(
-                f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
-                f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
-            )
-            self.skeleton_inference_node.start()
+            # Start the centralized GPU inference node before camera nodes so its
+            # session (including any TRT engine compilation) is ready by the time
+            # the first frame request lands. First-run TRT compile can take 1–3
+            # minutes; subsequent runs are cache-hits.
+            if self.skeleton_inference_node is not None:
+                logger.info(
+                    f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
+                    f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
+                )
+                self.skeleton_inference_node.start()
 
-        for camera_id, node in self.camera_nodes.items():
-            node.start()
+            for camera_id, node in self.camera_nodes.items():
+                node.start()
 
-        if self.charuco_recorder_node is not None:
-            self.charuco_recorder_node.start()
-            logger.info(f"CharucoRecorderNode started for pipeline [{self.id}]")
+            if self.charuco_recorder_node is not None:
+                self.charuco_recorder_node.start()
+                logger.info(f"CharucoRecorderNode started for pipeline [{self.id}]")
 
-        logger.info(f"RealtimePipeline [{self.id}] — all workers started")
+            logger.info(f"RealtimePipeline [{self.id}] — all workers started")
+        except BaseException:
+            try:
+                self.shutdown()
+            except Exception:
+                logger.exception("Cleanup after realtime pipeline startup failure also failed")
+            raise
 
     def shutdown(self) -> None:
-        logger.debug(f"Shutting down RealtimePipeline [{self.id}]")
-
-
-        # Mark all workers as intentionally terminated BEFORE they die
-        # so the WorkerRegistry child monitor doesn't trigger a cascade kill
-        for node in self.camera_nodes.values():
-            node.worker.mark_stopping()
-        self.aggregation_node.worker.mark_stopping()
+        """Release this pipeline's nodes and queues, including already-dead workers."""
+        self.started = False
+        nodes = [*self.camera_nodes.values()]
         if self.skeleton_inference_node is not None:
-            self.skeleton_inference_node.worker.mark_stopping()
+            nodes.append(self.skeleton_inference_node)
         if self.charuco_recorder_node is not None:
-            self.charuco_recorder_node.worker.mark_stopping()
-
-        self.ipc.shutdown_pipeline()
-
-        # Shut down worker threads BEFORE closing pubsub queues.
-        # On Windows, closing a multiprocessing.Queue while a thread is
-        # reading from it (even get_nowait) can hang on the underlying
-        # pipe handle. Shutting nodes down first gives them a chance to
-        # exit their loops (ipc.should_continue is already False).
-        for node in self.camera_nodes.values():
-            if node.is_alive:
-                node.shutdown()
-        if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
-            self.skeleton_inference_node.shutdown()
-        if self.charuco_recorder_node is not None and self.charuco_recorder_node.is_alive:
-            self.charuco_recorder_node.shutdown()
-        if self.aggregation_node.is_alive:
-            self.aggregation_node.shutdown()
-
-        self.pubsub.close()
-        logger.debug(f"RealtimePipeline [{self.id}] shut down")
+            nodes.append(self.charuco_recorder_node)
+        nodes.append(self.aggregation_node)
+        _shutdown_pipeline_nodes(ipc=self.ipc, nodes=nodes, pubsub=self.pubsub)
 
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
         """Keep inference subscribed while paused; create its worker before enabling it."""
@@ -492,3 +489,24 @@ class RealtimePipeline:
             self.result_consumed_event.set()
         latest = self._latest_aggregation_output
         return latest if latest is not None and latest.frame_number > if_newer_than else None
+
+
+def _shutdown_pipeline_nodes(*, ipc, nodes, pubsub) -> None:
+    """Stop only owned nodes before closing their transport; preserve shared services."""
+    errors = []
+    for node in nodes:
+        node.worker.mark_stopping()
+    ipc.shutdown_pipeline()
+    for node in nodes:
+        try:
+            node.shutdown()
+        except Exception as error:
+            errors.append(error)
+    # A thread that failed to stop may still be reading its queues.
+    if not any(node.is_alive for node in nodes):
+        try:
+            pubsub.close()
+        except Exception as error:
+            errors.append(error)
+    if errors:
+        raise ExceptionGroup("Realtime pipeline cleanup failed", errors)

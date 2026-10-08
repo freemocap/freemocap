@@ -30,10 +30,15 @@ export const detectCameras = createAsyncThunk<
 >(
     'cameras/detect',
     async (request = { filterVirtual: true }) => {
-        const response = await fetch(serverUrls.endpoints.detectCameras, {
+        const params = new URLSearchParams();
+        if (request.filterVirtual !== undefined) {
+            params.set('filter_virtual', String(request.filterVirtual));
+        }
+        const query = params.toString();
+        const url = query ? `${serverUrls.endpoints.detectCameras}?${query}` : serverUrls.endpoints.detectCameras;
+
+        const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
         });
 
         if (!response.ok) {

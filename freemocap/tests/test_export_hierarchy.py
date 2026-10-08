@@ -1,11 +1,10 @@
 """Known hierarchy answers plus one strictly read-only prepared-recording check."""
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
 from freemocap.tests.inspect_export_hierarchy import inspect, measure_hierarchy
+from freemocap.tests.reference_paths import prepared_root
 
 
 def example():
@@ -70,7 +69,7 @@ def test_invalid_hierarchy_fails(parent):
 
 @pytest.mark.e2e
 def test_prepared_export_hierarchy_without_processing():
-    path = (Path.home() / "freemocap_data/testing/prepared/freemocap_test_data/current/recordings"
+    path = (prepared_root() / "freemocap_test_data/current/recordings"
             / "freemocap_test_data/freemocap_test_data_data.parquet")
     if not path.is_file():
         pytest.skip("Requires existing prepared test Parquet; this check never prepares data")

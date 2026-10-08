@@ -8,7 +8,7 @@ import {
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
 import {autoApplyToggled, savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
-import {selectAutoApply} from "@/store/slices/cameras/cameras-selectors";
+import {selectAutoApply, selectFilterVirtualCameras} from "@/store/slices/cameras/cameras-selectors";
 import {useTranslation} from 'react-i18next';
 import IconButton from "@/components/ui-components/IconButton";
 
@@ -26,13 +26,14 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
     const isAutoApply = useAppSelector(selectAutoApply);
+    const filterVirtualCameras = useAppSelector(selectFilterVirtualCameras);
     const [isActionInProgress, setIsActionInProgress] = React.useState(false);
 
     const handleRefreshCameras = async (e: React.MouseEvent): Promise<void> => {
         e.stopPropagation();
         setIsActionInProgress(true);
         try {
-            await dispatch(detectCameras({filterVirtual: true})).unwrap();
+            await dispatch(detectCameras({filterVirtual: filterVirtualCameras})).unwrap();
         } catch (error) {
             console.error('Error detecting cameras:', error);
         } finally {

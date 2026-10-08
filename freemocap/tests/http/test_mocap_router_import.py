@@ -50,7 +50,7 @@ def _make_video_file(tmp_path: Path, name: str, num_frames: int = 5) -> Path:
     """Write a small real video file so cv2 can read its frame count/fps."""
     video_path = tmp_path / name
     writer = cv2.VideoWriter(
-        str(video_path), cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (16, 16)
+        str(video_path), cv2.CAP_FFMPEG, cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (16, 16)
     )
     for _ in range(num_frames):
         writer.write(np.zeros((16, 16, 3), dtype=np.uint8))
@@ -64,7 +64,7 @@ def _make_flash_video_file(
     """Write a video that's dark then abruptly bright — a synthetic brightness-sync flash."""
     video_path = tmp_path / name
     writer = cv2.VideoWriter(
-        str(video_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (16, 16)
+        str(video_path), cv2.CAP_FFMPEG, cv2.VideoWriter_fourcc(*"mp4v"), fps, (16, 16)
     )
     for _ in range(dark_frames):
         writer.write(np.zeros((16, 16, 3), dtype=np.uint8))

@@ -16,6 +16,7 @@ from freemocap.tests.pipelines.real_data_numeric_bounds import (
 )
 from freemocap.tests.prepare_recording_dataset import file_digest, prepare
 from freemocap.tests.recording_datasets import TEST_DATA
+from freemocap.tests.reference_paths import prepared_root, recordings_root
 
 
 def check_fresh_outputs(recording: Path, result: dict) -> None:
@@ -78,14 +79,13 @@ def check_fresh_outputs(recording: Path, result: dict) -> None:
 @pytest.mark.e2e
 @pytest.mark.slow
 def test_fresh_calibration_and_mocap_publish_current_recording():
-    base = Path.home() / "freemocap_data"
     calls = []
 
     def validate(recording: Path, result: dict) -> None:
         calls.append(recording)
         check_fresh_outputs(recording, result)
 
-    prepare(TEST_DATA, recordings_root=base / "recordings", prepared_root=base / "testing" / "prepared",
+    prepare(TEST_DATA, recordings_root=recordings_root(), prepared_root=prepared_root(),
             fresh=True, timeout=1800.0, validate_fresh=validate)
     assert len(calls) == 1, "A cached result must not satisfy the producer test"
-    assert not (base / "testing" / "prepared" / TEST_DATA.name / "scratch").exists()
+    assert not (prepared_root() / TEST_DATA.name / "scratch").exists()

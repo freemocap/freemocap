@@ -321,6 +321,8 @@ class CameraNode(SourceNode):
                     if timer is not None:
                         timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
 
+                    from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
+                    merge_mediapipe_hand_face_children(skeleton_observation)
                     body_stage = skeleton_observation.stages.get("body")
                     if body_stage is not None and body_stage.keypoints is not None:
                         # Apply 1€ filter to 2D keypoints before publishing.

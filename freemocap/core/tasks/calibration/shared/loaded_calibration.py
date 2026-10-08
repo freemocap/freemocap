@@ -20,6 +20,8 @@ class LoadedCalibration(BaseModel):
     @classmethod
     def from_path(cls, path: Path) -> "LoadedCalibration":
         resolved_path = path.expanduser().resolve()
+        if not resolved_path.is_file():
+            raise FileNotFoundError(resolved_path)
         calibration = CalibrationResult.load_toml(resolved_path)
         return cls(
             path=resolved_path,

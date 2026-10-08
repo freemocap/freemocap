@@ -17,6 +17,7 @@ session failing to collect.
 """
 import logging
 import multiprocessing
+import os
 import time
 import zipfile
 from pathlib import Path
@@ -73,7 +74,7 @@ def _get_or_download_test_recording() -> Path | None:
     cache. A second location would just be a second place this recording could go
     stale.
     """
-    canonical = Path(FREEMOCAP_TEST_DATA_PATH)
+    canonical = Path(os.environ.get("FREEMOCAP_TEST_DATA_PATH", FREEMOCAP_TEST_DATA_PATH))
     if _has_synchronized_videos(canonical):
         logger.debug(f"Using existing test recording at {canonical}")
         return canonical

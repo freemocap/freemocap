@@ -15,6 +15,7 @@ Both are regression-guarded below. All cache pickles read here are written by th
 test itself into tmp_path — a trusted, self-produced fixture.
 """
 import csv
+import json
 import logging
 import pickle
 from pathlib import Path
@@ -23,7 +24,7 @@ from unittest.mock import MagicMock
 import pytest
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.core import DetectionStageConfig, TrackerConfig
-from skellytracker.core.data_primitives.observation import Observation
+from skellytracker.core.data_primitives.observation import Observation, StageObservation
 from skellytracker.core.detectors.keypoint_detectors.charuco import (
     CharucoBoardDefinition,
     CharucoDetectorConfig,
@@ -50,7 +51,8 @@ BOARD = CharucoBoardDefinition(squares_x=5, squares_y=3, square_length_mm=54.0, 
 # ---------------------------------------------------------------------------
 
 def _obs(connection_frame_number: int) -> Observation:
-    return Observation(frame_number=connection_frame_number, image_size=(0, 0))
+    return Observation(frame_number=connection_frame_number, image_size=(0, 0),
+                       stages={"charuco": StageObservation(name="charuco")})
 
 
 def _write_cache(recording_path: Path, observations: dict, board: CharucoBoardDefinition = BOARD) -> None:
@@ -76,6 +78,10 @@ def _write_camera_csv(recording_path: Path, camera_id: str, recording_to_connect
     )
     csv_path = Path(recording_info.camera_timestamps_file_path_from_camera_id(camera_id))
     csv_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path = recording_path / "recording_info.json"
+    metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+    metadata.setdefault("camera_timing", {})[camera_id] = csv_path.relative_to(recording_path).as_posix()
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["recording_frame_number", "connection_frame_number", "timestamp.utc.seconds"])

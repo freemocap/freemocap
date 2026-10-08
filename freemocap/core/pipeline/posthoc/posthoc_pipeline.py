@@ -189,10 +189,8 @@ class PosthocPipeline(PipelineABC):
             node.worker.mark_stopping()
         self.ipc.shutdown_pipeline()
         for node in self.video_nodes.values():
-            if node.is_alive:
-                node.shutdown()
-        if self.aggregation_node.is_alive:
-            self.aggregation_node.shutdown()
+            node.shutdown()
+        self.aggregation_node.shutdown()
         self.pubsub.close()
         logger.debug(f"PosthocPipeline [{self.id}] shut down")
 

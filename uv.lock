@@ -577,15 +577,15 @@ requires-dist = [
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=main" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", git = "https://github.com/freemocap/skellytracker?branch=aaron%2Ffix_model_download_race_conditions" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", git = "https://github.com/freemocap/skellytracker?branch=aaron%2Ffix_model_download_race_conditions" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", git = "https://github.com/freemocap/skellytracker?branch=main" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", git = "https://github.com/freemocap/skellytracker?branch=main" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 provides-extras = ["cuda", "cpu"]
 
 [package.metadata.requires-dev]
-cpu = [{ name = "skellytracker", extras = ["all-cpu"], git = "https://github.com/freemocap/skellytracker?branch=aaron%2Ffix_model_download_race_conditions" }]
-cuda = [{ name = "skellytracker", extras = ["all-cuda"], git = "https://github.com/freemocap/skellytracker?branch=aaron%2Ffix_model_download_race_conditions" }]
+cpu = [{ name = "skellytracker", extras = ["all-cpu"], git = "https://github.com/freemocap/skellytracker?branch=main" }]
+cuda = [{ name = "skellytracker", extras = ["all-cuda"], git = "https://github.com/freemocap/skellytracker?branch=main" }]
 dev = [
     { name = "bumpver" },
     { name = "httpx", specifier = ">=0.28.0" },
@@ -599,8 +599,8 @@ dev = [
 ]
 pyceres = [{ name = "pyceres", specifier = ">=2.5" }]
 tracker-default = [
-    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=aaron%2Ffix_model_download_race_conditions" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=aaron%2Ffix_model_download_race_conditions" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=main" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=main" },
 ]
 
 [[package]]
@@ -2235,7 +2235,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=aaron%2Ffix_model_download_race_conditions#8ab0884f397e4152ed546cb0dd8aade01894ef5c" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=main#6f78af48b7a3c1809d110120a7cbd1d7f6120392" }
 dependencies = [
     { name = "beartype" },
     { name = "filelock" },

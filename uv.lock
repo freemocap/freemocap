@@ -448,6 +448,15 @@ wheels = [
 ]
 
 [[package]]
+name = "filelock"
+version = "4.0.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/19/d4f21fc4b7ad098dd3c774ccb2a2929178b15d6e1a3ba7d0929817c0b30c/filelock-4.0.8.tar.gz", hash = "sha256:733d9b6b153fc63672f86104324186818b6bbe9dd7db84e9bb9887b6a04a2775", size = 249830, upload-time = "2026-10-01T06:15:21.755Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/6b/b45e5ad90c6ac8805b72277d75ef651bca11d3665194de7c0162bd8324eb/filelock-4.0.8-py3-none-any.whl", hash = "sha256:325ff22f358c18443b1fcdfa0a7aa3faec4b500c2807c554719da4567b533d31", size = 109665, upload-time = "2026-10-01T06:15:19.736Z" },
+]
+
+[[package]]
 name = "flatbuffers"
 version = "25.12.19"
 source = { registry = "https://pypi.org/simple" }
@@ -491,7 +500,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a24"
+version = "2.0.0a25"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -2165,7 +2174,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=main#26509b06ba44980b3ccaae7c9c5f4efab4e88c90" }
+source = { git = "https://github.com/freemocap/skellycam?branch=main#06771043becd50db1570ed2a67dd0536edbf47f1" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },
@@ -2195,7 +2204,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=main#ddf24f3aaa4388e5883afada217137223546c24e" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=main#b96272b1ef06546c1a55d404a5f4a92f1fad1b0f" }
 dependencies = [
     { name = "numpy" },
     { name = "pandas" },
@@ -2209,7 +2218,10 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs#9114990350d7fb36747526286671c17abd7e523e" }
+source = { git = "https://github.com/freemocap/skellylogs#33a3611932ce3d43e54cefb2051171d565137445" }
+dependencies = [
+    { name = "tqdm" },
+]
 
 [[package]]
 name = "skellypings"
@@ -2223,9 +2235,10 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=main#63100055867b161d32fb1535ed73f73e1ddd187d" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=main#6f78af48b7a3c1809d110120a7cbd1d7f6120392" }
 dependencies = [
     { name = "beartype" },
+    { name = "filelock" },
     { name = "numpy" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },

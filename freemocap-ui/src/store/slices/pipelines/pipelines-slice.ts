@@ -10,7 +10,6 @@ export function phaseForTask(phase: string): PipelinePhase {
         processing_images: PipelinePhase.PROCESSING_VIDEOS, collecting_camera_output: PipelinePhase.COLLECTING,
         building_recorders: PipelinePhase.AGGREGATING, triangulating: PipelinePhase.AGGREGATING,
         filtering: PipelinePhase.AGGREGATING, reconstructing: PipelinePhase.AGGREGATING,
-        fitting_skeleton: PipelinePhase.SOLVING,
         exporting_csv: PipelinePhase.FINALIZING,
         exporting_blender: PipelinePhase.FINALIZING, validating_observations: PipelinePhase.SOLVING,
         running_solver: PipelinePhase.SOLVING, saving_calibration: PipelinePhase.SAVING,

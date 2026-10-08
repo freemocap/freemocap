@@ -320,21 +320,5 @@ def run_posthoc_mocap_task(
     )
     check_cancelled()
     with performance.measure("checkpoint.final"):
-        published = publish_posthoc_observations(publication)
-    if task_config.skeleton_fit_enabled:
-        from freemocap.core.recording.result_processing.skeleton_fitting import fit_saved_skeleton
-        from freemocap.system.recording_structure.recording_structure import RecordingStructure
-
-        _reporter.report(stage=MocapStage.FITTING_SKELETON, detail="Fitting connected human skeleton")
-
-        def fit_progress(window, total):
-            _reporter.report(stage=MocapStage.FITTING_SKELETON,
-                detail=f"Skeleton fit window {window['index'] + 1}/{total}; converged={window['converged']}",
-                fraction=(window['index'] + 1) / total)
-
-        fit_saved_skeleton(
-            structure=RecordingStructure(base_directory=recording_folder.parent, recording_name=recording_folder.name),
-            run_id=published.selected_run_id, sensor_group=group_name,
-            progress=fit_progress, cancelled=cancelled,
-        )
+        publish_posthoc_observations(publication)
     logger.info("Posthoc mocap complete: recording data saved to disk as Parquet")

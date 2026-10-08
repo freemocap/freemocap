@@ -42,8 +42,6 @@ def owner(pipeline: str, detail: str) -> str:
         return 'FreeMoCap · validation'
     if 'Detecting and annotating' in detail:
         return 'SkellyTracker · RTMPose'
-    if 'Fitting connected' in detail:
-        return 'SkellyForge · skeleton fitting'
     return 'FreeMoCap · mocap'
 
 

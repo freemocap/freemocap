@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { useViewportState } from "./ViewportStateContext";
-import { useKeypointsSource } from "../KeypointsSourceContext";
 import { useRecordingSelection, type RecordingSelection } from "../RecordingSelectionContext";
 import { LAYER_GROUPS, type LayerGroup, type LayerSpec, type LayerSwatch } from "./layer-catalog";
 import {
@@ -20,7 +19,6 @@ export function ViewportPanel() {
     const { visibility, setVisibility } = useViewportState();
     const recording = useRecordingSelection();
     const [open, setOpen] = useState<boolean>(() => localStorage.getItem(PANEL_OPEN_STORAGE_KEY) === "true");
-    const hasSavedFit = useHasSavedFit();
 
     useEffect(() => {
         localStorage.setItem(PANEL_OPEN_STORAGE_KEY, String(open));
@@ -32,7 +30,7 @@ export function ViewportPanel() {
     );
     const resetToDefaults = useCallback(() => setVisibility(DEFAULT_VISIBILITY), [setVisibility]);
 
-    const groups = LAYER_GROUPS.filter((group) => group.id !== "saved" || hasSavedFit);
+    const groups = LAYER_GROUPS;
     const isDefault = (Object.keys(DEFAULT_VISIBILITY) as LayerKey[]).every(
         (key) => visibility[key] === DEFAULT_VISIBILITY[key],
     );
@@ -212,18 +210,4 @@ function LiveCount({ countKey }: { countKey: CountedLayerKey }) {
     }, [statsRef, countKey]);
 
     return <span ref={ref} className="vp-layer-count" />;
-}
-
-/** True while the loaded recording carries a saved skeleton fit. */
-function useHasSavedFit(): boolean {
-    const { subscribeToFittedDefinitions } = useKeypointsSource();
-    const [hasSavedFit, setHasSavedFit] = useState(false);
-    useEffect(() => {
-        if (!subscribeToFittedDefinitions) {
-            setHasSavedFit(false);
-            return;
-        }
-        return subscribeToFittedDefinitions((definitions) => setHasSavedFit(definitions.length > 0));
-    }, [subscribeToFittedDefinitions]);
-    return hasSavedFit;
 }

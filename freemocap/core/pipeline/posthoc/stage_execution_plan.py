@@ -136,11 +136,4 @@ def retained_run(*, base: RunDescriptor, plan: StageExecutionPlan) -> RunDescrip
         if item.sensor_group not in plan.sensor_groups
         or item.stage not in plan.invalidate
     ]
-    if ProcessingStage.SKELETON_FIT in plan.invalidate:
-        data["sources"] = {
-            name: source.model_dump()
-            for name, source in base.sources.items()
-            if source.kind != "solver"
-            or source.definition.get("sensor_group") not in plan.sensor_groups
-        }
     return RunDescriptor.model_validate(data)

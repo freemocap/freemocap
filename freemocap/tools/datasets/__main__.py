@@ -27,12 +27,6 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument('--calibration', help='fresh, existing, or a TOML path; full runs default to fresh')
             sub.add_argument('--alignment', choices=('auto', 'calibration', 'person'), help='Default: auto')
             sub.add_argument('--from', dest='start', choices=workflow.STARTS, default='observations')
-            fitting = sub.add_mutually_exclusive_group()
-            fitting.add_argument('--skeleton-fit', dest='skeleton_fit', action='store_true',
-                                 help='Enable optional skeleton fitting (default: off)')
-            fitting.add_argument('--no-skeleton-fit', dest='skeleton_fit', action='store_false',
-                                 help='Disable optional skeleton fitting (the default)')
-            sub.set_defaults(skeleton_fit=False)
             sub.add_argument('--run-id', type=int)
             sub.add_argument('--sensor-group')
     return command
@@ -59,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
                                timeout=args.timeout)
                 if args.action != 'calibrate':
                     options.update(start=args.start, calibration=args.calibration, alignment=args.alignment,
-                                   skeleton_fit=args.skeleton_fit, run_id=args.run_id, sensor_group=args.sensor_group)
+                                   run_id=args.run_id, sensor_group=args.sensor_group)
                 result = workflow.preflight(name, **options) if args.dry_run else str(workflow.process(name, **options))
             print(json.dumps(result, indent=2), flush=True)
     except (ValueError, OSError, RuntimeError, KeyError) as error:

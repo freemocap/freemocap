@@ -4,7 +4,6 @@ export const PROCESSING_STAGES = [
     ['filtering', 'Gap filling and filtering'],
     ['scale_fit', 'Person scale fitting'],
     ['reconstruction', 'Skeleton reconstruction and biomechanics'],
-    ['skeleton_fit', 'Connected skeleton fit'],
 ] as const;
 export type ResumeStage = typeof PROCESSING_STAGES[number][0];
 export interface StageSelection {startStage: ResumeStage; baseRunId: number; sensorGroup?: string}

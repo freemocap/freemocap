@@ -30,7 +30,7 @@ def rows(request):
 def test_filter_then_reconstruct_preserves_raw_and_timing(saved_request, monkeypatch):
     before = rows(saved_request)
     config = PosthocMocapPipelineConfig(start_stage='filtering', base_run_id=3,
-        sensor_group='mocap', skeleton_fit_enabled=False)
+        sensor_group='mocap')
     processing.run_saved_numerical_stages(structure=saved_request.structure, config=config,
         reporter=TaskProgressReporter.noop())
     after = rows(saved_request)
@@ -136,8 +136,10 @@ def test_completed_tracking_and_triangulation_survive_reconstruction_failure(tmp
 
 @pytest.mark.e2e
 def test_real_recording_filter_and_reconstruct_without_media(tmp_path):
+    import os
     name = 'freemocap_test_data'
-    source = Path.home() / 'freemocap_data/testing/prepared' / name / 'current/recordings' / name / f'{name}_data.parquet'
+    prepared = Path(os.environ.get('FREEMOCAP_PROVENANCE_PREPARED_ROOT', Path.home() / 'freemocap_data/testing/prepared'))
+    source = prepared / name / 'current/recordings' / name / f'{name}_data.parquet'
     if not source.is_file():
         pytest.skip('Prepare freemocap_test_data through the production pipeline first')
     structure = processing.recording_structure(str(tmp_path / name))

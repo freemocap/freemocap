@@ -1,5 +1,4 @@
 import {z} from 'zod';
-import {FittedSkeletonSchema} from './fitted-skeleton-types';
 import {PlaybackSource} from './playback-source';
 import {CalibrationUpdateRequestSchema} from '@/store/slices/calibration/calibration-types';
 import {ModelDefinitionSchema, type ModelDefinition} from '@/services/server/transport/message-contract';
@@ -38,7 +37,6 @@ export const RecordingStaticChannelSchema = z.object({
 });
 export type RecordingStaticChannel = z.infer<typeof RecordingStaticChannelSchema>;
 export const PlaybackRunSchema = z.object({
-    fitted_skeletons: z.record(z.string(), FittedSkeletonSchema).optional(),
     model_sources: z.record(z.string(), z.string()),
     calibration_updates: z.record(z.string(), CalibrationUpdateRequestSchema).optional(),
     run_id: z.number().int().nonnegative(), models: z.array(ModelDefinitionSchema),

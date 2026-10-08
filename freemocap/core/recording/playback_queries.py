@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 
 import pyarrow.compute as pc
-from pydantic import Field, JsonValue, field_serializer, model_validator
+from pydantic import Field, field_serializer, model_validator
 
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionSourceDefinition
 from freemocap.core.recording.data_descriptors.recording_descriptor import (
@@ -60,7 +60,6 @@ class PlaybackMedia(Descriptor):
 
 class PlaybackRun(Descriptor):
     model_sources: dict[str, str]
-    fitted_skeletons: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)
     calibration_updates: dict[str, CalibrationUpdateRequest] = Field(default_factory=dict)
     run_id: int
     models: tuple[ModelDefinition, ...]
@@ -132,11 +131,6 @@ def playback_manifest(path: Path) -> PlaybackManifest:
                     ))
             runs.append(
                 PlaybackRun(
-                    fitted_skeletons={
-                        name: source.definition for name, source in run.sources.items()
-                        if source.kind == SourceKind.SOLVER
-                        and any(channel.source == name for channel in run.channels)
-                    },
                     model_sources={
                         name: ReconstructionSourceDefinition.model_validate(source.definition).model_id
                         for name, source in run.sources.items()

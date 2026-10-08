@@ -13,8 +13,6 @@ export const LAYER_HEX = {
     rawKeypoints: "#f2f2f2",
     /** Detector points renamed onto the model's landmark names: violet, used nowhere else. */
     mappedKeypoints: "#b388ff",
-    /** Skeleton loaded from a recording's saved fit. */
-    savedSkeleton: "#00ff00",
     /** Calibrated camera bodies and frustums. */
     cameras: "#08855e",
     /** Center-of-mass marker, floor point and drop line. */

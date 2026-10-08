@@ -25,7 +25,6 @@ class SensorGroup(Descriptor):
 
 
 class SourceKind(StrEnum):
-    SOLVER = "solver"
     INSTANCE = "instance"
     TRACKER = "tracker"
     CAMERA = "camera"

@@ -120,7 +120,7 @@ def _run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
                 current = request.config
                 config = saved.config.model_copy(update={name: getattr(current, name) for name in (
                     'start_stage', 'base_run_id', 'sensor_group', 'calibration_toml_path', 'camera_matching',
-                    'triangulation_config', 'filter_config', 'body_alignment', 'skeleton_fit_enabled')})
+                    'triangulation_config', 'filter_config', 'body_alignment')})
                 config = config.model_copy(update={'sensor_group': group})
                 board = config.charuco_board if any('charuco' in obs.stages for obs in saved.frames[0].values()) else None
                 run_posthoc_mocap_task(frame_observations=saved.frames, recording_info=request.recording,

@@ -7,12 +7,11 @@ import shutil
 import numpy as np
 import pyarrow.parquet as pq
 import pytest
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import assert_allclose
 from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
 
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.result_processing.saved_reconstruction import read_saved_channel
-from freemocap.core.recording.result_processing.skeleton_fitting import read_fit_inputs
 from freemocap.core.recording.playback_queries import playback_manifest
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
@@ -70,16 +69,6 @@ def test_saved_reference_preserves_three_trajectories(tmp_path, dataset):
             expected = origins.values[frame, origin_indices[landmark.segment]] + RotationQuaternion.from_array(array=rotation).rotate_vector(
                 vector=fit.segment_scales[landmark.segment] * landmark.local_position.array)
             assert_allclose(position, expected, atol=1e-8)
-    inputs = read_fit_inputs(path=structure.data_parquet_path, metadata=metadata, run_id=run_id,
-        sensor_group=mapped.channel.sensor_group, model_id='standard_human')
-    for frame, record in enumerate(inputs.records):
-        for index, name in enumerate(mapped.channel.names):
-            expected = mapped.values[frame, index]
-            if np.isfinite(expected).all():
-                assert_array_equal(record['points'][name], expected)
-            else:
-                assert name not in record['points']
     manifest = playback_manifest(structure.data_parquet_path)
     playback = next(r for r in manifest.runs if r.run_id == run_id)
     assert all(channel in playback.channels for channel in channels.values())
-    assert not playback.fitted_skeletons, 'Reconstruction must invalidate dependent solver output'

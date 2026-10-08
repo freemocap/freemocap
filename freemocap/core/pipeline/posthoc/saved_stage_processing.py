@@ -32,7 +32,7 @@ from freemocap.core.recording.result_processing.provenance import ProvenanceCont
 from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance, set_stage_provenance
 
 
-RESUME_STAGES = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction', 'skeleton_fit')
+RESUME_STAGES = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
 
 
 def recording_structure(path: str) -> RecordingStructure:
@@ -72,7 +72,6 @@ def inspect_saved_stages(path: str) -> dict:
                 filtering=ChannelKind.KEYPOINTS_3D in kinds,
                 scale_fit=any(f.sensor_group == group for f in run.scale_fits),
                 reconstruction=ProcessingStage.RECONSTRUCTION in completed and {ChannelKind.LANDMARKS_3D, ChannelKind.MAPPED_KEYPOINTS_3D}.issubset(kinds),
-                skeleton_fit=ProcessingStage.SKELETON_FIT in completed,
             )
             groups.append(dict(sensor_group=group, stages=stages))
         runs.append(dict(run_id=run_id, groups=groups))
@@ -98,121 +97,111 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
         base = metadata.runs[config.base_run_id]
         group = select_group(base, config.sensor_group)
         start = ProcessingStage(config.start_stage)
-        if start == ProcessingStage.SKELETON_FIT:
-            # The solver manages its own lock below.
-            pass
+        provenance = ProvenanceContext.create()
+        defaults = PosthocMocapPipelineConfig().model_dump(mode='json')
+        kind = ChannelKind.RAW_KEYPOINTS_3D if start == ProcessingStage.FILTERING else ChannelKind.KEYPOINTS_3D
+        channels = [c for c in base.channels if c.sensor_group == group and c.kind == kind]
+        if len(channels) != 1:
+            raise ValueError(f'Reprocessing requires one saved {kind} channel; rerun the preceding stage')
+        points = read_saved_channel(structure=structure, run_id=config.base_run_id,
+            metadata=metadata, channel=channels[0])
+        if tuple(points.channel.components) != ('x', 'y', 'z'):
+            raise ValueError('Saved spatial points must declare xyz components in order')
+        reference = SpatialReference.model_validate(base.reference_frames[points.channel.reference_frame])
+        report = None
+        if start == ProcessingStage.FILTERING:
+            reporter.report(stage='filtering', detail='Filtering saved 3D points; retaining their coordinate frame')
+            prepared = prepare_recording_points(points=points.values,
+                timestamps_s=np.asarray(points.timestamps_s), config=config.filter_config)
+            values, report = prepared.points, prepared.report
         else:
-            provenance = ProvenanceContext.create()
-            defaults = PosthocMocapPipelineConfig().model_dump(mode='json')
-            kind = ChannelKind.RAW_KEYPOINTS_3D if start == ProcessingStage.FILTERING else ChannelKind.KEYPOINTS_3D
-            channels = [c for c in base.channels if c.sensor_group == group and c.kind == kind]
-            if len(channels) != 1:
-                raise ValueError(f'Reprocessing requires one saved {kind} channel; rerun the preceding stage')
-            points = read_saved_channel(structure=structure, run_id=config.base_run_id,
-                metadata=metadata, channel=channels[0])
-            if tuple(points.channel.components) != ('x', 'y', 'z'):
-                raise ValueError('Saved spatial points must declare xyz components in order')
-            reference = SpatialReference.model_validate(base.reference_frames[points.channel.reference_frame])
-            report = None
-            if start == ProcessingStage.FILTERING:
-                reporter.report(stage='filtering', detail='Filtering saved 3D points; retaining their coordinate frame')
-                prepared = prepare_recording_points(points=points.values,
-                    timestamps_s=np.asarray(points.timestamps_s), config=config.filter_config)
-                values, report = prepared.points, prepared.report
-            else:
-                values = points.values
-                saved_report = base.processing.get(group, {}).get('filtering')
-                if saved_report is not None:
-                    report = PosthocFilterReport.model_validate(saved_report)
-            support = report.gap_filling.measured_support(values) if report is not None and report.gap_filling is not None else None
-            bundles = tuple(model.to_bundle() for model in base.models.values()
-                if model_source_name(model.model_id) not in base.sources
-                or base.sources[model_source_name(model.model_id)].definition.get('tracker') == points.channel.source)
-            bundles = tuple(replace(bundle, anchor_segment_name=config.anchor_segment_name)
-                if bundle.model_id == 'standard_human' else bundle for bundle in bundles)
-            if not bundles:
-                raise ValueError('Saved scientific models are missing; rerun triangulation')
-            numerical = RecordingReconstructionInput(bundles=bundles, keypoint_names=points.channel.names,
-                keypoints_3d=values, measured_support=support, compute_center_of_mass=True, timing=PosthocTimingReport())
-            check_cancelled()
-            reporter.report(stage='reconstructing', detail='Reconstructing from saved 3D points')
-            if start == ProcessingStage.RECONSTRUCTION:
-                fits = {bundle.model_id: next((f for f in base.scale_fits
-                    if f.sensor_group == group and f.source == model_source_name(bundle.model_id)), None) for bundle in bundles}
-                if any(f is None for f in fits.values()):
-                    raise ValueError('Saved scale fit is missing; rerun filtering and scale fitting')
-                results = reconstruct_skeletons_with_fits(request=numerical,
-                    fits={name: FittedRecordingScale(inputs=f.inputs, fit=f.fit) for name, f in fits.items()})
-            else:
-                results = reconstruct_skeletons_for_recording(numerical)
-            check_cancelled()
-            reconstructions = tuple(ReconstructionRecording(sensor_group=group, reference=reference,
-                definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=points.channel.source,
-                    point_kind=ChannelKind.KEYPOINTS_3D), result=results[bundle.model_id]) for bundle in bundles)
-            dependencies = stage_dependencies()
-            invalidated = tuple(s for s in ProcessingStage if start in dependency_closure(stages={s}, dependencies=dependencies))
-            executed = tuple(s for s in invalidated if s not in (ProcessingStage.SKELETON_FIT, ProcessingStage.REPROJECTION))
-            plan = StageExecutionPlan(config.base_run_id, config.base_run_id, (group,), executed, invalidated)
-            retained = retained_run(base=base, plan=plan)
-            series = []
-            if start == ProcessingStage.FILTERING:
-                series.append(ChannelSeries(channel=points.channel.model_copy(update={
-                    'kind': ChannelKind.KEYPOINTS_3D, 'stage': ProcessingStage.FILTERING}), values=values))
-            for reconstruction in reconstructions:
-                series.extend(reconstruction.series())
-            data = retained.model_dump()
-            from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
-            for bundle in bundles:
-                data['models'][bundle.model_id] = RecordedModel.from_bundle(bundle)
-            data['channels'] = (*retained.channels, *(item.channel for item in series))
-            for reconstruction in reconstructions:
-                data['sources'][reconstruction.definition.source_name] = reconstruction.definition.to_source()
-                data['reference_frames'].update(reconstruction.reference_frames())
-            if start == ProcessingStage.FILTERING:
-                settings = dict(data['processing'].get(group, {}))
-                settings['filtering'] = report.model_dump(mode='json')
-                data['processing'][group] = settings
-            if start in (ProcessingStage.FILTERING, ProcessingStage.SCALE_FIT):
-                data['scale_fits'] = (*retained.scale_fits, *(item.to_scale_fit() for item in reconstructions))
-            prepared_signature = SavedPointSeries(channel=points.channel.model_copy(update={
-                'kind': ChannelKind.KEYPOINTS_3D, 'stage': ProcessingStage.FILTERING}),
-                frames=points.frames, timestamps_s=points.timestamps_s, values=values).signature()
-            point_signatures = {item.definition.model_id: prepared_signature for item in reconstructions}
-            fit_signatures = {item.definition.model_id: definition_signature(item.to_scale_fit()) for item in reconstructions}
-            model_signatures = {item.definition.model_id: definition_signature(dict(
-                fit=fit_signatures[item.definition.model_id], points=prepared_signature,
-                compute_center_of_mass=item.result.compute_center_of_mass,
-                anchor_segment_name=config.anchor_segment_name)) for item in reconstructions}
-            signatures = {
-                ProcessingStage.FILTERING: definition_signature(dict(version=2,
-                    raw_points={name: points.signature() for name in point_signatures},
-                    points=point_signatures, filtering=report)),
-                ProcessingStage.SCALE_FIT: definition_signature(dict(version=1, points=point_signatures, fits=fit_signatures)),
-                ProcessingStage.RECONSTRUCTION: definition_signature(dict(version=1, models=model_signatures)),
-                ProcessingStage.BIOMECHANICS: definition_signature(dict(version=1, models=model_signatures)),
-            }
-            data['checkpoints'] = (*retained.checkpoints, *(StageCheckpoint(sensor_group=group,
-                stage=stage, signature=signatures[stage]) for stage in executed))
-            entries = dict(stage_provenance(retained.processing, group).stages)
-            for stage in executed:
-                entries[stage] = provenance.record(
-                    settings=stage_settings(stage, config.model_dump(mode='json'), filtering=report),
-                    defaults=stage_settings(stage, defaults),
-                    inputs=dict(points=points.signature(), models=base.models,
-                        prepared_points=prepared_signature, fits=fit_signatures,
-                        filtering_report=report),
-                    sources=tuple(item.definition.source_name for item in reconstructions)
-                        if stage != ProcessingStage.FILTERING else (points.channel.source,),
-                    base_run_id=config.base_run_id, base_descriptor=base)
-            data['processing'] = set_stage_provenance(data['processing'], group, entries)
-            result = RunDescriptor.model_validate(data)
-            sampling = SeriesSampling(points.frames, points.timestamps_s, config.base_run_id)
-            check_cancelled()
-            publish_checkpoint(structure=structure, metadata=metadata, plan=plan, result=result,
-                computed_batches=(batch for item in series for batch in item.batches(sampling)))
-    if config.skeleton_fit_enabled or config.start_stage == 'skeleton_fit':
-        from freemocap.core.recording.result_processing.skeleton_fitting import fit_saved_skeleton
+            values = points.values
+            saved_report = base.processing.get(group, {}).get('filtering')
+            if saved_report is not None:
+                report = PosthocFilterReport.model_validate(saved_report)
+        support = report.gap_filling.measured_support(values) if report is not None and report.gap_filling is not None else None
+        bundles = tuple(model.to_bundle() for model in base.models.values()
+            if model_source_name(model.model_id) not in base.sources
+            or base.sources[model_source_name(model.model_id)].definition.get('tracker') == points.channel.source)
+        bundles = tuple(replace(bundle, anchor_segment_name=config.anchor_segment_name)
+            if bundle.model_id == 'standard_human' else bundle for bundle in bundles)
+        if not bundles:
+            raise ValueError('Saved scientific models are missing; rerun triangulation')
+        numerical = RecordingReconstructionInput(bundles=bundles, keypoint_names=points.channel.names,
+            keypoints_3d=values, measured_support=support, compute_center_of_mass=True, timing=PosthocTimingReport())
         check_cancelled()
-        reporter.report(stage='fitting_skeleton', detail='Fitting the saved reconstructed skeleton')
-        fit_saved_skeleton(structure=structure, run_id=config.base_run_id, sensor_group=group,
-            cancelled=cancelled, force=config.start_stage == 'skeleton_fit')
+        reporter.report(stage='reconstructing', detail='Reconstructing from saved 3D points')
+        if start == ProcessingStage.RECONSTRUCTION:
+            fits = {bundle.model_id: next((f for f in base.scale_fits
+                if f.sensor_group == group and f.source == model_source_name(bundle.model_id)), None) for bundle in bundles}
+            if any(f is None for f in fits.values()):
+                raise ValueError('Saved scale fit is missing; rerun filtering and scale fitting')
+            results = reconstruct_skeletons_with_fits(request=numerical,
+                fits={name: FittedRecordingScale(inputs=f.inputs, fit=f.fit) for name, f in fits.items()})
+        else:
+            results = reconstruct_skeletons_for_recording(numerical)
+        check_cancelled()
+        reconstructions = tuple(ReconstructionRecording(sensor_group=group, reference=reference,
+            definition=ReconstructionSourceDefinition.from_bundle(bundle, tracker_source=points.channel.source,
+                point_kind=ChannelKind.KEYPOINTS_3D), result=results[bundle.model_id]) for bundle in bundles)
+        dependencies = stage_dependencies()
+        invalidated = tuple(s for s in ProcessingStage if start in dependency_closure(stages={s}, dependencies=dependencies))
+        executed = tuple(s for s in invalidated if s != ProcessingStage.REPROJECTION)
+        plan = StageExecutionPlan(config.base_run_id, config.base_run_id, (group,), executed, invalidated)
+        retained = retained_run(base=base, plan=plan)
+        series = []
+        if start == ProcessingStage.FILTERING:
+            series.append(ChannelSeries(channel=points.channel.model_copy(update={
+                'kind': ChannelKind.KEYPOINTS_3D, 'stage': ProcessingStage.FILTERING}), values=values))
+        for reconstruction in reconstructions:
+            series.extend(reconstruction.series())
+        data = retained.model_dump()
+        from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
+        for bundle in bundles:
+            data['models'][bundle.model_id] = RecordedModel.from_bundle(bundle)
+        data['channels'] = (*retained.channels, *(item.channel for item in series))
+        for reconstruction in reconstructions:
+            data['sources'][reconstruction.definition.source_name] = reconstruction.definition.to_source()
+            data['reference_frames'].update(reconstruction.reference_frames())
+        if start == ProcessingStage.FILTERING:
+            settings = dict(data['processing'].get(group, {}))
+            settings['filtering'] = report.model_dump(mode='json')
+            data['processing'][group] = settings
+        if start in (ProcessingStage.FILTERING, ProcessingStage.SCALE_FIT):
+            data['scale_fits'] = (*retained.scale_fits, *(item.to_scale_fit() for item in reconstructions))
+        prepared_signature = SavedPointSeries(channel=points.channel.model_copy(update={
+            'kind': ChannelKind.KEYPOINTS_3D, 'stage': ProcessingStage.FILTERING}),
+            frames=points.frames, timestamps_s=points.timestamps_s, values=values).signature()
+        point_signatures = {item.definition.model_id: prepared_signature for item in reconstructions}
+        fit_signatures = {item.definition.model_id: definition_signature(item.to_scale_fit()) for item in reconstructions}
+        model_signatures = {item.definition.model_id: definition_signature(dict(
+            fit=fit_signatures[item.definition.model_id], points=prepared_signature,
+            compute_center_of_mass=item.result.compute_center_of_mass,
+            anchor_segment_name=config.anchor_segment_name)) for item in reconstructions}
+        signatures = {
+            ProcessingStage.FILTERING: definition_signature(dict(version=2,
+                raw_points={name: points.signature() for name in point_signatures},
+                points=point_signatures, filtering=report)),
+            ProcessingStage.SCALE_FIT: definition_signature(dict(version=1, points=point_signatures, fits=fit_signatures)),
+            ProcessingStage.RECONSTRUCTION: definition_signature(dict(version=1, models=model_signatures)),
+            ProcessingStage.BIOMECHANICS: definition_signature(dict(version=1, models=model_signatures)),
+        }
+        data['checkpoints'] = (*retained.checkpoints, *(StageCheckpoint(sensor_group=group,
+            stage=stage, signature=signatures[stage]) for stage in executed))
+        entries = dict(stage_provenance(retained.processing, group).stages)
+        for stage in executed:
+            entries[stage] = provenance.record(
+                settings=stage_settings(stage, config.model_dump(mode='json'), filtering=report),
+                defaults=stage_settings(stage, defaults),
+                inputs=dict(points=points.signature(), models=base.models,
+                    prepared_points=prepared_signature, fits=fit_signatures,
+                    filtering_report=report),
+                sources=tuple(item.definition.source_name for item in reconstructions)
+                    if stage != ProcessingStage.FILTERING else (points.channel.source,),
+                base_run_id=config.base_run_id, base_descriptor=base)
+        data['processing'] = set_stage_provenance(data['processing'], group, entries)
+        result = RunDescriptor.model_validate(data)
+        sampling = SeriesSampling(points.frames, points.timestamps_s, config.base_run_id)
+        check_cancelled()
+        publish_checkpoint(structure=structure, metadata=metadata, plan=plan, result=result,
+            computed_batches=(batch for item in series for batch in item.batches(sampling)))

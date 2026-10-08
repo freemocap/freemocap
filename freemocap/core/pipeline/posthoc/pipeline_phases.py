@@ -35,7 +35,6 @@ class MocapStage(_StrValueEnum):
     TRIANGULATING = "triangulating"
     FILTERING = "filtering"
     RECONSTRUCTING = "reconstructing"
-    FITTING_SKELETON = "fitting_skeleton"
     EXPORTING_BLENDER = "exporting_blender"
     EXPORTING_CSV = "exporting_csv"
 

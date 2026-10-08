@@ -100,7 +100,7 @@ def recording_workflow(tmp_path, monkeypatch):
             parquet.write_text(f'result {len(calls)}')
         result = dict(calibration_filename=calibration.name, calibration_sha256=workflow.file_digest(calibration),
             validation=dict(parquet_sha256=workflow.file_digest(parquet)) if parquet.exists() else None,
-            mocap_config=dict(skeleton_fit_enabled=request['skeleton_fit']))
+            mocap_config={})
         storage.write_json(request_path.parent / 'result.json', result)
         log_path.write_text('completed')
 
@@ -118,7 +118,6 @@ def test_processing_replaces_old_result_but_calibration_only_does_not(recording_
     workflow.process(name, operation='calibrate', **options)
     assert parquet.read_text() == 'result 2'
     assert calls[0]['alignment'] == 'auto'
-    assert calls[0]['skeleton_fit'] is False
     assert calls[0]['filtering_enabled'] is False
     assert (options['recordings_root'] / workflow.TEST_DATA.name / 'synchronized_videos/camera.mp4').read_bytes() == b'original video'
 
@@ -133,27 +132,6 @@ def test_worker_failure_leaves_current_recording_and_marker(recording_workflow, 
         workflow.process(name, **options)
     assert marker.read_bytes() == before
     assert (current / f'{current.name}_data.parquet').read_text() == 'result 1'
-
-
-def test_skeleton_fit_can_be_explicitly_enabled(recording_workflow):
-    name, options, calls = recording_workflow
-    workflow.process(name, skeleton_fit=True, **options)
-    assert calls[0]['skeleton_fit'] is True
-
-
-@pytest.mark.parametrize('command', [['process', 'test_data'], ['process-all']])
-@pytest.mark.parametrize('flags, enabled', [([], False), (['--skeleton-fit'], True), (['--no-skeleton-fit'], False)])
-def test_cli_passes_explicit_fitting_policy_to_processing(monkeypatch, command, flags, enabled):
-    process = Mock(return_value=Path('saved'))
-    monkeypatch.setattr(workflow, 'process', process)
-    assert main(command + flags) == 0
-    assert process.called
-    assert all(call.kwargs['skeleton_fit'] is enabled for call in process.call_args_list)
-
-
-def test_conflicting_fitting_flags_are_rejected():
-    with pytest.raises(SystemExit):
-        parser().parse_args(['process', 'test_data', '--skeleton-fit', '--no-skeleton-fit'])
 
 
 def test_realtime_fitting_defaults_off_but_can_be_enabled():
@@ -180,7 +158,7 @@ def test_dry_run_does_not_create_directories(tmp_path):
     assert not list(tmp_path.iterdir())
 
 
-@pytest.mark.parametrize('options', [dict(start='skeleton_fit', skeleton_fit=False),
+@pytest.mark.parametrize('options', [dict(start='invalid_stage'),
     dict(start='filtering', calibration='fresh'), dict(start='reconstruction', alignment='person')])
 def test_invalid_restart_options_fail_before_writes(tmp_path, options):
     with pytest.raises(ValueError):
@@ -231,3 +209,19 @@ def test_long_windows_video_path_is_rejected_before_worker(recording_workflow, m
     with pytest.raises(ValueError, match='shorter --prepared-root'):
         workflow.process(name, **options)
     assert not calls
+
+
+@pytest.mark.parametrize('flag', ['--skeleton-fit', '--no-skeleton-fit'])
+def test_removed_optimizer_flags_are_rejected(flag):
+    with pytest.raises(SystemExit):
+        parser().parse_args(['process', 'test_data', flag])
+
+
+def test_posthoc_settings_expose_only_supported_stages():
+    from pydantic import ValidationError
+    from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
+    properties = PosthocMocapPipelineConfig.model_json_schema()['properties']
+    assert 'skeletonFitEnabled' not in properties
+    assert properties['startStage']['enum'] == list(workflow.STARTS)
+    with pytest.raises(ValidationError):
+        PosthocMocapPipelineConfig(start_stage='skeleton_fit')

@@ -28,10 +28,6 @@ export interface ViewportVisibility {
     rawKeypoints: boolean;
     /** Detector keypoints placed under the model's landmark names. */
     mappedKeypoints: boolean;
-    /** Skeleton loaded from a recording's saved fit. */
-    savedSkeleton: boolean;
-    /** Orientation triads on the saved skeleton. */
-    savedSkeletonAxes: boolean;
     /** Master switch for every center-of-mass element below. */
     centerOfMass: boolean;
     comMarker: boolean;
@@ -55,8 +51,6 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     face: true,
     rawKeypoints: true,
     mappedKeypoints: true,
-    savedSkeleton: true,
-    savedSkeletonAxes: false,
     centerOfMass: true,
     comMarker: true,
     comFloorPoint: true,

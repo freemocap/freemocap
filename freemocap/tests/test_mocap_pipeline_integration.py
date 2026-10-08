@@ -151,27 +151,6 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
             self.assertEqual(len(frames), 4)
         self.assertFalse(list(self.folder.rglob("*.partial*")))
 
-    def test_optional_skeleton_fit_runs_after_publication_with_progress(self) -> None:
-        self.write_video(board_visible=False)
-        self.config.skeleton_fit_enabled = True
-
-        def check_fit(**kwargs):
-            metadata = read_metadata(path=kwargs['structure'].data_parquet_path)
-            run = metadata.runs[kwargs['run_id']]
-            self.assertTrue(any(channel.kind == 'ROTATIONS_WORLD' for channel in run.channels))
-            self.assertFalse(kwargs['cancelled']())
-            kwargs['progress']({'index': 0, 'converged': True}, 2)
-            return metadata
-
-        # Pipeline scheduling is checked here; the real numerical fit and Parquet
-        # round trip are covered against the prepared recordings separately.
-        with patch('freemocap.core.recording.result_processing.skeleton_fitting.fit_saved_skeleton', side_effect=check_fit) as fit:
-            run_mocap_pipeline(request=self.request)
-        fit.assert_called_once()
-        messages = []
-        while not self.progress.empty():
-            messages.append(self.progress.get_nowait())
-        self.assertTrue(any(message.phase == 'fitting_skeleton' and message.progress_fraction == 0.5 for message in messages))
 
     def test_thread_worker_failure_preserves_application_and_error_detail(self) -> None:
         registry = WorkerRegistry(global_kill_flag=self.ipc.global_kill_flag, worker_mode=WorkerMode.PROCESS)

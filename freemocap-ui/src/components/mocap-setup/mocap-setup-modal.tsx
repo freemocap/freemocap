@@ -89,7 +89,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
         },
         {
             name: SetupSection.Stages,
-            content: <MocapStageSelection path={mocapRecordingPath} fitEnabled={config.skeletonFitEnabled ?? false}
+            content: <MocapStageSelection path={mocapRecordingPath}
                 onChange={setStageSelection}/>,
         },
         {
@@ -118,7 +118,6 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             name: SetupSection.PostProcessing,
             summary: <SettingsSummaryChip>
                 {config.posthoc_filter.enabled ? `Butterworth · ${config.posthoc_filter.cutoff} Hz · order ${config.posthoc_filter.order}` : 'Filtering off'}
-                {config.skeletonFitEnabled ? ' · Skeleton fit on' : ''}
             </SettingsSummaryChip>,
             content: <PosthocFilterSettings/>,
         },

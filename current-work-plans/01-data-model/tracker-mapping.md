@@ -41,70 +41,12 @@ body, mediapipe hand, rtmpose body, rtmpose hand.
   wrist and knuckle observations; this does not rigid-fit the entire palm. Missing or degenerate
   defining inputs leave that hand chain absent. Live and post hoc use the same reconstruction.
 
-## Connected fitting: reuse the existing boundary
+## Deferred connected fitting
 
-Reviewed against the implementation on 2026-09-24. The connected solver does not
-need another tracker-to-skeleton mapping system.
-
-- `TrackedSkeletonBundle.landmark_mapping` already supplies the mapping and its
-  authored snapshots. `RecordedModel.mappings` persists those definitions; replay
-  restores them without loading today's mapping YAMLs.
-- Forge's `AnatomicalLandmark` already owns the segment name and local position.
-  Its connected forward kinematics already produces predicted world landmarks.
-  A target therefore refers to an existing landmark, not a second attachment table.
-- `fit_connected_pose` already accepts landmark-keyed targets. Its current fixed
-  root, per-frame rotation fitting is a limited prototype; it is not the planned
-  recording-wide connected solve.
-
-The missing piece is target selection and accounting for shared inputs. For
-example, one shoulder keypoint supplies both shoulder and acromion landmarks.
-Those are different model points backed by the same input, not two independent
-measurements. Do not choose whichever name happens to occur first. Select the
-model correspondence explicitly and preserve its source relationship using the
-existing mapping snapshot. Means and offsets remain useful mapped landmarks;
-they must not silently become additional independent positional evidence.
-
-`directly_measured_landmark_names` is the existing scale-fitting classification:
-it includes means and weighted combinations. It is not a list of independent
-solver targets. Keep its scale-fitting meaning intact.
-
-Next implementation order:
-
-1. Verify recording/replay preserves the mappings and model attachments for both
-   supported human trackers, including missing source points.
-2. Specify the connected fit's selected existing landmarks and identify shared
-   source inputs from the saved mapping definitions in FreeMoCap. Do not duplicate
-   detector mappings in Forge or silently choose between distinct attachments.
-3. Extend Forge's connected fitting using those landmark targets, its existing
-   skeleton geometry and forward kinematics. Add root and sequence fitting as
-   explicit solver work; retain mapped observations separately from predictions.
-4. Integrate and persist the production result in FreeMoCap before displaying it
-   as a new fitted skeleton in the recording viewer.
-
-Observation-frame snapshot support is implemented in Forge. FreeMoCap's current
-integration preserves old model fingerprints when that optional field is absent
-and includes it when present. These changes do not change saved segment poses.
-
-FreeMoCap now has `core/reconstruction/connected_fit_observations.py` for step 2.
-It accepts an explicit landmark-to-tolerance selection, reads the bundle's mapping
-snapshots, and produces Forge's existing `LandmarkTarget` values plus their source
-keypoint names. Duplicate source use is rejected before checking frame availability.
-Absent/NaN observations are omitted; malformed points and infinity fail. Direct
-and prefixed pass-through mappings are supported; means and offsets cannot be
-selected as independent targets. No default landmark selection or weights have
-been introduced. This adapter is tested against both recorded human mappings but
-is not yet called by production reconstruction. Source names are returned in
-memory; no new Parquet output or metadata field has been introduced.
-
-The upper-body prototype selection now lives beside the human bundle in
-`standard_human_skeleton.py`: both hip sockets (pelvis), acromions (clavicles),
-elbows (upper arms), wrists (forearms), ears and nose (skull). Those are 11 unique
-source keypoints for both RTMPose and MediaPipe. Nose adds a non-collinear head
-point to the ears. The current connected geometry places the upper-arm origin
-at the acromion, so selecting both shoulder and acromion would duplicate that
-input. This selection does not establish anatomical accuracy or remove the
-spine/roll ambiguities; those still require explicit solver assumptions. No
-production weights or optimizer settings are selected here.
+The connected optimizer, target-selection adapter and prototype landmark selection
+are preserved on `development-skelly-fit` in FreeMoCap and SkellyForge. They are
+absent from `development-streaming`. Recorded mapping snapshots, observation-frame
+support and ordinary model-scale fitting remain part of the current pipeline.
 
 ## Reconciliation notes
 

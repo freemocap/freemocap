@@ -35,7 +35,7 @@ class PosthocMocapPipelineConfig(BaseModel):
     anchor_segment_name: str = Field(default="pelvis", min_length=1, alias="anchorSegmentName")
     model_config = ConfigDict(populate_by_name=True)
 
-    start_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction', 'skeleton_fit'] = Field(
+    start_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction'] = Field(
         default='observations', alias='startStage')
     base_run_id: int = Field(default=0, ge=0, alias='baseRunId')
     sensor_group: str | None = Field(default=None, alias='sensorGroup')
@@ -43,8 +43,6 @@ class PosthocMocapPipelineConfig(BaseModel):
     camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig, alias="cameraMatching")
     body_alignment: MocapAlignmentConfig = Field(default_factory=MocapAlignmentConfig, alias="bodyAlignment")
     filter_config: PosthocFilterConfig = Field(default_factory=PosthocFilterConfig, alias="filterConfig")
-    skeleton_fit_enabled: bool = Field(default=False, alias="skeletonFitEnabled",
-        description="Fit the prepared standard-human skeleton with SkellyForge Ceres and save a separate fitted result.")
 
     charuco_tracking_enabled: bool = Field(default=True, alias="charucoTrackingEnabled")
     board_mode: CharucoBoardMode = Field(default=CharucoBoardMode.AUTO, alias="boardMode")

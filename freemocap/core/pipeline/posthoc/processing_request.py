@@ -13,7 +13,6 @@ class ProcessingStage(StrEnum):
     SCALE_FIT = "scale_fit"
     RECONSTRUCTION = "reconstruction"
     BIOMECHANICS = "biomechanics"
-    SKELETON_FIT = "skeleton_fit"
     REPROJECTION = "reprojection"
 
 

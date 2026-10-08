@@ -182,6 +182,6 @@ def test_three_products_roundtrip_retained_runs_export_and_invalidation(tmp_path
         expected = pq.read_table(structure.data_parquet_path, filters=[('run_id', '=', run_id)]).replace_schema_metadata(None)
         assert read_csv(result.files[0]).equals(expected)
         retained = retained_run(base=run, plan=StageExecutionPlan(run_id, run_id, ('mocap',),
-            (ProcessingStage.RECONSTRUCTION,), (ProcessingStage.RECONSTRUCTION, ProcessingStage.BIOMECHANICS, ProcessingStage.SKELETON_FIT)))
+            (ProcessingStage.RECONSTRUCTION,), (ProcessingStage.RECONSTRUCTION, ProcessingStage.BIOMECHANICS)))
         assert not any(c.kind in (ChannelKind.MAPPED_KEYPOINTS_3D, ChannelKind.LANDMARKS_3D) for c in retained.channels)
         assert any(c.kind == ChannelKind.RAW_KEYPOINTS_3D for c in retained.channels)

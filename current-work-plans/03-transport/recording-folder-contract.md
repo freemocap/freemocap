@@ -82,13 +82,10 @@ Implemented:
 - Camera geometry used for triangulation and alignment update records are saved
   per run/group. Calibration TOML additionally contains board/solver statistics
   and alignment history, but is not a complete per-run configuration archive.
-- Optional fitting adds its returned geometry, processing reports/convergence,
-  input signature, adapter/package/Ceres versions and code hashes to its solver
-  source definition, alongside fitted numerical channels.
 - Storage/planner support keep/overwrite: `keep=True` allocates `max(runs)+1`,
   copies reusable data and retains the original. The ordinary mocap config has
   no keep option; saved-stage execution currently targets `base_run_id` in place.
-  The direct fitter has its own keep support. Do not describe app-wide keep as done.
+  Do not describe app-wide keep as done.
 
 Gaps:
 
@@ -185,7 +182,11 @@ explicit follow-ups; the CSV/NPZ task does not silently relocate them.
 
 ## Code entry points
 
-### Validation of the provenance implementation (2026-09-30)
+### Historical validation of the provenance implementation (2026-09-30)
+
+This predates the optimizer extraction. Solver-specific results below describe the
+preserved exploration branch, not the current streaming contract. See the
+[2026-10-08 extraction validation](../02-pipeline/skeleton-fitting-extraction.md).
 
 - 90 focused tests passed; one unrelated e2e case was deselected. Seven real-data
   consumer checks passed: changed-filter replay/cancellation on both datasets,
@@ -216,6 +217,6 @@ explicit follow-ups; the CSV/NPZ task does not silently relocate them.
 - `freemocap/core/pipeline/posthoc/saved_stage_processing.py`
 - `freemocap/core/pipeline/posthoc/stage_execution_plan.py`
 - `freemocap/core/recording/parquet_storage/{parquet_writer,checkpoint_publication}.py`
-- `freemocap/core/recording/result_processing/{observation_publication,skeleton_fitting}.py`
+- `freemocap/core/recording/result_processing/observation_publication.py`
 - `freemocap/core/tasks/calibration/shared/{calibration_paths,calibration_metadata}.py`
 - SkellyCam `skellycam/core/recorders/videos/recording_info.py` (capture-owned; no edits here)

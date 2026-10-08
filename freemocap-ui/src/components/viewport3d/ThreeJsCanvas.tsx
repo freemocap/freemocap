@@ -190,18 +190,9 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
     getModels,
     subscribeToModelFrames,
     getLatestModelFrames,
-    subscribeToFittedDefinitions,
-    subscribeToFittedFrames,
   } = useKeypointsSource();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    VIEWPORT_WORKER.postMessage({type: 'fittedDefinitions', data: []});
-    VIEWPORT_WORKER.postMessage({type: 'fittedFrames', data: []});
-    const definitions = subscribeToFittedDefinitions?.(data => VIEWPORT_WORKER.postMessage({type: 'fittedDefinitions', data}));
-    const frames = subscribeToFittedFrames?.(data => VIEWPORT_WORKER.postMessage({type: 'fittedFrames', data}));
-    return () => {definitions?.(); frames?.();};
-  }, [subscribeToFittedDefinitions, subscribeToFittedFrames]);
 
   useReferenceFrameForwarder(VIEWPORT_WORKER, isLive, calibration);
 

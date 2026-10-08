@@ -73,11 +73,8 @@ def refresh_reconstruction(structure, bundle):
             bundle, tracker_source=definition.tracker, point_kind=definition.point_kind,
         ), result=result,
     )
-    invalidated = {ProcessingStage.SCALE_FIT, ProcessingStage.RECONSTRUCTION, ProcessingStage.BIOMECHANICS,
-                   ProcessingStage.SKELETON_FIT}
-    stale_sources = {name for name, value in run.sources.items()
-                     if value.kind == 'solver' and value.definition.get('input_source') == source}
-    replaced_sources = stale_sources | {source}
+    invalidated = {ProcessingStage.SCALE_FIT, ProcessingStage.RECONSTRUCTION, ProcessingStage.BIOMECHANICS}
+    replaced_sources = {source}
     # This legacy refresh has its own report, not a full stage execution context.
     # Remove invalidated claims rather than attaching the old settings to new data.
     entries = {stage: record for stage, record in stage_provenance(run.processing, group).stages.items()
@@ -85,7 +82,7 @@ def refresh_reconstruction(structure, bundle):
     updated_run = RunDescriptor.model_validate({
         **run.model_dump(),
         "models": {**run.models, bundle.model_id: RecordedModel.from_bundle(bundle)},
-        "sources": {**{name: value for name, value in run.sources.items() if name not in stale_sources},
+        "sources": {**run.sources,
                     source: recording.definition.to_source()},
         "processing": set_stage_provenance(run.processing, group, entries),
         "reference_frames": {**run.reference_frames, **recording.reference_frames()},

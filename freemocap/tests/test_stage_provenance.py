@@ -24,7 +24,7 @@ from freemocap.tests.test_saved_reconstruction import saved_request
 
 def config(cutoff=4.0, start='filtering'):
     return PosthocMocapPipelineConfig(base_run_id=3, sensor_group='mocap', start_stage=start,
-        filter_config=PosthocFilterConfig(cutoff=cutoff), skeleton_fit_enabled=False)
+        filter_config=PosthocFilterConfig(cutoff=cutoff))
 
 
 def process(request, settings):
@@ -107,7 +107,7 @@ def test_legacy_model_refresh_removes_superseded_provenance(saved_request):
     after = read_metadata(path=saved_request.structure.data_parquet_path)
     entries = stage_provenance(after.runs[3].processing, 'mocap').stages
     assert entries['filtering'] == filtering
-    assert not {'scale_fit', 'reconstruction', 'biomechanics', 'skeleton_fit'} & entries.keys()
+    assert not {'scale_fit', 'reconstruction', 'biomechanics'} & entries.keys()
 
 
 def test_checkpoint_rejects_relabelled_upstream_provenance(saved_request):

@@ -1,5 +1,8 @@
 # Current Work Plans
 
+2026-10-08: [connected skeleton fitting extraction](02-pipeline/skeleton-fitting-extraction.md)
+records the branch boundary, retained pipeline, validation and remaining export work.
+
 The maintained [Recording contract](../RECORDING_CONTRACT.md) is the source of
 truth for recording-folder and provenance work. Start there; the
 [dated audit](03-transport/recording-folder-contract.md) records implementation gaps.

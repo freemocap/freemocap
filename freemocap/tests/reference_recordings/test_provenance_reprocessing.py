@@ -53,13 +53,13 @@ def test_fresh_outputs_then_filter_restart_preserve_provenance(tmp_path, name, f
     assert base.sensor_groups[group].sample_count == frames
     entries = stage_provenance(base.processing, group).stages
     assert set(entries) == {'timing', 'observations', 'triangulation', 'filtering', 'scale_fit',
-                            'reconstruction', 'biomechanics', 'skeleton_fit'}
+                            'reconstruction', 'biomechanics'}
     assert entries['filtering'].effective_settings['enabled'] == (frames == 1108)
     assert entries['filtering'].default_settings['cutoff'] == 6.0
     filters = [('run_id', '=', run_id), ('channel', 'in', ['OVERLAY_2D', 'RAW_KEYPOINTS_3D', 'TIMESTAMPS'])]
     upstream = pq.read_table(structure.data_parquet_path, filters=filters).replace_schema_metadata(None)
     config = PosthocMocapPipelineConfig(start_stage='filtering', base_run_id=run_id, sensor_group=group,
-        filter_config=PosthocFilterConfig(cutoff=cutoff), skeleton_fit_enabled=False)
+        filter_config=PosthocFilterConfig(cutoff=cutoff))
     run_saved_numerical_stages(structure=structure, config=config, reporter=TaskProgressReporter.noop())
     after = read_metadata(path=structure.data_parquet_path)
     updated = stage_provenance(after.runs[run_id].processing, group).stages
@@ -67,8 +67,6 @@ def test_fresh_outputs_then_filter_restart_preserve_provenance(tmp_path, name, f
         assert updated[stage] == entries[stage]
     assert updated['filtering'].effective_settings['cutoff'] == cutoff
     assert updated['filtering'].default_settings['cutoff'] == 6.0
-    assert 'skeleton_fit' not in updated
-    assert not any(c.stage == 'skeleton_fit' for c in after.runs[run_id].channels)
     assert upstream.equals(pq.read_table(structure.data_parquet_path, filters=filters).replace_schema_metadata(None))
     assert not structure.videos_synchronized_dir.exists(), 'Replay must not need videos'
     before_cancel = digest(structure.data_parquet_path)
@@ -77,34 +75,3 @@ def test_fresh_outputs_then_filter_restart_preserve_provenance(tmp_path, name, f
             reporter=TaskProgressReporter.noop(), cancelled=lambda: True)
     assert digest(structure.data_parquet_path) == before_cancel
     assert digest(source) == original_hash, 'Consumer acceptance modified producer output'
-
-
-@pytest.mark.e2e
-@pytest.mark.slow
-def test_model_refresh_invalidates_fitted_output(tmp_path):
-    from freemocap.core.skeletons.standard_human_skeleton import build_standard_human_bundle
-    from freemocap.tests.refresh_recording_reconstruction import refresh_reconstruction
-    configured = os.environ.get('FREEMOCAP_PROVENANCE_PREPARED_ROOT')
-    if not configured:
-        pytest.skip('Set FREEMOCAP_PROVENANCE_PREPARED_ROOT to fresh process-all outputs')
-    name = 'freemocap_test_data'
-    marker = json.loads((Path(configured) / name / 'ready.json').read_text())
-    source = Path(marker['recording']) / f'{name}_data.parquet'
-    original_hash = digest(source)
-    assert original_hash == marker['result']['validation']['parquet_sha256']
-    structure = RecordingStructure(base_directory=tmp_path, recording_name=name)
-    structure.full_path.mkdir()
-    shutil.copy2(source, structure.data_parquet_path)
-    before = read_metadata(path=structure.data_parquet_path)
-    run = before.runs[before.selected_run_id]
-    group = select_group(run, None)
-    assert 'skeleton_fit' in stage_provenance(run.processing, group).stages
-    refresh_reconstruction(structure, build_standard_human_bundle(detector_type=run.models['standard_human'].detector_type))
-    after = read_metadata(path=structure.data_parquet_path).runs[before.selected_run_id]
-    assert not any(c.stage == 'skeleton_fit' for c in after.channels)
-    assert not any(value.kind == 'solver' for value in after.sources.values())
-    assert 'skeleton_fit' not in stage_provenance(after.processing, group).stages
-    assert stage_provenance(after.processing, group).stages['filtering'] == stage_provenance(run.processing, group).stages['filtering']
-    rows = pq.read_table(structure.data_parquet_path, columns=['source']).column('source').unique().to_pylist()
-    assert not any(value.startswith('skeleton_fit:') for value in rows)
-    assert digest(source) == original_hash

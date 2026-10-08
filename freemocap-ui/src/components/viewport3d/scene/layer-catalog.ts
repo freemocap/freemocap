@@ -34,7 +34,7 @@ export interface LayerSpec {
 }
 
 export interface LayerGroup {
-    id: "model" | "tracking" | "saved" | "balance" | "scene";
+    id: "model" | "tracking" | "balance" | "scene";
     title: string;
     layers: readonly LayerSpec[];
 }
@@ -91,18 +91,6 @@ export const LAYER_GROUPS: readonly LayerGroup[] = [
             layer("mappedKeypoints", "Mapped keypoints",
                 "Detector keypoints placed under the model's landmark names, before fitting.",
                 { shape: "dot", colors: [LAYER_HEX.mappedKeypoints] }, "mappedKeypoints"),
-        ],
-    },
-    {
-        id: "saved",
-        title: "Saved fit",
-        layers: [
-            layer("savedSkeleton", "Saved skeleton",
-                "The skeleton stored with this recording's fit.",
-                { shape: "bar", colors: [LAYER_HEX.savedSkeleton] }),
-            layer("savedSkeletonAxes", "Saved skeleton axes",
-                "Each saved segment's local x / y / z axes (red / green / blue).",
-                { shape: "line", colors: AXIS_HEX }),
         ],
     },
     {

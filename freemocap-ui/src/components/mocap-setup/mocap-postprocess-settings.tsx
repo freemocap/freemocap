@@ -5,12 +5,8 @@ import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingsGroupHeading from '@/components/common/settings-layout/settings-group-heading';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
 import SkeletonAnchorSetting from './skeleton-anchor-setting';
-import {skeletonFitEnabledUpdated, anchorSegmentNameUpdated} from '@/store/slices/mocap/mocap-slice';
+import {anchorSegmentNameUpdated} from '@/store/slices/mocap/mocap-slice';
 
-const SKELETON_FIT_INFO = {
-    title: 'Connected skeleton fit',
-    text: <p>Fit the prepared 3D human motion and save a separate skeleton for playback. Adds processing time; requires a calibrated 3D recording.</p>,
-};
 
 const SAMPLING_RATE_INFO = {
     title: "Sampling rate",
@@ -49,15 +45,10 @@ const FILTER_GROUP_INFO = {
 export default function PosthocFilterSettings() {
     const dispatch = useAppDispatch();
     const config = useAppSelector(selectPosthocFilterConfig);
-    const skeletonFitEnabled = useAppSelector(state => state.mocap.config.skeletonFitEnabled ?? false);
     const anchor = useAppSelector(state => state.mocap.config.anchorSegmentName);
 
     return <>
         <SkeletonAnchorSetting value={anchor} onChange={value => dispatch(anchorSegmentNameUpdated(value))}/>
-        <SettingsGroupHeading text="Connected skeleton fit" info={SKELETON_FIT_INFO}/>
-        <SettingRow label="Fit skeleton" info={SKELETON_FIT_INFO} control={<SettingToggleSwitch label="Fit skeleton"
-            isToggled={skeletonFitEnabled} onToggle={enabled => dispatch(skeletonFitEnabledUpdated(enabled))}/>}/>
-        <p className="text sm">Fit the prepared 3D human motion and save a separate skeleton for playback. Adds processing time; requires a calibrated 3D recording.</p>
         <SettingsGroupHeading text="Butterworth low-pass filter" info={FILTER_GROUP_INFO}/>
         <SettingRow label="Filter trajectories" info={FILTER_GROUP_INFO} control={<SettingToggleSwitch label="Filter trajectories"
             isToggled={config.enabled} onToggle={enabled => dispatch(posthocFilterConfigUpdated({enabled}))}/>}/>

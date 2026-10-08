@@ -114,7 +114,7 @@ Versioned typed provenance is stored in
 `runs[run_id].processing[sensor_group].stage_provenance`. Its version is 1;
 the outer Parquet descriptor stays at schema 1 for installed reader compatibility.
 Use existing models, fits, camera
-geometry, filtering reports and solver definitions as their authoritative values;
+geometry and filtering reports as their authoritative values;
 provenance references them instead of creating competing copies.
 
 Each published stage's provenance is scoped to its actual group/source outputs
@@ -143,7 +143,6 @@ run 0:
     observations: original tracker settings and original input/software identity
     filtering:    cutoff=4 Hz, execution-time default cutoff=6 Hz, new input binding
     reconstruction: new output/provenance consuming the 4 Hz filtered points
-    skeleton_fit: absent until recomputed, if invalidated
 ```
 
 Never replace the observations' provenance with the new request. Never present
@@ -152,13 +151,13 @@ filtering result. Keep copies upstream provenance; overwrite replaces only the
 executed/invalidated scope. Store run lineage when allocating a new run.
 
 Historical recordings may have only the existing tracker config, filter report,
-model/fit snapshots and solver metadata. Read these faithfully and mark coverage
+model/scale-fit snapshots and calibration metadata. Read these faithfully and mark coverage
 partial/unknown. Do not manufacture historical defaults, timestamps or versions.
 The extension is optional for historical files and validated when present.
 There is no silent rewrite of existing recordings on read.
 
 Current coverage includes observations, timing, triangulation, filtering, scale,
-reconstruction, biomechanics and fitting. Numerical restarts bind the base run
+reconstruction and biomechanics. Numerical restarts bind the base run
 and descriptor fingerprint. Input fingerprints identify saved scientific inputs;
 they do not yet provide a complete raw-video/model-weight dependency manifest.
 Tracker provider settings describe the request: actual runtime provider fallback
@@ -283,8 +282,8 @@ owning pose, every ancestor pose through the observed root, and a fitted scale;
 absent results remain missing, with no observation or
 unit-scale substitution. Each product retains its run, source, sensor group, reference
 frame, units and sample grid. Both model point channels belong to reconstruction and are
-invalidated together, including dependent optional solver results. Solver inputs read
-mapped observations; solver predictions remain under their own solver source.
+invalidated together. Connected optimization is deferred to `development-skelly-fit`;
+there are no connected-solver sources or stages in the streaming contract.
 
 Live view and recording playback show original keypoints, mapped keypoints (cyan), and
 landmarks as independently selectable layers. Playback uses recorded definitions.

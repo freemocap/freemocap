@@ -19,7 +19,7 @@ from .storage import recover, save_current, write_json
 from .validation import validate_outputs
 
 DATASETS = {'test_data': TEST_DATA, 'sample_data': SAMPLE_DATA}
-STARTS = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction', 'skeleton_fit')
+STARTS = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
 logger = logging.getLogger(__name__)
 
 
@@ -63,15 +63,13 @@ def selected_calibration(root: Path, raw: Path, choice: str, ready: dict | None)
 
 def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operation: str = 'process',
               start: str = 'observations', calibration: str | None = None, alignment: str | None = None,
-              skeleton_fit: bool = False, run_id: int | None = None, sensor_group: str | None = None,
+              run_id: int | None = None, sensor_group: str | None = None,
               timeout: float = 1800.0) -> dict:
     dataset = DATASETS[name]
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError('Timeout must be finite and positive')
     if start not in STARTS or operation not in ('process', 'calibrate'):
         raise ValueError('Unsupported operation or starting stage')
-    if start == 'skeleton_fit' and not skeleton_fit:
-        raise ValueError('--from skeleton_fit requires --skeleton-fit')
     later = start not in ('observations', 'triangulation')
     if later and (calibration is not None or alignment is not None):
         raise ValueError('Changing calibration/alignment requires restarting from triangulation or observations')
@@ -86,7 +84,7 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
     if operation == 'calibrate':
         choice = 'fresh'
     plan = dict(dataset=name, operation=operation, start_stage=start, calibration_mode=choice,
-                alignment=alignment or 'auto', skeleton_fit=skeleton_fit, timeout=timeout,
+                alignment=alignment or 'auto', timeout=timeout,
                 raw=str(raw), root=str(root), run_id=run_id, sensor_group=sensor_group,
                 current=ready['recording'] if ready else None)
     if operation == 'process' and start != 'observations':
@@ -104,7 +102,7 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
         entry = next(g for r in available['runs'] if r['run_id'] == selected_run
                      for g in r['groups'] if g['sensor_group'] == group)
         required = {'triangulation': 'observations', 'filtering': 'triangulation',
-                    'scale_fit': 'filtering', 'reconstruction': 'scale_fit', 'skeleton_fit': 'reconstruction'}[start]
+                    'scale_fit': 'filtering', 'reconstruction': 'scale_fit'}[start]
         if not entry['stages'][required]:
             raise ValueError(f'Missing saved {required}; restart at that stage first')
         plan.update(run_id=selected_run, sensor_group=group)
@@ -133,9 +131,9 @@ def process(name: str, **options) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     with FileLock(str(root / 'prepare.lock'), timeout=0):
         plan = preflight(name, **options)
-        logger.info('%s | %s from %s | calibration: %s | alignment: %s | skeleton fit: %s',
+        logger.info('%s | %s from %s | calibration: %s | alignment: %s',
                     name, plan['operation'], plan['start_stage'], plan['calibration_mode'],
-                    plan['alignment'], 'on' if plan['skeleton_fit'] else 'off')
+                    plan['alignment'])
         if 'calibration_path' in plan:
             logger.info('Calibration input: %s', plan['calibration_path'])
         ready = checked_ready(root)
@@ -250,9 +248,7 @@ def validate(name: str, *, prepared_root: Path) -> dict:
             if len(result.cameras) != 3 or not math.isfinite(result.reprojection_error_px):
                 raise ValueError('Invalid reference calibration')
             return dict(dataset=name, calibration_valid=True, recording=calibration['recording'])
-        config = ready['result'].get('mocap_config', {})
-        return validate_outputs(Path(ready['recording']), expected_frames=DATASETS[name].expected_frame_count,
-                                require_fit=config.get('skeleton_fit_enabled', False))
+        return validate_outputs(Path(ready['recording']), expected_frames=DATASETS[name].expected_frame_count)
 
 
 def recover_dataset(name: str, *, prepared_root: Path) -> dict:

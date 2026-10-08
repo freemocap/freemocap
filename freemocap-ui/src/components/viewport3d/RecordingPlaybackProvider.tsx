@@ -6,8 +6,6 @@ import type {ResolvedModelFrame} from '@/services/server/transport/frame-types';
 import {recordedKeypoints, recordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackChannelData, type PlaybackRun} from '@/services/recording/playback-data';
 
 import {PlaybackLoadResultSchema} from '@/services/recording/playback-parquet-messages';
-import {fittedSkeletonFrames} from '@/services/recording/fitted-skeleton';
-import type {FittedSkeletonDefinition, FittedSkeletonFrame} from '@/services/recording/fitted-skeleton-types';
 import {RecordingSelectionContext, type RecordingSelection} from './RecordingSelectionContext';
 
 interface PlaybackState {models: ModelDefinition[]; frames: ResolvedModelFrame[]; points: KeypointsFrame | null}
@@ -28,10 +26,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const modelSubscribers = useRef(new Set<ModelsCallback>());
     const frameSubscribers = useRef(new Set<ModelFramesCallback>());
     const pointSubscribers = useRef(new Set<KeypointsCallback>());
-    const fittedDefinitions = useRef<FittedSkeletonDefinition[]>([]);
-    const fittedFrames = useRef<FittedSkeletonFrame[]>([]);
-    const fittedDefinitionSubscribers = useRef(new Set<(items: FittedSkeletonDefinition[]) => void>());
-    const fittedFrameSubscribers = useRef(new Set<(items: FittedSkeletonFrame[]) => void>());
     const run = manifest?.runs.find(item => item.run_id === runId);
     const clock = run?.timelines.find(item => item.sensor_group === group && item.source === `timing:${group}`);
     const groups = useMemo(() => [...new Set(run?.channels.map(channel => channel.sensor_group) ?? [])], [run]);
@@ -43,9 +37,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     useEffect(() => {
         setError(null);
         state.current = {models: [], frames: [], points: null};
-        fittedDefinitions.current = []; fittedFrames.current = [];
-        fittedDefinitionSubscribers.current.forEach(cb => cb([]));
-        fittedFrameSubscribers.current.forEach(cb => cb([]));
         modelSubscribers.current.forEach(callback => callback([]));
         frameSubscribers.current.forEach(callback => callback([]));
         pointSubscribers.current.forEach(callback => callback({pointNames: [], interleaved: new Float32Array()}));
@@ -90,11 +81,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     useEffect(() => {
         if (!run || !manifest || !group) return;
         state.current = {models: run.models, frames: [], points: null};
-        fittedDefinitions.current = Object.entries(run.fitted_skeletons ?? {})
-            .filter(([, definition]) => definition.sensor_group === group).map(([source, definition]) => ({source, definition}));
-        fittedFrames.current = [];
-        fittedDefinitionSubscribers.current.forEach(cb => cb(fittedDefinitions.current));
-        fittedFrameSubscribers.current.forEach(cb => cb([]));
         modelSubscribers.current.forEach(callback => callback(run.models));
         frameSubscribers.current.forEach(callback => callback([]));
         pointSubscribers.current.forEach(callback => callback({pointNames: [], interleaved: new Float32Array()}));
@@ -119,8 +105,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
             if (time === null) {
                 if (!Number.isNaN(emittedTime)) {
                     state.current.frames = []; state.current.points = null;
-                    fittedFrames.current = [];
-                    fittedFrameSubscribers.current.forEach(cb => cb([]));
                     emittedTime = NaN;
                     frameSubscribers.current.forEach(callback => callback([]));
                     pointSubscribers.current.forEach(callback => callback({pointNames: [], interleaved: new Float32Array()}));
@@ -128,8 +112,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
             } else if (time !== emittedTime) {
                     state.current.frames = run.models.flatMap(model => sample(`model:${model.model_id}`, time,
                         () => [recordedModelFrame(run, {channels}, model, group, time)], []));
-                    fittedFrames.current = sample('fitted', time, () => fittedSkeletonFrames(run, channels, group, time), []);
-                    fittedFrameSubscribers.current.forEach(cb => cb(fittedFrames.current));
                     const points = sample('original keypoints', time, () => recordedKeypoints(channels, group, time), null);
                     state.current.points = points ? {pointNames: points.names, interleaved: points.data} : null;
                     frameSubscribers.current.forEach(callback => callback(state.current.frames));
@@ -166,8 +148,6 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     }, [dataPlaying, mediaAvailable, clock]);
 
     const source = useMemo<KeypointsSource>(() => ({
-        subscribeToFittedDefinitions: cb => {fittedDefinitionSubscribers.current.add(cb); cb(fittedDefinitions.current); return () => {fittedDefinitionSubscribers.current.delete(cb);};},
-        subscribeToFittedFrames: cb => {fittedFrameSubscribers.current.add(cb); cb(fittedFrames.current); return () => {fittedFrameSubscribers.current.delete(cb);};},
         isLive: false,
         getModels: () => state.current.models,
         getLatestModelFrames: () => state.current.frames,

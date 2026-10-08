@@ -6,14 +6,14 @@ import {PROCESSING_STAGES, type ResumeStage, type StageSelection} from '@/servic
 interface SavedGroup {sensor_group: string; stages: Record<ResumeStage, boolean>}
 interface Inventory {selected_run_id: number; runs: {run_id: number; groups: SavedGroup[]}[]}
 
-export default function MocapStageSelection({path, fitEnabled, onChange}: {
-    path: string | null; fitEnabled: boolean; onChange: (selection: StageSelection | null) => void;
+export default function MocapStageSelection({path, onChange}: {
+    path: string | null; onChange: (selection: StageSelection | null) => void;
 }) {
     const [inventory, setInventory] = useState<Inventory | null>(null);
     const [error, setError] = useState('');
     const [selected, setSelected] = useState('');
     const [start, setStart] = useState<number | null>(null);
-    const stages = PROCESSING_STAGES.slice(0, fitEnabled ? 6 : 5);
+    const stages = PROCESSING_STAGES;
     const choices = inventory?.runs.flatMap(run => run.groups.map(group => ({...group, run_id: run.run_id}))) ?? [];
     const group = choices.find(item => JSON.stringify([item.run_id, item.sensor_group]) === selected);
 
@@ -45,7 +45,7 @@ export default function MocapStageSelection({path, fitEnabled, onChange}: {
         if (!inventory) return;
         const lastSaved = stages.reduce((last, [stage], index) => group?.stages[stage] ? index : last, -1);
         setStart(lastSaved + 1 < stages.length ? lastSaved + 1 : null);
-    }, [inventory, selected, fitEnabled]);
+    }, [inventory, selected]);
 
     useEffect(() => {
         onChange(inventory && start !== null ? {

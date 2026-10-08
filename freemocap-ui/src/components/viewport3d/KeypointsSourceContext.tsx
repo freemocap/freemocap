@@ -2,7 +2,6 @@ import React, {createContext, useContext, useEffect, useMemo, useRef, useState} 
 import {useServerOptional} from "@/services/server/server-context";
 import type { ResolvedModelFrame } from '@/services/server/transport/frame-types';
 import type { ModelDefinition } from '@/services/server/transport/message-contract';
-import type {FittedSkeletonDefinition, FittedSkeletonFrame} from '@/services/recording/fitted-skeleton-types';
 
 /**
  * Abstraction over "where does 3D scene data come from". The Streaming panel
@@ -41,8 +40,6 @@ export type ModelsCallback = (models: ModelDefinition[]) => void;
  * reason these five channels travel together instead of separately.
  */
 export interface KeypointsSource {
-    subscribeToFittedDefinitions?: (cb: (definitions: FittedSkeletonDefinition[]) => void) => () => void;
-    subscribeToFittedFrames?: (cb: (frames: FittedSkeletonFrame[]) => void) => () => void;
     isLive: boolean;
     subscribeToKeypoints: (cb: KeypointsCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;

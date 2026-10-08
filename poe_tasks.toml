@@ -43,8 +43,8 @@ env = { PYTHONUTF8 = "1" }
 
 # Reference recordings: these execute processing and save results on local disk.
 datasets = { cmd = "python -B -m freemocap.tools.datasets", help = "Inspect, acquire, calibrate, process, or validate test_data/sample_data" }
-process-test-data = { cmd = "python -B -m freemocap.tools.datasets process test_data", help = "Fresh calibration and mocap on test_data; skeleton fitting is opt-in" }
-process-sample-data = { cmd = "python -B -m freemocap.tools.datasets process sample_data", help = "Fresh calibration and mocap on sample_data; skeleton fitting is opt-in" }
+process-test-data = { cmd = "python -B -m freemocap.tools.datasets process test_data", help = "Fresh calibration and mocap on test_data" }
+process-sample-data = { cmd = "python -B -m freemocap.tools.datasets process sample_data", help = "Fresh calibration and mocap on sample_data" }
 process-all-data = { cmd = "python -B -m freemocap.tools.datasets process-all", help = "Process test_data then sample_data; stop on failure" }
 
 # ── Type-checking ───────────────────────────────────────────────────────

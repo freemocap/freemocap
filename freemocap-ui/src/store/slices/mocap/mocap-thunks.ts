@@ -21,7 +21,6 @@ function buildPosthocConfig(state: RootState) {
                 : null,
         },
         cameraMatching: config.cameraMatching,
-        skeletonFitEnabled: config.skeletonFitEnabled ?? false,
         anchorSegmentName: config.anchorSegmentName,
         exportTallCsv: config.exportTallCsv ?? true,
         charucoTrackingEnabled: config.charucoTrackingEnabled,

@@ -8,10 +8,10 @@ the FreeMoCap repository. These save newly processed results on disk.
 ## Recording-contract and provenance acceptance
 
 Use the production dataset workflow as the producer, then test its saved files.
-The full command runs real calibration, detection, reconstruction and fitting;
+The full command runs real calibration, detection, scale fitting and reconstruction;
 the consumer test copies the resulting Parquet and reruns filtering/reconstruction
 without videos. It checks saved settings against execution-time defaults, unchanged
-upstream rows/provenance, invalidation of fitting, cancellation and producer hashes.
+upstream rows/provenance, updated downstream settings, cancellation and producer hashes.
 
 ```powershell
 # Use your existing downloads as inputs; choose a separate output root.
@@ -61,18 +61,12 @@ rows, retained runs, videos and calibration files are preserved. The command
 currently requires the human model to belong to exactly one sensor group.
 
 Publication validates and atomically replaces the Parquet file. Old scale-fit,
-reconstruction, biomechanics and fitting checkpoints/provenance are removed,
-along with fitted output depending on the replaced model; this helper does not
+reconstruction and biomechanics checkpoints/provenance are removed
+for stages depending on the replaced model; this helper does not
 claim a full pipeline rerun. The preparation checksum is updated after validation,
 with a separate `reconstruction_refresh` provenance entry. Original preparation
 identity is retained. A failure between Parquet publication and marker replacement
 leaves a checksum mismatch that blocks automatic reuse; inspect it before recovery.
 
-Then regenerate the real-data viewer from the SkellyForge repository:
-
-```powershell
-.\.venv\Scripts\python.exe -B scripts/generate_real_skeleton_viewer.py
-```
-
-Refresh `http://127.0.0.1:8771/real_skeleton_viewer.html` if its server is already
-running. Otherwise add `--serve` to the generator command.
+Connected-fitting viewers are preserved on `development-skelly-fit`. Use the current
+recording playback UI to inspect ordinary reconstructed outputs.

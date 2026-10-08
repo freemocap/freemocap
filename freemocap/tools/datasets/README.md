@@ -76,7 +76,7 @@ poe process-all-data
 
 These commands run the standard production pipelines: fresh calibration, RTMPose
 tracking, triangulation, trajectory preparation, automatic coordinate alignment,
-skeleton reconstruction. Optional skeleton fitting is off by default; scale fitting
+skeleton reconstruction. Connected optimization is deferred to `development-skelly-fit`; scale fitting
 and landmark/segment reconstruction still run. They rerun
 processing even if old results exist. `process-all-data` runs **test_data first,
 then sample_data**, stopping at the first failure. It does not run pytest.
@@ -92,14 +92,6 @@ its version-4 provenance and still reads version-2/3 reports. Interpolation runs
 before smoothing; filled samples never vote as measured evidence for scale or
 alignment. Entirely blank frames remain blank and separate visible intervals.
 
-When explicitly enabled with `--skeleton-fit`, skeleton fitting runs independently in each visible interval, retaining original
-frame numbers and timestamps. An interval shorter than three frames or without
-any root-pose seed is left null and reported in `skipped_intervals`; root seeds
-are never borrowed across absence. The fitted source saves every modeled landmark
-alongside its segment transforms and lengths. Its `LANDMARKS_3D` channel contains
-predictions; the original reconstruction channels remain fitting inputs and are
-not overwritten with those predictions. Playback omits wholly absent fitted frames.
-
 ## Choose work explicitly
 
 ```powershell
@@ -113,15 +105,11 @@ poe datasets process test_data --from triangulation --calibration existing
 poe datasets process test_data --from filtering
 poe datasets process test_data --from scale_fit
 poe datasets process test_data --from reconstruction
-poe datasets process test_data --skeleton-fit
-poe datasets process test_data --from skeleton_fit --skeleton-fit
 poe datasets validate test_data
 ```
 
 The complete commands are aliases for `poe datasets process test_data`,
 `poe datasets process sample_data`, and `poe datasets process-all`.
-`--skeleton-fit` opts into the final fit. `--no-skeleton-fit` remains accepted and
-explicitly selects the default (off). `--from skeleton_fit` requires `--skeleton-fit`.
 `--timeout SECONDS` sets the limit for each
 pipeline. `--run-id` and `--sensor-group` select saved inputs when restarting;
 the default is the selected saved run and its sole eligible sensor group.
@@ -188,8 +176,8 @@ python -B -m pytest freemocap/tests/test_dataset_workflow.py freemocap/tests/tes
 ```
 
 Acceptance validates recording structure, frame grids, calibration/alignment,
-and fitted channel completeness, finite values, and unit rotations. It does not
-claim anatomical accuracy or enforce experimental fit-quality thresholds.
+channel grids, finite values and executed-stage provenance. It does not claim
+anatomical accuracy. Reconstruction geometry is checked by the reference tests.
 
 New workflow publications also require versioned provenance for every executed
 stage and check the filtering settings against the saved processing report.
@@ -198,24 +186,3 @@ Historical files remain readable without invented provenance. The
 consume fresh outputs and exercise numerical replay while preserving upstream data.
 These production-generated outputs are the shared acceptance fixtures for future
 CSV/NPZ and Blender integration, alongside focused structural and logic tests.
-
-## Historical integration blocker (2026-09-29; resolved)
-
-Fresh test and sample processing passed on 2026-09-30 with installed Forge
-revision `cbae21e`, including fitting and channel validation. The earlier failure
-below is retained as history, not a current prerequisite for running the suite.
-
-A fresh `test_data` run completed calibration, tracking, triangulation, person
-alignment (`foot_support`), and reconstruction, then failed in SkellyForge
-revision `31cdfda4` with `KeyError: pelvis_origin`. Production gap filling now
-retains missing observations at the recording's tail. The fitter's position
-priors require spine landmarks on every frame; `pelvis_origin` is absent from
-the final six frames. Supporting missing position-prior observations needs a
-SkellyForge change before the default full run can pass.
-
-The failed attempt retained the previous accepted recording. The runner does
-not fill those observations, drop frames, or disable fitting automatically.
-At that point, sample-data full processing and real saved-stage restart checks
-were pending the dependency fix. At that time fitting was enabled by default;
-the explicit `--no-skeleton-fit` option did not demonstrate that the fitting-enabled
-workflow passed. Fitting is now opt-in as documented above.

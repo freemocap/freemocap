@@ -16,8 +16,8 @@ Folder ownership and provenance rules are defined in the maintained
 are recorded in the [audit](../03-transport/recording-folder-contract.md).
 The agreed default/retained layout below replaces the initial unique-folder proposal.
 
-The larger branch milestone is a complete post-hoc recording, optional final
-skeleton fitting, canonical Parquet, these optional data exports, and a working
+The larger branch milestone is a complete post-hoc recording, canonical Parquet,
+these optional data exports, and a working
 connection to the existing Blender add-on. Blender adaptation follows this work.
 BVH, glTF, additional fitting research, and standalone NPY files are deferred.
 NPZ contains ordinary NumPy arrays; separate NPY files can be added later using
@@ -174,8 +174,7 @@ Extend `mocap-setup-modal.tsx`'s existing Exports section with independent
 the destination beneath the selected recording. Preserve the existing Blender
 controls in the same section, with their current capability restrictions.
 
-Checked formats run after successful processing/publication, including optional
-fitting when enabled. Add **Export saved result** for the selected saved run,
+Checked formats run after successful processing/publication. Add **Export saved result** for the selected saved run,
 without requiring videos, calibration, detector readiness or reprocessing.
 Provide an explicit saved-run selector when multiple runs exist. Disable this
 action when no saved result or no format is selected, with an explanatory label.
@@ -222,7 +221,7 @@ implementation, as well as a final milestone check; it is not deferred to stage 
    Verify `allow_pickle=False` and bounded processing on a real sample recording.
 3. **Task/API and post-hoc UI (FreeMoCap).** Add export-now and after-processing
    using the same backend service. Test selection persistence, request mapping,
-   full/saved-stage triggers, fitting off/on, independent format failures,
+   full/saved-stage triggers, independent format failures,
    cancellation and unchanged successful mocap status. Run TypeScript checks and
    browser interaction checks for the actual Exports section.
 4. **Reference acceptance and handoff (FreeMoCap).** Export both prepared datasets,

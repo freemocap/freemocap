@@ -17,7 +17,7 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
                 const [path, setPath] = useState('partial'); const [selection, setSelection] = useState(null);
                 return <main><h1>Processing stages</h1><select aria-label="Recording" value={path} onChange={e => setPath(e.target.value)}>
                     <option>partial</option><option>complete</option><option>new</option><option>broken</option></select>
-                    <Stages path={path} fitEnabled={false} onChange={setSelection}/>
+                    <Stages path={path} onChange={setSelection}/>
                     <button disabled={!selection}>Process Mocap</button><output>{JSON.stringify(selection)}</output></main>;
             }
             createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
@@ -29,7 +29,7 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
             response.end(JSON.stringify(path === 'broken' ? {detail: 'Unreadable recording'} : {
                 selected_run_id: 2, runs: path === 'new' ? [] : [{run_id: 2, groups: [{sensor_group: 'camera_group:test', stages: {
                     observations: true, triangulation: true, filtering: path === 'complete',
-                    scale_fit: path === 'complete', reconstruction: path === 'complete', skeleton_fit: false,
+                    scale_fit: path === 'complete', reconstruction: path === 'complete',
                 }}]}],
             }));
         } else if (request.url === '/entry.js') {
@@ -68,6 +68,10 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
         await expect(page.getByRole('button', {name: 'Process Mocap'})).toBeDisabled();
     } finally {
         await page.goto('about:blank');
-        await new Promise<void>(done => server.close(() => done()));
+        await new Promise<void>(done => {
+            server.close(() => done());
+            // Close browser keep-alive sockets before awaiting server shutdown.
+            server.closeAllConnections();
+        });
     }
 });

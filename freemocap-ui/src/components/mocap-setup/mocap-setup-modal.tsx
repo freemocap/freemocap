@@ -10,14 +10,15 @@ import SettingsSummaryChip from "@/components/common/settings-layout/settings-su
 import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
 import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
 import MocapDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
-import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
+import MocapBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 import MocapCsvSettings from './mocap-csv-settings';
 import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-settings";
 import {useMocap} from "@/hooks/useMocap";
 import {useAppSelector} from "@/store/hooks";
 import {RTMPOSE_MODELS} from "@/store/slices/mocap";
 import MocapStageSelection from './mocap-stage-selection';
-import type {StageSelection} from '@/services/recording/posthoc-processing';
+import {PROCESSING_STAGES, type StageSelection} from '@/services/recording/posthoc-processing';
+import {selectBlender} from '@/store/slices/blender';
 import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
 enum SetupSection {
@@ -28,6 +29,7 @@ enum SetupSection {
     Triangulation = 'Triangulation',
     PostProcessing = 'Post-processing',
     Exports = 'Exports',
+    Blender = 'Blender',
 }
 
 type MocapMode = "recording" | "playback";
@@ -49,6 +51,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     } = useMocap();
 
     const config = useAppSelector(state => state.mocap.config);
+    const blender = useAppSelector(selectBlender);
     const [stageSelection, setStageSelection] = useState<StageSelection | null>(null);
 
     useEffect(() => {
@@ -89,6 +92,11 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
         },
         {
             name: SetupSection.Stages,
+            summary: <SettingsSummaryChip>
+                {stageSelection
+                    ? `from ${PROCESSING_STAGES.find(([stage]) => stage === stageSelection.startStage)?.[1] ?? stageSelection.startStage}`
+                    : ''}
+            </SettingsSummaryChip>,
             content: <MocapStageSelection path={mocapRecordingPath}
                 onChange={setStageSelection}/>,
         },
@@ -124,8 +132,15 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
         {
             name: SetupSection.Exports,
             summary: <SettingsSummaryChip>{(config.exportTallCsv ?? true) ? 'Tall CSV on' : 'Tall CSV off'}</SettingsSummaryChip>,
-            content: <><MocapCsvSettings key={mocapRecordingPath} path={mocapRecordingPath} processing={isLoading || isRecording}/>
-                <MOCAPBlenderSettings open onClose={() => {}}/></>,
+            content: <MocapCsvSettings key={mocapRecordingPath} path={mocapRecordingPath} processing={isLoading || isRecording}/>,
+        },
+        {
+            name: SetupSection.Blender,
+            summary: <>
+                <SettingsSummaryChip>{blender.exportToBlenderEnabled ? 'Export after processing' : 'Export off'}</SettingsSummaryChip>
+                <SettingsSummaryChip tone="quiet">{blender.exportConfig.formats.map(format => format.toUpperCase()).join(' · ')}</SettingsSummaryChip>
+            </>,
+            content: <MocapBlenderSettings/>,
         },
     ];
 

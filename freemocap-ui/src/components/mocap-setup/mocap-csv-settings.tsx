@@ -80,19 +80,18 @@ export default function MocapCsvSettings({path, processing}: {path: string | nul
                     : [{value: String(run), label: 'No saved result'}]}
                 disabled={!selection || busy || processing} onChange={value => setRun(Number(value))}/>}/>
         <SettingRow label="Export saved result" info={SAVED_INFO}
-            control={<ButtonSm text={busy ? 'Saving tall CSV…' : 'Export tall CSV now'} onClick={() => void save()}
-                disabled={!selection || busy || processing} className="full-width quaternary"/>}/>
-        {busy && <p role="status" className="text sm text-gray p-1">Saving CSV files…</p>}
-        {error && <div className="flex flex-col gap-1 p-1">
-            <p role="alert" className="text sm text-error">{error}</p>
-            <div className="flex justify-end"><ButtonSm text="Reload saved results" className="quaternary"
-                disabled={busy || processing} onClick={() => setRefresh(value => value + 1)}/></div>
+            inactive={!selection || processing}
+            control={<ButtonSm text={busy ? 'Saving…' : 'Export now'} onClick={() => void save()}
+                disabled={!selection || busy || processing} className="setting-action-button" textColor="text-white"/>}/>
+        {busy && <p role="status" className="settings-note">Saving CSV files…</p>}
+        {error && <div role="alert" className="settings-note settings-note-error settings-note-dismissable">
+            <span>{error}</span>
+            <ButtonSm text="Reload saved results" className="setting-action-button" textColor="text-white"
+                disabled={busy || processing} onClick={() => setRefresh(value => value + 1)}/>
         </div>}
-        {saved.length > 0 && <div role="status" className="flex flex-col gap-1 p-1">
-            <p className="text sm text-gray">Tall CSV saved:</p>
-            {saved.map(file => <div key={file} className="flex min-w-0">
-                <SettingsSummaryChip tone="path" title={file}>{file}</SettingsSummaryChip>
-            </div>)}
+        {saved.length > 0 && <div role="status" className="settings-note settings-note-list">
+            <span>Tall CSV saved:</span>
+            {saved.map(file => <SettingsSummaryChip key={file} tone="path" title={file}>{file}</SettingsSummaryChip>)}
         </div>}
     </>;
 }

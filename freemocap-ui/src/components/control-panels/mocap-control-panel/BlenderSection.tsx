@@ -137,7 +137,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     </p>
                 </div>
 
-                <BlenderPackageSettings />
+                <div className="settings-layout-stacked"><BlenderPackageSettings/></div>
 
                 <div className="flex flex-col gap-1">
                     <ToggleComponent

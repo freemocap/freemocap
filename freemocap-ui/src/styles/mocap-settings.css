@@ -239,3 +239,54 @@
     min-width: auto;
   }
 }
+
+/* ---------------------------------------------------------
+   PROCESSING STAGES
+   The chain of stages, numbered in order. Stages that will run are
+   bright and marked; stages that reuse a saved result stay quiet.
+   --------------------------------------------------------- */
+
+.mocap-stage-list {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mocap-stage {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-left: 2px solid transparent;
+  font-size: 12px;
+  color: var(--color-text-inactive);
+}
+
+.mocap-stage + .mocap-stage {
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+.mocap-stage-index {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-help);
+}
+
+.mocap-stage-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mocap-stage-runs {
+  border-left-color: var(--color-success);
+  color: var(--color-text-primary);
+}
+
+.mocap-stage-runs .mocap-stage-index {
+  color: var(--color-text-secondary);
+}

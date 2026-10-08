@@ -367,3 +367,161 @@
 .settings-section-nested .settings-section-title {
   font-size: 12px;
 }
+
+/* ---------------------------------------------------------
+   ACTION BUTTON
+   A ButtonSm that performs an action from a row's control column.
+   Outlined like every other control so it reads as clickable.
+   --------------------------------------------------------- */
+
+.button.sm.setting-action-button {
+  flex: 1 1 0;
+  max-width: none;
+  min-width: 0;
+  min-height: 31px;
+  justify-content: center;
+  padding: 6px 11px;
+  background: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
+  border-radius: 6px;
+  box-shadow: var(--shadow-raised-lip);
+  cursor: pointer;
+}
+
+.button.sm.setting-action-button:not(:disabled):hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-text-disabled);
+}
+
+.button.sm.setting-action-button:focus-visible {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+.button.sm.setting-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button.sm.setting-action-button > p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------
+   TEXT INPUT and PATH BUTTON
+   Same box as the select input, so every control column lines up.
+   --------------------------------------------------------- */
+
+.setting-text-input,
+.setting-path-button {
+  box-sizing: border-box;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 11px;
+  background: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
+  border-radius: 6px;
+  box-shadow: var(--shadow-raised-lip);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.setting-text-input::placeholder {
+  color: var(--color-text-help);
+}
+
+.setting-text-input:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-disabled);
+}
+
+/* A file path, clicked to choose a different file. The tail of the path
+   is the informative part, so it is the part kept when space runs out. */
+.setting-path-button {
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.setting-path-button:not(:disabled):hover,
+.setting-text-input:not(:disabled):hover {
+  border-color: var(--color-text-disabled);
+}
+
+.setting-path-button:disabled {
+  cursor: not-allowed;
+}
+
+.setting-path-placeholder {
+  direction: ltr;
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--color-text-help);
+}
+
+/* ---------------------------------------------------------
+   NOTE
+   A status or error line under the rows it concerns.
+   --------------------------------------------------------- */
+
+.settings-note {
+  margin: 4px 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.settings-note-error {
+  color: var(--color-danger);
+}
+
+.settings-note-dismissable {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-danger);
+  border-radius: 6px;
+}
+
+.settings-note-dismissable .setting-action-button {
+  flex: none;
+}
+
+.settings-note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-note .settings-summary-chip-path {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------------------------------------------------------
+   STACKED
+   For containers too narrow for the control column (side panels):
+   each control moves under its label.
+   --------------------------------------------------------- */
+
+.settings-layout-stacked .setting-row {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 4px;
+  padding: 5px 0;
+}
+
+.settings-layout-stacked .setting-row-control {
+  width: 100%;
+}

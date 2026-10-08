@@ -117,7 +117,7 @@ jobs:
           [ -z "${{ secrets.MAC_CERTIFICATE_P12 }}" ] && MISSING+=("MAC_CERTIFICATE_P12")
           [ -z "${{ secrets.MAC_CERTIFICATE_PASSWORD }}" ] && MISSING+=("MAC_CERTIFICATE_PASSWORD")
           [ -z "${{ secrets.APPLE_ID }}" ] && MISSING+=("APPLE_ID")
-          [ -z "${{ secrets.APPLE_ID_PASSWORD }}" ] && MISSING+=("APPLE_ID_PASSWORD")
+          [ -z "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" ] && MISSING+=("APPLE_APP_SPECIFIC_PASSWORD")
           [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && MISSING+=("APPLE_TEAM_ID")
           if [ ${#MISSING[@]} -gt 0 ]; then
             echo "::error::Missing required secrets for macOS code signing: ${MISSING[*]}"
@@ -369,7 +369,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "true"
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd freemocap-ui

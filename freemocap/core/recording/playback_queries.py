@@ -2,6 +2,7 @@
 
 from freemocap.core.playback.media_selection import PlaybackVideoSource
 from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 import math
 from pathlib import Path
 
@@ -60,6 +61,7 @@ class PlaybackMedia(Descriptor):
 
 class PlaybackRun(Descriptor):
     model_sources: dict[str, str]
+    camera_geometry: dict[str, tuple[CameraModel, ...]] = Field(default_factory=dict)
     calibration_updates: dict[str, CalibrationUpdateRequest] = Field(default_factory=dict)
     run_id: int
     models: tuple[ModelDefinition, ...]
@@ -138,6 +140,7 @@ def playback_manifest(path: Path) -> PlaybackManifest:
                         and "model_id" in source.definition
                     },
                     calibration_updates=run.calibration_updates,
+                    camera_geometry=run.camera_geometry,
                     run_id=run_id,
                     models=composition.models,
                     channels=run.channels,

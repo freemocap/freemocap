@@ -10,9 +10,10 @@ interface UsePlaybackControllerArgs {
     bundle: Pick<PlaybackBundle, 'manifest' | 'media' | 'videos'> | null;
     reloadManifest: () => void;
     onFrameChange?: (frame: number) => void;
+    playbackReady?: boolean;
 }
 
-export function usePlaybackController({videos, recordingId, recordingParentDirectory, bundle, reloadManifest, onFrameChange}: UsePlaybackControllerArgs) {
+export function usePlaybackController({videos, recordingId, recordingParentDirectory, bundle, reloadManifest, onFrameChange, playbackReady = true}: UsePlaybackControllerArgs) {
     const [media, setMedia] = useState<PlaybackMedia[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -40,6 +41,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const duration = totalFrames / fps;
     const videoKey = JSON.stringify(videos);
     const fail = useCallback((failure: Error): void => {setError(failure.message); setIsPlaying(false);}, []);
+    useEffect(() => {if (!playbackReady) setIsPlaying(false);}, [playbackReady]);
     useEffect(() => {setMedia(bundle?.media ?? []);}, [bundle]);
     useEffect(() => {
         currentFrameRef.current = 0; setCurrentFrame(0); setRequestedFrame(0); setIsPlaying(false);
@@ -92,11 +94,11 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     useEffect(() => {
         const current = players.current;
         current.forEach(player => {player.element.playbackRate = playbackRate;});
-        if (isPlaying) {
+        if (isPlaying && playbackReady) {
             measuredFps.current = null;
             void Promise.all(current.map(player => player.element.play())).catch(failure => {if (players.current === current) fail(failure);});
         } else current.forEach(player => player.element.pause());
-    }, [isPlaying, playbackRate, videosReady, fail]);
+    }, [isPlaying, playbackRate, videosReady, fail, playbackReady]);
 
     useEffect(() => {
         const leaderElement = players.current[0]?.element;
@@ -149,10 +151,11 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         return frames;
     }, [fps, totalFrames]);
     const handlePlayPause = useCallback((): void => {
+        if (!playbackReady) return;
         if (isPlaying) setRequestedFrame(currentFrameRef.current);
         else if (currentFrameRef.current >= totalFrames - 1) {void seek(0).then(() => setIsPlaying(true)); return;}
         setIsPlaying(value => !value);
-    }, [isPlaying, totalFrames, seek]);
+    }, [isPlaying, totalFrames, seek, playbackReady]);
     useEffect(() => {
         const onKey = (event: KeyboardEvent): void => {
             if (event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target.tagName))) return;

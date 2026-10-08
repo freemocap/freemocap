@@ -122,8 +122,10 @@ export const CalibrationUpdateRequestSchema = z.object({
 }).strict();
 export type CalibrationUpdateRequest = z.infer<typeof CalibrationUpdateRequestSchema>;
 
+export const SceneCalibrationSchema = LoadedCalibrationSchema.pick({cameras: true});
+export type SceneCalibration = z.infer<typeof SceneCalibrationSchema>;
 export const CalibrationSceneSchema = z.object({
-    calibration: LoadedCalibrationSchema.nullable(),
+    calibration: SceneCalibrationSchema.nullable(),
     referenceTransform: z.array(z.number()).length(16).nullable(),
 });
 export type CalibrationScene = z.infer<typeof CalibrationSceneSchema>;

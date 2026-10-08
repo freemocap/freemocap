@@ -61,6 +61,28 @@ def test_playback_manifest_uses_live_model_wire_format(
 
 
 
+def test_playback_exposes_saved_camera_geometry_without_calibration_file(publication, tmp_path):
+    from freemocap.tests.test_mocap_alignment import alignment_request, align_mocap_recording
+    from freemocap.core.recording.parquet_storage.parquet_writer import publish_recording
+    import pyarrow.parquet as pq
+
+    metadata = publish_posthoc_observations(publication)
+    structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
+    run = metadata.runs[0]
+    group = next(iter(run.sensor_groups))
+    aligned = align_mocap_recording(request=alignment_request())
+    cameras = tuple(aligned.camera_geometry.values())
+    updated = run.model_copy(update={"camera_geometry": {group: cameras}})
+    table = pq.read_table(structure.data_parquet_path)
+    publish_recording(structure=structure, metadata=metadata.model_copy(update={"runs": {0: updated}}),
+                      batches=table.replace_schema_metadata(None).to_batches())
+    manifest = playback_manifest(structure.data_parquet_path)
+    assert manifest.runs[0].camera_geometry[group] == cameras
+    wire = json.loads(manifest.model_dump_json())["runs"][0]["camera_geometry"][group]
+    assert wire == [camera.model_dump(mode="json") for camera in cameras]
+    assert not list(tmp_path.rglob("*.toml"))
+
+
 def test_parquet_download_preserves_bytes_and_checks_revision(
     publication: ObservationRecordingRequest, tmp_path: Path,
 ) -> None:

@@ -8,7 +8,7 @@
  * (schemas, calibration, visibility) React state is used, driven by this store.
  */
 
-import { CalibrationBoardMode, type CalibrationConfig, type LoadedCalibration } from "@/store/slices/calibration/calibration-types";
+import { CalibrationBoardMode, type CalibrationConfig, type SceneCalibration } from "@/store/slices/calibration/calibration-types";
 import {CalibrationSceneSchema} from '@/store/slices/calibration/calibration-types';
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
@@ -71,7 +71,7 @@ const modelFramesChan = makeChannel<ResolvedModelFrame[] | null>(null, {replayOn
 // channel above precisely because they are big: sending them per frame clones every segment
 // and landmark across the worker boundary thirty times a second.
 const modelsChan = makeChannel<ModelDefinition[] | null>(null, {replayOnSubscribe: true});
-const calibChan = makeChannel<LoadedCalibration | null>(null, {replayOnSubscribe: true});
+const calibChan = makeChannel<SceneCalibration | null>(null, {replayOnSubscribe: true});
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG, {replayOnSubscribe: true});
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
 const referenceTransformChan = makeChannel<number[] | null>(null, {replayOnSubscribe: true});
@@ -92,8 +92,8 @@ const modelKey = (value: ResolvedModelFrame): string => JSON.stringify([value.mo
 // ---------------------------------------------------------------------------
 
 export const workerDataStore: KeypointsSource & {
-    subscribeToCalibration: (cb: Listener<LoadedCalibration | null>) => () => void;
-    getCalibration: () => LoadedCalibration | null;
+    subscribeToCalibration: (cb: Listener<SceneCalibration | null>) => () => void;
+    getCalibration: () => SceneCalibration | null;
     subscribeToReferenceTransform: (cb: Listener<number[] | null>) => () => void;
     getReferenceTransform: () => number[] | null;
     subscribeToCalibrationConfig: (cb: Listener<CalibrationConfig>) => () => void;
@@ -184,7 +184,7 @@ export const workerDataStore: KeypointsSource & {
                 break;
             }
             case "calibration":
-                calibChan.dispatch(data as LoadedCalibration | null);
+                calibChan.dispatch(data as SceneCalibration | null);
                 break;
             case "referenceTransform":
                 referenceTransformChan.dispatch(data as number[] | null);

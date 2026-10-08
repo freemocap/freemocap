@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {PlaybackSource} from './playback-source';
-import {CalibrationUpdateRequestSchema} from '@/store/slices/calibration/calibration-types';
+import {CalibrationUpdateRequestSchema, CalibrationCameraDataSchema} from '@/store/slices/calibration/calibration-types';
 import {ModelDefinitionSchema, type ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame, PointsFrame} from '@/services/server/transport/frame-types';
 
@@ -37,6 +37,7 @@ export const RecordingStaticChannelSchema = z.object({
 });
 export type RecordingStaticChannel = z.infer<typeof RecordingStaticChannelSchema>;
 export const PlaybackRunSchema = z.object({
+    camera_geometry: z.record(z.string(), z.array(CalibrationCameraDataSchema)).optional(),
     model_sources: z.record(z.string(), z.string()),
     calibration_updates: z.record(z.string(), CalibrationUpdateRequestSchema).optional(),
     run_id: z.number().int().nonnegative(), models: z.array(ModelDefinitionSchema),

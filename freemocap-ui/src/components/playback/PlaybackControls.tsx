@@ -12,6 +12,7 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {CachedTimeline} from './CachedTimeline';
 
 interface PlaybackControlsProps {
+    playbackReady?: boolean;
     isPlaying: boolean;
     currentTime: number;
     duration: number;
@@ -57,6 +58,7 @@ function formatTimestamp(seconds: number, fps: number, format: "seconds" | "time
 }
 
 export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
+    playbackReady = true,
     isPlaying,
     currentTime,
     duration,
@@ -271,12 +273,15 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                         tooltipPosition="pos-top"
                     />
                     <IconButton
-                        icon={isPlaying ? "pause-icon" : "play-icon"}
+                        icon={!playbackReady ? "loader-icon" : isPlaying ? "pause-icon" : "play-icon"}
+                        disabled={!playbackReady}
                         onClick={onPlayPause}
-                        title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+                        ariaLabel={!playbackReady ? "Preparing playback data" : isPlaying ? "Pause" : "Play"}
+                        tooltipPortal={true}
+                        title={!playbackReady ? "Preparing playback data… Play will be available when it’s ready." : isPlaying ? "Pause (Space)" : "Play (Space)"}
                         className={clsx("playback-btn-play", "icon-size-25", isPlaying && "playing")}
                         tooltip={true}
-                        tooltipText={isPlaying ? t("pause") : t("play")}
+                        tooltipText={!playbackReady ? "Preparing playback data… Play will be available when it’s ready." : isPlaying ? t("pause") : t("play")}
                         tooltipPosition="pos-top"
                     />
                     <IconButton

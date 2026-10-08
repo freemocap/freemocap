@@ -10,10 +10,11 @@ import {RecordingSelectionContext, type RecordingSelection} from './RecordingSel
 
 interface PlaybackState {models: ModelDefinition[]; frames: ResolvedModelFrame[]; points: KeypointsFrame | null}
 
-export function RecordingPlaybackProvider({recordingId, recordingParentDirectory, getRecordingTime, mediaAvailable, manifest, reloadManifest, onPlaybackRun, children}: {
+export function RecordingPlaybackProvider({recordingId, recordingParentDirectory, getRecordingTime, mediaAvailable, manifest, reloadManifest, onPlaybackRun, onDataReady, children}: {
     recordingId: string | null; recordingParentDirectory: string | null | undefined;
     getRecordingTime: () => number | null; mediaAvailable: boolean; children: ReactNode;
     manifest: PlaybackManifest | null; reloadManifest: () => void; onPlaybackRun: (run: PlaybackRun) => void;
+    onDataReady?: (manifest: PlaybackManifest, ready: boolean) => void;
 }): React.ReactElement {
     const [runId, setRunId] = useState<number | null>(null);
     const [group, setGroup] = useState('');
@@ -33,6 +34,12 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const parameters = new URLSearchParams();
     if (recordingParentDirectory) parameters.set('recording_parent_directory', recordingParentDirectory);
     const query = parameters.toString();
+
+    useEffect(() => {
+        if (!manifest) return;
+        onDataReady?.(manifest, false);
+        return () => onDataReady?.(manifest, false);
+    }, [manifest, loaded, run, clock, error, onDataReady]);
 
     useEffect(() => {
         setError(null);
@@ -90,6 +97,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         if (!channels) {setError('Selected recording samples are missing'); return;}
         let raf = 0;
         let emittedTime = NaN;
+        let ready = false;
         const warnedLayers = new Set<string>();
         const sample = <T,>(layer: string, time: number, read: () => T, empty: T): T => {
             try {return read();} catch (failure) {
@@ -117,12 +125,13 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
                     frameSubscribers.current.forEach(callback => callback(state.current.frames));
                     pointSubscribers.current.forEach(callback => callback(state.current.points ?? {pointNames: [], interleaved: new Float32Array()}));
                     emittedTime = time;
+                    if (!ready && !error) {ready = true; onDataReady?.(manifest, true);}
             }
             raf = requestAnimationFrame(tick);
         };
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
-    }, [run, manifest, loaded, group, getRecordingTime, clock, mediaAvailable]);
+    }, [run, manifest, loaded, group, getRecordingTime, clock, mediaAvailable, error, onDataReady]);
 
     useEffect(() => {
         if (!clock || mediaAvailable) return;
@@ -160,6 +169,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const units = Object.values(run?.channels.find(item => item.sensor_group === group && item.kind === RecordingChannelKind.Landmarks)?.components ?? {})[0] ?? null;
     const runIds = useMemo(() => manifest?.runs.map(item => item.run_id) ?? [], [manifest]);
     const selection = useMemo<RecordingSelection>(() => ({
+        cameras: run?.camera_geometry?.[group] ?? [],
         runIds,
         runId,
         selectRun: (nextRunId: number) => {
@@ -172,7 +182,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         selectGroup: setGroup,
         units,
         reload: reloadManifest,
-    }), [runIds, runId, manifest, groups, group, units, reloadManifest]);
+    }), [runIds, runId, manifest, groups, group, units, reloadManifest, run]);
 
     return <KeypointsSourceProvider source={source}><RecordingSelectionContext.Provider value={selection}><div className="flex flex-col h-full">
         {!mediaAvailable && clock && <div className="flex items-center gap-2 p-1">

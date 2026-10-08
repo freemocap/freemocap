@@ -15,6 +15,7 @@ import IconButton from "@/components/ui-components/IconButton";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {RecordingPlaybackProvider} from "@/components/viewport3d/RecordingPlaybackProvider";
+import type {PlaybackManifest} from '@/services/recording/playback-data';
 import {useAppDispatch, useAppSelector} from "@/store";
 import {
     selectActiveRecordingBaseDirectory,
@@ -79,10 +80,16 @@ const RecordingPlaybackSession: React.FC = () => {
 
     const dispatch = useAppDispatch();
     const bundle = useAppSelector(selectPlaybackBundle(activeRecordingName, activeRecordingBaseDirectory));
+    const [readyManifest, setReadyManifest] = useState<PlaybackManifest | null>(null);
+    const onDataReady = useCallback((manifest: PlaybackManifest, ready: boolean) => {
+        setReadyManifest(current => ready ? manifest : current === manifest ? null : current);
+    }, []);
+    const playbackReady = !settings.show3dView || !bundle?.manifest || readyManifest === bundle.manifest;
     const reloadManifest = useCallback((): void => {
         if (activeRecordingName) void dispatch(fetchPlaybackBundle({recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory}));
     }, [dispatch, activeRecordingName, activeRecordingBaseDirectory]);
     const controller = usePlaybackController({
+        playbackReady,
         bundle, reloadManifest,
         videos: videoEntries,
         recordingId: activeRecordingName,
@@ -178,6 +185,7 @@ const RecordingPlaybackSession: React.FC = () => {
                                                 manifest={controller.manifest}
                                                 reloadManifest={controller.reloadManifest}
                                                 onPlaybackRun={controller.setPlaybackRun}
+                                                onDataReady={onDataReady}
                                             >
                                                 <ThreeJsCanvas calibration={bundle?.calibration ?? null}/>
                                             </RecordingPlaybackProvider>
@@ -196,6 +204,7 @@ const RecordingPlaybackSession: React.FC = () => {
 
                         {controller.error && <p role="alert" className="text-error">{controller.error}</p>}
                         <PlaybackControls
+                            playbackReady={playbackReady}
                             isPlaying={controller.isPlaying}
                             currentTime={controller.currentTime}
                             duration={controller.duration}

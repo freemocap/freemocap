@@ -22,7 +22,7 @@ import React, {
 } from "react";
 import type {
     CalibrationConfig,
-    LoadedCalibration,
+    SceneCalibration,
 } from "@/store/slices/calibration/calibration-types";
 import { workerDataStore } from "./WorkerDataStore";
 import { useViewportState } from "./scene/ViewportStateContext";
@@ -33,7 +33,7 @@ import { useViewportState } from "./scene/ViewportStateContext";
 
 export interface WorkerDataContextValue {
     calibrationConfig: CalibrationConfig;
-    loadedCalibration: LoadedCalibration | null;
+    loadedCalibration: SceneCalibration | null;
 }
 
 const WorkerDataContext = createContext<WorkerDataContextValue | null>(null);
@@ -43,7 +43,7 @@ const WorkerDataContext = createContext<WorkerDataContextValue | null>(null);
 // ---------------------------------------------------------------------------
 
 export function WorkerDataProvider({ children }: { children: React.ReactNode }) {
-    const [loadedCalibration, setLoadedCalibration] = useState<LoadedCalibration | null>(
+    const [loadedCalibration, setLoadedCalibration] = useState<SceneCalibration | null>(
         workerDataStore.getCalibration,
     );
     const [calibrationConfig, setCalibrationConfig] = useState<CalibrationConfig>(

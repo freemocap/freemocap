@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type {CalibrationCameraData} from '@/store/slices/calibration/calibration-types';
 
 /**
  * Which saved result and sensor group a recording's viewport is showing, plus the
@@ -6,6 +7,7 @@ import { createContext, useContext } from "react";
  * viewport panel; absent (null) for the live stream.
  */
 export interface RecordingSelection {
+    cameras?: CalibrationCameraData[];
     runIds: readonly number[];
     runId: number | null;
     selectRun: (runId: number) => void;

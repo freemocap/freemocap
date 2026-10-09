@@ -1,9 +1,10 @@
-"""Export through an explicitly installed Blender package."""
+"""Prepare Blender automatically, export, and open using the same verified profile."""
 from pathlib import Path
 import subprocess
 from freemocap.core.blender.blender_export_config import BlenderExportConfig
 
-from freemocap.core.blender.runtime import executable, environment, run_blender
+from freemocap.core.blender.runtime import executable, environment, run_blender, start_external
+from freemocap.core.blender.preparation import prepare_blender
 from freemocap.system.recording_status.recording_status import raise_if_not_blender_ready
 
 ROUTES = ('auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints')
@@ -11,7 +12,7 @@ ROUTES = ('auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints')
 
 def export_to_blender(recording_folder_path, detector=None, blend_file_path=None,
                       blender_exe_path=None, open_file_on_completion=True, *, route='auto',
-                      package=None, trajectory_channel='LANDMARKS_3D', run_id=None, sensor_group=None, blender_export_config=None):
+                      package=None, trajectory_channel='LANDMARKS_3D', run_id=None, sensor_group=None, blender_export_config=None, development_build_hash=None, progress=None):
     recording = Path(recording_folder_path).expanduser().resolve()
     if not recording.is_dir():
         raise ValueError('Recording directory does not exist: ' + str(recording))
@@ -33,11 +34,16 @@ def export_to_blender(recording_folder_path, detector=None, blend_file_path=None
     output = Path(blend_file_path).expanduser().resolve() if blend_file_path else recording / (recording.name + '.blend')
     if output.suffix.lower() != '.blend' or not output.parent.is_dir():
         raise ValueError('Choose a .blend output in an existing directory')
+    prepared = prepare_blender(blender, package, development_build_hash, progress=progress)
+    if progress:
+        progress('Exporting the recording to Blender')
     result = run_blender(blender, dict(action='export', recording=str(recording), output=str(output),
-                                      route=route, package=package, config=options, trajectory_channel=trajectory_channel,
-                                      run_id=run_id, sensor_group=sensor_group))
+                                      route=route, package=prepared.package, config=options, trajectory_channel=trajectory_channel,
+                                      run_id=run_id, sensor_group=sensor_group, development_build_hash=development_build_hash), profile=prepared.profile)
     if result.get('output') != str(output) or not output.is_file() or output.stat().st_size == 0:
         raise RuntimeError('Blender did not confirm a nonempty output: ' + str(output))
     if open_file_on_completion:
-        subprocess.Popen([str(blender), str(output)], cwd=output.parent, env=environment(), shell=False)
+        if progress:
+            progress('Opening the recording in Blender')
+        start_external([str(blender), str(output)], cwd=output.parent, env=environment(prepared.profile), shell=False)
     return str(output)

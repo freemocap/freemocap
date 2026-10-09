@@ -46,6 +46,7 @@ function buildPosthocConfig(state: RootState) {
         exportToBlender: blender.exportToBlenderEnabled,
         blenderImportRoute: blender.importRoute,
         blenderPackage: blender.packageName,
+        blenderDevelopmentBuildHash: blender.developmentBuildHash,
         blenderExportConfig: blender.exportConfig,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
         autoOpenBlendFile: blender.autoOpenBlendFile,

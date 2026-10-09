@@ -12,6 +12,7 @@ export interface BlenderExportConfig {
     limit_hand_markers_range_of_motion: boolean;
 }
 export interface BlenderState {
+    developmentBuildHash: string | null;
     exportConfig: BlenderExportConfig;
     importRoute: BlenderImportRoute;
     packageName: string | null;
@@ -30,6 +31,7 @@ export interface BlenderState {
 }
 
 interface PersistedBlenderSettings {
+    developmentBuildHash?: string | null;
     exportConfig?: BlenderExportConfig;
     importRoute?: BlenderImportRoute;
     packageName?: string | null;
@@ -41,6 +43,7 @@ interface PersistedBlenderSettings {
 const _persistedBlender = loadFromStorage<PersistedBlenderSettings | null>('blender.settings', null);
 
 const initialState: BlenderState = {
+    developmentBuildHash: _persistedBlender?.developmentBuildHash ?? null,
     exportConfig: _persistedBlender?.exportConfig ?? {formats: [], rest_pose: 'tpose', apply_foot_locking: false, limit_hand_markers_range_of_motion: false},
     importRoute: _persistedBlender?.importRoute ?? 'auto',
     packageName: _persistedBlender?.packageName ?? null,
@@ -69,12 +72,18 @@ export const blenderSlice = createSlice({
                 state.exportConfig.limit_hand_markers_range_of_motion = false;
             } },
         blenderExportConfigUpdated: (state, action: PayloadAction<Partial<BlenderExportConfig>>) => { Object.assign(state.exportConfig, action.payload); },
-        blenderPackageChanged: (state, action: PayloadAction<string | null>) => { state.packageName = action.payload; },
+        blenderDevelopmentBuildChanged: (state, action: PayloadAction<string | null>) => { state.developmentBuildHash = action.payload; },
+        blenderPackageChanged: (state, action: PayloadAction<string | null>) => {
+            if (state.packageName !== action.payload) state.developmentBuildHash = null;
+            state.packageName = action.payload;
+        },
         blenderExePathChanged: (state, action: PayloadAction<string | null>) => {
+            state.developmentBuildHash = null;
             state.blenderExePath = action.payload;
             state.packageName = null;
         },
         blenderExePathCleared: (state) => {
+            state.developmentBuildHash = null;
             state.blenderExePath = null;
             state.packageName = null;
         },
@@ -152,6 +161,7 @@ export const selectExportToBlenderEnabled = (state: RootState) => state.blender.
 export const selectAutoOpenBlendFile = (state: RootState) => state.blender.autoOpenBlendFile;
 
 export const {
+    blenderDevelopmentBuildChanged,
     blenderExportConfigUpdated,
     blenderImportRouteChanged,
     blenderPackageChanged,

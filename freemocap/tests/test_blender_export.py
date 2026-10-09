@@ -86,12 +86,12 @@ def test_export_options_reach_blender_and_invalid_native_options_fail_early(tmp_
     blender = tmp_path / 'blender.exe'; blender.touch()
     (tmp_path / 'recording_data.parquet').touch()
     output = tmp_path / 'scene.blend'
-    def export(executable, request):
+    def export(executable, request, **kwargs):
         assert request['config']['add_rig']['rest_pose'] == 'apose'
         assert request['config']['motion_cleanup']['apply_foot_locking'] is True
         output.write_bytes(b'blend')
         return dict(output=str(output))
-    with patch('freemocap.core.blender.export_to_blender.run_blender', side_effect=export) as launch:
+    with patch('freemocap.core.blender.export_to_blender.prepare_blender', return_value=SimpleNamespace(package='test', profile=None)), patch('freemocap.core.blender.export_to_blender.run_blender', side_effect=export) as launch:
         export_to_blender(tmp_path, blend_file_path=output, blender_exe_path=blender,
             route='parquet_constraints', open_file_on_completion=False,
             blender_export_config=dict(restPose='apose', applyFootLocking=True))

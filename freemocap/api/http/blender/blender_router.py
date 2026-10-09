@@ -3,7 +3,8 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
-from freemocap.core.blender.runtime import inspect_blender, executable, environment
+from freemocap.core.blender.runtime import inspect_blender, executable, environment, start_external
+from freemocap.core.blender.preparation import prepare_blender
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -47,6 +48,7 @@ class InstallAddonResponse(BaseModel):
 
 
 class ExportToBlenderRequest(BaseModel):
+    development_build_hash: str | None = Field(default=None, alias='developmentBuildHash', pattern=r'^[0-9a-f]{64}$')
     model_config = ConfigDict(
         populate_by_name=True,
         json_schema_extra={
@@ -83,6 +85,8 @@ class ExportToBlenderResponse(BaseModel):
 
 
 class OpenInBlenderRequest(BaseModel):
+    development_build_hash: str | None = Field(default=None, alias='developmentBuildHash', pattern=r'^[0-9a-f]{64}$')
+    package: str | None = None
     model_config = ConfigDict(
         populate_by_name=True,
         json_schema_extra={
@@ -126,6 +130,7 @@ def detect_blender() -> DetectBlenderResponse:
 
 
 class InspectBlenderRequest(BaseModel):
+    development_build_hash: str | None = Field(default=None, alias='developmentBuildHash', pattern=r'^[0-9a-f]{64}$')
     model_config = ConfigDict(populate_by_name=True)
     blender_exe_path: str | None = Field(alias='blenderExePath', default=None)
 
@@ -133,7 +138,7 @@ class InspectBlenderRequest(BaseModel):
 @blender_router.post('/inspect')
 def inspect_blender_endpoint(request: InspectBlenderRequest):
     try:
-        return inspect_blender(request.blender_exe_path)
+        return inspect_blender(request.blender_exe_path, request.development_build_hash)
     except (ValueError, FileNotFoundError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:
@@ -155,7 +160,7 @@ def install_addon(request: InstallAddonRequest) -> InstallAddonResponse:
 
 @blender_router.post("/export")
 def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlenderResponse:
-    """Export a recording session to a .blend file. Uses an explicitly installed and enabled bundled add-on."""
+    """Automatically prepare the required Blender package and export the recording."""
     try:
         recording_folder = Path(request.recording_folder_path)
         if not recording_folder.is_dir():
@@ -168,6 +173,7 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
             blender_exe_path=str(blender_exe),
             route=request.route, package=request.package, trajectory_channel=request.trajectory_channel,
             run_id=request.run_id, sensor_group=request.sensor_group,
+            development_build_hash=request.development_build_hash,
             blender_export_config=request.blender_export_config.model_dump(),
             open_file_on_completion=request.auto_open_blend_file,
         )
@@ -206,7 +212,8 @@ def open_in_blender_endpoint(request: OpenInBlenderRequest) -> OpenInBlenderResp
             raise HTTPException(status_code=400, detail=f"No .blend file found in {recording_folder}")
 
         logger.info(f"Launching Blender ({blender_exe}) with {status.blend_file_path}")
-        subprocess.Popen([str(blender_exe), status.blend_file_path], cwd=recording_folder, env=environment(), shell=False)
+        prepared = prepare_blender(blender_exe, request.package, request.development_build_hash)
+        start_external([str(blender_exe), status.blend_file_path], cwd=recording_folder, env=environment(prepared.profile), shell=False)
 
         return OpenInBlenderResponse(
             success=True,

@@ -104,6 +104,7 @@ persistenceListenerMiddleware.startListening({
         const c = (curr as RootState).blender;
         const p = (prev as RootState).blender;
         return c.exportConfig !== p.exportConfig
+            || c.developmentBuildHash !== p.developmentBuildHash
             || c.importRoute !== p.importRoute
             || c.packageName !== p.packageName
             || c.blenderExePath !== p.blenderExePath
@@ -115,6 +116,7 @@ persistenceListenerMiddleware.startListening({
         await api.delay(DEBOUNCE_MS);
         const s = api.getState() as RootState;
         saveToStorage('blender.settings', {
+            developmentBuildHash: s.blender.developmentBuildHash,
             exportConfig: s.blender.exportConfig,
             importRoute: s.blender.importRoute,
             packageName: s.blender.packageName,

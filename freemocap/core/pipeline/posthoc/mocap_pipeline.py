@@ -78,8 +78,10 @@ def complete_mocap(request: MocapWorkerRequest) -> None:
                 open_file_on_completion=request.config.auto_open_blend_file,
                 route=request.config.blender_import_route,
                 package=request.config.blender_package,
+                development_build_hash=request.config.blender_development_build_hash,
                 sensor_group=request.config.sensor_group,
                 blender_export_config=request.config.blender_export.model_dump(),
+                progress=lambda message: request.report(MocapStage.EXPORTING_BLENDER, message, 0.0),
             )
             detail += f'; Blender scene saved to {output}'
         except Exception as error:

@@ -129,6 +129,7 @@ class PosthocMocapPipelineConfig(BaseModel):
 
     blender_import_route: Literal['auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints'] = Field(default='auto', alias='blenderImportRoute')
     blender_package: str | None = Field(default=None, alias='blenderPackage')
+    blender_development_build_hash: str | None = Field(default=None, alias='blenderDevelopmentBuildHash', pattern=r'^[0-9a-f]{64}$')
     blender_export: BlenderExportConfig = Field(default_factory=BlenderExportConfig, alias='blenderExportConfig')
 
     export_to_blender: bool = Field(

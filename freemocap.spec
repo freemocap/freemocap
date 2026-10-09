@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 
 from PyInstaller.building.datastruct import Tree
+from PyInstaller.config import CONF
+from freemocap.core.blender.expected_build import write_bundled_build, addon_source
 
 datas = []
 binaries = []
@@ -253,31 +255,26 @@ a.datas.append(
     )
 )
 
-# Blender also needs the add-on as loose Python source files because Blender's
-# Python interpreter cannot import it from PyInstaller's embedded PYZ archive.
-blender_addon_spec = importlib.util.find_spec("freemocap_blender_addon")
-
-if (
-    blender_addon_spec is None
-    or blender_addon_spec.submodule_search_locations is None
+# The helper imports this loose source inside Blender. The host reads the pinned
+# package catalog without importing the add-on (which would require bpy).
+for relative in (
+    'freemocap/core/blender/helpers/addon_identity.py',
 ):
-    raise ModuleNotFoundError(
-        "Could not locate installed package: freemocap_blender_addon"
-    )
+    source = os.path.join(SPECPATH, *relative.split('/'))
+    if not os.path.isfile(source):
+        raise FileNotFoundError(source)
+    a.datas.append((relative, source, 'DATA'))
 
-blender_addon_source = Path(
-    next(iter(blender_addon_spec.submodule_search_locations))
-).resolve()
-
-print(
-    "[freemocap.spec] Bundling Blender add-on source from:",
-    blender_addon_source,
-)
-
-a.datas += Tree(
-    str(blender_addon_source),
-    prefix="freemocap_blender_addon",
-)
+# Capture the exact dependency identity at build time. Electron ships this file
+# with its frozen backend; installed users need neither Git nor add-on source.
+blender_identity = Path(CONF['workpath']) / 'bundled-build.json'
+write_bundled_build(blender_identity)
+a.datas.append(('freemocap/core/blender/bundled-build.json', str(blender_identity), 'DATA'))
+# Host-only builder and source assets are loose resources, never imported into core.
+source = addon_source()
+if not (source / '_host_tools/build_addon.py').is_file():
+    raise RuntimeError('Update the Blender add-on dependency before building Electron')
+a.datas += Tree(str(source), prefix='freemocap/core/blender/addon_source/freemocap_blender_addon', excludes=['__pycache__', '*.pyc'])
 
 pyz = PYZ(a.pure, a.zipped_data)
 

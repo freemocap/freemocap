@@ -1,9 +1,10 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {
     blenderExportConfigUpdated,
     blenderImportRouteChanged,
     blenderPackageChanged,
+    blenderDevelopmentBuildChanged,
     type BlenderImportRoute,
     selectBlender,
     selectEffectiveBlenderExePath,
@@ -70,8 +71,8 @@ const MODEL_EXPORTS_INFO = {
 const ADDON_GROUP_INFO = {
     title: 'FreeMoCap add-on',
     text: <>
-        <p>Blender export runs through the FreeMoCap add-on enabled in the selected Blender.</p>
-        <p>Check the package to list enabled add-ons. Install a bundled ZIP built for this Blender version and operating system if none is enabled.</p>
+        <p>FreeMoCap prepares the add-on automatically before exporting.</p>
+        <p>A compatible existing installation is reused. Otherwise FreeMoCap installs the required package in a separate Blender profile and uses that profile when opening your recording.</p>
     </>,
 };
 
@@ -94,6 +95,13 @@ const INSTALL_INFO = {
 };
 
 type Notice = {kind: 'status' | 'error'; text: string};
+type PackageDetail = {
+    package: string; version: string | null; path?: string; ready: boolean;
+    build_match: string; errors: string[];
+    identity: {version: string; source_commit: string | null; source_sha256: string;
+        source_dirty: boolean | null; export_api_version: number; package_format: string} | null;
+    dependencies: {pyarrow: string} | null;
+};
 
 /**
  * Blender import, model export and add-on package settings, rendered as setting rows.
@@ -108,9 +116,16 @@ export function BlenderPackageSettings() {
     const [notice, setNotice] = useState<Notice | null>(null);
     const [busy, setBusy] = useState(false);
     const [packages, setPackages] = useState<string[]>([]);
+    const requestSequence = useRef(0);
+    const [details, setDetails] = useState<PackageDetail[]>([]);
+    const [expected, setExpected] = useState<{version: string; source_commit: string | null; source_sha256: string} | null>(null);
 
     useEffect(() => {
+        requestSequence.current++;
+        setBusy(false);
         setPackages([]);
+        setDetails([]);
+        setExpected(null);
         setNotice(null);
     }, [blenderExePath]);
 
@@ -123,36 +138,48 @@ export function BlenderPackageSettings() {
         }));
     };
 
-    async function inspect(install: boolean): Promise<void> {
+    async function inspect(install: boolean, developmentHash = state.developmentBuildHash): Promise<void> {
+        const requestId = ++requestSequence.current;
         setBusy(true);
         setNotice({kind: 'status', text: install ? 'Installing bundled package…' : 'Checking Blender…'});
         try {
             const base = serverUrls.endpoints.blenderExport.replace(/\/export$/, '');
-            const response = await fetch(base + (install ? '/addon/install' : '/inspect'), {
+            let selected = state.packageName;
+            if (install) {
+                const response = await fetch(base + '/addon/install', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({blenderExePath, archivePath}),
+                });
+                if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
+                selected = (await response.json()).package;
+                if (requestId !== requestSequence.current) return;
+                dispatch(blenderPackageChanged(selected));
+                dispatch(blenderDevelopmentBuildChanged(null));
+                developmentHash = null;
+            }
+            const response = await fetch(base + '/inspect', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({blenderExePath, ...(install ? {archivePath} : {})}),
+                body: JSON.stringify({blenderExePath, developmentBuildHash: developmentHash}),
             });
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             const result = await response.json();
-            if (install) {
-                dispatch(blenderPackageChanged(result.package));
-                setPackages([result.package]);
-                setNotice({kind: 'status', text: 'Installed and verified. Blender export is ready.'});
-            } else {
-                setPackages(result.packages);
-                dispatch(blenderPackageChanged(result.packages.length === 1 ? result.packages[0] : null));
-                setNotice({
-                    kind: result.packages.length ? 'status' : 'error',
-                    text: `Blender ${result.blender.join('.')} · Python ${result.python} · ${result.system} ${result.machine}. `
-                        + (result.packages.length
-                            ? `${result.packages.length} enabled FreeMoCap package${result.packages.length === 1 ? '' : 's'}.`
-                            : 'No FreeMoCap package enabled. Install a bundled ZIP below.'),
-                });
-            }
+            if (requestId !== requestSequence.current) return;
+            setPackages(result.packages);
+            setDetails(result.package_details ?? []);
+            setExpected(result.expected ?? null);
+            selected = result.packages.includes(selected) ? selected : result.packages.length === 1 ? result.packages[0] : null;
+            dispatch(blenderPackageChanged(selected));
+            const checked = (result.package_details as PackageDetail[] | undefined)?.find(item => item.package === selected);
+            setNotice({kind: checked?.ready ? 'status' : 'error',
+                text: `Blender ${result.blender.join('.')} · Python ${result.python} · ${result.system} ${result.machine}. `
+                    + (checked?.ready ? 'Selected package verified for export.' : result.packages.length
+                        ? 'This profile is not ready. Export will prepare a managed profile automatically.' : 'No FreeMoCap package enabled here. Export will prepare a managed profile automatically.')});
         } catch (error) {
+            if (requestId !== requestSequence.current) return;
+            setDetails([]);
             setNotice({kind: 'error', text: error instanceof Error ? error.message : String(error)});
         } finally {
-            setBusy(false);
+            if (requestId === requestSequence.current) setBusy(false);
         }
     }
 
@@ -193,10 +220,12 @@ export function BlenderPackageSettings() {
                 onToggle={enabled => setFormat('bvh', enabled)}/>}/>
 
         <SettingsGroupHeading text="FreeMoCap add-on" info={ADDON_GROUP_INFO}/>
+        <p className="settings-note">Add-on setup is automatic. FreeMoCap reuses a verified installation or prepares its own Blender profile.</p>
+        <details><summary>Advanced package diagnostics and development</summary>
         <SettingRow label="Add-on package" info={PACKAGE_INFO}
             control={<SettingSelectInput label="Add-on package" value={state.packageName ?? AUTOMATIC_PACKAGE}
                 options={packageOptions} disabled={locked}
-                onChange={name => dispatch(blenderPackageChanged(name === AUTOMATIC_PACKAGE ? null : name))}/>}/>
+                onChange={name => {dispatch(blenderPackageChanged(name === AUTOMATIC_PACKAGE ? null : name)); setDetails([]); setNotice(null);}}/>}/>
         <SettingRow label="Check Blender" info={CHECK_INFO} inactive={!blenderExePath}
             control={<ButtonSm text={busy ? 'Working…' : 'Check package'} className="setting-action-button"
                 textColor="text-white" disabled={!blenderExePath || locked} onClick={() => void inspect(false)}/>}/>
@@ -208,5 +237,25 @@ export function BlenderPackageSettings() {
                 disabled={!blenderExePath || !archivePath || locked} onClick={() => void inspect(true)}/>}/>
         {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'}
             className={`settings-note${notice.kind === 'error' ? ' settings-note-error' : ''}`}>{notice.text}</p>}
+        {expected && <p className="settings-note" title={expected.source_sha256}>
+            Expected: {expected.version} · commit {expected.source_commit?.slice(0, 12) ?? 'unknown'} · source {expected.source_sha256.slice(0, 12)}
+        </p>}
+        {state.developmentBuildHash && <SettingRow label="Development build selected"
+            info={{title: 'Development build', text: <p>Only this exact source hash is accepted. Source changes require a new check and selection; dependency and API checks still apply.</p>}}
+            control={<ButtonSm text="Use expected build" disabled={locked} onClick={() => {
+                dispatch(blenderDevelopmentBuildChanged(null)); void inspect(false, null);
+            }}/>}/>}
+        {details.map(item => <div key={item.package} className="settings-note">
+            <p>{item.package} · {item.version ?? 'Version unknown'} · {item.ready ? 'Ready' : 'Not ready'}</p>
+            <p>{item.identity ? `Commit ${item.identity.source_commit?.slice(0, 12) ?? 'unknown'}${item.identity.source_dirty ? ' + local changes' : ''} · source ${item.identity.source_sha256.slice(0, 12)} · ${item.identity.package_format} · API ${item.identity.export_api_version}` : 'Unverified build — no valid build identity.'}</p>
+            <p>Build: {item.build_match}. PyArrow: {item.dependencies?.pyarrow ?? 'unavailable'}. {item.path}</p>
+            {item.errors.map(error => <p key={error} role="alert">{error}</p>)}
+            {item.identity && item.build_match === 'different' && item.package === state.packageName &&
+                <ButtonSm text="Use this exact build for development" disabled={locked} onClick={() => {
+                    const hash = item.identity!.source_sha256;
+                    dispatch(blenderDevelopmentBuildChanged(hash)); void inspect(false, hash);
+                }}/>}
+        </div>)}
+        </details>
     </>;
 }

@@ -14,6 +14,9 @@ def validate_outputs(recording: Path, *, expected_frames: int,
 
     report = validate_parquet(recording, expected_frames=expected_frames)
     structure = recording_structure(str(recording))
+    from freemocap.core.recording.parquet_storage.recording_view import recording_view
+    with recording_view(structure.data_parquet_path) as view:
+        report['source_revision'] = view.revision
     metadata = read_metadata(path=structure.data_parquet_path)
     run_id = metadata.selected_run_id if run_id is None else run_id
     run = metadata.runs[run_id]

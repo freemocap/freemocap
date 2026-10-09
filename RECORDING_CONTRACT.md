@@ -263,7 +263,9 @@ skipped required check, cancellation, or unsupported required format cannot pass
 the complete-run gate. Explicit calibration-only and numerical-only checks remain
 useful, with their narrower scope visible in results.
 
-The standard profile must add wide CSV and NPZ when those writers land. Every
+The reference acceptance profiles must exercise wide CSV, NPY and NPZ as those
+writers land. These are independently selectable outputs in ordinary runs;
+overall success requires the outputs selected for that run. Every
 additional requested output must also pass its format checks. Tall CSV remains
 an explicitly selected export; direct FBX/BVH remain deferred. Blender-mediated
 FBX/BVH acceptance is required when those outputs are requested and supported.
@@ -284,9 +286,11 @@ identity; consumer checks establish content validity:
   the same Parquet. Cover missing samples and saved-segment motion across the
   recording. Constraint/cleanup routes need their own declared transformation
   expectations and tolerances; they cannot inherit exact saved-segment equivalence.
-- Wide CSV and NumPy: reload written files and compare values, names, ordering,
+- Wide CSV and NumPy (NPY/NPZ): reload written files and compare values, names, ordering,
   frames/timestamps, units, components and missingness with the source snapshot.
-  Verify static outputs and NPZ's standalone metadata and pickle-free loading.
+  Verify static outputs, NPY companion arrays/manifest, NPZ's standalone metadata,
+  and pickle-free loading. Resolve each format's channel selection against the
+  same source snapshot and validate exactly that declared selection.
 - FBX/BVH: reimport the written artifact and check hierarchy, motion, timing,
   scale, axes and any declared approximation against the selected Blender route.
 
@@ -299,11 +303,18 @@ numerical results without detection or reconstruction. A failed candidate must
 preserve the previously accepted preparation. Consumers must use the common
 readiness check instead of interpreting mocap task status alone as acceptance.
 
-Implementation is pending. The 2026-10-09 audit found Blender explicitly disabled
-in the dataset worker, Parquet-only content validation, and Parquet/calibration-only
-reuse hashes. The first implementation stage is the shared output acceptance
-report and Blender producer/reopen gate for both reference recordings. Extend
-that same gate with each new writer; do not defer its validation to a later milestone.
+The dataset producer now defaults to the versioned `standard` profile: Parquet
+and a native-segment Blender scene. It preflights Blender, reopens the saved scene
+in a separate process, checks every recorded frame, and publishes readiness only
+after both artifacts pass. `--output-profile numerical` explicitly selects the
+narrower checkpoint. `datasets export` upgrades old preparations or retries a
+failed Blender output on an isolated copy without rerunning numerical processing.
+The common readiness check verifies artifact hashes and source/run bindings;
+reconstruction refresh invalidates the complete-output report.
+
+General application export-job status and CSV/NPY/NPZ acceptance remain subsequent
+stages. Extend this gate with each writer as it lands; do not defer that writer's
+validation to a later milestone.
 
 ## Trajectory products
 

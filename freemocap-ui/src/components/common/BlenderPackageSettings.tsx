@@ -40,7 +40,7 @@ const ROUTE_INFO = {
         <p><strong>Automatic</strong> uses saved Parquet segments when present, otherwise legacy NPY.</p>
         <p><strong>Parquet segment poses</strong> imports saved landmarks and segment poses as recorded.</p>
         <p><strong>Parquet + constraints</strong> imports landmarks and drives the rig with Blender constraints.</p>
-        <p><strong>Legacy NPY + constraints</strong> uses the legacy NPY data with Blender constraints. Required for BVH.</p>
+        <p><strong>Legacy NPY + constraints</strong> uses the legacy NPY data with Blender constraints.</p>
         <p><em>Rest pose, foot locking and hand limits need a constraint route.</em></p>
     </>,
 };
@@ -64,7 +64,7 @@ const MODEL_EXPORTS_INFO = {
     title: 'Additional model exports',
     text: <>
         <p>Model files written next to the .blend file.</p>
-        <p><em>BVH needs the Legacy NPY import route.</em></p>
+        <p>FBX and BVH are exported through Blender with either Parquet or legacy NPY input.</p>
     </>,
 };
 
@@ -214,9 +214,9 @@ export function BlenderPackageSettings() {
         <SettingRow label="FBX" info={MODEL_EXPORTS_INFO}
             control={<SettingToggleSwitch label="Export FBX" isToggled={formats.includes('fbx')} disabled={locked}
                 onToggle={enabled => setFormat('fbx', enabled)}/>}/>
-        <SettingRow label="BVH" info={MODEL_EXPORTS_INFO} inactive={state.importRoute !== 'legacy_npy'}
+        <SettingRow label="BVH" info={MODEL_EXPORTS_INFO}
             control={<SettingToggleSwitch label="Export BVH" isToggled={formats.includes('bvh')}
-                disabled={locked || state.importRoute !== 'legacy_npy'}
+                disabled={locked}
                 onToggle={enabled => setFormat('bvh', enabled)}/>}/>
 
         <SettingsGroupHeading text="FreeMoCap add-on" info={ADDON_GROUP_INFO}/>

@@ -165,6 +165,13 @@ def run_worker(request_path: Path) -> None:
     base = Path(os.environ["FREEMOCAP_BASE_FOLDER"])
     if base.resolve() != request_path.parent.resolve() / "app-data":
         raise ValueError("Preparation worker requires an isolated application directory")
+    from freemocap.tools.datasets.output_acceptance import required_outputs, accept_outputs
+    profile = request.get('output_profile', 'standard')
+    required_outputs(profile)
+    prepared_blender = None
+    if request.get('operation', 'process') != 'calibrate' and profile == 'standard':
+        from freemocap.tools.datasets.blender_validation import preflight_blender
+        prepared_blender = preflight_blender(request.get('blender_path'))
     (base / "calibrations").mkdir(parents=True, exist_ok=True)
     create_websocket_log_queue()
     flag = multiprocessing.Value("b", False)
@@ -192,7 +199,9 @@ def run_worker(request_path: Path) -> None:
         config = PosthocMocapPipelineConfig(
             calibration_toml_path=str(calibration_path), detector_type="rtmpose",
             board_mode=CharucoBoardMode.EXPLICIT, charuco_board=board,
-            video_fps=request["fps"], export_to_blender=False, auto_open_blend_file=False,
+            video_fps=request["fps"], export_to_blender=profile == 'standard', auto_open_blend_file=False,
+            blender_exe_path=str(prepared_blender[0]) if prepared_blender else None,
+            blender_import_route='parquet_segments', export_tall_csv=False,
             filter_config=PosthocFilterConfig(enabled=request["filtering_enabled"]),
             body_alignment=MocapAlignmentConfig(mode=request.get('alignment', 'auto')),
             start_stage=request.get('start_stage', 'observations'),
@@ -204,21 +213,24 @@ def run_worker(request_path: Path) -> None:
             mocap_task = manager.create_mocap_pipeline(recording_info=info, mocap_config=config)
             mocap_status = wait_for_success(manager, mocap_task, timeout=request["timeout"])
             logger.info('validation: Checking recording channels and frame coverage (running)')
-            validation = validate_parquet(recording, expected_frames=request["frames"])
-            if request.get('validate_workflow'):
-                from freemocap.tools.datasets.validation import validate_outputs
-                stage_order = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
-                executed = list(stage_order[stage_order.index(request.get('start_stage', 'observations')):])
-                if 'observations' in executed:
-                    executed.append('timing')
-                if 'reconstruction' in executed:
-                    executed.append('biomechanics')
-                validation = validate_outputs(recording, expected_frames=request['frames'],
-                    run_id=request.get('run_id'),
-                    sensor_group=request.get('sensor_group'),
-                    require_provenance_stages=tuple(executed),
-                    require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
-                                       and request.get('alignment', 'auto') != 'calibration'))
+            from freemocap.tools.datasets.validation import validate_outputs
+            stage_order = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
+            executed = list(stage_order[stage_order.index(request.get('start_stage', 'observations')):])
+            if 'observations' in executed:
+                executed.append('timing')
+            if 'reconstruction' in executed:
+                executed.append('biomechanics')
+            validation = validate_outputs(recording, expected_frames=request['frames'],
+                run_id=request.get('run_id'),
+                sensor_group=request.get('sensor_group'),
+                require_provenance_stages=tuple(executed),
+                require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
+                                   and request.get('alignment', 'auto') != 'calibration'))
+            # Numerical completion alone cannot certify a selected export. Reopen
+            # the actual saved scene in another Blender process before readiness.
+            from freemocap.tools.datasets.blender_validation import validate_blender
+            checks = validate_blender(recording, validation, prepared=prepared_blender) if profile == 'standard' else None
+            validation = accept_outputs(recording, validation, profile=profile, blender_checks=checks)
             logger.info('validation: Recording checks passed (complete)')
         # Processing may have updated the recording-local calibration: hash the saved file.
         calibration = CalibrationResult.load_toml(calibration_path)
@@ -239,7 +251,7 @@ def run_worker(request_path: Path) -> None:
                 registry.shutdown_all()
 
 
-def reuse_recording(root: Path, identity: dict) -> Path | None:
+def reuse_recording(root: Path, identity: dict, *, require_complete: bool = True, check_exports: bool = True) -> Path | None:
     marker = root / "ready.json"
     if not marker.is_file():
         return None
@@ -256,6 +268,9 @@ def reuse_recording(root: Path, identity: dict) -> Path | None:
         raise ValueError("Prepared Parquet changed or is missing; remove the prepared dataset explicitly before rebuilding")
     if not calibration.is_file() or file_digest(calibration) != result["calibration_sha256"]:
         raise ValueError("Prepared calibration changed or is missing; remove the prepared dataset explicitly before rebuilding")
+    if check_exports:
+        from freemocap.tools.datasets.output_acceptance import verify_outputs
+        verify_outputs(recording, result['validation'], require_complete=require_complete)
     return recording
 
 
@@ -358,6 +373,8 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
             logger.error("Preparation failed; log tail:\n%s", (attempt / "preparation.log").read_text(encoding="utf-8", errors="replace")[-10000:])
             raise
         result = json.loads((attempt / "result.json").read_text(encoding="utf-8"))
+        from freemocap.tools.datasets.output_acceptance import verify_outputs
+        verify_outputs(recording, result['validation'])
         if validate_fresh is not None:
             validate_fresh(recording, result)
         if existing is not None:

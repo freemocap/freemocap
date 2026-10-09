@@ -16,14 +16,21 @@ def parser() -> argparse.ArgumentParser:
     common.add_argument('--recordings-root', type=Path, default=Path.home() / 'freemocap_data/recordings')
     common.add_argument('--prepared-root', type=Path, default=Path.home() / 'freemocap_data/testing/prepared')
     actions = command.add_subparsers(dest='action', required=True)
-    for action in ('status', 'acquire', 'calibrate', 'process', 'process-all', 'validate', 'recover'):
+    for action in ('status', 'acquire', 'calibrate', 'process', 'process-all', 'validate', 'recover', 'export'):
         sub = actions.add_parser(action, parents=[common])
         if action != 'process-all':
             sub.add_argument('dataset', choices=tuple(workflow.DATASETS))
+        if action == 'export':
+            sub.add_argument('--blender-path', help='Blender executable for saved-result export')
+        if action == 'validate':
+            sub.add_argument('--output-profile', choices=('standard', 'numerical'), default='standard')
         if action in ('process', 'process-all', 'calibrate'):
             sub.add_argument('--timeout', type=float, default=1800.0, help='Seconds per pipeline')
             sub.add_argument('--dry-run', action='store_true', help='Show work and paths without changing files')
         if action in ('process', 'process-all'):
+            sub.add_argument('--output-profile', choices=('standard', 'numerical'), default='standard',
+                             help='Standard requires validated Blender output; numerical is explicitly partial')
+            sub.add_argument('--blender-path', help='Blender executable for standard-output acceptance')
             sub.add_argument('--calibration', help='fresh, existing, or a TOML path; full runs default to fresh')
             sub.add_argument('--alignment', choices=('auto', 'calibration', 'person'), help='Default: auto')
             sub.add_argument('--from', dest='start', choices=workflow.STARTS, default='observations')
@@ -45,15 +52,18 @@ def main(argv: list[str] | None = None) -> int:
                 acquire_recording(workflow.DATASETS[name], recordings_root=args.recordings_root)
                 result = inspect_recording(workflow.DATASETS[name], recordings_root=args.recordings_root)
             elif args.action == 'validate':
-                result = workflow.validate(name, prepared_root=args.prepared_root)
+                result = workflow.validate(name, prepared_root=args.prepared_root, output_profile=args.output_profile)
             elif args.action == 'recover':
                 result = workflow.recover_dataset(name, prepared_root=args.prepared_root)
+            elif args.action == 'export':
+                result = str(workflow.export_saved(name, prepared_root=args.prepared_root, blender_path=args.blender_path))
             else:
                 options = dict(roots, operation='calibrate' if args.action == 'calibrate' else 'process',
                                timeout=args.timeout)
                 if args.action != 'calibrate':
                     options.update(start=args.start, calibration=args.calibration, alignment=args.alignment,
-                                   run_id=args.run_id, sensor_group=args.sensor_group)
+                                   run_id=args.run_id, sensor_group=args.sensor_group,
+                                   output_profile=args.output_profile, blender_path=args.blender_path)
                 result = workflow.preflight(name, **options) if args.dry_run else str(workflow.process(name, **options))
             print(json.dumps(result, indent=2), flush=True)
     except (ValueError, OSError, RuntimeError, KeyError) as error:

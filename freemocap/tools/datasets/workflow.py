@@ -23,7 +23,8 @@ STARTS = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruc
 logger = logging.getLogger(__name__)
 
 
-def checked_ready(root: Path, *, calibration_only: bool = False) -> dict | None:
+def checked_ready(root: Path, *, calibration_only: bool = False, require_complete: bool = True,
+                  check_exports: bool = True) -> dict | None:
     if (root / 'replacement.json').exists():
         raise ValueError(f'Interrupted save in {root}; run datasets recover for this dataset')
     marker = root / 'ready.json'
@@ -36,7 +37,7 @@ def checked_ready(root: Path, *, calibration_only: bool = False) -> dict | None:
     if not recording.is_relative_to((root / 'current').resolve()):
         raise ValueError(f'Prepared recording escapes current directory: {recording}')
     if not calibration_only:
-        reuse_recording(root, ready['identity'])
+        reuse_recording(root, ready['identity'], require_complete=require_complete, check_exports=check_exports)
     path = recording / ready['result']['calibration_filename']
     if not path.resolve().is_relative_to(recording) or file_digest(path) != ready['result']['calibration_sha256']:
         raise ValueError(f'Saved calibration no longer matches ready.json: {path}')
@@ -64,8 +65,10 @@ def selected_calibration(root: Path, raw: Path, choice: str, ready: dict | None)
 def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operation: str = 'process',
               start: str = 'observations', calibration: str | None = None, alignment: str | None = None,
               run_id: int | None = None, sensor_group: str | None = None,
-              timeout: float = 1800.0) -> dict:
+              timeout: float = 1800.0, output_profile: str = 'standard', blender_path: str | None = None) -> dict:
     dataset = DATASETS[name]
+    from .output_acceptance import required_outputs
+    required_outputs(output_profile)
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError('Timeout must be finite and positive')
     if start not in STARTS or operation not in ('process', 'calibrate'):
@@ -79,14 +82,15 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
     output_root = prepared_root.expanduser().resolve()
     if output_root.is_relative_to(source_root) or source_root.is_relative_to(output_root):
         raise ValueError('Prepared output must be separate from source recordings')
-    ready = checked_ready(root)
+    ready = checked_ready(root, require_complete=False, check_exports=False)
     choice = calibration or ('fresh' if start == 'observations' else 'existing')
     if operation == 'calibrate':
         choice = 'fresh'
     plan = dict(dataset=name, operation=operation, start_stage=start, calibration_mode=choice,
                 alignment=alignment or 'auto', timeout=timeout,
                 raw=str(raw), root=str(root), run_id=run_id, sensor_group=sensor_group,
-                current=ready['recording'] if ready else None)
+                current=ready['recording'] if ready else None, output_profile=output_profile,
+                required_outputs=required_outputs(output_profile), blender_path=blender_path)
     if operation == 'process' and start != 'observations':
         if ready is None:
             raise ValueError('No prepared recording. Run the complete dataset workflow first.')
@@ -136,7 +140,7 @@ def process(name: str, **options) -> Path:
                     plan['alignment'])
         if 'calibration_path' in plan:
             logger.info('Calibration input: %s', plan['calibration_path'])
-        ready = checked_ready(root)
+        ready = checked_ready(root, require_complete=False, check_exports=False)
         full = plan['start_stage'] == 'observations' or plan['operation'] == 'calibrate'
         if full:
             raw = acquire_recording(dataset, recordings_root=options['recordings_root'])
@@ -188,6 +192,11 @@ def process(name: str, **options) -> Path:
         except (OSError, subprocess.SubprocessError) as error:
             raise RuntimeError(f'Processing failed; previous results retained. Log: {log_path}') from error
         result = json.loads((attempt / 'result.json').read_text(encoding='utf-8'))
+        if plan['operation'] != 'calibrate':
+            from .output_acceptance import verify_outputs
+            accepted = verify_outputs(recording, result['validation'], require_complete=plan['output_profile'] == 'standard')
+            if accepted is None or accepted.profile != plan['output_profile']:
+                raise ValueError('Worker did not validate the requested output profile')
         target = root / 'calibration' if plan['operation'] == 'calibrate' else root
         target.mkdir(exist_ok=True)
         output = target / 'current' / 'recordings' / dataset.name
@@ -216,7 +225,7 @@ def status(name: str, *, recordings_root: Path, prepared_root: Path) -> dict:
     report = dict(dataset=name, source=str(raw), source_exists=raw.exists(), prepared_root=str(root))
     for key, target, calibration_only in (('prepared', root, False), ('calibration', root / 'calibration', True)):
         try:
-            ready = checked_ready(target, calibration_only=calibration_only)
+            ready = checked_ready(target, calibration_only=calibration_only, require_complete=False)
             software = ready['identity'].get('software', {}) if ready else {}
             report[key] = None if ready is None else dict(recording=ready['recording'], log=ready.get('log'),
                 calibration_sha256=ready['result']['calibration_sha256'],
@@ -225,6 +234,7 @@ def status(name: str, *, recordings_root: Path, prepared_root: Path) -> dict:
                     packages={name: value for name, value in software.get('packages', {}).items()
                               if name.lower() in ('skellyforge', 'skellytracker', 'skellycam')}))
             if ready is not None and not calibration_only:
+                report[key]['output_profile'] = ready['result']['validation'].get('outputs', {}).get('profile', 'legacy_numerical')
                 from freemocap.core.pipeline.posthoc.saved_stage_processing import inspect_saved_stages
                 report['saved_stages'] = inspect_saved_stages(ready['recording'])
         except (ValueError, OSError, KeyError) as error:
@@ -235,10 +245,12 @@ def status(name: str, *, recordings_root: Path, prepared_root: Path) -> dict:
     return report
 
 
-def validate(name: str, *, prepared_root: Path) -> dict:
+def validate(name: str, *, prepared_root: Path, output_profile: str = 'standard') -> dict:
+    from .output_acceptance import required_outputs
+    required_outputs(output_profile)
     root = prepared_root.expanduser().resolve() / DATASETS[name].name
     with FileLock(str(root / 'prepare.lock'), timeout=0):
-        ready = checked_ready(root)
+        ready = checked_ready(root, require_complete=output_profile == 'standard')
         if ready is None:
             calibration = checked_ready(root / 'calibration', calibration_only=True)
             if calibration is None:
@@ -248,7 +260,12 @@ def validate(name: str, *, prepared_root: Path) -> dict:
             if len(result.cameras) != 3 or not math.isfinite(result.reprojection_error_px):
                 raise ValueError('Invalid reference calibration')
             return dict(dataset=name, calibration_valid=True, recording=calibration['recording'])
-        return validate_outputs(Path(ready['recording']), expected_frames=DATASETS[name].expected_frame_count)
+        recording = Path(ready['recording'])
+        validation = validate_outputs(recording, expected_frames=DATASETS[name].expected_frame_count)
+        from .blender_validation import validate_blender
+        from .output_acceptance import accept_outputs
+        checks = validate_blender(recording, validation) if output_profile == 'standard' else None
+        return accept_outputs(recording, validation, profile=output_profile, blender_checks=checks)
 
 
 def recover_dataset(name: str, *, prepared_root: Path) -> dict:
@@ -257,3 +274,30 @@ def recover_dataset(name: str, *, prepared_root: Path) -> dict:
         raise ValueError('Dataset has no prepared directory')
     with FileLock(str(root / 'prepare.lock'), timeout=0):
         return dict(prepared=recover(root), calibration=recover(root / 'calibration'))
+
+
+def export_saved(name: str, *, prepared_root: Path, blender_path: str | None = None) -> Path:
+    """Upgrade/retry outputs on an isolated candidate, without numerical processing."""
+    from .blender_validation import preflight_blender, validate_blender
+    from .output_acceptance import accept_outputs
+    from freemocap.core.blender.export_to_blender import export_to_blender
+
+    root = prepared_root.expanduser().resolve() / DATASETS[name].name
+    if not root.is_dir():
+        raise ValueError('No prepared dataset to export')
+    with FileLock(str(root / 'prepare.lock'), timeout=0):
+        ready = checked_ready(root, require_complete=False, check_exports=False)
+        if ready is None:
+            raise ValueError('No prepared dataset to export')
+        prepared = preflight_blender(blender_path)
+        candidate = root / 'attempts' / uuid4().hex[:8] / 'current'
+        recording = candidate / 'recordings' / DATASETS[name].name
+        shutil.copytree(Path(ready['recording']), recording)
+        validation = validate_outputs(recording, expected_frames=DATASETS[name].expected_frame_count)
+        export_to_blender(recording, blender_exe_path=str(prepared[0]), open_file_on_completion=False,
+            route='parquet_segments', run_id=validation['run_id'], sensor_group=validation['sensor_group'])
+        checks = validate_blender(recording, validation, prepared=prepared)
+        ready['result']['validation'] = accept_outputs(recording, validation, profile='standard', blender_checks=checks)
+        ready['export_refresh'] = dict(software=software_identity(), profile='standard')
+        save_current(root, candidate, ready)
+        return Path(ready['recording'])

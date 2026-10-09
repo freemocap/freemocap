@@ -84,8 +84,39 @@ then sample_data**, stopping at the first failure. It does not run pytest.
 The datasets show the same event with three cameras: `test_data` has 222 frames at
 6 fps, and `sample_data` has 1,108 frames at 30 fps. Test data is for fast checks;
 sample data is for full runs. Low-pass filtering remains disabled for test data
-and enabled for sample data; both use production gap filling. Blender export is
-disabled. Videos are acquired from the existing released archives, not regenerated.
+and enabled for sample data; both use production gap filling. Standard runs now
+require Blender export and saved-scene validation. Videos are acquired from the
+existing released archives, not regenerated.
+
+### Output acceptance
+
+The default `standard` profile requires canonical Parquet and a `.blend` produced
+through the saved-segment route. Blender is prepared before calibration/tracking;
+its window is not opened. After export a fresh Blender process reopens the scene,
+checks its embedded Parquet hash, model/run/group identity and timing, then
+compares every frame's landmarks and segment poses, including sample validity.
+The ready marker records artifact hashes, source identity, validator version,
+Blender/add-on build identity and comparison tolerances. Numerical success alone
+cannot publish a complete standard result.
+
+```powershell
+poe datasets process test_data --blender-path "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe"
+poe datasets process test_data --output-profile numerical
+poe datasets validate test_data
+poe datasets validate test_data --output-profile numerical
+poe datasets export test_data
+```
+
+`numerical` is an explicitly partial profile, useful without Blender. Its results
+and old numerical-only ready markers cannot pass complete-run acceptance.
+`export` upgrades or retries a saved result on a copied candidate without tracking,
+calibration or reconstruction. Successful publication retains the previous result
+in history; failure preserves it unchanged. This is also the recovery path after
+a reconstruction refresh invalidates dependent exports. Original data is never
+deleted to upgrade a ready marker. Normal fresh processing can replace a legacy
+preparation as well. Tall CSV is disabled in these profiles; its independent
+acceptance consumer still verifies explicit CSV exports. Wide CSV, NPY and NPZ
+will extend the required-output reports as their writers land.
 
 Gap filling is supplied by the installed SkellyForge package. FreeMoCap persists
 its version-4 provenance and still reads version-2/3 reports. Interpolation runs

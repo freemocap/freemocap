@@ -70,15 +70,21 @@ test('package setup and route options reach the export request', async ({page}) 
         await page.getByRole('switch',{name:'Foot locking',exact:true}).click();
         await page.getByRole('combobox',{name:'Rest pose',exact:true}).selectOption('apose');
         await page.getByRole('switch',{name:'Export FBX',exact:true}).click();
-        await expect(page.getByRole('switch',{name:'Export BVH',exact:true})).toBeDisabled();
+        await page.getByRole('switch',{name:'Export BVH',exact:true}).click();
         await page.getByRole('button',{name:'Test export'}).click();
         await expect.poll(()=>exported?.route).toBe('parquet_constraints');
         expect(exported.package).toBe('bl_ext.freemocap_local.freemocap_blender_addon');
         expect(exported.developmentBuildHash).toBe(sourceHash);
-        expect(exported.blenderExportConfig).toMatchObject({formats:['fbx'],rest_pose:'apose',apply_foot_locking:true});
+        expect(exported.blenderExportConfig).toMatchObject({formats:['fbx','bvh'],rest_pose:'apose',apply_foot_locking:true});
         await page.getByRole('combobox',{name:'Import route',exact:true}).selectOption('parquet_segments');
         await expect(page.getByRole('switch',{name:'Foot locking',exact:true})).not.toBeChecked();
         await expect(page.getByRole('combobox',{name:'Rest pose',exact:true})).toHaveValue('tpose');
+        await expect(page.getByRole('switch',{name:'Export BVH',exact:true})).toBeChecked();
+        await page.getByRole('button',{name:'Test export'}).click();
+        await expect.poll(()=>exported?.route).toBe('parquet_segments');
+        expect(exported.blenderExportConfig.formats).toEqual(['fbx','bvh']);
+        await page.getByRole('combobox',{name:'Import route',exact:true}).selectOption('auto');
+        await expect(page.getByRole('switch',{name:'Export BVH',exact:true})).toBeChecked();
         await page.getByRole('button',{name:'Use expected build',exact:true}).click();
         await expect(page.getByText('Installed add-on differs from the expected build.',{exact:true})).toBeVisible();
     } finally {server.closeAllConnections(); await new Promise<void>(done=>server.close(()=>done()));}

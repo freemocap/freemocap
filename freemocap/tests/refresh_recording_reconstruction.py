@@ -137,6 +137,8 @@ def main():
         model = metadata.runs[metadata.selected_run_id].models["standard_human"]
         report = refresh_reconstruction(structure, build_standard_human_bundle(detector_type=model.detector_type))
         ready["result"]["validation"] = validate_parquet(folder, expected_frames=report["frames"])
+        # Replaced numerical output invalidates the old complete-output report.
+        # Keep the files, but require datasets export before complete-run reuse.
         # Keep original full-pipeline identity; this is only a reconstruction refresh.
         ready["reconstruction_refresh"] = {**report, "software": software_identity()}
         temporary = marker.with_suffix(".json.tmp")

@@ -65,7 +65,6 @@ export const blenderSlice = createSlice({
     initialState,
     reducers: {
         blenderImportRouteChanged: (state, action: PayloadAction<BlenderImportRoute>) => { state.importRoute = action.payload;
-            if (action.payload !== 'legacy_npy') state.exportConfig.formats = state.exportConfig.formats.filter(f => f !== 'bvh');
             if (action.payload === 'auto' || action.payload === 'parquet_segments') {
                 state.exportConfig.rest_pose = 'tpose';
                 state.exportConfig.apply_foot_locking = false;

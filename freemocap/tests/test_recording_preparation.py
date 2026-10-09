@@ -52,7 +52,9 @@ def ready_recording(root):
 
 def test_reuse_requires_matching_preparation_identity(tmp_path):
     recording = ready_recording(tmp_path)
-    assert reuse_recording(tmp_path, {"version": 1}) == recording
+    assert reuse_recording(tmp_path, {"version": 1}, require_complete=False) == recording
+    with pytest.raises(ValueError, match='numerical-only'):
+        reuse_recording(tmp_path, {"version": 1})
     assert reuse_recording(tmp_path, {"version": 2}) is None
 
 
@@ -100,6 +102,11 @@ def lifecycle(tmp_path, monkeypatch):
         calibration.write_bytes(b"new calibration")
         result = {"validation": {"parquet_sha256": file_digest(parquet)},
                   "calibration_filename": calibration.name, "calibration_sha256": file_digest(calibration)}
+        from freemocap.tools.datasets.output_acceptance import accept_outputs
+        (recording / f'{recording.name}.blend').write_bytes(b'test scene')
+        result['validation'].update(run_id=0, sensor_group='cameras', frames=222, rows=1)
+        result['validation'] = accept_outputs(recording, result['validation'], profile='standard',
+            blender_checks={'unit_fixture': True})
         (log_path.parent / "result.json").write_text(json.dumps(result))
         log_path.write_text("finished")
 

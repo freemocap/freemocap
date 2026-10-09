@@ -10,8 +10,6 @@ class BlenderExportConfig(BaseModel):
     limit_hand_markers_range_of_motion: bool = Field(default=False, alias="limitHandMarkersRangeOfMotion")
 
     def addon_payload(self, route: str) -> dict:
-        if route != "legacy_npy" and "bvh" in self.formats:
-            raise ValueError("BVH export requires the legacy NPY route")
         if route == "parquet_segments" and (self.rest_pose != "tpose" or self.apply_foot_locking or self.limit_hand_markers_range_of_motion):
             raise ValueError("Saved segment poses do not support rest-pose changes or animation cleanup; select Parquet constraints")
         return dict(export_3d_model=dict(formats=self.formats),

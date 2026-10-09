@@ -101,6 +101,12 @@ def recording_workflow(tmp_path, monkeypatch):
         result = dict(calibration_filename=calibration.name, calibration_sha256=workflow.file_digest(calibration),
             validation=dict(parquet_sha256=workflow.file_digest(parquet)) if parquet.exists() else None,
             mocap_config={})
+        if request['operation'] != 'calibrate':
+            from freemocap.tools.datasets.output_acceptance import accept_outputs
+            (recording / f'{recording.name}.blend').write_bytes(b'test scene')
+            result['validation'].update(run_id=0, sensor_group='cameras', frames=222, rows=1)
+            result['validation'] = accept_outputs(recording, result['validation'],
+                profile=request['output_profile'], blender_checks={'unit_fixture': True})
         storage.write_json(request_path.parent / 'result.json', result)
         log_path.write_text('completed')
 
@@ -122,15 +128,69 @@ def test_processing_replaces_old_result_but_calibration_only_does_not(recording_
     assert (options['recordings_root'] / workflow.TEST_DATA.name / 'synchronized_videos/camera.mp4').read_bytes() == b'original video'
 
 
-def test_worker_failure_leaves_current_recording_and_marker(recording_workflow, monkeypatch):
+@pytest.mark.parametrize('failure, expected', [
+    (subprocess.CalledProcessError(1, 'worker'), RuntimeError),
+    (subprocess.TimeoutExpired('worker', 1), RuntimeError),
+    (KeyboardInterrupt(), KeyboardInterrupt),
+])
+def test_worker_failure_leaves_current_recording_and_marker(recording_workflow, monkeypatch, failure, expected):
     name, options, _ = recording_workflow
     current = workflow.process(name, **options)
     marker = options['prepared_root'] / workflow.TEST_DATA.name / 'ready.json'
     before = marker.read_bytes()
-    monkeypatch.setattr(workflow, 'execute_worker', Mock(side_effect=subprocess.CalledProcessError(1, 'worker')))
-    with pytest.raises(RuntimeError, match='previous results retained'):
+    monkeypatch.setattr(workflow, 'execute_worker', Mock(side_effect=failure))
+    with pytest.raises(expected):
         workflow.process(name, **options)
     assert marker.read_bytes() == before
+    assert (current / f'{current.name}_data.parquet').read_text() == 'result 1'
+
+
+def test_missing_blender_after_worker_success_preserves_previous(recording_workflow, monkeypatch):
+    name, options, _ = recording_workflow
+    current = workflow.process(name, **options)
+    marker = options['prepared_root'] / workflow.TEST_DATA.name / 'ready.json'
+    before = marker.read_bytes()
+    worker = workflow.execute_worker
+    def missing(*args, **kwargs):
+        worker(*args, **kwargs)
+        request = json.loads(Path(args[0][-1]).read_text())
+        recording = Path(request['recording'])
+        (recording / f'{recording.name}.blend').unlink()
+    monkeypatch.setattr(workflow, 'execute_worker', missing)
+    with pytest.raises(ValueError, match='missing or changed'):
+        workflow.process(name, **options)
+    assert marker.read_bytes() == before
+    assert (current / f'{current.name}_data.parquet').read_text() == 'result 1'
+
+
+@pytest.mark.parametrize('fails', [False, True])
+def test_export_only_upgrades_legacy_without_numerical_work(recording_workflow, monkeypatch, fails):
+    from freemocap.tools.datasets import blender_validation
+    from freemocap.core.blender import export_to_blender
+    name, options, calls = recording_workflow
+    current = workflow.process(name, **options)
+    root = options['prepared_root'] / workflow.TEST_DATA.name
+    marker = root / 'ready.json'
+    legacy = json.loads(marker.read_text())
+    legacy['result']['validation'].pop('outputs')
+    storage.write_json(marker, legacy)
+    before = marker.read_bytes()
+    monkeypatch.setattr(blender_validation, 'preflight_blender', lambda *a: ('blender', None))
+    monkeypatch.setattr(blender_validation, 'validate_blender', lambda *a, **kw: {'reopened': True})
+    monkeypatch.setattr(workflow, 'validate_outputs', lambda *a, **kw: legacy['result']['validation'])
+    def export(folder, **kwargs):
+        if fails:
+            raise RuntimeError('Blender failed')
+        (folder / f'{folder.name}.blend').write_bytes(b'new validated scene')
+    monkeypatch.setattr(export_to_blender, 'export_to_blender', export)
+    if fails:
+        with pytest.raises(RuntimeError, match='Blender failed'):
+            workflow.export_saved(name, prepared_root=options['prepared_root'])
+        assert marker.read_bytes() == before
+    else:
+        assert workflow.export_saved(name, prepared_root=options['prepared_root']) == current
+        assert workflow.checked_ready(root)['result']['validation']['outputs']['profile'] == 'standard'
+    assert len(calls) == 1, 'Export-only retry must not invoke numerical processing'
     assert (current / f'{current.name}_data.parquet').read_text() == 'result 1'
 
 

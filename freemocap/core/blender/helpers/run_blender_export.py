@@ -118,16 +118,27 @@ def execute(request):
         importlib.import_module(package + '.utilities.dependencies').parquet_module()
         bpy.ops.wm.save_userpref()
         return dict(package=package)
-    if request['action'] != 'export':
+    if request['action'] not in ('export', 'validate_scene'):
         raise ValueError('Unknown Blender action')
     package = select_package(request.get('package'))
     detail = inspect_package(package, request.get('expected', {}), request.get('development_build_hash'))
     if not detail['ready']:
         raise ValueError('Blender export is not ready: ' + '; '.join(detail['errors']))
+    if request['action'] == 'validate_scene':
+        spec = importlib.util.spec_from_file_location('saved_scene_validation', Path(__file__).with_name('validate_saved_scene.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        result = module.validate(request, package)
+        return dict(result, package=package, addon_identity=detail['identity'])
     api = importlib.import_module(package + '.export_api')
     output = api.export_recording(recording_path=request['recording'], blend_file_path=request['output'],
                                   route=request['route'], config=request.get('config'), trajectory_channel=request['trajectory_channel'],
                                   run_id=request.get('run_id'), sensor_group=request.get('sensor_group'))
+    if request.get('source_sha256'):
+        bpy.context.scene['freemocap_source_sha256'] = request['source_sha256']
+        # Preserve the source identity in the saved artifact, including after
+        # the recording directory is moved by dataset publication.
+        bpy.ops.wm.save_as_mainfile(filepath=output)
     return dict(output=output, package=package)
 
 

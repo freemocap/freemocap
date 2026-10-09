@@ -89,12 +89,13 @@ def test_export_options_reach_blender_and_invalid_native_options_fail_early(tmp_
     def export(executable, request, **kwargs):
         assert request['config']['add_rig']['rest_pose'] == 'apose'
         assert request['config']['motion_cleanup']['apply_foot_locking'] is True
+        assert request['config']['export_3d_model']['formats'] == ['bvh']
         output.write_bytes(b'blend')
         return dict(output=str(output))
     with patch('freemocap.core.blender.export_to_blender.prepare_blender', return_value=SimpleNamespace(package='test', profile=None)), patch('freemocap.core.blender.export_to_blender.run_blender', side_effect=export) as launch:
         export_to_blender(tmp_path, blend_file_path=output, blender_exe_path=blender,
             route='parquet_constraints', open_file_on_completion=False,
-            blender_export_config=dict(restPose='apose', applyFootLocking=True))
+            blender_export_config=dict(restPose='apose', applyFootLocking=True, formats=['bvh']))
         with pytest.raises(ValueError, match='Saved segment poses'):
             export_to_blender(tmp_path, blender_exe_path=blender,
                 blender_export_config=dict(apply_foot_locking=True))
@@ -106,8 +107,8 @@ def test_blender_option_validation():
     from pydantic import ValidationError
     with pytest.raises(ValidationError):
         BlenderExportConfig(formats=['gltf'])
-    with pytest.raises(ValueError, match='BVH'):
-        BlenderExportConfig(formats=['bvh']).addon_payload('parquet_constraints')
+    for route in ('parquet_segments', 'parquet_constraints', 'legacy_npy'):
+        assert BlenderExportConfig(formats=['fbx', 'bvh']).addon_payload(route)['export_3d_model']['formats'] == ['fbx', 'bvh']
     assert BlenderExportConfig().addon_payload('parquet_segments')['export_3d_model']['formats'] == []
 
 
@@ -117,7 +118,7 @@ def test_processing_completion_uses_exporter_without_losing_publication(enabled,
     from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
     config = PosthocMocapPipelineConfig(exportTallCsv=False, exportToBlender=enabled,
         autoOpenBlendFile=False, blenderImportRoute='parquet_constraints', blenderPackage='test.package',
-        blenderExportConfig=dict(rest_pose='apose'), detectorType='rtmpose')
+        blenderExportConfig=dict(rest_pose='apose', formats=['bvh']), detectorType='rtmpose')
     reports = []
     request = Mock(spec=MocapWorkerRequest, config=config, ipc=SimpleNamespace(should_continue=not cancelled),
         recording=SimpleNamespace(full_recording_path=tmp_path), report=lambda *args: reports.append(args))
@@ -129,4 +130,5 @@ def test_processing_completion_uses_exporter_without_losing_publication(enabled,
     if enabled and not cancelled:
         assert export.call_args.kwargs['route'] == 'parquet_constraints'
         assert export.call_args.kwargs['blender_export_config']['rest_pose'] == 'apose'
+        assert export.call_args.kwargs['blender_export_config']['formats'] == ['bvh']
         assert ('Blender export failed' in reports[-1][1]) == failure

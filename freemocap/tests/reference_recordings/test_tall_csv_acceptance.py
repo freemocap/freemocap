@@ -52,7 +52,9 @@ def test_tall_export_matches_every_production_sample(tmp_path, name):
     configured = os.environ.get('FREEMOCAP_PROVENANCE_PREPARED_ROOT')
     if not configured:
         pytest.skip('Set FREEMOCAP_PROVENANCE_PREPARED_ROOT to verified production outputs')
-    marker = json.loads((Path(configured) / name / 'ready.json').read_text())
+    from freemocap.tools.datasets.workflow import checked_ready
+    marker = checked_ready(Path(configured) / name)
+    assert marker is not None
     original = Path(marker['recording']) / f'{name}_data.parquet'
     original_hash = digest(original)
     assert original_hash == marker['result']['validation']['parquet_sha256']

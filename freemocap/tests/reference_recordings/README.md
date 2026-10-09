@@ -2,11 +2,12 @@
 
 The [complete-run acceptance contract](../../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09)
 now requires Blender output and its saved-scene validation for a standard run,
-with wide CSV/NPZ joining as implemented. **The dataset machinery does not yet
-enforce this requirement:** it disables Blender and its ready markers currently
-certify numerical outputs only. Existing passing geometry/Parquet consumers must
-not be described as complete-run acceptance. Updating the common producer,
-validators and readiness checks is the next implementation stage.
+with CSV/NPY/NPZ joining as implemented. Standard dataset processing now exports
+and reopens Blender scenes before publishing ready markers. Common readiness
+checks reject missing/stale artifacts and legacy numerical-only markers. Use
+`poe datasets export test_data` (and `sample_data`) to upgrade accepted numerical
+results without reprocessing, or run fresh processing. Explicit numerical-only
+profiles remain available but do not certify a complete run.
 
 For full runs, calibration-only processing, and saved-stage reprocessing, see the
 [dataset commands](../../tools/datasets/README.md). Start with
@@ -33,8 +34,16 @@ root requires both complete, freshly processed datasets and valid ready markers;
 missing or stale outputs fail acceptance. Use external temporary storage or verify
 repository output paths are ignored before generating logs/JUnit reports.
 
-Extend this fixture chain for export and Blender acceptance instead of adding an
-independent sample-data generator. See the [recording contract](../../../RECORDING_CONTRACT.md).
+Saved-scene acceptance uses the same root and the Blender executable recorded in
+each report. It checks all frames and rejects copies with altered landmarks or
+armature transforms without modifying the accepted files:
+
+```powershell
+python -B -m pytest freemocap/tests/reference_recordings/test_blender_output_acceptance.py -q -p no:cacheprovider
+```
+
+Extend this fixture chain for new exports instead of adding an independent
+sample-data generator. See the [recording contract](../../../RECORDING_CONTRACT.md).
 
 Tall CSV now uses this same prepared root:
 

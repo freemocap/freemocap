@@ -24,6 +24,8 @@ def test_saved_reference_preserves_three_trajectories(tmp_path, dataset):
     source = root / dataset / 'current/recordings' / dataset / f'{dataset}_data.parquet'
     if not source.is_file():
         pytest.skip(f'Prepared reference recording unavailable: {source}')
+    from freemocap.tools.datasets.workflow import checked_ready
+    assert checked_ready(root / dataset) is not None
     structure = RecordingStructure(base_directory=tmp_path, recording_name=dataset)
     structure.full_path.mkdir(parents=True)
     shutil.copy2(source, structure.data_parquet_path)

@@ -1,26 +1,143 @@
 # Secondary recording exports
 
-## Priority update — 2026-10-09
+## Active checklist — 2026-10-09
 
-Before adding writers, extend the existing reference dataset workflow to require
-Blender generation and content validation for a standard run. The authoritative
-[complete-run acceptance contract](../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09)
-defines required-output profiles, artifact/source identity, consumer checks,
-readiness, invalidation and failure semantics. This requirement is agreed;
-implementation remains pending. A Parquet-only ready marker is insufficient.
+Goal: a successful posthoc run produces and validates its selected outputs.
+Parquet remains canonical. Wide CSV, standalone NPY and bundled NPZ are independent
+selections; choosing one does not require the others. Each writer supports a
+channel selection. Reference acceptance exercises every supported writer while
+ordinary runs require only their selected outputs. A standard reference run
+includes a validated Blender scene.
 
-Implementation order is now: shared acceptance reporting and Blender validation;
-shared array reader with wide CSV/NPZ and their acceptance consumers; export UI
-and lifecycle completion; Blender-mediated interchange validation in a separate
-add-on stage. Wide CSV and NPZ join standard reference acceptance as each lands.
-Disable automatic tall CSV as part of the export-default update; retain it as an
-explicitly requested format. Preserve numerical checkpoints on export failure,
-while withholding overall success until required outputs pass.
+### 0. Finish Blender BVH integration
 
-The 2026-09-30 plan below remains useful for format details. Its default tall CSV
-policy and description of Blender integration as entirely future work are
-superseded. Parquet-to-Blender exists; reference producer integration and saved-file
-acceptance are still required. Direct FBX/BVH remain deferred.
+- [x] Add-on supports Blender-mediated BVH for both Parquet routes, including
+  missing-sample handling and export/reimport checks. Human committed/pushed it.
+- [x] Verify remote, checkout, core lockfile and installed add-on all resolve to
+  `9cd37810354c59c2a1d5df77407101b4b496af6d`.
+- [x] Remove core's legacy-only BVH validator, disabled toggle, explanatory text
+  and reducer behavior that discarded BVH on route changes.
+- [x] Validate core request forwarding and route switching: 14 focused backend
+  tests, TypeScript checking, and the focused Edge browser test passed.
+- [ ] Human review/commit/push of core changes. The pre-existing user lockfile
+  update is preserved; it also contains unrelated dependency upgrades.
+
+### 1. Make reference success cover actual outputs
+
+- [x] Introduce versioned required-output profiles and structured per-output
+  acceptance reports, independent of numerical-stage completion. Failed candidates
+  retain their logs and cannot publish readiness; general job statuses follow in stage 5.
+- [x] Enable Blender in the existing dataset producer, with no automatic GUI
+  opening. Preflight the runtime/add-on before expensive processing.
+- [x] Reopen the generated `.blend` in a fresh Blender process and validate its
+  selected run, scene contents, timing, units and evaluated geometry against
+  the same Parquet. Core owns the cross-package integration checks.
+- [x] Publish complete-run ready markers only after required outputs pass;
+  validate their source binding and artifact hashes on reuse. Recognize old
+  numerical-only markers explicitly without deleting accepted user data.
+- [x] Invalidate dependent exports after saved-stage processing and refresh;
+  permit export-only retries while preserving numerical checkpoints.
+- [x] Exercise missing Blender, failed export, stale files, cancellation and
+  partial success; verify both reference recordings.
+
+Normative details live in the
+[complete-run acceptance contract](../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09).
+The dataset producer now implements the standard Parquet + Blender gate.
+Scientific export writers and the application-wide job lifecycle remain below.
+
+Validation on 2026-10-09: real calibration/tracking/reconstruction and native
+Blender export completed on isolated copies of both reference recordings.
+Fresh-process checks covered 222 and 1,108 frames, 124 landmarks and 61 segments;
+13,110 and 65,192 finite segment poses respectively. Blender 5.2.2 used add-on
+commit `9cd37810354c59c2a1d5df77407101b4b496af6d`. Position tolerance is 2 micrometers
+and rotation-matrix tolerance is 0.00002. Both export-only retries passed with
+the numerical worker disabled. All eight original input files retained their
+hashes. Focused tests cover missing/stale outputs, source/run/group binding,
+timeout/cancellation and retention of previously accepted results.
+All four saved-scene acceptance tests passed, including independent landmark and
+armature-transform corruption. Ruff and the whitespace diff check passed.
+
+These checks certify the native saved-segment route. CSV/NPY/NPZ and general
+application job status are still unimplemented stages below; this does not claim
+complete acceptance for arbitrary Blender cleanup/constraint routes or FBX/BVH.
+
+### 2. Define selection and build one ordered-array reader
+
+- [ ] Typed export request: selected run/revision plus independent format jobs,
+  each with explicit channel contexts or an all-available selection.
+- [ ] Resolve and freeze selection against one Parquet snapshot before writing.
+  A context includes group, source, reference frame and channel, not just its label.
+- [ ] Return ordered values, frame numbers, timestamps, names, components, units
+  and presence masks. Keep static data and distinct clocks separate.
+- [ ] Preserve measured keypoints and reconstructed landmarks as distinct data.
+- [ ] Reject duplicates/unknown selections, preserve null/absent distinctions,
+  and use bounded-memory or disk-backed arrays for large contexts.
+- [ ] Verify scalar, XYZ, WXYZ, static, empty, irregular-frame and multi-source
+  cases against source rows, including both real reference datasets.
+
+### 3. Add wide CSV
+
+- [ ] One selected channel-context table per file: frame/timestamp columns then
+  named scalar columns. Static tables remain separate.
+- [ ] Stable filenames, reversible headers and a metadata dictionary; split large
+  tables without truncating them.
+- [ ] Reload and compare selected values/labels/timing/missingness against Parquet;
+  record time, memory and file size. Add the writer to reference acceptance.
+- [ ] Turn automatic tall CSV off; keep explicit diagnostic export available.
+
+### 4. Add standalone NPY and bundled NPZ
+
+- [ ] NPY: one values array per selected context, plus companion frame/time,
+  name/component/unit and presence arrays described by a JSON manifest. An NPY
+  values file alone does not carry its scientific interpretation.
+- [ ] NPZ: one archive of the selected contexts and their companion arrays,
+  embedding the manifest/descriptor so the archive is self-describing.
+- [ ] Both formats reuse the same array keys/order/shape contract. Typical 3D
+  arrays are `(frames, keypoints_or_landmarks, 3)`; rotations use `(frames, segments, 4)`.
+- [ ] Use numeric/Unicode arrays, no objects or pickle. Verify loading with
+  `allow_pickle=False`, exact identity/order and numerical comparisons.
+- [ ] Add NPY and NPZ consumers to reference acceptance as each writer lands.
+
+### 5. Generalize publication, jobs and the posthoc Exports panel
+
+- [ ] Extend the currently tall-CSV-specific manifest/publication types for
+  array/table artifacts and per-format source identity. Preserve older manifests.
+- [ ] Share the export service between after-processing and export-saved-result
+  actions; bind automatic export to the run/revision actually produced.
+- [ ] Independent Wide CSV, NPY and NPZ controls, channel selection, persisted
+  preferences, selected-run and retained-export controls.
+- [ ] Per-format progress/results, cancel and retry, open output folder; report
+  numerical success separately from overall selected-output completion.
+- [ ] Browser/API tests cover format/channel selection, empty selections,
+  route switching, saved-stage completion, failure and retry without reprocessing.
+
+Publication type changes needed by writers are implemented with stages 3/4;
+this stage completes lifecycle and user-facing integration.
+
+### 6. Complete workflow acceptance and handoff
+
+- [ ] Run both reference datasets through the producer and all selected consumers.
+- [ ] Validate default replacement, retained exports, stale/missing artifacts,
+  cancellation, partial failures and original input hashes.
+- [ ] Include Blender FBX/BVH export/reimport checks for supported requested
+  outputs; retain route-specific expectations and documented missingness limits.
+- [ ] Document formats, load examples and measured resource use; reconcile stale
+  roadmap entries and present core's final human commit/push handoff.
+
+### UI defaults still open; backend work can proceed
+
+Backend requests support per-format channel selections from the outset. Proposed
+initial UI: one shared channel selection applied to checked formats, initially
+all available channels; expose separate selections later if needed. NPZ's
+all-channel preset means all channels in the selected run, not every historical run.
+Format defaults (which checkboxes start enabled) remain a product choice; do not
+silently replace existing preferences. A native file dialog, standalone legacy
+filenames/axis layouts, and time-range selection are not required for this stage.
+
+Direct FBX/BVH writers and connected-skeleton optimization remain deferred.
+The older plan below supplies detailed format rules; this checklist supersedes
+its deferral of NPY/channel selection, automatic tall CSV default, and description
+of Blender integration as entirely future work.
 
 ## Current implementation plan — 2026-09-30
 

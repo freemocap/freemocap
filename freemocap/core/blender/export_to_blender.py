@@ -35,11 +35,18 @@ def export_to_blender(recording_folder_path, detector=None, blend_file_path=None
     if output.suffix.lower() != '.blend' or not output.parent.is_dir():
         raise ValueError('Choose a .blend output in an existing directory')
     prepared = prepare_blender(blender, package, development_build_hash, progress=progress)
+    source_sha256 = None
+    if route != 'legacy_npy':
+        from freemocap.core.recording.exports.publication import digest
+        source_sha256 = digest(parquets[0])
     if progress:
         progress('Exporting the recording to Blender')
     result = run_blender(blender, dict(action='export', recording=str(recording), output=str(output),
                                       route=route, package=prepared.package, config=options, trajectory_channel=trajectory_channel,
-                                      run_id=run_id, sensor_group=sensor_group, development_build_hash=development_build_hash), profile=prepared.profile)
+                                      run_id=run_id, sensor_group=sensor_group, source_sha256=source_sha256,
+                                      development_build_hash=development_build_hash), profile=prepared.profile)
+    if source_sha256 is not None and digest(parquets[0]) != source_sha256:
+        raise RuntimeError('Parquet changed during Blender export; retry the saved result')
     if result.get('output') != str(output) or not output.is_file() or output.stat().st_size == 0:
         raise RuntimeError('Blender did not confirm a nonempty output: ' + str(output))
     if open_file_on_completion:

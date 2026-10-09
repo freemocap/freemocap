@@ -37,7 +37,9 @@ def test_fresh_outputs_then_filter_restart_preserve_provenance(tmp_path, name, f
     if not configured:
         pytest.skip('Set FREEMOCAP_PROVENANCE_PREPARED_ROOT to fresh process-all outputs')
     root = Path(configured) / name
-    marker = json.loads((root / 'ready.json').read_text())
+    from freemocap.tools.datasets.workflow import checked_ready
+    marker = checked_ready(root)
+    assert marker is not None
     assert marker['workflow']['start_stage'] == 'observations', 'Acceptance requires full fresh processing'
     assert marker['result']['mocap_task']['status'] == 'complete'
     source = Path(marker['recording']) / f'{name}_data.parquet'

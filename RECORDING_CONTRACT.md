@@ -188,7 +188,9 @@ historical scientific Parquet revision.
 Use owned staging and an export publication lock. Individual replacements can be
 atomic; a multi-file set is not a single filesystem transaction. Metadata and
 hashes must make incomplete publication detectable. Preserve successful formats
-when another fails; report export errors separately from successful processing.
+when another fails; report export errors separately from numerical processing
+success. Overall run success also requires validation of every required output,
+as defined below.
 Detailed format rules live in the [export plan](current-work-plans/02-pipeline/secondary-exports.md).
 
 ## Reproducible validation and implementation status
@@ -249,6 +251,59 @@ fixture chain. Scientific comparisons use appropriate numerical tolerances;
 file hashes bind a particular artifact, not a promise of bitwise deterministic
 GPU results across fresh runs. Dataset validation is an integration benchmark,
 not proof of anatomical accuracy.
+
+### Complete-run output acceptance — owner requirement, 2026-10-09
+
+A standard reference run includes the saved Blender scene as well as canonical
+Parquet. Numerical completion is a reusable checkpoint; overall run success
+requires every output declared by the run's acceptance profile to be generated
+and independently validated. Preserve successful numerical results when an export
+fails, but report the overall run as incomplete or failed. A missing dependency,
+skipped required check, cancellation, or unsupported required format cannot pass
+the complete-run gate. Explicit calibration-only and numerical-only checks remain
+useful, with their narrower scope visible in results.
+
+The standard profile must add wide CSV and NPZ when those writers land. Every
+additional requested output must also pass its format checks. Tall CSV remains
+an explicitly selected export; direct FBX/BVH remain deferred. Blender-mediated
+FBX/BVH acceptance is required when those outputs are requested and supported.
+An unsupported requested output must fail preflight rather than disappear from
+the required set. Record the profile version and required outputs before execution
+so a failed writer cannot silently reduce the definition of success.
+
+Each artifact report binds its recording/run, group/source selection, source
+Parquet revision and hash, effective export options, relative output path, file
+hash, validator version, and validation outcome. Blender reports also identify
+the Blender runtime and add-on build. File existence and hashes establish artifact
+identity; consumer checks establish content validity:
+
+- Parquet: existing frame/channel coverage, scientific geometry and provenance checks.
+- Blender: reopen the produced `.blend` in a fresh Blender process; verify the
+  selected recording and run, expected scene/model structure, frame/time mapping,
+  units and coordinate conversion, and evaluated point/segment transforms against
+  the same Parquet. Cover missing samples and saved-segment motion across the
+  recording. Constraint/cleanup routes need their own declared transformation
+  expectations and tolerances; they cannot inherit exact saved-segment equivalence.
+- Wide CSV and NumPy: reload written files and compare values, names, ordering,
+  frames/timestamps, units, components and missingness with the source snapshot.
+  Verify static outputs and NPZ's standalone metadata and pickle-free loading.
+- FBX/BVH: reimport the written artifact and check hierarchy, motion, timing,
+  scale, axes and any declared approximation against the selected Blender route.
+
+Publish a complete-run `ready.json` only after all required checks pass. Reuse and
+`validate` must verify the required-output profile, source binding and every
+artifact hash; legacy Parquet-only markers do not certify complete-run acceptance.
+Changed numerical results invalidate dependent exports, including after saved-stage
+reprocessing or reconstruction-refresh helpers. Export retry may reuse successful
+numerical results without detection or reconstruction. A failed candidate must
+preserve the previously accepted preparation. Consumers must use the common
+readiness check instead of interpreting mocap task status alone as acceptance.
+
+Implementation is pending. The 2026-10-09 audit found Blender explicitly disabled
+in the dataset worker, Parquet-only content validation, and Parquet/calibration-only
+reuse hashes. The first implementation stage is the shared output acceptance
+report and Blender producer/reopen gate for both reference recordings. Extend
+that same gate with each new writer; do not defer its validation to a later milestone.
 
 ## Trajectory products
 

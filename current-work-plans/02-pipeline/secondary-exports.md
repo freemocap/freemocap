@@ -1,5 +1,27 @@
 # Secondary recording exports
 
+## Priority update — 2026-10-09
+
+Before adding writers, extend the existing reference dataset workflow to require
+Blender generation and content validation for a standard run. The authoritative
+[complete-run acceptance contract](../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09)
+defines required-output profiles, artifact/source identity, consumer checks,
+readiness, invalidation and failure semantics. This requirement is agreed;
+implementation remains pending. A Parquet-only ready marker is insufficient.
+
+Implementation order is now: shared acceptance reporting and Blender validation;
+shared array reader with wide CSV/NPZ and their acceptance consumers; export UI
+and lifecycle completion; Blender-mediated interchange validation in a separate
+add-on stage. Wide CSV and NPZ join standard reference acceptance as each lands.
+Disable automatic tall CSV as part of the export-default update; retain it as an
+explicitly requested format. Preserve numerical checkpoints on export failure,
+while withholding overall success until required outputs pass.
+
+The 2026-09-30 plan below remains useful for format details. Its default tall CSV
+policy and description of Blender integration as entirely future work are
+superseded. Parquet-to-Blender exists; reference producer integration and saved-file
+acceptance are still required. Direct FBX/BVH remain deferred.
+
 ## Current implementation plan — 2026-09-30
 
 The owner selected the next milestone: optional tall CSV, wide CSV and NumPy NPZ

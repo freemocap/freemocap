@@ -1,5 +1,13 @@
 # Reference recordings
 
+The [complete-run acceptance contract](../../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09)
+now requires Blender output and its saved-scene validation for a standard run,
+with wide CSV/NPZ joining as implemented. **The dataset machinery does not yet
+enforce this requirement:** it disables Blender and its ready markers currently
+certify numerical outputs only. Existing passing geometry/Parquet consumers must
+not be described as complete-run acceptance. Updating the common producer,
+validators and readiness checks is the next implementation stage.
+
 For full runs, calibration-only processing, and saved-stage reprocessing, see the
 [dataset commands](../../tools/datasets/README.md). Start with
 `poe process-test-data`, `poe process-sample-data`, or `poe process-all-data` from

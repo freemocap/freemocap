@@ -1,0 +1,10 @@
+.scientific-export-settings fieldset {display:flex; flex-direction:column; gap:0.8rem; border:1px solid #475569; border-radius:0.5rem; padding:1rem;}
+.scientific-export-settings label {display:flex; gap:0.6rem; align-items:flex-start;}
+.scientific-export-settings input[type=checkbox] {margin-top:0.25rem; accent-color:#22d3ee;}
+.scientific-export-settings select, .scientific-export-settings button {background:#1e293b; color:#e2e8f0; border:1px solid #64748b; border-radius:0.3rem; padding:0.4rem 0.65rem;}
+.scientific-export-settings button:disabled {opacity:0.45; cursor:not-allowed;}
+.scientific-export-settings button {cursor:pointer;}
+.scientific-export-settings p {overflow-wrap:anywhere;}
+.scientific-export-settings details {margin-top:1rem;}
+.scientific-channel-list {display:flex; flex-direction:column; gap:0.65rem; max-height:20rem; overflow-y:auto;}
+.scientific-channel-list small {display:block; color:#94a3b8;}

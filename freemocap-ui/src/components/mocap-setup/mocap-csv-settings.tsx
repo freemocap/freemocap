@@ -30,22 +30,28 @@ interface Selection {run_ids: number[]; selected_run_id: number; revision: strin
 
 export default function MocapCsvSettings({path, processing}: {path: string | null; processing: boolean}) {
     const dispatch = useAppDispatch();
-    const enabled = useAppSelector(state => state.mocap.config.exportTallCsv ?? true);
+    const enabled = useAppSelector(state => state.mocap.config.exportTallCsv ?? false);
     const [selection, setSelection] = useState<Selection | null>(null);
     const [run, setRun] = useState(0);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    const [noSavedResult, setNoSavedResult] = useState(false);
     const [saved, setSaved] = useState<string[]>([]);
     const [refresh, setRefresh] = useState(0);
     const endpoint = `${serverUrls.getHttpUrl()}/freemocap/exports/tall-csv`;
 
     useEffect(() => {
         const controller = new AbortController();
+        setNoSavedResult(false);
         setSelection(null); setError(''); setSaved([]);
         if (!path || processing) return () => controller.abort();
         void (async () => {
             try {
                 const response = await fetch(`${endpoint}?recording_path=${encodeURIComponent(path)}`, {signal: controller.signal});
+                if (response.status === 204) {
+                    if (!controller.signal.aborted) setNoSavedResult(true);
+                    return;
+                }
                 if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
                 const data: Selection = await response.json();
                 if (!controller.signal.aborted) {setSelection(data); setRun(data.selected_run_id);}
@@ -84,6 +90,7 @@ export default function MocapCsvSettings({path, processing}: {path: string | nul
             control={<ButtonSm text={busy ? 'Saving…' : 'Export now'} onClick={() => void save()}
                 disabled={!selection || busy || processing} className="setting-action-button" textColor="text-white"/>}/>
         {busy && <p role="status" className="settings-note">Saving CSV files…</p>}
+        {noSavedResult && <p role="status" className="settings-note">No saved result yet. Process the recording to export saved data.</p>}
         {error && <div role="alert" className="settings-note settings-note-error settings-note-dismissable">
             <span>{error}</span>
             <ButtonSm text="Reload saved results" className="setting-action-button" textColor="text-white"

@@ -22,7 +22,11 @@ function buildPosthocConfig(state: RootState) {
         },
         cameraMatching: config.cameraMatching,
         anchorSegmentName: config.anchorSegmentName,
-        exportTallCsv: config.exportTallCsv ?? true,
+        exportTallCsv: config.exportTallCsv ?? false,
+        scientificExports: {
+            formats: config.scientificExportAfterProcessing ? (config.scientificExportFormats ?? []) : [],
+            data: config.scientificExportData ?? ['LANDMARKS_3D'],
+        },
         charucoTrackingEnabled: config.charucoTrackingEnabled,
         boardMode: state.calibration.config.boardMode,
         charucoBoard: state.calibration.config.charucoBoard,

@@ -78,13 +78,14 @@ def export_tall_csv(*, structure: RecordingStructure, request: TallCsvRequest,
                 raise FileExistsError('Retained exports belong to a different source revision')
             # Always write a header-only static CSV if no static values exist: a
             # repeated default export cannot leave an old static table looking current.
-            filenames = (f'{prefix}.tall.csv', f'{prefix}.static.tall.csv')
+            filenames = (f'csv/{prefix}.tall.csv', f'csv/{prefix}.static.tall.csv')
             for name in filenames:
                 target = directory / name
                 if target.is_symlink() or (request.keep and target.exists()):
                     raise FileExistsError(f'Export destination already exists or is a link: {target}')
             staging = Path(tempfile.mkdtemp(prefix='.staging-', dir=directory))
             try:
+                (staging / 'csv').mkdir()
                 selected_metadata = view.metadata.model_copy(update={'selected_run_id': run_id, 'runs': {run_id: run}})
                 validator = SampleValidator(metadata=selected_metadata)
                 count = 0
@@ -118,7 +119,8 @@ def export_tall_csv(*, structure: RecordingStructure, request: TallCsvRequest,
                         writer.write_table(pa.Table.from_pylist(static_rows, schema=STATIC_SCHEMA))
                     stream.flush()
                     os.fsync(stream.fileno())
-                artifacts = dict(previous.artifacts)
+                obsolete = tuple(a for name, a in previous.artifacts.items() if a.format in ('tall_csv', 'static_tall_csv') and name not in filenames)
+                artifacts = {name: a for name, a in previous.artifacts.items() if a not in obsolete}
                 for name, schema, rows, kind in zip(filenames, (SAMPLE_SCHEMA, STATIC_SCHEMA),
                         (count, len(static_rows)), ('tall_csv', 'static_tall_csv'), strict=True):
                     artifacts[name] = ExportArtifact(filename=name, sha256=digest(staging / name), rows=rows,
@@ -134,7 +136,7 @@ def export_tall_csv(*, structure: RecordingStructure, request: TallCsvRequest,
                 manifest = ExportManifest(artifacts=artifacts, snapshots=snapshots)
                 check_cancelled()
                 # Commit is short and recoverable; cancellation no longer interrupts it.
-                publish(directory, staging, manifest_name, manifest, filenames, request.keep)
+                publish(directory, staging, manifest_name, manifest, filenames, request.keep, obsolete=obsolete)
                 return TallCsvResult(run_id=run_id, source_revision=view.revision, source_sha256=source_hash,
                     manifest_path=manifest_path, files=tuple(directory / name for name in filenames))
             finally:

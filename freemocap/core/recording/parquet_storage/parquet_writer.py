@@ -19,7 +19,7 @@ from freemocap.core.recording.sample_encoding.arrow_schema import (
 from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata
 from freemocap.core.recording.parquet_storage.shared_file import replace_recording_file
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
-from freemocap.core.diagnostics.recording_health_report import write_recording_health_report
+from freemocap.core.recording.recording_info import write_recording_info
 
 
 @contextmanager
@@ -54,8 +54,7 @@ def publish_recording(
         ),
         batches=validated_batches(),
     )
-    structure.diagnostics_report_path.unlink(missing_ok=True)
-    write_recording_health_report(structure=structure, criteria=())
+    write_recording_info(structure, metadata)
 
 
 def publish_parquet(*, path: Path, schema: pa.Schema, batches: Iterable[pa.RecordBatch]) -> None:

@@ -1,16 +1,13 @@
-"""Regenerate a run-scoped YAML report from canonical Parquet diagnostic channels."""
+"""Build a run-scoped health assessment from canonical Parquet diagnostic channels."""
 
 from dataclasses import dataclass, field
 import hashlib
-import os
 from pathlib import Path
-import tempfile
 from typing import Literal
 
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-import yaml
 
 from freemocap.core.diagnostics.health_report import (
     AssessmentCriterion,
@@ -23,7 +20,6 @@ from freemocap.core.diagnostics.health_report import (
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.parquet_storage.parquet_reader import metadata_from_schema
 from freemocap.core.types.channel_kind import ChannelKind
-from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 
 DIAGNOSTIC_CHANNELS = (
@@ -206,25 +202,3 @@ def build_recording_health_report(
         ),
         measurements=tuple(measurements),
     )
-
-
-def write_recording_health_report(
-    *, structure: RecordingStructure, criteria: tuple[AssessmentCriterion, ...]
-) -> None:
-    """Caller holds the recording lock so the report describes a stable publication."""
-    report = build_recording_health_report(
-        path=structure.data_parquet_path, criteria=criteria
-    )
-    structure.output_dir.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        dir=structure.output_dir, suffix=".yaml.tmp"
-    )
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-            yaml.safe_dump(report.model_dump(mode="json"), output, sort_keys=False)
-            output.flush()
-            os.fsync(output.fileno())
-        temporary.replace(structure.diagnostics_report_path)
-    finally:
-        temporary.unlink(missing_ok=True)

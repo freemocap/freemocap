@@ -1,3 +1,66 @@
+## Naming checkpoint and next PR work — 2026-10-10
+
+Implemented export labels: `2d_overlay--<tracker>--<video>`,
+`3d_keypoints_raw--<tracker>`, `3d_keypoints_filtered--<tracker>`,
+`3d_landmarks--<model>`, `3d_segment_poses--<model>`. Recording/run prefixes and
+lowercase format folders remain unchanged. CSV/NPY and NPZ keys agree. Canonical
+Parquet identifiers remain unchanged. Regenerating a format retires its prior
+verified filenames through normal publication; this is not source retention.
+
+Latest inspected user recording: RTMW export at 2026-10-10T18:00:03Z, no escaped
+headers, overlay confidence present, no retained export folders. The managed
+export inventory contains RTMW rather than the previous MediaPipe products.
+
+Next independently reviewable work, before declaring multi-tracker support:
+1. Specify producer retention for canonical measurements and scientific exports:
+   same producer replaces its previous result, different producer can coexist;
+   current downstream reconstruction follows the selected producer. Split ChArUco
+   measurements from the human tracker source. Define board/config identity and
+   behavior for changed frame grids, including shared NumPy timing and NPZ contents.
+2. Add a backend plan preview comparing requested settings/input signatures with
+   saved stage provenance. Return reuse/rerun/missing/affected downstream stages
+   with reasons. Existing execution-plan signature validation and dependency
+   invalidation are a foundation, not a settings-reactive UI implementation.
+3. Put replace-versus-retain-run controls beside the processing-stage selection,
+   and show plan changes immediately when detector/calibration/filter settings
+   change. Export-folder retention alone is not processing-run retention. Preserve
+   manual rerun choices while preventing reuse of incompatible inputs.
+4. Test RTM -> MediaPipe -> RTM, same-model reruns, explicit retained runs, changed
+   timelines, and current downstream outputs; verify all selected export formats.
+
+PR preparation for the current export checkpoint (can precede the larger work):
+- Finish student-facing static format/folder README templates; explain axes,
+  names, units, confidence, NaNs, and shared timing with loading examples.
+- Resolve the confusing duplicate recording-info/export-inventory naming.
+- Verify the standard-run reference acceptance includes Blender output and the
+  selected scientific exports; explicitly report UI/Blender checks still pending.
+- Review the accumulated diff and validation evidence, including unrelated dev
+  reload changes separately. Human owns commits/pushes and PR publication scope.
+- Keep new reprojection aggregation, landmark residuals, and exporter organization
+  as explicit follow-up work, rather than implying they are finished.
+
+## Quality output checkpoint — 2026-10-10
+
+- Readable CSV headers preserve literal point names (`body.nose.x`), without URL escaping.
+- CSV, NPY and NPZ overlay components use `confidence` for the saved `visibility`
+  score. Preserve values and record original component labels in export metadata.
+  This is an export-boundary alias, not a detector or canonical schema migration.
+- Follow-up: raw 3D keypoint reprojection error. Saved diagnostics are per camera
+  in pixels for the pixel-input route (normalized-coordinate diagnostics also
+  exist; preserve declared units). Decide whether exports should expose camera-specific components
+  or an aggregate (and which aggregate, camera inclusion and missing-data rules).
+  Verify the diagnostic's raw/filtered provenance before attaching it to a point.
+  Filtered positions must not inherit a raw-point error without verification.
+- Follow-up: standard-human landmark residual. Compare saved reconstructed
+  landmarks to saved MAPPED_KEYPOINTS_3D in the same model/reference frame; inspect
+  the mapping for virtual/derived landmarks and missing observations. Establish
+  whether scalar Euclidean distance in the coordinate units is the intended metric,
+  then test it on known displacements and missing frames. Existing
+  RIGID_BODY_RESIDUALS are measured segment-length deviations, not this metric.
+- Keep quality-component semantics and ordering identical across CSV/NPY/NPZ.
+  No fabricated error columns or new numerical calculations in this checkpoint.
+- Defer exporter-module organization/refactor until the working checkpoint.
+
 # Secondary recording exports
 
 ## Active checklist â€” 2026-10-09
@@ -19,8 +82,7 @@ includes a validated Blender scene.
   and reducer behavior that discarded BVH on route changes.
 - [x] Validate core request forwarding and route switching: 14 focused backend
   tests, TypeScript checking, and the focused Edge browser test passed.
-- [ ] Human review/commit/push of core changes. The pre-existing user lockfile
-  update is preserved; it also contains unrelated dependency upgrades.
+- [x] Human committed and pushed the core integration and reference-output checkpoint.
 
 ### 1. Make reference success cover actual outputs
 
@@ -57,58 +119,58 @@ timeout/cancellation and retention of previously accepted results.
 All four saved-scene acceptance tests passed, including independent landmark and
 armature-transform corruption. Ruff and the whitespace diff check passed.
 
-These checks certify the native saved-segment route. CSV/NPY/NPZ and general
-application job status are still unimplemented stages below; this does not claim
+These checks certify the native saved-segment route. Wide CSV now has its own
+validated csv/npy/NPZ consumer path described below; this does not claim
 complete acceptance for arbitrary Blender cleanup/constraint routes or FBX/BVH.
 
 ### 2. Define selection and build one ordered-array reader
 
-- [ ] Typed export request: selected run/revision plus independent format jobs,
+- [x] Typed export request: selected run/revision plus independent format jobs,
   each with explicit channel contexts or an all-available selection.
-- [ ] Resolve and freeze selection against one Parquet snapshot before writing.
+- [x] Resolve and freeze selection against one Parquet snapshot before writing.
   A context includes group, source, reference frame and channel, not just its label.
-- [ ] Return ordered values, frame numbers, timestamps, names, components, units
+- [x] Return ordered values, frame numbers, timestamps, names, components, units
   and presence masks. Keep static data and distinct clocks separate.
-- [ ] Preserve measured keypoints and reconstructed landmarks as distinct data.
-- [ ] Reject duplicates/unknown selections, preserve null/absent distinctions,
+- [x] Preserve measured keypoints and reconstructed landmarks as distinct data.
+- [x] Reject duplicates/unknown selections, preserve null/absent distinctions,
   and use bounded-memory or disk-backed arrays for large contexts.
-- [ ] Verify scalar, XYZ, WXYZ, static, empty, irregular-frame and multi-source
+- [x] Verify scalar, XYZ, WXYZ, static, empty, irregular-frame and multi-source
   cases against source rows, including both real reference datasets.
 
 ### 3. Add wide CSV
 
-- [ ] One selected channel-context table per file: frame/timestamp columns then
+- [x] One selected channel-context table per file: frame/timestamp columns then
   named scalar columns. Static tables remain separate.
-- [ ] Stable filenames, reversible headers and a metadata dictionary; split large
+- [x] Stable filenames, reversible headers and a metadata dictionary; split large
   tables without truncating them.
-- [ ] Reload and compare selected values/labels/timing/missingness against Parquet;
+- [x] Reload and compare selected values/labels/timing/missingness against Parquet;
   record time, memory and file size. Add the writer to reference acceptance.
-- [ ] Turn automatic tall CSV off; keep explicit diagnostic export available.
+- [x] Turn automatic tall CSV off; keep explicit diagnostic export available.
 
 ### 4. Add standalone NPY and bundled NPZ
 
-- [ ] NPY: one values array per selected context, plus companion frame/time,
-  name/component/unit and presence arrays described by a JSON manifest. An NPY
+- [x] NPY: one values array per selected context, plus companion frame/time,
+  name/component/unit metadata described by a JSON manifest. An NPY
   values file alone does not carry its scientific interpretation.
-- [ ] NPZ: one archive of the selected contexts and their companion arrays,
+- [x] NPZ: one archive of the selected contexts and their companion arrays,
   embedding the manifest/descriptor so the archive is self-describing.
-- [ ] Both formats reuse the same array keys/order/shape contract. Typical 3D
+- [x] Both formats reuse the same array keys/order/shape contract. Typical 3D
   arrays are `(frames, keypoints_or_landmarks, 3)`; rotations use `(frames, segments, 4)`.
-- [ ] Use numeric/Unicode arrays, no objects or pickle. Verify loading with
+- [x] Use numeric/Unicode arrays, no objects or pickle. Verify loading with
   `allow_pickle=False`, exact identity/order and numerical comparisons.
-- [ ] Add NPY and NPZ consumers to reference acceptance as each writer lands.
+- [x] Add NPY and NPZ consumers to reference acceptance as each writer lands.
 
 ### 5. Generalize publication, jobs and the posthoc Exports panel
 
-- [ ] Extend the currently tall-CSV-specific manifest/publication types for
+- [x] Extend the currently tall-CSV-specific manifest/publication types for
   array/table artifacts and per-format source identity. Preserve older manifests.
-- [ ] Share the export service between after-processing and export-saved-result
+- [x] Share the export service between after-processing and export-saved-result
   actions; bind automatic export to the run/revision actually produced.
-- [ ] Independent Wide CSV, NPY and NPZ controls, channel selection, persisted
+- [x] Independent Wide CSV, NPY and NPZ controls, channel selection, persisted
   preferences, selected-run and retained-export controls.
-- [ ] Per-format progress/results, cancel and retry, open output folder; report
+- [x] Per-format progress/results, cancel and retry, open output folder; report
   numerical success separately from overall selected-output completion.
-- [ ] Browser/API tests cover format/channel selection, empty selections,
+- [x] Browser/API tests cover format/channel selection, empty selections,
   route switching, saved-stage completion, failure and retry without reprocessing.
 
 Publication type changes needed by writers are implemented with stages 3/4;
@@ -124,22 +186,62 @@ this stage completes lifecycle and user-facing integration.
 - [ ] Document formats, load examples and measured resource use; reconcile stale
   roadmap entries and present core's final human commit/push handoff.
 
-### UI defaults still open; backend work can proceed
+### Owner corrections and current handoff â€” 2026-10-09
 
-Backend requests support per-format channel selections from the outset. Proposed
-initial UI: one shared channel selection applied to checked formats, initially
-all available channels; expose separate selections later if needed. NPZ's
-all-channel preset means all channels in the selected run, not every historical run.
-Format defaults (which checkboxes start enabled) remain a product choice; do not
-silently replace existing preferences. A native file dialog, standalone legacy
-filenames/axis layouts, and time-range selection are not required for this stage.
+2026-10-10: exported NPY/NPZ presence masks removed by owner request. NumPy
+uses NaN for both absent and explicitly null samples; masks remain internal
+for source validation and CSV writing. Shared timeline files are implemented: one frames array and one timestamps
+array per NumPy export set, with matching count/frame numbers/timestamps required
+for every measurement array. Timestamp comparison permits only four float64 ULPs
+of arithmetic roundoff, with the maximum difference recorded in export metadata.
+The sample reference has 177 frames with roundoff differences between camera and
+3D timing; there is no frame-count mismatch. Incompatible selections fail before publication.
+The inspected recording now has nine values arrays plus two timing files (11 NPY
+files); the NPZ shares the same pair. Measurement values are unchanged.
 
-Direct FBX/BVH writers and connected-skeleton optimization remain deferred.
-The older plan below supplies detailed format rules; this checklist supersedes
-its deferral of NPY/channel selection, automatic tall CSV default, and description
-of Blender integration as entirely future work.
+Follow-up folder correction: CSV and NPY files live in `csv/` and `npy/`
+inside the default export root or retained run folder. NPZ and the compact
+inventory stay at that root. Existing verified files can be reorganized with
+`organize_exports`; it preserves data hashes and updates relative inventory paths.
 
-## Current implementation plan â€” 2026-09-30
+All data exports are optional. Data and format selection are independent. Only
+3D landmarks starts checked. Raw/filtered 3D keypoints, per-camera 2D keypoints,
+and segment positions plus world quaternions start unchecked. Joint angles are
+deferred. No new numerical methods are needed for these choices.
+
+CSV, NPY and NPZ now consume those shared products. Camera files use existing video
+basenames; other files use readable source names, with no hexadecimal IDs. Default
+exports overwrite selected formats under `exports/`; explicit retention uses
+`exports/run-<id>/` and run-qualified filenames, as already agreed.
+
+Automatic diagnostic YAML and its dedicated output folder are removed. Root
+recording-info JSON preserves capture data and adds a compact processed summary.
+Export recording-info JSON contains compact interpretation and per-file provenance;
+NPZ embeds equivalent descriptions. Full descriptor/per-scalar metadata duplication
+is removed. See the [format guide](../../freemocap/core/recording/exports/README.md).
+
+Current controls: `mocap-scientific-settings.tsx`, with data/format selection,
+saved runs, file-count preview, keep/replacement, export after processing,
+progress/cancellation/retry and output-folder access. The lower-level old context
+selection remains accepted for compatibility; the UI exposes the agreed data list.
+
+Validation: 52 focused backend checks, TypeScript checking and the Edge browser
+interaction test passed. Both reference recordings passed independent csv/npy/NPZ
+comparisons (222 and 1,108 frames), covering all nine supported source contexts.
+
+Default CSV export on a copy of the user's 222-frame recording produces two tables
+(human and board landmarks), a 32,784-byte export inventory and a 67,404-byte root
+recording-info companion. The source Parquet hash remained unchanged.
+
+The earlier measurements and all-available-default claims are superseded by this
+scope. Complete-run reference profiles currently require Parquet and Blender;
+scientific formats have an independent consumer acceptance test, and integrating
+them into required-output profiles remains stage 6 work.
+
+## Historical implementation plan â€” 2026-09-30
+
+Superseded by the active checklist and owner corrections above.
+
 
 The owner selected the next milestone: optional tall CSV, wide CSV and NumPy NPZ
 exports from canonical saved Parquet, exposed in the post-hoc mocap panel's
@@ -364,7 +466,7 @@ implementation, as well as a final milestone check; it is not deferred to stage 
    cancellation and unchanged successful mocap status. Run TypeScript checks and
    browser interaction checks for the actual Exports section.
 4. **Reference acceptance and handoff (FreeMoCap).** Export both prepared datasets,
-   reload CSV/NPZ and compare all selected scientific values and identities to
+   reload csv/NPZ and compare all selected scientific values and identities to
    source Parquet. Inspect representative wide tables for readability. Confirm
    zero detection/reconstruction calls, source hashes unchanged, repeated default
    exports safely replaced, retained exports protected, and all artifacts beneath
@@ -387,7 +489,7 @@ part of the evidence spike only; no BVH/glTF prototype or Blender import was per
 
 ## Assessment
 
-The current Parquet contract appears to contain the ingredients for data exports and animated scene exports. CSV/NumPy are comparatively straightforward. glTF visual playback is moderate work. A conventional BVH rig with demonstrated equivalence to playback is the highest-risk part: stored segment positions are not automatically the positions produced by a fixed-offset joint hierarchy.
+The current Parquet contract appears to contain the ingredients for data exports and animated scene exports. csv/NumPy are comparatively straightforward. glTF visual playback is moderate work. A conventional BVH rig with demonstrated equivalence to playback is the highest-risk part: stored segment positions are not automatically the positions produced by a fixed-offset joint hierarchy.
 
 The first milestone should prove that relationship on a saved recording before building all the controls. This investigation inspected code; it did not export a recording or verify an import in Blender.
 
@@ -475,10 +577,10 @@ Optional later layers: cameras, axes, center of mass, connections/face, and traj
 
 ## Time, missing samples, coordinates
 
-- CSV/NumPy preserve original timestamps. BVH needs an explicit uniform FPS and pose resampling. glTF can retain original times when exported alone; paired exports share the BVH grid.
+- csv/NumPy preserve original timestamps. BVH needs an explicit uniform FPS and pose resampling. glTF can retain original times when exported alone; paired exports share the BVH grid.
 - Normalize animation time to zero and preserve original start time in the manifest. Do not infer timing solely from nominal video FPS when saved timestamps exist.
 - Use linear position interpolation and quaternion-aware orientation interpolation with sign continuity. Never interpolate Euler channels as the primary resampling representation.
-- CSV/NumPy preserve missing values. Animation export requires a declared policy: strict complete interval, split valid intervals, bounded interpolation, or explicit holding. Never synthesize identity rotations or origin positions silently. Hierarchy validity includes required ancestors.
+- csv/NumPy preserve missing values. Animation export requires a declared policy: strict complete interval, split valid intervals, bounded interpolation, or explicit holding. Never synthesize identity rotations or origin positions silently. Hierarchy validity includes required ancestors.
 - Metric calibrated recordings use millimeters; single-camera planar output is explicitly pixels in `SpatialReference`. Require an explicit scale for metric scene export or report it unavailable; do not relabel pixels as meters.
 - Do not reapply saved alignment transforms to coordinates that were already aligned before publication.
 
@@ -498,7 +600,7 @@ At the bottom of the mocap panel, add Secondary exports with Tall CSV, Wide CSV,
 ## Implementation order and completion checks
 
 1. **Evidence spike:** read one saved calibrated recording, hydrate its saved definitions, calculate parent-relative translations and fixed-offset FK errors; prototype a short BVH and bone-only glTF. Import both into Blender. Deliver a numeric parity report and screenshots before choosing the default motion profile.
-2. **Recording export foundation:** coherent snapshot selection, capability validation, artifact manifest, tall CSV and NPZ; then wide CSV/NPY. Round-trip values, timestamps, names, nulls and units. Exercise multiple clocks, missing data, and static fit values.
+2. **Recording export foundation:** coherent snapshot selection, capability validation, artifact manifest, tall CSV and NPZ; then wide csv/NPY. Round-trip values, timestamps, names, nulls and units. Exercise multiple clocks, missing data, and static fit values.
 3. **Shared motion preparation and BVH:** offset/rest-frame mapping, target conventions, resampling and gaps. Verify asymmetric poses, branching joints, moving roots, near-180-degree rotations and incomplete parents using independent FK/import results.
 4. **glTF scene:** consume the same prepared motion, implement the shared bone recipe and points. Run a glTF validator and compare Blender-imported world transforms and bounds, then visually compare representative frames against playback. Extend to trails and other layers after this passes.
 5. **Jobs/API/UI:** integrate export-now and after-processing, progress, cancellation, partial failure, stale revisions, artifact download/reveal and format-specific readiness. Verify export failure leaves the canonical recording usable.
@@ -514,3 +616,25 @@ Rough effort, not a commitment: the data writers are small; trustworthy hierarch
 5. Which glTF layers are required initially, and does trajectory mean full paths or sliding trails?
 
 Blender exposes BVH rotation order and root-only translation options, supporting the need to make that profile explicit: [Blender BVH export API](https://docs.blender.org/api/5.2/bpy.ops.export_anim.html). Actual interchange behavior still requires the import checks above.
+
+
+### 2026-10-10 — student guides and V1 explorer restoration
+
+- Located the notebook generator/template in local V1.8.2 and its separate
+  NPY-to-Pandas example. V2 adds an optional Notebook Explorer format in the
+  existing scientific export selection (saved-result and after-processing paths).
+- Generated notebook uses relative Parquet access, a source-hash guard, selected
+  run/data, explicit point/component order, Pandas, NumPy and Matplotlib. It
+  does not install packages, change recording data, or archive the source Parquet.
+- Static student tutorials are staged into exports/README.md and selected
+  csv/README.md and npy/README.md. Existing tutorials are preserved. Examples
+  cover provenance, shapes, missing data, metadata and Matplotlib plotting.
+- Focused unittest checks pass for publication, retained/default paths, guide
+  preservation and execution of NPY/NPZ examples. Notebook execution test is
+  skipped because the core environment lacks pandas; generation/code compilation
+  passes. UI TypeScript checking passes. Interactive notebook/app review remains.
+- Log follow-up: export previews currently turn absent Parquet into a 404/error
+  before processing. Separate actual failure involved a missing calibration TOML.
+  Latest successful run took 598 s, including about 199 s across checkpoint writes,
+  143 s detection and 106 s reconstruction; overlapping worker timings must not
+  be summed. Handle absent-result UI state next, then profile these hotspots.

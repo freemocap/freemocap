@@ -18,12 +18,15 @@ if sys.stderr is None:
 logger = logging.getLogger(__name__)
 
 
-async def main(force_preferred_port:bool=True) -> None:
+async def main(force_preferred_port:bool=True, *, reload_stop=None) -> None:
     # Configure logging once, at startup — NOT at import time. freemocap's
     # package __init__ stays side-effect free so sandboxes/CI/child processes
     # can import it without I/O or thread spawns.
-    from skellylogs import configure_logging, LogLevels
-    configure_logging(LogLevels.TRACE)
+    from skellylogs import configure_logging, create_websocket_log_queue, LogLevels
+    # This application owns its log queue even when a reload supervisor spawned
+    # it. SkellyLogs otherwise treats non-MainProcess processes as plain workers
+    # and skips logging initialization when no queue is supplied.
+    configure_logging(LogLevels.TRACE, ws_queue=create_websocket_log_queue())
 
     from skellylogs import get_websocket_log_queue
     from freemocap.api.websocket.log_relay import LogRelay
@@ -32,7 +35,7 @@ async def main(force_preferred_port:bool=True) -> None:
     producers_stopped = Event()
     producers_stopped.set()
     try:
-        await _run_application(force_preferred_port, log_relay, producers_stopped)
+        await _run_application(force_preferred_port, log_relay, producers_stopped, reload_stop=reload_stop)
     finally:
         if producers_stopped.is_set():
             log_relay.stop()
@@ -41,7 +44,7 @@ async def main(force_preferred_port:bool=True) -> None:
             logger.error("Worker shutdown incomplete; log reader remains active until process exit")
 
 
-async def _run_application(force_preferred_port, log_relay, producers_stopped) -> None:
+async def _run_application(force_preferred_port, log_relay, producers_stopped, *, reload_stop=None) -> None:
     # Heavy imports are here (not at module level) so that multiprocessing
     # child processes don't re-import the entire app tree on Windows.
     # Windows uses the `spawn` start method, which re-executes this file
@@ -122,7 +125,7 @@ async def _run_application(force_preferred_port, log_relay, producers_stopped) -
         server = uvicorn.Server(config)
 
         logger.info(f"Starting server on {HOSTNAME}:{port}")
-        await serve_application(server=server, app=app)
+        await serve_application(server=server, app=app, reload_stop=reload_stop)
 
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received")
@@ -141,6 +144,18 @@ async def _run_application(force_preferred_port, log_relay, producers_stopped) -
             logger.info("FreeMoCap workers shut down")
 
 def run_main() -> None:
+    import argparse
+
+    multiprocessing.freeze_support()
+    parser = argparse.ArgumentParser(description='FreeMoCap backend')
+    parser.add_argument('--reload', action='store_true', help='Developer mode: restart after Python edits; interrupts active jobs')
+    args = parser.parse_args()
+    if args.reload:
+        if getattr(sys, 'frozen', False):
+            parser.error('--reload is only available when running Python source')
+        from freemocap.app.dev_reload import run_reload
+        run_reload()
+        return
     asyncio.run(main())
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for PyInstaller + multiprocessing on Windows

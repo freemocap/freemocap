@@ -19,19 +19,23 @@ class ExportArtifact(BaseModel):
     source_sha256: str
     source_revision: str
     run_id: int = Field(ge=0)
-    format: Literal['tall_csv', 'static_tall_csv']
+    format: Literal['tall_csv', 'static_tall_csv', 'wide_csv', 'static_wide_csv', 'npy', 'npz', 'notebook', 'metadata']
+    details: dict = Field(default_factory=dict)
 
     @field_validator('filename')
     @classmethod
     def safe_filename(cls, value):
-        if value in ('', '.', '..') or any(c in value for c in '/\\:'):
-            raise ValueError('Export filename must be a single relative name')
+        parts = value.split('/')
+        if (len(parts) > 2 or (len(parts) == 2 and parts[0] not in ('csv', 'npy', 'CSV', 'NPY'))
+                or any(p in ('', '.', '..') or p.endswith((' ', '.')) for p in parts)
+                or any(c in value for c in '\\:')):
+            raise ValueError('Export path must be a filename or a file inside csv/npy')
         return value
 
 
 class ExportManifest(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    version: Literal[1] = 1
+    version: Literal[1, 2, 3] = 1
     status: Literal['complete'] = 'complete'
     artifacts: dict[str, ExportArtifact]
     snapshots: dict[str, dict]
@@ -43,6 +47,20 @@ class ExportManifest(BaseModel):
 def digest(path: Path) -> str:
     with path.open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def artifact_path(directory: Path, name: str) -> Path:
+    """Resolve only supported artifact paths, refusing links and Windows junctions."""
+    ExportArtifact.safe_filename(name)
+    target = directory
+    for part in (None, *name.split('/')):
+        if part is not None:
+            target = target / part
+        if target.is_symlink() or getattr(target, 'is_junction', lambda: False)():
+            raise ValueError('Export paths must not contain links or junctions')
+    if not target.resolve().is_relative_to(directory.resolve()):
+        raise ValueError('Export path escapes its directory')
+    return target
 
 
 def write_json(path: Path, value: dict) -> None:
@@ -66,7 +84,7 @@ def verified_manifest(path: Path) -> ExportManifest:
         raise ValueError('Export publication is incomplete; recover it before reading or exporting')
     manifest = ExportManifest.model_validate_json(path.read_text(encoding='utf-8'))
     for artifact in manifest.artifacts.values():
-        target = path.parent / artifact.filename
+        target = artifact_path(path.parent, artifact.filename)
         if target.is_symlink() or not target.is_file() or digest(target) != artifact.sha256:
             raise ValueError(f'Export file missing or changed: {artifact.filename}')
         if artifact.source_sha256 not in manifest.snapshots:
@@ -86,7 +104,7 @@ def finish_publication(directory: Path) -> None:
         raise ValueError('Export staging must not be a link')
     for entry in data['files']:
         name = ExportArtifact.safe_filename(entry['filename'])
-        target, pending = directory / name, staging / name
+        target, pending = artifact_path(directory, name), artifact_path(staging, name)
         if target.is_symlink() or pending.is_symlink():
             raise ValueError('Export files must not be links')
         if not pending.exists():
@@ -95,6 +113,7 @@ def finish_publication(directory: Path) -> None:
             raise ValueError(f'Cannot recover missing export: {name}')
         if digest(pending) != entry['sha256']:
             raise ValueError(f'Staged export changed: {name}')
+        target.parent.mkdir(parents=True, exist_ok=True)
         if entry['no_clobber']:
             if target.exists():
                 if digest(target) != entry['sha256']:
@@ -104,15 +123,29 @@ def finish_publication(directory: Path) -> None:
             pending.unlink()
         else:
             os.replace(pending, target)
+    published_paths = {os.path.normcase(str(artifact_path(directory, entry['filename']).resolve())) for entry in data['files']}
+    for entry in data.get('remove', []):
+        target = artifact_path(directory, entry['filename'])
+        if os.path.normcase(str(target.resolve())) in published_paths:
+            continue  # Case-only path changes on Windows refer to the newly published file.
+        if target.exists():
+            if target.is_symlink() or digest(target) != entry['sha256']:
+                raise ValueError(f'Obsolete export changed: {target.name}')
+            target.unlink()
     journal.unlink()
     remove_staging(directory, staging)
 
 
 def publish(directory: Path, staging: Path, manifest_name: str,
-            manifest: ExportManifest, filenames: tuple[str, ...], keep: bool) -> None:
+            manifest: ExportManifest, filenames: tuple[str, ...], keep: bool,
+            obsolete: tuple[ExportArtifact, ...] = ()) -> None:
+    for name in (*filenames, manifest_name):
+        artifact_path(directory, name)
+        artifact_path(staging, name)
     write_json(staging / manifest_name, manifest.model_dump(mode='json'))
     files = [dict(filename=name, sha256=digest(staging / name), no_clobber=keep) for name in filenames]
     files.append(dict(filename=manifest_name, sha256=digest(staging / manifest_name), no_clobber=False))
-    write_json(staging / 'journal.json', dict(version=1, staging=staging.name, files=files))
+    write_json(staging / 'journal.json', dict(version=1, staging=staging.name, files=files,
+        remove=[dict(filename=a.filename, sha256=a.sha256) for a in obsolete]))
     os.replace(staging / 'journal.json', directory / '.publication.json')
     finish_publication(directory)

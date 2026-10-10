@@ -1,5 +1,10 @@
 # Current Work Plans
 
+2026-10-10: [typed executable dataflow](02-pipeline/typed-dataflow.md) is the current
+graph architecture proposal, grounded in the refactored SkellySpeak graph core and
+the current FreeMoCap pipeline. Includes formal contracts, server/client isolation,
+measurement gates and staged replacement. Design only; the graph lab stays parked.
+
 2026-10-08: [connected skeleton fitting extraction](02-pipeline/skeleton-fitting-extraction.md)
 records the branch boundary, retained pipeline, validation and remaining export work.
 

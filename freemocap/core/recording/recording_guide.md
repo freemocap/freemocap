@@ -62,7 +62,8 @@ Python packages also contain the required `__init__.py` files, with no forwardin
 
 Scientific calculations belong in SkellyForge, detection in SkellyTracker, and camera media/timing
 in SkellyCam. This package describes, serializes, publishes and reads their results. Publication
-writes only the canonical Parquet; it does not write measurements into recording metadata JSON.
+writes canonical Parquet and a compact recording-info companion, preserving capture fields.
+The companion summarizes identity, clocks, ordering and conventions; measurements remain in Parquet.
 
 The current column layout and serialized descriptors are preserved. Review the descriptor and
 encoding contracts before designing additional output formats.

@@ -12,7 +12,6 @@ from skellycam.core.ipc.process_management.managed_worker import ManagedWorker, 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.core import DetectionStageConfig, TrackerConfig
-from skellytracker.core.data_primitives.observation import Observation
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition, CharucoDetectorConfig
 
 from freemocap.core.pipeline.inference_service import InferenceService
@@ -23,11 +22,15 @@ from freemocap.core.pipeline.posthoc.mocap_video_node import MocapVideoNode
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, MocapStage, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
-from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_task
 from freemocap.core.tracking.board_selection import CharucoBoardMode
 from freemocap.core.tracking.tracker_factory import CHARUCO_STAGE_NAME
+
+# The app's beartype import hook evaluates local variable annotations at runtime.
+# Keep these imports available even though static analysis sees only type usage.
+from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # noqa: TC001
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +58,28 @@ class MocapWorkerRequest:
 def complete_mocap(request: MocapWorkerRequest) -> None:
     """Publish optional exports after successful processing, preserving its outcome."""
     detail = 'Mocap processing complete'
+    failures = []
+    from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure
+    from freemocap.core.recording.parquet_storage.recording_view import recording_view
+    structure = recording_structure(str(request.recording.full_recording_path))
+    run_id = request.config.base_run_id
+    revision = None
+    if request.config.scientific_exports.formats or request.config.export_tall_csv:
+        with recording_view(structure.data_parquet_path) as view:
+            revision = view.revision
+    if request.config.scientific_exports.formats:
+        from freemocap.core.recording.exports.requests import ScientificExportRequest
+        from freemocap.core.recording.exports.wide_csv import export_scientific
+        try:
+            result = export_scientific(structure=structure,
+                request=ScientificExportRequest(**request.config.scientific_exports.model_dump(),
+                    run_id=run_id, expected_revision=revision), cancelled=lambda: not request.ipc.should_continue,
+                progress=lambda done, total, message: request.report(MocapStage.EXPORTING_CSV, message, done / max(1, total)))
+            detail += f'; wide CSV saved and validated in {result.manifest_path.parent}'
+        except CancelledError:
+            raise
+        except Exception as error:
+            failures.append(f'Wide CSV export failed: {error}. Retry the saved result in Exports.')
     if request.config.export_tall_csv:
         from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv
         from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure
@@ -62,12 +87,12 @@ def complete_mocap(request: MocapWorkerRequest) -> None:
             request.report(MocapStage.EXPORTING_CSV, 'Saving tall CSV to exports folder', 0.0)
             result = export_tall_csv(
                 structure=recording_structure(str(request.recording.full_recording_path)),
-                request=TallCsvRequest(), cancelled=lambda: not request.ipc.should_continue)
+                request=TallCsvRequest(run_id=run_id, expected_revision=revision), cancelled=lambda: not request.ipc.should_continue)
             detail += f'; tall CSV saved to {result.manifest_path.parent}'
         except CancelledError:
-            detail += '; tall CSV export cancelled'
+            raise
         except Exception as error:
-            detail += f'; tall CSV export failed: {error}. Retry in Exports.'
+            failures.append(f'tall CSV export failed: {error}. Retry in Exports.')
     if request.config.export_to_blender and request.ipc.should_continue:
         from freemocap.core.blender.export_to_blender import export_to_blender
         try:
@@ -80,12 +105,17 @@ def complete_mocap(request: MocapWorkerRequest) -> None:
                 package=request.config.blender_package,
                 development_build_hash=request.config.blender_development_build_hash,
                 sensor_group=request.config.sensor_group,
+                run_id=run_id,
                 blender_export_config=request.config.blender_export.model_dump(),
                 progress=lambda message: request.report(MocapStage.EXPORTING_BLENDER, message, 0.0),
             )
             detail += f'; Blender scene saved to {output}'
         except Exception as error:
-            detail += f'; Blender export failed: {error}. Retry in Blender settings.'
+            failures.append(f'Blender export failed: {error}. Retry in Blender settings.')
+    if failures:
+        raise RuntimeError(detail + '; requested exports incomplete: ' + '; '.join(failures))
+    if not request.ipc.should_continue:
+        raise CancelledError('Processing results saved; remaining exports cancelled')
     request.report(AggregatorPhase.COMPLETE, detail, 1.0)
 
 

@@ -45,10 +45,11 @@ python -B -m pytest freemocap/tests/reference_recordings/test_blender_output_acc
 Extend this fixture chain for new exports instead of adding an independent
 sample-data generator. See the [recording contract](../../../RECORDING_CONTRACT.md).
 
-Tall CSV now uses this same prepared root:
+Wide CSV and diagnostic tall CSV use this same prepared root:
 
 ```powershell
 python -B -m pytest freemocap/tests/reference_recordings/test_tall_csv_acceptance.py -q -p no:cacheprovider
+python -B -m pytest freemocap/tests/reference_recordings/test_wide_csv_acceptance.py -q -s -p no:cacheprovider
 ```
 
 It streams comparisons of every dynamic row and checks static measurements and
@@ -87,3 +88,8 @@ leaves a checksum mismatch that blocks automatic reuse; inspect it before recove
 
 Connected-fitting viewers are preserved on `development-skelly-fit`. Use the current
 recording playback UI to inspect ordinary reconstructed outputs.
+
+The scientific consumer now validates CSV, NPY and NPZ for landmarks, raw/filtered
+3D keypoints, per-camera 2D keypoints and combined segment poses. It compares each
+CSV scalar to Parquet, then both NumPy representations to that validated table.
+The standard producer profile remains Parquet plus Blender.

@@ -1,5 +1,10 @@
 # Executable processing graphs and their inspector
 
+Historical proposal: superseded for new development by
+[Typed executable dataflow](typed-dataflow.md), 2026-10-10, based on the newer
+SkellySpeak graph core. In particular, the legacy-wrapper migration below is
+rejected by the owner; do not implement it. The earlier lab remains parked.
+
 Status: proposed architecture, 2026-10-05. Source audit and migration design; the
 runtime and frontend described below are not implemented by this document.
 

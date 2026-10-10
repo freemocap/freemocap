@@ -43,7 +43,7 @@ def test_exact_rows_metadata_static_and_default_replacement(saved_request):
     assert read_csv(result.files[0]).equals(table.replace_schema_metadata(None))
     manifest = publication.verified_manifest(result.manifest_path)
     assert manifest.snapshots[result.source_sha256]['recording_descriptor'] == json.loads(table.schema.metadata[DESCRIPTOR_KEY])
-    assert manifest.artifacts[result.files[0].name].rows == table.num_rows
+    assert manifest.artifacts[result.files[0].relative_to(result.manifest_path.parent).as_posix()].rows == table.num_rows
     assert read_csv(result.files[1], tall_csv.STATIC_SCHEMA).schema.names == tall_csv.STATIC_SCHEMA.names
     export(saved_request)
     assert path.read_bytes() == original
@@ -60,7 +60,8 @@ def test_unknown_run_and_stale_revision_do_not_create_exports(saved_request):
 def test_retained_exports_never_overwritten_by_default_or_keep(saved_request):
     result = export(saved_request, keep=True)
     before = {p: p.read_bytes() for p in (*result.files, result.manifest_path)}
-    assert result.files[0].parent.name == 'run-3'
+    assert result.files[0].parent.name == 'csv'
+    assert result.files[0].parent.parent.name == 'run-3'
     assert result.files[0].name == 'recording.run-3.tall.csv'
     with pytest.raises(FileExistsError):
         export(saved_request, keep=True)

@@ -1,5 +1,6 @@
 from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker_config
 from freemocap.core.blender.blender_export_config import BlenderExportConfig
+from freemocap.core.recording.exports.requests import ScientificExportOptions
 from typing import Literal
 from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterConfig
@@ -125,7 +126,8 @@ class PosthocMocapPipelineConfig(BaseModel):
     )
 
 
-    export_tall_csv: bool = Field(default=True, alias="exportTallCsv")
+    export_tall_csv: bool = Field(default=False, alias="exportTallCsv")
+    scientific_exports: ScientificExportOptions = Field(default_factory=ScientificExportOptions, alias='scientificExports')
 
     blender_import_route: Literal['auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints'] = Field(default='auto', alias='blenderImportRoute')
     blender_package: str | None = Field(default=None, alias='blenderPackage')

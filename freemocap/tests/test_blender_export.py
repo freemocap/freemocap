@@ -124,11 +124,21 @@ def test_processing_completion_uses_exporter_without_losing_publication(enabled,
         recording=SimpleNamespace(full_recording_path=tmp_path), report=lambda *args: reports.append(args))
     with patch('freemocap.core.blender.export_to_blender.export_to_blender',
         side_effect=RuntimeError('package unavailable') if failure else None, return_value=str(tmp_path/'output.blend')) as export:
-        complete_mocap(request)
+        if failure:
+            with pytest.raises(RuntimeError, match='processing complete; requested exports incomplete'):
+                complete_mocap(request)
+        elif cancelled:
+            from concurrent.futures import CancelledError
+            with pytest.raises(CancelledError):
+                complete_mocap(request)
+        else:
+            complete_mocap(request)
     assert export.call_count == int(enabled and not cancelled)
-    assert str(reports[-1][0]) == 'complete'
+    if not failure and not cancelled:
+        assert str(reports[-1][0]) == 'complete'
+    else:
+        assert not any(str(report[0]) == 'complete' for report in reports)
     if enabled and not cancelled:
         assert export.call_args.kwargs['route'] == 'parquet_constraints'
         assert export.call_args.kwargs['blender_export_config']['rest_pose'] == 'apose'
         assert export.call_args.kwargs['blender_export_config']['formats'] == ['bvh']
-        assert ('Blender export failed' in reports[-1][1]) == failure

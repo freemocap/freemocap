@@ -14,7 +14,6 @@ Layout (target):
     ├── videos/
     │   ├── synchronized/                     # was synchronized_videos/
     │   └── annotated/                        # was annotated_videos/
-    ├── output/                               # per-stage processed artifacts
     ├── exports/                              # optional, created by exporter
     ├── logs/                                 # per-recording logs
     ├── {recording_name}_calibration.toml     # authoritative TOML for this recording
@@ -32,7 +31,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, computed_field
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skellycam.core.recorders.videos.recording_info import RecordingInfo  # noqa: TC002 - runtime beartype annotation
 
 RecordingTypeTag = Literal["calibration", "mocap"]
 
@@ -109,11 +108,6 @@ class RecordingStructure(BaseModel):
 
     @computed_field
     @property
-    def diagnostics_report_path(self) -> Path:
-        return self.output_dir / "diagnostics.yaml"
-
-    @computed_field
-    @property
     def logs_dir(self) -> Path:
         return self.full_path / "logs"
 
@@ -139,7 +133,7 @@ class RecordingStructure(BaseModel):
 
     def create_on_disk(self) -> None:
         """Create the expected subdirectory skeleton. Idempotent."""
-        for d in (self.videos_synchronized_dir, self.videos_annotated_dir, self.output_dir, self.logs_dir):
+        for d in (self.videos_synchronized_dir, self.videos_annotated_dir, self.logs_dir):
             d.mkdir(parents=True, exist_ok=True)
 
     def validate_layout(self) -> RecordingLayoutValidation:

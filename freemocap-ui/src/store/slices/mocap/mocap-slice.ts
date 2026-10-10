@@ -1,6 +1,7 @@
 import {CameraMatchingOptions, defaultCameraMatchingOptions} from '@/types/camera-matching';
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
+import type {ExportChannel, ScientificExportFormat, ScientificExportData} from '@/types/scientific-exports';
 import {loadFromStorage} from '@/store/persistence';
 import {matchesSavedManualOffset, saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
 import {
@@ -119,6 +120,10 @@ export interface MocapConfig {
     bodyAlignmentMode: 'auto' | 'calibration' | 'person';
     anchorSegmentName: string;
     exportTallCsv: boolean;
+    scientificExportFormats: ScientificExportFormat[];
+    scientificExportData: ScientificExportData[];
+    scientificExportChannels: ExportChannel[] | null;
+    scientificExportAfterProcessing: boolean;
     /** Row-major rigid offset applied after posthoc alignment, with translation in mm. */
     referenceTransform: number[] | null;
     referenceTransformEnabled: boolean;
@@ -267,7 +272,11 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     mediapipeNumFaces: 1,
     bodyAlignmentMode: 'auto',
     anchorSegmentName: "pelvis",
-    exportTallCsv: true,
+    exportTallCsv: false,
+    scientificExportFormats: [],
+    scientificExportData: ['LANDMARKS_3D'],
+    scientificExportChannels: null,
+    scientificExportAfterProcessing: false,
     referenceTransform: null,
     referenceTransformEnabled: false,
 };
@@ -318,6 +327,18 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
+        scientificExportDataUpdated: (state, action: PayloadAction<ScientificExportData[]>) => {
+            state.config.scientificExportData = action.payload;
+        },
+        scientificExportFormatsUpdated: (state, action: PayloadAction<ScientificExportFormat[]>) => {
+            state.config.scientificExportFormats = action.payload;
+        },
+        scientificExportChannelsUpdated: (state, action: PayloadAction<ExportChannel[] | null>) => {
+            state.config.scientificExportChannels = action.payload;
+        },
+        scientificExportAfterProcessingUpdated: (state, action: PayloadAction<boolean>) => {
+            state.config.scientificExportAfterProcessing = action.payload;
+        },
         exportTallCsvUpdated: (state, action: PayloadAction<boolean>) => {
             state.config.exportTallCsv = action.payload;
         },
@@ -543,6 +564,10 @@ export const {
     bodyAlignmentModeUpdated,
     anchorSegmentNameUpdated,
     exportTallCsvUpdated,
+    scientificExportFormatsUpdated,
+    scientificExportDataUpdated,
+    scientificExportChannelsUpdated,
+    scientificExportAfterProcessingUpdated,
     referenceTransformUpdated,
     referenceTransformEnabledUpdated,
     cameraMatchingUpdated,

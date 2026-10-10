@@ -16,10 +16,12 @@ async def _serve(*, server: Server, app: FastAPI) -> None:
         raise RuntimeError(f"Server exited with status {error.code}") from error
 
 
-async def serve_application(*, server: Server, app: FastAPI) -> None:
+async def serve_application(*, server: Server, app: FastAPI, reload_stop=None) -> None:
     server_task = asyncio.create_task(_serve(server=server, app=app), name="FreeMoCapServer")
     try:
         while not server_task.done():
+            if reload_stop is not None and reload_stop.is_set():
+                app.state.global_kill_flag.value = True
             relay = getattr(app.state, "log_relay", None)
             if relay is not None:
                 relay.check_health()

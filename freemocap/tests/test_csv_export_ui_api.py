@@ -46,12 +46,18 @@ def test_completion_exports_only_when_enabled_and_preserves_processing_success(s
     request = Mock(spec=MocapWorkerRequest, config=PosthocMocapPipelineConfig(exportTallCsv=enabled, exportToBlender=False),
         recording=SimpleNamespace(full_recording_path=saved_request.structure.full_path),
         ipc=SimpleNamespace(should_continue=True), report=lambda *args: reports.append(args))
-    complete_mocap(request)
+    before = saved_request.structure.data_parquet_path.read_bytes()
+    if fails:
+        with pytest.raises(RuntimeError, match='processing complete; requested exports incomplete'):
+            complete_mocap(request)
+        assert not any(report[0] == 'complete' for report in reports)
+    else:
+        complete_mocap(request)
+        assert reports[-1][0] == 'complete'
     assert len(calls) == int(enabled)
-    assert reports[-1][0] == 'complete'
-    assert ('tall CSV export failed: Disk full' in reports[-1][1]) == fails
+    assert saved_request.structure.data_parquet_path.read_bytes() == before
 
 
 def test_csv_default_and_alias():
-    assert PosthocMocapPipelineConfig().export_tall_csv
-    assert not PosthocMocapPipelineConfig(exportTallCsv=False).export_tall_csv
+    assert not PosthocMocapPipelineConfig().export_tall_csv
+    assert PosthocMocapPipelineConfig(exportTallCsv=True).export_tall_csv

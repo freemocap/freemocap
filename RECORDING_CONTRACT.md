@@ -17,7 +17,7 @@ not required lookup paths after a recording is moved.
 
 ```text
 <recording-id>/
-    <recording-id>_recording_info.json  # capture metadata, when available
+    <recording-id>_recording_info.json  # preserved capture + compact processed summary
     <recording-id>_calibration.toml    # calibration convenience/input artifact
     <recording-id>_data.parquet        # all retained scientific runs
     videos/
@@ -25,20 +25,19 @@ not required lookup paths after a recording is moved.
             timestamps/              # capture timing sidecars, when available
                 camera_timestamps/
         annotated/                   # derived videos, when requested
-    output/
-        diagnostics.yaml             # regenerated health report
     logs/                            # processing attempt logs, when generated
     exports/                         # created only when exporting
-        <recording-id>.tall.csv
-        <recording-id>.static.tall.csv
-        <recording-id>.landmarks.wide.csv
+        csv/<recording-id>.tall.csv
+        csv/<recording-id>.static.tall.csv
+        csv/<recording-id>.landmarks_3d--standard_human.csv
+        npy/                         # values and companion arrays, when requested
         <recording-id>.npz
-        <recording-id>.metadata.json
+        <recording-id>_recording_info.json
         run-0/                       # explicit retained export
-            <recording-id>.run-0.tall.csv
-            <recording-id>.run-0.static.tall.csv
+            csv/<recording-id>.run-0.tall.csv
+            csv/<recording-id>.run-0.static.tall.csv
             <recording-id>.run-0.npz
-            <recording-id>.run-0.metadata.json
+            <recording-id>.run-0_recording_info.json
 ```
 
 The tree is a location contract, not a requirement that every recording contain
@@ -73,7 +72,10 @@ operational state, not user results.
 Capture metadata, processing provenance and export metadata have different scopes.
 Processing never replaces capture settings with mocap options. User preferences
 are defaults for future requests, not evidence about an existing recording.
-Parquet is self-describing; a recording-info JSON mirror is not required to read it.
+Parquet is self-describing. Recording-info JSON preserves capture fields and adds
+a compact `processed` summary of runs, clocks, ordered names, units, coordinate
+references and export-inventory paths. It does not mirror the full descriptor.
+No diagnostics YAML or dedicated `output/` directory is created.
 
 
 ## Compatibility and writer migration
@@ -173,13 +175,14 @@ available solver/board/alignment metadata without depending on an old absolute p
 
 ## Export retention and publication
 
-Normal export writes selected formats directly under `exports/`, replacing their
-previous default files. Unselected files retain their original provenance.
+Normal export writes CSV files under `exports/csv/`, NPY arrays under
+`exports/npy/`, and NPZ/metadata directly under `exports/`, replacing selected
+formats' previous default files. Retained run folders have the same type folders. Unselected files retain their original provenance.
 Explicit retention writes `exports/run-<id>/` with run-qualified filenames and
 must not silently clobber existing retained outputs. Additions to a retained set
 must use the same bound revision; otherwise report a conflict.
 
-Export metadata contains format/axis descriptions, source descriptor snapshots,
+Export metadata contains compact format/axis/reference descriptions,
 per-artifact revision/hash and status. NPZ embeds its own descriptions. A new NPZ
 must not cause an old CSV to be described as current. Exporting does not allocate
 a processing run or modify Parquet. Retaining exports alone does not retain a
@@ -215,7 +218,7 @@ can supply an ignored `--basetemp` for local reports.
 | Consistent app keep/overwrite and run lineage | Pending |
 | Canonical capture/calibration writer migration and complete hybrid resolution | Pending staged work |
 | Tall CSV, metadata, retained exports and interrupted publication recovery | Backend/CLI implemented; verified on test/sample Parquet |
-| Wide CSV, NPZ and posthoc Exports controls | Pending export stages |
+| Wide CSV, NPY, NPZ and posthoc Exports controls | Implemented; landmarks-only default data selection |
 | Retained annotated videos and Blender adaptation | Follow-up |
 
 For every settings change validate: full processing; changed-filter restart with
@@ -243,7 +246,7 @@ recording (1,108 frames, 30 Hz) is the full acceptance case. Their differing fil
 defaults are intentional. Test both optional-fit paths, preserving upstream
 measurements and provenance during numerical replay and cancellation.
 
-As CSV/NPZ writers land, extend these consumers to compare exported values,
+As csv/NPZ writers land, extend these consumers to compare exported values,
 missing-data masks, frame/entity ordering, units and axis descriptions against the
 same verified Parquet. Exercise default replacement, retained-run exports and
 partial failure with these outputs. Blender becomes another consumer of this
@@ -286,7 +289,7 @@ identity; consumer checks establish content validity:
   the same Parquet. Cover missing samples and saved-segment motion across the
   recording. Constraint/cleanup routes need their own declared transformation
   expectations and tolerances; they cannot inherit exact saved-segment equivalence.
-- Wide CSV and NumPy (NPY/NPZ): reload written files and compare values, names, ordering,
+- Wide CSV and NumPy (npy/NPZ): reload written files and compare values, names, ordering,
   frames/timestamps, units, components and missingness with the source snapshot.
   Verify static outputs, NPY companion arrays/manifest, NPZ's standalone metadata,
   and pickle-free loading. Resolve each format's channel selection against the
@@ -312,9 +315,13 @@ failed Blender output on an isolated copy without rerunning numerical processing
 The common readiness check verifies artifact hashes and source/run bindings;
 reconstruction refresh invalidates the complete-output report.
 
-General application export-job status and CSV/NPY/NPZ acceptance remain subsequent
-stages. Extend this gate with each writer as it lands; do not defer that writer's
-validation to a later milestone.
+Wide CSV now reloads and validates staged tables before publication, with a separate
+reference consumer checking both standard preparations against source rows.
+The UI/API expose selected contexts, cancellable saved-result jobs and retry.
+Automatic requested-export failures preserve numerical results but fail overall
+task completion. npy/NPZ remain subsequent stages. The dataset producer's standard
+marker currently certifies Parquet + Blender; wide CSV acceptance runs against
+copies through the reference consumer suite. Extend that suite with each writer.
 
 ## Trajectory products
 

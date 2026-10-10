@@ -7,8 +7,7 @@ from pathlib import Path
 import numpy as np
 import pyarrow.parquet as pq
 import pytest
-import yaml
-import freemocap.core.recording.parquet_storage.parquet_writer as recording_writer
+import json
 
 from freemocap.core.diagnostics.health_report import (
     AssessmentCriterion,
@@ -78,12 +77,9 @@ def test_canonical_channels_and_yaml_roundtrip(
     assert set(table["source"].to_pylist()) == {"camera:camera"}
     assert set(table["run_id"].to_pylist()) == {0}
     assert set(table["units"].to_pylist()) == {"px"}
-    report = RecordingHealthReport.model_validate(
-        yaml.safe_load((structure.output_dir / "diagnostics.yaml").read_text())
-    )
-    assert report == build_recording_health_report(
-        path=structure.data_parquet_path, criteria=()
-    )
+    assert not structure.output_dir.exists()
+    report = build_recording_health_report(path=structure.data_parquet_path, criteria=())
+    assert RecordingHealthReport.model_validate_json(report.model_dump_json()) == report
     assert (
         report.parquet_sha256
         == hashlib.sha256(structure.data_parquet_path.read_bytes()).hexdigest()
@@ -191,7 +187,7 @@ def test_wrong_residual_reference_fails_before_replacing_output(
     publish_posthoc_observations(publication)
     structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
     original_data = structure.data_parquet_path.read_bytes()
-    original_report = (structure.output_dir / "diagnostics.yaml").read_bytes()
+    original_report = structure.recording_info_path.read_bytes()
     reconstruction = publication.reconstructions[0]
     frame = reconstruction.result.frames[0]
     assert frame is not None
@@ -211,7 +207,7 @@ def test_wrong_residual_reference_fails_before_replacing_output(
     with pytest.raises(ValueError, match="reference must match"):
         publish_posthoc_observations(replace(publication, reconstructions=(altered,)))
     assert structure.data_parquet_path.read_bytes() == original_data
-    assert (structure.output_dir / "diagnostics.yaml").read_bytes() == original_report
+    assert structure.recording_info_path.read_bytes() == original_report
 
 
 def test_empty_measurements_never_pass_and_invalid_numbers_raise() -> None:
@@ -237,29 +233,12 @@ def test_empty_measurements_never_pass_and_invalid_numbers_raise() -> None:
     )
 
 
-def test_report_write_failure_is_loud_and_removes_stale_report(
-    publication: ObservationRecordingRequest,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    publish_posthoc_observations(publication)
+def test_publication_writes_compact_info_without_yaml(publication, tmp_path):
+    publish_posthoc_observations(with_reprojection(request=publication))
     structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
-    assert structure.diagnostics_report_path.exists()
-
-    def fail_report(
-        *, structure: RecordingStructure, criteria: tuple[AssessmentCriterion, ...]
-    ) -> None:
-        raise OSError("Report destination unavailable")
-
-    monkeypatch.setattr(recording_writer, "write_recording_health_report", fail_report)
-    with pytest.raises(OSError, match="destination unavailable"):
-        publish_posthoc_observations(with_reprojection(request=publication))
-    assert not structure.diagnostics_report_path.exists()
-    assert (
-        pq.read_table(
-            structure.data_parquet_path,
-            filters=[("channel", "=", "REPROJECTION_ERROR")],
-        ).num_rows
-        == 4
-    )
-    assert not list(structure.full_path.glob("*.tmp"))
+    assert not structure.output_dir.exists()
+    assert not list(structure.full_path.rglob('*.yaml'))
+    info = json.loads(structure.recording_info_path.read_text())
+    assert info['processed']['selected_run_id'] == 0
+    assert pq.read_table(structure.data_parquet_path,
+        filters=[("channel", "=", "REPROJECTION_ERROR")]).num_rows == 4

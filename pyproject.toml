@@ -19,7 +19,7 @@ dependencies = [
     "scikit-learn>=1.7.2",
     "tomli-w>=1.2.0",
     "scipy-stubs~=1.17.1",
-    "beartype>=0.19",
+    "beartype>=0.22.9,<0.23",  # 0.23.0 mutates class dictionaries during decoration
     "msgspec>=0.19",
     "cbor2>=5.6.0",
     #sub-skellies

@@ -11,7 +11,7 @@ import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processi
 import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
 import MocapDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MocapBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
-import MocapCsvSettings from './mocap-csv-settings';
+import MocapScientificSettings from './mocap-scientific-settings';
 import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-settings";
 import {useMocap} from "@/hooks/useMocap";
 import {useAppSelector} from "@/store/hooks";
@@ -131,8 +131,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
         },
         {
             name: SetupSection.Exports,
-            summary: <SettingsSummaryChip>{(config.exportTallCsv ?? true) ? 'Tall CSV on' : 'Tall CSV off'}</SettingsSummaryChip>,
-            content: <MocapCsvSettings key={mocapRecordingPath} path={mocapRecordingPath} processing={isLoading || isRecording}/>,
+            summary: <SettingsSummaryChip>{config.scientificExportAfterProcessing && config.scientificExportFormats?.includes('wide_csv') ? 'Wide CSV after processing' : 'Scientific exports on request'}{config.exportTallCsv ? ' · Tall CSV on' : ''}</SettingsSummaryChip>,
+            content: <MocapScientificSettings key={mocapRecordingPath} path={mocapRecordingPath} processing={isLoading || isRecording}/>,
         },
         {
             name: SetupSection.Blender,

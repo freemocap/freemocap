@@ -14,6 +14,17 @@ from freemocap.core.tasks.calibration.camera_matching.observation_sampling impor
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 
 
+def require_processing_assignment(*, result: CameraMatchingResult, config: CameraMatchingConfig) -> tuple[int, ...]:
+    """Apply posthoc continuation policy without mislabeling fitness as verified."""
+    if result.assignment is None:
+        raise ValueError(f"No camera assignment available for triangulation: {result.status}")
+    if config.failure_policy is MatchingFailurePolicy.STOP and result.status not in (
+        CameraMatchingStatus.INITIAL_ACCEPTED, CameraMatchingStatus.MATCHED, CameraMatchingStatus.DISABLED,
+    ):
+        raise ValueError(f"Camera matching stopped by configured failure policy: {result.status}")
+    return result.assignment
+
+
 @dataclass(frozen=True, slots=True)
 class PosthocMatchingRequest:
     frames: list[dict[str, Observation]]
@@ -49,10 +60,5 @@ class PosthocMatchingRequest:
         ))
 
     def resolve(self, *, result: CameraMatchingResult) -> dict[str, CameraModel]:
-        if result.assignment is None:
-            raise ValueError(f"No camera assignment available for triangulation: {result.status}")
-        if self.config.failure_policy is MatchingFailurePolicy.STOP and result.status not in (
-            CameraMatchingStatus.INITIAL_ACCEPTED, CameraMatchingStatus.MATCHED, CameraMatchingStatus.DISABLED,
-        ):
-            raise ValueError(f"Camera matching stopped by configured failure policy: {result.status}")
-        return {source: self.cameras[index] for source, index in zip(self.videos, result.assignment, strict=True)}
+        assignment = require_processing_assignment(result=result, config=self.config)
+        return {source: self.cameras[index] for source, index in zip(self.videos, assignment, strict=True)}

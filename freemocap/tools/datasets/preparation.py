@@ -106,7 +106,7 @@ def wait_for_success(manager, pipeline, *, timeout: float) -> dict:
 def validate_parquet(recording: Path, *, expected_frames: int) -> dict:
     import pyarrow.compute as pc
     import pyarrow.parquet as pq
-    from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
+    from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata, recording_batches
     from freemocap.core.recording.sample_encoding.arrow_schema import SampleValidator
     from freemocap.core.skeletons.standard_human_skeleton import STANDARD_HUMAN_MODEL_ID
     from freemocap.system.recording_structure.recording_structure import RecordingStructure
@@ -126,7 +126,7 @@ def validate_parquet(recording: Path, *, expected_frames: int) -> dict:
     finite_by_channel: dict[str, int] = {}
     rows = 0
     with pq.ParquetFile(structure.data_parquet_path) as parquet:
-        for batch in parquet.iter_batches(batch_size=65536):
+        for batch in recording_batches(parquet):
             batch = batch.replace_schema_metadata(None)
             validator.accept(batch=batch)
             rows += batch.num_rows
@@ -145,6 +145,9 @@ def validate_parquet(recording: Path, *, expected_frames: int) -> dict:
 
 def run_worker(request_path: Path) -> None:
     """Called only in a dedicated process with FREEMOCAP_BASE_FOLDER isolated."""
+    from .execution import require_implementation
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    implementation = require_implementation(request.get('implementation', 'current'))
     import multiprocessing
     from skellycam.core.ipc.process_management.managed_worker import WorkerMode
     from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -160,7 +163,6 @@ def run_worker(request_path: Path) -> None:
     from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterConfig
     from freemocap.core.tracking.board_selection import CharucoBoardMode
 
-    request = json.loads(request_path.read_text(encoding="utf-8"))
     recording = Path(request["recording"])
     base = Path(os.environ["FREEMOCAP_BASE_FOLDER"])
     if base.resolve() != request_path.parent.resolve() / "app-data":
@@ -234,7 +236,8 @@ def run_worker(request_path: Path) -> None:
             logger.info('validation: Recording checks passed (complete)')
         # Processing may have updated the recording-local calibration: hash the saved file.
         calibration = CalibrationResult.load_toml(calibration_path)
-        result = {"calibration_task": calibration_status, "mocap_task": mocap_status,
+        result = {"implementation": implementation,
+                  "calibration_task": calibration_status, "mocap_task": mocap_status,
                   "calibration_config": calibration_config.model_dump(mode="json"),
                   "mocap_config": config.model_dump(mode="json"), "validation": validation,
                   "calibration_input": calibration_input,

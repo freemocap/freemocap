@@ -10,7 +10,9 @@ from freemocap.core.recording.data_descriptors.sample_conventions import (
     TimingSampleName,
 )
 
+import numpy as np
 import pyarrow as pa
+from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
@@ -105,68 +107,47 @@ def observation_batches(
         }
     ):
         raise ValueError("Expected an image-frame OVERLAY_2D observation channel")
-    rows: list[dict[str, str | int | float | None]] = []
     last_frame = -1
     last_timestamp = -math.inf
-    declared = set(channel.names)
+    declared = {name: index for index, name in enumerate(channel.names)}
+    component_axes = [("x", "y", "visibility").index(name) for name in channel.components]
+    frames_per_batch = max(1, batch_size // (len(channel.names) * 3))
+    values = np.empty((frames_per_batch, len(channel.names), 3), dtype=np.float64)
+    frames: list[int] = []
+    timestamps: list[float] = []
     for sample in samples:
         observation = sample.observation
         timestamp = sample.capture_timestamp_s
         if not math.isfinite(timestamp) or timestamp <= last_timestamp:
-            raise ValueError(
-                "Capture timestamps must be finite and strictly increasing"
-            )
+            raise ValueError("Capture timestamps must be finite and strictly increasing")
         if observation.frame_number <= last_frame:
-            raise ValueError(
-                "Observation frame numbers must be nonnegative and strictly increasing"
-            )
+            raise ValueError("Observation frame numbers must be nonnegative and strictly increasing")
         last_frame, last_timestamp = observation.frame_number, timestamp
         points = observation.to_keypoints()
-        if len(set(points.names)) != len(points.names) or set(points.names) - declared:
+        if len(set(points.names)) != len(points.names) or set(points.names) - declared.keys():
             raise ValueError("Observation contains duplicate or undeclared point names")
-        indices = {name: index for index, name in enumerate(points.names)}
-        for name in channel.names:
-            values: dict[str, float | None] = {
-                SampleComponent.X: None,
-                SampleComponent.Y: None,
-                SampleComponent.VISIBILITY: 0.0,
-            }
-            if name in indices:
-                index = indices[name]
-                visibility = float(points.visibility[index])
-                if not math.isfinite(visibility) or not 0 <= visibility <= 1:
-                    raise ValueError(f"Invalid visibility for {name}")
-                values[SampleComponent.VISIBILITY] = visibility
-                for component, coordinate in zip(
-                    (SampleComponent.X, SampleComponent.Y),
-                    points.xy[index],
-                    strict=True,
-                ):
-                    value = float(coordinate)
-                    if math.isinf(value):
-                        raise ValueError(f"Infinite image coordinate for {name}")
-                    values[component] = None if math.isnan(value) else value
-            for component, units in channel.components.items():
-                rows.append(
-                    dict(
-                        timestamp_s=timestamp,
-                        sensor_group=channel.sensor_group,
-                        frame_number=observation.frame_number,
-                        source=channel.source,
-                        reference_frame=channel.reference_frame,
-                        channel=channel.kind,
-                        name=name,
-                        component=component,
-                        value=values[component],
-                        units=units,
-                        run_id=run_id,
-                    )
-                )
-                if len(rows) == batch_size:
-                    yield pa.RecordBatch.from_pylist(rows, schema=SAMPLE_SCHEMA)
-                    rows.clear()
-    if rows:
-        yield pa.RecordBatch.from_pylist(rows, schema=SAMPLE_SCHEMA)
+        if not np.isfinite(points.visibility).all() or np.any((points.visibility < 0) | (points.visibility > 1)):
+            raise ValueError("Invalid observation visibility")
+        coordinates = points.xy
+        if np.isinf(coordinates).any():
+            raise ValueError("Infinite image coordinate")
+        frame_values = values[len(frames)]
+        frame_values[:, :2] = np.nan
+        frame_values[:, 2] = 0.0
+        indices = [declared[name] for name in points.names]
+        frame_values[indices, :2] = coordinates
+        frame_values[indices, 2] = points.visibility
+        frames.append(observation.frame_number)
+        timestamps.append(timestamp)
+        if len(frames) == frames_per_batch:
+            yield from ChannelSeries(channel=channel, values=values[:, :, component_axes]).batches(SeriesSampling(
+                frame_numbers=tuple(frames), timestamps_s=tuple(timestamps), run_id=run_id, batch_size=batch_size))
+            frames.clear()
+            timestamps.clear()
+    if frames:
+        yield from ChannelSeries(channel=channel, values=values[:len(frames), :, component_axes]).batches(SeriesSampling(
+            frame_numbers=tuple(frames), timestamps_s=tuple(timestamps), run_id=run_id, batch_size=batch_size))
+
 
 
 def box_batches(

@@ -88,6 +88,7 @@ def build_configured_tracker(*, config: TrackerConfig, batch_size: int) -> Track
 
 def tracker_session_requests(
     *, config: TrackerConfig, batch_size: int, execution_provider: ExecutionProviderName | None,
+    mediapipe_disable_gpu: bool | None = None,
 ) -> tuple[SessionRequest, ...]:
     """Describe compatible model resources without allocating sessions."""
     if batch_size < 1:
@@ -120,7 +121,9 @@ def tracker_session_requests(
         if backend == "cpu":
             requests.append(SessionRequest(session_type=CpuSession, config=CpuSessionConfig()))
         elif backend == "mediapipe":
-            requests.append(SessionRequest(session_type=MediaPipeSession, config=MediaPipeSessionConfig()))
+            requests.append(SessionRequest(session_type=MediaPipeSession, config=MediaPipeSessionConfig(
+                disable_gpu=mediapipe_disable_gpu,
+            )))
         else:
             requests.append(SessionRequest(session_type=OnnxSession, config=OnnxSessionConfig(
                 batch_size=batch_size, models=sorted(models.values(), key=lambda model: model.name),

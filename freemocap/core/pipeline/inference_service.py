@@ -42,6 +42,7 @@ class InferenceRequest:
     frame_number: int
     images: dict[str, NDArray[np.uint8]]
     performance: PerformanceReport | None = None
+    timestamp_ms: int | None = None
 
 
 @dataclass(slots=True)
@@ -200,6 +201,7 @@ class InferenceService:
                     with performance.measure(f"inference.process_batch.images={len(pending.request.images)}") if performance is not None else nullcontext():
                         observations, client._states = client._lease.tracker.process_batch(
                             images=pending.request.images, frame_number=pending.request.frame_number, states=client._states,
+                            **({"timestamp_ms": pending.request.timestamp_ms} if pending.request.timestamp_ms is not None else {}),
                         )
                     if observations.keys() != pending.request.images.keys():
                         raise ValueError("Inference results do not match the requested sources")

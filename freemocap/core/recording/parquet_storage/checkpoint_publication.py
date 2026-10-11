@@ -3,6 +3,7 @@
 from collections.abc import Iterable, Iterator
 
 import pyarrow as pa
+import pyarrow.compute as pc
 from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance
 
 from freemocap.core.pipeline.posthoc.stage_execution_plan import (
@@ -19,6 +20,21 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
 from freemocap.core.recording.parquet_storage.parquet_reader import read_batches, read_metadata
 from freemocap.core.recording.parquet_storage.parquet_writer import publish_recording
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
+
+
+def channel_selection_mask(*, batch: pa.RecordBatch,
+    channel_keys: set[tuple[str, str, str | None, str]],
+) -> pa.Array:
+    """Match complete channel identities without expanding scalar rows in Python."""
+    selected = pa.repeat(pa.scalar(False), batch.num_rows)
+    for group, source, reference, kind in channel_keys:
+        matches = pc.and_(pc.equal(batch.column("sensor_group"), group),
+                          pc.equal(batch.column("source"), source))
+        matches = pc.and_(matches, pc.equal(batch.column("channel"), kind))
+        reference_matches = pc.is_null(batch.column("reference_frame")) if reference is None else (
+            pc.equal(batch.column("reference_frame"), reference))
+        selected = pc.or_(selected, pc.fill_null(pc.and_(matches, reference_matches), False))
+    return selected
 
 
 def checkpoint_batches(
@@ -46,43 +62,19 @@ def checkpoint_batches(
         run_id=plan.base_run_id,
         sensor_groups=tuple(metadata.runs[plan.base_run_id].sensor_groups),
     ):
-        columns = batch.select(["sensor_group", "source", "reference_frame", "channel"]).to_pydict()
-        mask = pa.array(
-            [
-                (group, source, reference, kind) in reused_keys
-                for group, source, reference, kind in zip(
-                    columns["sensor_group"],
-                    columns["source"],
-                    columns["reference_frame"],
-                    columns["channel"],
-                    strict=True,
-                )
-            ]
-        )
+        mask = channel_selection_mask(batch=batch, channel_keys=reused_keys)
         reused = batch.filter(mask)
         if reused.num_rows:
             yield reused.set_column(
                 SAMPLE_SCHEMA.get_field_index("run_id"),
                 SAMPLE_SCHEMA.field("run_id"),
-                pa.array([plan.target_run_id] * reused.num_rows, type=pa.int64()),
+                pa.repeat(pa.scalar(plan.target_run_id, type=pa.int64()), reused.num_rows),
             )
     for batch in computed_batches:
-        columns = batch.select(["run_id", "sensor_group", "source", "reference_frame", "channel"]).to_pydict()
-        for run_id, group, source, reference, kind in zip(
-            columns["run_id"],
-            columns["sensor_group"],
-            columns["source"],
-            columns["reference_frame"],
-            columns["channel"],
-            strict=True,
-        ):
-            if (
-                run_id != plan.target_run_id
-                or (group, source, reference, kind) not in computed_keys
-            ):
-                raise ValueError(
-                    "Computed batch writes outside the planned target channels"
-                )
+        allowed = pc.and_(pc.equal(batch.column("run_id"), plan.target_run_id),
+                          channel_selection_mask(batch=batch, channel_keys=computed_keys))
+        if batch.num_rows and not pc.all(pc.fill_null(allowed, False)).as_py():
+            raise ValueError("Computed batch writes outside the planned target channels")
         yield batch
 
 

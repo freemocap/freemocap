@@ -20,6 +20,21 @@ from freemocap.core.pipeline.inference_service import (
 
 
 class InferenceServiceTests(unittest.TestCase):
+    def test_explicit_recording_timestamp_reaches_tracker(self) -> None:
+        client = self.client(name="recording-time")
+        client.submit(self.request()).result(timeout=2)
+        captured = []
+
+        def timed_infer(*, timestamp_ms, **kwargs):
+            captured.append(timestamp_ms)
+            return self.infer(**kwargs)
+
+        self.leases[0].tracker.process_batch.side_effect = timed_infer
+        request = self.request(frame=1)
+        client.submit(InferenceRequest(frame_number=request.frame_number, images=request.images,
+                                       timestamp_ms=167)).result(timeout=2)
+        self.assertEqual(captured, [167])
+
     def test_diagnostics_preserve_three_camera_batches_and_separate_setup(self) -> None:
         from freemocap.core.pipeline.performance_report import PerformanceReport
         report = PerformanceReport()

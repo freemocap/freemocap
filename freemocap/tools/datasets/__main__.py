@@ -16,7 +16,7 @@ def parser() -> argparse.ArgumentParser:
     common.add_argument('--recordings-root', type=Path, default=Path.home() / 'freemocap_data/recordings')
     common.add_argument('--prepared-root', type=Path, default=Path.home() / 'freemocap_data/testing/prepared')
     actions = command.add_subparsers(dest='action', required=True)
-    for action in ('status', 'acquire', 'calibrate', 'process', 'process-all', 'validate', 'recover', 'export'):
+    for action in ('status', 'report', 'acquire', 'calibrate', 'process', 'process-all', 'validate', 'recover', 'export'):
         sub = actions.add_parser(action, parents=[common])
         if action != 'process-all':
             sub.add_argument('dataset', choices=tuple(workflow.DATASETS))
@@ -28,6 +28,8 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument('--timeout', type=float, default=1800.0, help='Seconds per pipeline')
             sub.add_argument('--dry-run', action='store_true', help='Show work and paths without changing files')
         if action in ('process', 'process-all'):
+            sub.add_argument('--implementation', choices=('current', 'graph'), default='current',
+                             help='Posthoc backend; graph is reserved and rejected until implemented')
             sub.add_argument('--output-profile', choices=('standard', 'numerical'), default='standard',
                              help='Standard requires validated Blender output; numerical is explicitly partial')
             sub.add_argument('--blender-path', help='Blender executable for standard-output acceptance')
@@ -46,6 +48,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         for name in names:
             roots = dict(recordings_root=args.recordings_root, prepared_root=args.prepared_root)
+            if args.action == 'report':
+                from .reporting import report_saved
+                print(report_saved(args.prepared_root / workflow.DATASETS[name].name / 'ready.json'), flush=True)
+                continue
             if args.action == 'status':
                 result = workflow.status(name, **roots)
             elif args.action == 'acquire':
@@ -63,7 +69,8 @@ def main(argv: list[str] | None = None) -> int:
                 if args.action != 'calibrate':
                     options.update(start=args.start, calibration=args.calibration, alignment=args.alignment,
                                    run_id=args.run_id, sensor_group=args.sensor_group,
-                                   output_profile=args.output_profile, blender_path=args.blender_path)
+                                   output_profile=args.output_profile, blender_path=args.blender_path,
+                                   implementation=args.implementation)
                 result = workflow.preflight(name, **options) if args.dry_run else str(workflow.process(name, **options))
             print(json.dumps(result, indent=2), flush=True)
     except (ValueError, OSError, RuntimeError, KeyError) as error:

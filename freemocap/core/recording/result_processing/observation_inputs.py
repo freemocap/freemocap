@@ -118,6 +118,7 @@ class ObservationRecordingRequest:
     # Absent when the tracker runs no object detector (MediaPipe), in which case no
     # BOXES_2D channel is declared and no boxes are recorded.
     detector: DetectorRecordingDefinition | None = None
+    camera_assignment: dict[str, object] | None = None
     calibration_update: CalibrationUpdateRequest | None = None
     base_run_id: int = 0
     reuse_observations: bool = False

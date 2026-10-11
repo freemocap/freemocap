@@ -43,32 +43,35 @@ class ChannelSeries:
             raise ValueError("Channel series and timing must cover the same frame grid")
         if sampling.batch_size < 1 or sampling.run_id < 0:
             raise ValueError("Positive batch size and nonnegative run ID required")
-        rows: list[dict[str, object]] = []
-        for index, (frame, timestamp) in enumerate(
-            zip(sampling.frame_numbers, sampling.timestamps_s, strict=True)
-        ):
-            for point, name in enumerate(self.channel.names):
-                for axis, (component, units) in enumerate(
-                    self.channel.components.items()
-                ):
-                    value = float(self.values[index, point, axis])
-                    rows.append(
-                        dict(
-                            timestamp_s=timestamp,
-                            sensor_group=self.channel.sensor_group,
-                            frame_number=frame,
-                            source=self.channel.source,
-                            reference_frame=self.channel.reference_frame,
-                            channel=self.channel.kind,
-                            name=name,
-                            component=component,
-                            value=None if np.isnan(value) else value,
-                            units=units,
-                            run_id=sampling.run_id,
-                        )
-                    )
-                    if len(rows) == sampling.batch_size:
-                        yield pa.RecordBatch.from_pylist(rows, schema=SAMPLE_SCHEMA)
-                        rows.clear()
-        if rows:
-            yield pa.RecordBatch.from_pylist(rows, schema=SAMPLE_SCHEMA)
+        # Construct bounded columns directly. A Python dictionary per scalar is
+        # expensive and competes with reconstruction threads for the interpreter.
+        components = tuple(self.channel.components)
+        component_count = len(components)
+        values_per_frame = len(self.channel.names) * component_count
+        frame_numbers = np.asarray(sampling.frame_numbers, dtype=np.int64)
+        timestamps = np.asarray(sampling.timestamps_s, dtype=np.float64)
+        names = pa.array(self.channel.names, type=pa.string())
+        component_names = pa.array(components, type=pa.string())
+        units = pa.array(tuple(self.channel.components.values()), type=pa.string())
+        # Whole frames permit columnar validation, without exceeding the row bound.
+        batch_rows = (sampling.batch_size // values_per_frame) * values_per_frame or sampling.batch_size
+        for start in range(0, self.values.size, batch_rows):
+            indices = np.arange(start, min(start + batch_rows, self.values.size))
+            frames = indices // values_per_frame
+            points = (indices // component_count) % len(self.channel.names)
+            axes = indices % component_count
+            values = self.values[frames, points, axes]
+            count = len(indices)
+            columns = [
+                pa.array(timestamps[frames], type=pa.float64()),
+                pa.repeat(pa.scalar(self.channel.sensor_group, type=pa.string()), count),
+                pa.array(frame_numbers[frames], type=pa.int64()),
+                pa.repeat(pa.scalar(self.channel.source, type=pa.string()), count),
+                pa.repeat(pa.scalar(self.channel.reference_frame, type=pa.string()), count),
+                pa.repeat(pa.scalar(self.channel.kind, type=pa.string()), count),
+                names.take(points), component_names.take(axes),
+                pa.array(values, mask=np.isnan(values), type=pa.float64()),
+                units.take(axes),
+                pa.repeat(pa.scalar(sampling.run_id, type=pa.int64()), count),
+            ]
+            yield pa.RecordBatch.from_arrays(columns, schema=SAMPLE_SCHEMA)

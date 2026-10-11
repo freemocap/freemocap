@@ -1,0 +1,196 @@
+% Repository bibliography. See CITATIONS.md for format and review semantics.
+% Stable keys; UTF-8, braced fields; provenance fields retained on export.
+
+@inproceedings{dennisMisunas1974,
+  author = {Dennis, Jack B. and Misunas, David P.},
+  title = {A preliminary architecture for a basic data-flow processor},
+  url = {https://doi.org/10.1145/642089.642111},
+  urldate = {2026-10-10},
+  review = {metadata},
+  claim = {Historical reference for operand-driven dataflow computer architecture.},
+  year = {1974},
+  doi = {10.1145/642089.642111},
+  booktitle = {Proceedings of the 2nd Annual Symposium on Computer Architecture},
+  note = {Title and bibliographic listing inspected; full paper not reviewed.}
+}
+
+@inproceedings{kahn1974,
+  author = {Kahn, Gilles},
+  title = {The semantics of a simple language for parallel programming},
+  url = {https://www.cs.columbia.edu/~sedwards/papers/kahn1974semantics.pdf},
+  urldate = {2026-10-10},
+  review = {metadata},
+  claim = {Foundational reference for the semantics of communicating process networks.},
+  year = {1974},
+  booktitle = {Information Processing 74},
+  note = {PDF located; no extractable full text reviewed in this audit. Detailed theorem claims require primary-text review.}
+}
+
+@article{leeMesserschmitt1987,
+  author = {Lee, Edward A. and Messerschmitt, David G.},
+  title = {Synchronous Data Flow},
+  url = {https://ptolemy.berkeley.edu/publications/papers/87/synchdataflow/},
+  urldate = {2026-10-10},
+  review = {abstract},
+  claim = {Known consumption and production rates enable static scheduling of signal-processing dataflow graphs.},
+  year = {1987},
+  journal = {Proceedings of the IEEE},
+  volume = {75},
+  number = {9},
+  pages = {1235--1245},
+  note = {Authors' publication page and abstract inspected; full article not read.}
+}
+
+@incollection{leeNeuendorfferZhou2014,
+  author = {Lee, Edward A. and Neuendorffer, Stephen and Zhou, Gang},
+  title = {Dataflow},
+  url = {https://ptolemy.eecs.berkeley.edu/books/Systems/chapters/Dataflow.pdf},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {Models of computation define execution semantics; synchronous dataflow uses declared token rates, and related models include dynamic dataflow and Petri nets.},
+  year = {2014},
+  booktitle = {System Design, Modeling, and Simulation using Ptolemy II},
+  editor = {Ptolemaeus, Claudius},
+  publisher = {Ptolemy.org},
+  note = {Selected chapter sections on models, rates, scheduling and related formalisms inspected; not a complete book review.}
+}
+
+@misc{niLabviewDataflow,
+  author = {{National Instruments}},
+  title = {Block Diagram Data Flow},
+  url = {https://www.ni.com/docs/en-GB/bundle/labview/page/block-diagram-data-flow.html},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {LabVIEW nodes execute when required inputs are available; diagram position does not establish execution order.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{gstreamerPads,
+  author = {{GStreamer Project}},
+  title = {Pads and capabilities},
+  url = {https://gstreamer.freedesktop.org/documentation/application-development/basics/pads.html},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {Source and sink pads connect streams with explicit media capabilities.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{gstreamerScheduling,
+  author = {{GStreamer Project}},
+  title = {Scheduling},
+  url = {https://gstreamer.freedesktop.org/documentation/additional/design/scheduling.html},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {GStreamer distinguishes push and pull scheduling of media data.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{microsoftDirectshowDataflow,
+  author = {{Microsoft}},
+  title = {Data Flow in the Filter Graph},
+  url = {https://learn.microsoft.com/en-us/windows/win32/directshow/data-flow-in-the-filter-graph},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {DirectShow documents filter graph data flow, transports, samples, allocators and filter states; it is a legacy API.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{onnxIR,
+  author = {{ONNX Project}},
+  title = {Open Neural Network Exchange Intermediate Representation specification},
+  url = {https://github.com/onnx/onnx/blob/main/docs/IR.md},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {ONNX defines typed computational graph inputs and outputs, operator nodes and acyclic graph structure.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{opencvGAPI,
+  author = {{OpenCV Project}},
+  title = {Graph API},
+  url = {https://docs.opencv.org/4.13.0/d0/d1e/gapi.html},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {G-API separates declarative image-processing graphs from backend implementations.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{daskSpecification,
+  author = {{Dask Developers}},
+  title = {Specification},
+  url = {https://docs.dask.org/en/stable/spec.html},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {Dask represents tasks and data dependencies as a directed acyclic graph in Python.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{daskVisualization,
+  author = {{Dask Developers}},
+  title = {Visualize task graphs},
+  url = {https://docs.dask.org/en/stable/graphviz.html},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {Dask can visualize the task graph used for computation.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{beamModel,
+  author = {{Apache Software Foundation}},
+  title = {Basics of the Beam model},
+  url = {https://beam.apache.org/documentation/basics/},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {Beam distinguishes bounded and unbounded collections within a common pipeline model.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{obsSources,
+  author = {{OBS Project}},
+  title = {Source API Reference},
+  url = {https://docs.obsproject.com/reference-sources},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {OBS exposes sources, filters and scene-related source types.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{betterBibtexExport,
+  author = {{Better BibTeX Contributors}},
+  title = {Exporting items},
+  url = {https://retorque.re/zotero-better-bibtex/exporting/},
+  urldate = {2026-10-10},
+  review = {excerpt},
+  claim = {Better BibTeX supports bibliography export, citation keys and custom fields.},
+  note = {Selected documentation text inspected; scope is the stated claim, not a full product or implementation audit.}
+}
+
+@misc{skellyspeakGraph2026,
+  author = {{FreeMoCap Project}},
+  title = {SkellySpeak graph implementation and repository citation conventions},
+  url = {https://github.com/freemocap/skellyspeak},
+  urldate = {2026-10-10},
+  review = {source-code},
+  claim = {Native executable graph definitions feed generated inspection contracts; repository citations use stable keys with review and claim metadata.},
+  note = {Local checkout inspected 2026-10-10. Graph audit based on HEAD e84b44e2c4d3682d8ba4eb9a925ed713f092e61a plus uncommitted work; AGENTS.md and references.bib inspected separately for bibliography conventions. Not a claim that the public commit contains all inspected changes.}
+}
+
+@misc{skellytrackerBatchSessions2026,
+  title = {{SkellyTracker} camera batching and shared session implementation},
+  author = {{FreeMoCap}},
+  url = {https://github.com/freemocap/skellytracker/tree/2b7c047c272506eefbac5a2f0805bced2d20525f},
+  urldate = {2026-10-11},
+  review = {source-code},
+  claim = {Tracker.process_batch owns camera batching and per-camera state updates; SharedSessionPool owns reusable sessions and tracker leases. MediaPipe video detectors consume explicit context timestamps, otherwise processing wall time, and their BaseOptions do not request a GPU delegate.},
+  note = {Inspected installed Python source for Tracker.process_batch, SharedSessionPool.create_tracker, detection-stage per-camera instances, MediaPipe sessions and body, hand and face detectors, and ONNX sessions. Installed direct_url provenance matches core uv.lock at this revision; not a remote-branch freshness check. Runtime comparisons are documented separately and provider registration is not per-kernel profiling.}
+}
+
+@misc{microsoftReplaceFileW,
+  author = {{Microsoft}},
+  title = {{ReplaceFileW} function},
+  url = {https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew},
+  urldate = {2026-10-11},
+  review = {full-text},
+  claim = {Error 1175 preserves both file names, whereas errors 1176 and 1177 can change the file state; retry logic must distinguish these outcomes.}
+}
+

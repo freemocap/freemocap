@@ -158,8 +158,10 @@ def publish_posthoc_observations(
         sources=sources,
         reference_frames=references,
         models={model.model_id: model for model in request.models},
-        processing={request.group.name: {"filtering": request.filtering.model_dump(mode="json")}}
-            if request.filtering is not None else {},
+        processing={request.group.name: {
+            **({"filtering": request.filtering.model_dump(mode="json")} if request.filtering is not None else {}),
+            **({"camera_assignment": request.camera_assignment} if request.camera_assignment is not None else {}),
+        }} if request.filtering is not None or request.camera_assignment is not None else {},
         channels=tuple(channels),
     )
 

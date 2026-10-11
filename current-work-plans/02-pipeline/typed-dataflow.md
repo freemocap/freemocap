@@ -1,11 +1,30 @@
 # Typed executable dataflow for FreeMoCap
 
+Start with the [source-to-sink implementation plan](source-to-sink-plan.md)
+for the current mid-level design and staged implementation sequence. It incorporates
+the subsequent owner decisions; older proposals below remain subject to those decisions.
+
+See [dataflow foundations](dataflow-foundations.md) for cited intellectual context,
+working terminology and decisions settled after this proposal was drafted.
+The SkellySpeak reference is registered as [@skellyspeakGraph2026].
+
 Status: proposed design, 2026-10-10. No replacement runtime implemented here.
 This supersedes the October 5 graph proposal for new development. The
 `experiments/executable_graph_lab` work remains parked. The intended destination
 is the application's existing HTTP/WebSocket architecture, not another lab server.
 
 ## Scope and authority
+
+Owner update, 2026-10-11: leave realtime execution unchanged. Build a separately
+selectable posthoc graph execution path alongside the current posthoc path in the
+isolated worktree. Retain both during numerical parity and performance validation;
+this supersedes any earlier immediate-removal requirement. Selection occurs at the
+application boundary, not through an opaque old-pipeline node inside the new graph.
+Benchmark paths in separate runs against identical immutable input/configuration
+and separate output destinations; concurrent comparison runs would confound resource
+measurements. Removal of the existing path follows evidence and a later cutover
+decision, not initial implementation. Do not alter shared inference behavior for
+realtime as an incidental part of the posthoc work.
 
 The owner requires strict executable graph definitions, a visualization derived
 from those definitions, independent server execution, and measurable comparison
@@ -269,6 +288,12 @@ Hold a WebSocket send indefinitely and flood inspection requests: useful work mu
 continue without waiting on them. Test zero, slow and multiple subscribers.
 
 ## Measurement plan
+
+Implementation owner: extend the existing `freemocap.tools.datasets` workflow and
+`freemocap/tests/reference_recordings` consumers. The
+[reference comparison audit](reference-comparison-audit.md) records their existing
+capabilities and the specific additions needed. Do not build a separate dataset
+producer, acceptance framework or baseline runner.
 
 Use identical complete recordings and configurations, with separately reported
 short fixtures for fault tests. No silent frame caps. Record camera count, resolution,

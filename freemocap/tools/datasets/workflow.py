@@ -17,6 +17,7 @@ from .inspection import inspect_recording
 from .preparation import PREPARATION_VERSION, execute_worker, file_digest, software_identity, reuse_recording
 from .storage import recover, save_current, write_json
 from .validation import validate_outputs
+from .execution import measure_worker, require_implementation
 
 DATASETS = {'test_data': TEST_DATA, 'sample_data': SAMPLE_DATA}
 STARTS = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
@@ -65,7 +66,9 @@ def selected_calibration(root: Path, raw: Path, choice: str, ready: dict | None)
 def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operation: str = 'process',
               start: str = 'observations', calibration: str | None = None, alignment: str | None = None,
               run_id: int | None = None, sensor_group: str | None = None,
-              timeout: float = 1800.0, output_profile: str = 'standard', blender_path: str | None = None) -> dict:
+              timeout: float = 1800.0, output_profile: str = 'standard', blender_path: str | None = None,
+              implementation: str = 'current') -> dict:
+    require_implementation(implementation)
     dataset = DATASETS[name]
     from .output_acceptance import required_outputs
     required_outputs(output_profile)
@@ -90,7 +93,8 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
                 alignment=alignment or 'auto', timeout=timeout,
                 raw=str(raw), root=str(root), run_id=run_id, sensor_group=sensor_group,
                 current=ready['recording'] if ready else None, output_profile=output_profile,
-                required_outputs=required_outputs(output_profile), blender_path=blender_path)
+                required_outputs=required_outputs(output_profile), blender_path=blender_path,
+                implementation=implementation)
     if operation == 'process' and start != 'observations':
         if ready is None:
             raise ValueError('No prepared recording. Run the complete dataset workflow first.')
@@ -187,11 +191,16 @@ def process(name: str, **options) -> Path:
         log_path = attempt / 'processing.log'
         logger.info('Working folder: %s; log: %s', attempt, log_path)
         try:
-            execute_worker([sys.executable, '-B', '-m', 'freemocap.tools.datasets.preparation', '--worker', str(request_path)],
-                           environment=environment, log_path=log_path, timeout=plan['timeout'] * 2 + 120)
+            with measure_worker(report_path=attempt / 'performance.json',
+                                implementation=plan['implementation'], operation=plan['operation']) as performance:
+                execute_worker([sys.executable, '-B', '-m', 'freemocap.tools.datasets.preparation', '--worker', str(request_path)],
+                               environment=environment, log_path=log_path, timeout=plan['timeout'] * 2 + 120)
         except (OSError, subprocess.SubprocessError) as error:
             raise RuntimeError(f'Processing failed; previous results retained. Log: {log_path}') from error
         result = json.loads((attempt / 'result.json').read_text(encoding='utf-8'))
+        if result.get('implementation') != plan['implementation']:
+            raise ValueError('Worker result does not identify the requested posthoc implementation')
+        result['performance'] = performance
         if plan['operation'] != 'calibrate':
             from .output_acceptance import verify_outputs
             accepted = verify_outputs(recording, result['validation'], require_complete=plan['output_profile'] == 'standard')
@@ -202,6 +211,11 @@ def process(name: str, **options) -> Path:
         output = target / 'current' / 'recordings' / dataset.name
         identity = dict(preparation_version=PREPARATION_VERSION, source=source, software=software_identity(),
                         preparer_sha256=file_digest(Path(__file__)))
+        from .reporting import render_report
+        report_text = render_report(result, log_path=log_path, label=f'{name} / {attempt.name}', identity=identity)
+        (attempt / 'report.txt').write_text(report_text, encoding='utf-8')
+        (candidate / 'report.txt').write_text(report_text, encoding='utf-8')
+        print(report_text, flush=True)
         saved = dict(identity=identity, recording=str(output), result=result, workflow=plan,
                      log=str(log_path), previous_recording=ready['recording'] if ready else None)
         # Preserve exact executed config in request.json; saved paths identify the final location.

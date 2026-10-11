@@ -125,6 +125,42 @@ alignment. Entirely blank frames remain blank and separate visible intervals.
 
 ## Choose work explicitly
 
+Successful workflow processing prints and saves a consolidated plain-text report
+as `report.txt` in the attempt and accepted candidate directory. It includes
+recorded execution settings/identity, worker timing, all available structured
+numerical log tables, detailed operation timing rows, calibration and saved
+validation fields. Timing rows overlap and are not additive. Missing evidence is
+shown as unavailable. Existing live Rich tables remain unchanged.
+
+Read an existing result without processing or changing acceptance markers:
+
+```powershell
+poe datasets report test_data
+poe datasets report sample_data
+```
+
+Historical reports use their recorded log and metadata; this command does not
+revalidate files or claim those results satisfy today's acceptance contract.
+The consolidated report currently extracts existing diagnostic log records;
+it does not create unmeasured timing percentiles or concurrency statistics.
+
+Posthoc execution selection is recorded in workflow requests and worker results.
+`--implementation current` is the default for `process` and `process-all`.
+`--implementation graph` is reserved for the replacement and currently fails
+before acquisition or output creation, including in dry runs. It never silently
+falls back to the current pipeline. Realtime execution is unchanged.
+
+Workflow attempts also contain `performance.json` (schema version 1). It records
+implementation, operation, worker-lifecycle status and measured elapsed seconds,
+including failures, timeouts and interruptions. Successful workflow ready markers
+include this report in `result.performance`. This interval includes subprocess
+launch, setup, processing, worker validation, log draining and shutdown. It excludes
+parent-side input copying, preflight and publication. It is not inference-only or
+GPU timing, and `complete` here does not certify output acceptance. Existing output
+validators still decide readiness. A hard parent termination may leave a `running`
+report with no elapsed duration; that is incomplete evidence, not a successful run.
+Paired execution and numerical comparison are not implemented by this first step.
+
 ```powershell
 poe process-all-data --dry-run
 poe process-test-data --calibration existing
@@ -217,3 +253,172 @@ Historical files remain readable without invented provenance. The
 consume fresh outputs and exercise numerical replay while preserving upstream data.
 These production-generated outputs are the shared acceptance fixtures for future
 CSV/NPZ and Blender integration, alongside focused structural and logic tests.
+
+## Tracker adapter parity and timing
+
+Run the full detector/backend matrix using this repository's existing Python
+environment and cached reference recordings/models:
+
+```powershell
+python -B -m freemocap.tools.datasets.tracker_matrix test_data sample_data --output .test-artifacts/tracker-matrix/new-run
+```
+
+The output directory must be new and ignored by Git. The command runs cases
+sequentially in isolated subprocesses, retaining each native log, `report.json`,
+`report.txt`, and private baseline observation files. The top-level `report.md`
+and `matrix.json` summarize all cases, including failures. It does not replace
+accepted dataset outputs. Models use their normal cache machinery; populate
+required assets before an offline run.
+
+For one case:
+
+```powershell
+python -B -m freemocap.tools.datasets.tracker_comparison test_data rtmpose_cuda --output .test-artifacts/tracker-matrix/new-cuda-run
+```
+
+Cases are `charuco_cpu`, `mediapipe_cpu`, `rtmpose_cpu`, `rtmpose_cuda`, and
+`mediapipe_cuda`. The last is explicitly **unsupported**: the installed MediaPipe
+detectors do not request a GPU delegate and expose no CUDA backend. ChArUco uses
+CPU. RTMPose checks actual ONNX session provider registration and fails if the
+requested provider is not first; this does not profile every kernel's placement.
+The matrix tests app-default configurations (RTMW-x-l 256×192 with YOLOX-m;
+MediaPipe body/hands/face; the default ChArUco board), not every model variant.
+
+Both paths use the same complete recording and tracker configuration. The baseline
+uses the existing inference service with sequential camera reads; the adapter uses
+bounded threaded readers. This is **tracking-boundary regression parity**, not
+full posthoc pipeline acceptance or scientific accuracy validation. Both paths
+receive the recording timeline, measured where available or inferred from video
+FPS. Reports identify the timing methods. This intentionally corrects MediaPipe's
+processing-wall-time fallback, so it is not an assertion of numerical identity
+with that fallback [@skellytrackerBatchSessions2026].
+
+Comparisons include original camera timestamps, frame identity, stage structure,
+point names, bounding boxes, keypoints, visibility, and nonfinite masks. Same-backend
+absolute tolerance is 1e-6; exact difference counts are also shown. CPU/CUDA
+comparisons are separate descriptive reports, not acceptance verdicts. Aggregate
+errors contain mixed units and must not be interpreted as pixel accuracy.
+
+Operation timing includes inference, setup, queue wait and camera batch wait.
+Wall time also includes unequal diagnostic write/read/compare work and cold/warm
+setup effects. Do not derive a speedup claim from these single ordered passes.
+Use isolated repeated runs with symmetric diagnostics for performance acceptance.
+
+Focused adapter/report checks use `unittest`:
+
+```powershell
+python -B -m unittest freemocap.tests.test_dataflow_contracts freemocap.tests.test_dataflow_video_sources freemocap.tests.test_dataflow_tracker_adapter freemocap.tests.test_inference_service freemocap.tests.test_tracker_comparison freemocap.tests.test_tracker_matrix
+```
+
+## Raw triangulation comparison
+
+The experimental backend scientific slice adds real camera matching, per-frame
+triangulation and the canonical recording writer. Run it against a complete
+recording and an explicit existing calibration, using a fresh ignored directory:
+
+```powershell
+python -B -m freemocap.tools.datasets.scientific_comparison RECORDING_DIRECTORY --calibration CALIBRATION.toml --provider cuda --output .test-artifacts/scientific-slice/new-run
+```
+
+`report.txt` is the readable summary; `report.json` preserves configuration,
+software identity, matching fitness, inference timing and numerical comparisons.
+CPU is also accepted. Provider selection here is a request, not independent kernel
+placement profiling. This command currently exercises RTMPose only; the broader
+detector matrix remains the tracking-boundary test above.
+
+The comparison uses identical observations and geometry for incremental and batch
+triangulation, checks missing-value masks, solver contributions and reprojection
+diagnostics, then attempts a canonical raw-3D save and exact read-back. It creates
+a private recording copy; original recordings remain unchanged. Automatic camera
+matching uses the existing recording-wide sampling algorithm. For already resolved
+assignment, `process_resolved_scientific_recording` computes each joined frame while
+consuming tracking events. Neither route is yet connected to the production API.
+
+Scientific saving requires every declared camera to finish successfully and an
+available camera assignment. Matching uses the established posthoc `continue`/`stop`
+policy at both computation and saving: a fitness warning does not become an extra
+unconfigured stopping rule. The saved tracker metadata retains assignment status,
+source-to-calibration mapping and per-camera fitness; continued poor fitness is
+never relabeled as verified. Errors use pixels normalized to a 1000-pixel image
+diagonal. No matching thresholds are relaxed to make diagnostics pass. Filtering,
+alignment, skeleton reconstruction and annotations are not implemented in this slice.
+
+
+## Complete recording graph experiment
+
+`python -B -m freemocap.tools.datasets.full_recording_comparison RECORDING --calibration CALIBRATION --provider cuda --annotate --output .test-artifacts/full-recording-loop/NEW_RUN`
+
+Use an unused output directory. This command copies videos, recorded timing sidecars,
+and calibration into private graph/current recordings. It runs tracking once, then
+compares the graph's complete scientific output with the existing scientific task
+using those identical observations. `--with-board` adds the explicit ChArUco board
+from the calibration; `--detector mediapipe --provider cpu` selects MediaPipe.
+CPU/CUDA RTMPose are accepted. The default is RTMPose CPU.
+
+The graph includes filtering, reference alignment, model fitting, reconstruction,
+complete observation/spatial checkpoints, final canonical recording, NPZ export,
+and optional independent per-camera annotated videos. The reference harness disables
+filtering for its 6-FPS recording and enables it above 12 FPS; the resolved configuration
+is recorded. It validates saved channel identities, frame/timestamp identities,
+missing-value masks, numerical values, camera geometry, reference frames, model
+metadata and fitted parameters. Exact byte fingerprints of numerically equivalent
+fit inputs are excluded from cross-route equality; actual channel arrays are compared. Each local fit fingerprint is independently checked
+against its own saved inputs using the production reconstruction reader.
+
+Inspect `report.txt`, `report.json`, and the executable `graph.json`. JSON includes
+per-operation start/finish times, errors and tracebacks. Timings are **not** a speedup
+ratio: graph time includes tracking, annotations and exports, while the existing-task
+time covers scientific completion only. Scientific tolerance is `atol=1e-6, rtol=1e-8`.
+Camera-assignment evidence is saved under the sensor group's processing metadata.
+Full-graph reports also include `motion_capture_throughput`: wall seconds divided
+by synchronized frame count, and its reciprocal in motion-capture frames/second.
+One motion-capture frame includes all camera images at that frame index. This
+includes every graph sink (including annotation when requested), but excludes
+input-copy setup and the separate comparison harness's validation work. Compare
+like configurations and report repeated-run variability separately.
+
+This is a backend CLI experiment, separate from the dataset workflow's implementation
+selector and from HTTP/WebSocket/UI integration. Saved-stage resume, automatic board
+discovery, single-camera operation and Blender launch are explicitly unsupported.
+The graph currently exposes recording-level operations; streaming image loading and
+tracking remain inside their bounded adapter, and automatic camera assignment uses
+complete recorded observations. See `current-work-plans/02-pipeline/full-recording-loop.md`.
+
+
+### Serialization performance regression probe
+
+`python -B -m freemocap.tools.datasets.serialization_benchmark RECORDING --output .test-artifacts/performance/NEW_RUN --repeats 3`
+
+This reads an existing reference output's raw 3D channel, then separately times
+bounded column construction and scalar versus columnar validation. Repetitions
+alternate validator order and require identical coverage, last-sample state and
+exact frame/timestamp digests. Input loading is excluded; this is a storage-path
+benchmark, not an end-to-end throughput claim. JSON and readable text reports are
+written to the new output directory. Complete graph reports also contain actual
+per-stage camera-image and object-detector-run counts for checking bounding-box reuse.
+See `current-work-plans/02-pipeline/performance-audit.md` for measured causes and limits.
+
+### Concurrency and disk batch experiments
+
+Full-recording comparisons accept `--annotation-workers N` to test annotation
+capacity without changing requested outputs. Capacity is recorded in JSON.
+
+`python -B -m freemocap.tools.datasets.concurrency_benchmark SAVED_RECORDING --output .test-artifacts/performance/NEW_CONCURRENCY_RUN --repeats 3`
+
+Compare fitting plus complete-file validation sequentially, with two threads, and
+with two fresh spawned processes. Report worker setup and compute times separately;
+total time includes startup, independent input reads and shutdown. Exact fitted
+numbers and input signatures must match, as must validator state. Declared sets of
+segment names are compared without depending on their iteration order. This is not
+a persistent-pool benchmark or a change to production worker policy.
+
+`python -B -m freemocap.tools.datasets.storage_batch_benchmark SAVED_RECORDING --output .test-artifacts/performance/NEW_STORAGE_RUN --repeats 3 --construction columns`
+
+Repeat with `--construction rows` and a different output directory. Both paths use
+identical frame-aligned batch sizes, validation and the production zstd writer with
+fsync and atomic replacement. This isolates Python row-dictionary construction from
+NumPy/Arrow column construction; neither path writes individual scalars to disk.
+Reports split construction, validation, writer remainder and cached read time across
+four batch sizes. Exact values and validation state are checked after readback.
+The experiment saves one real raw-3D channel, not a publishable complete recording.
+Its Parquet files deliberately remain diagnostic artifacts in the output directory.

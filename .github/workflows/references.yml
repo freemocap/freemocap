@@ -1,0 +1,17 @@
+name: References
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -B tools/check_references.py
+      - run: python -B -m unittest discover -s tools -p "test_references.py" -v

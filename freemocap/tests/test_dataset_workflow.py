@@ -98,7 +98,8 @@ def recording_workflow(tmp_path, monkeypatch):
         parquet = recording / f'{recording.name}_data.parquet'
         if request['operation'] != 'calibrate':
             parquet.write_text(f'result {len(calls)}')
-        result = dict(calibration_filename=calibration.name, calibration_sha256=workflow.file_digest(calibration),
+        result = dict(implementation=request['implementation'],
+            calibration_filename=calibration.name, calibration_sha256=workflow.file_digest(calibration),
             validation=dict(parquet_sha256=workflow.file_digest(parquet)) if parquet.exists() else None,
             mocap_config={})
         if request['operation'] != 'calibrate':
@@ -124,6 +125,10 @@ def test_processing_replaces_old_result_but_calibration_only_does_not(recording_
     workflow.process(name, operation='calibrate', **options)
     assert parquet.read_text() == 'result 2'
     assert calls[0]['alignment'] == 'auto'
+    assert calls[0]['implementation'] == 'current'
+    report = json.loads((options['prepared_root'] / workflow.TEST_DATA.name / 'ready.json').read_text())
+    assert report['result']['performance']['scope'] == 'worker_lifecycle'
+    assert report['result']['performance']['status'] == 'complete'
     assert calls[0]['filtering_enabled'] is False
     assert (options['recordings_root'] / workflow.TEST_DATA.name / 'synchronized_videos/camera.mp4').read_bytes() == b'original video'
 
@@ -143,6 +148,21 @@ def test_worker_failure_leaves_current_recording_and_marker(recording_workflow, 
         workflow.process(name, **options)
     assert marker.read_bytes() == before
     assert (current / f'{current.name}_data.parquet').read_text() == 'result 1'
+    reports = [json.loads(path.read_text()) for path in marker.parent.glob('attempts/*/performance.json')]
+    status = ('timeout' if isinstance(failure, subprocess.TimeoutExpired)
+              else 'interrupted' if isinstance(failure, KeyboardInterrupt) else 'failed')
+    assert any(report['status'] == status for report in reports)
+
+
+def test_unavailable_backend_rejected_before_acquiring_or_creating_outputs(tmp_path, monkeypatch):
+    acquire = Mock()
+    monkeypatch.setattr(workflow, 'acquire_recording', acquire)
+    output = tmp_path / 'prepared'
+    with pytest.raises(ValueError, match='not implemented'):
+        workflow.process('test_data', recordings_root=tmp_path / 'raw',
+                         prepared_root=output, implementation='graph')
+    acquire.assert_not_called()
+    assert not output.exists()
 
 
 def test_missing_blender_after_worker_success_preserves_previous(recording_workflow, monkeypatch):

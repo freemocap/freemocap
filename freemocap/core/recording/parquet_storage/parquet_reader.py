@@ -45,6 +45,17 @@ def metadata_from_schema(*, schema: pa.Schema, path: Path) -> RecordingMetadata:
     return parse_recording_metadata(payload=payload, path=path)
 
 
+def recording_batches(parquet: pq.ParquetFile) -> Iterator[pa.RecordBatch]:
+    """Keep writer row-group boundaries while bounding each decoded batch.
+
+    Merging groups can split complete frame grids or combine different channels,
+    defeating columnar validation. Arbitrary external groups remain supported;
+    large groups are still split at the memory bound and use scalar fallback.
+    """
+    for row_group in range(parquet.num_row_groups):
+        yield from parquet.iter_batches(batch_size=65536, row_groups=[row_group])
+
+
 def read_batches(
     *, path: Path, run_id: int, sensor_groups: tuple[str, ...]
 ) -> Iterator[pa.RecordBatch]:
@@ -53,7 +64,7 @@ def read_batches(
     if not sensor_groups or not set(sensor_groups).issubset(run.sensor_groups):
         raise ValueError("Read requires known sensor groups")
     with pq.ParquetFile(path) as parquet:
-        for batch in parquet.iter_batches(batch_size=65536):
+        for batch in recording_batches(parquet):
             selected = pc.and_(
                 pc.equal(batch.column("run_id"), run_id),
                 pc.is_in(

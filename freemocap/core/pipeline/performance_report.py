@@ -21,6 +21,7 @@ class PerformanceReport:
     def __init__(self) -> None:
         self._lock = Lock()
         self._rows: dict[str, TimingSummary] = {}
+        self._counts: dict[str, int] = {}
         self._started = perf_counter()
         self.frames = 0
         self.images = 0
@@ -34,6 +35,15 @@ class PerformanceReport:
             row.count += 1
             row.total += seconds
             row.maximum = max(row.maximum, seconds)
+
+    def increment_counts(self, counts: dict[str, int]) -> None:
+        with self._lock:
+            for name, count in counts.items():
+                self._counts[name] = self._counts.get(name, 0) + count
+
+    def counts_snapshot(self) -> dict[str, int]:
+        with self._lock:
+            return dict(self._counts)
 
     @contextmanager
     def measure(self, name: str):
@@ -61,6 +71,7 @@ class PerformanceReport:
             "Coordinator waits measure exposed blocking; worker rows measure work, including work hidden by overlap.",
             "stage | n | total s | mean ms | first ms | mean after first ms | max ms"]
         lines[1:1] = self.details
+        lines.extend(f"count {name}: {count}" for name, count in sorted(self.counts_snapshot().items()))
         for name, row in sorted(rows.items()):
             lines.append(f"{name} | {row['count']} | {row['total_s']:.3f} | {row['mean_ms']:.3f} | "
                          f"{row['first_ms']:.3f} | {row['mean_after_first_ms']:.3f} | {row['max_ms']:.3f}")

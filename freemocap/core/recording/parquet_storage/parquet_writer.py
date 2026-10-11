@@ -3,6 +3,8 @@
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 import os
+import logging
+from time import perf_counter
 from pathlib import Path
 import tempfile
 
@@ -47,6 +49,7 @@ def publish_recording(
             yield batch
         validator.finish()
 
+    started = perf_counter()
     publish_parquet(
         path=structure.data_parquet_path,
         schema=SAMPLE_SCHEMA.with_metadata(
@@ -55,6 +58,10 @@ def publish_recording(
         batches=validated_batches(),
     )
     write_recording_info(structure, metadata)
+    logging.getLogger(__name__).info(
+        "Recording saved in %.3f s: %s columnar validation rows, %s scalar fallback rows: %s",
+        perf_counter() - started, validator.columnar_rows, validator.scalar_rows,
+        structure.data_parquet_path)
 
 
 def publish_parquet(*, path: Path, schema: pa.Schema, batches: Iterable[pa.RecordBatch]) -> None:

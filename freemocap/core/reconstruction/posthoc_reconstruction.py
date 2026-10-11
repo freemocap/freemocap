@@ -63,6 +63,7 @@ def triangulate_observation_buffers(
     timing: PosthocTimingReport,
     stage_name: str | None = None,
     n_points: int | None = None,
+    point_names: tuple[str, ...] | None = None,
 ) -> RecordingTriangulation:
     """Triangulate the whole recording 2D -> 3D in ONE batched call, Blender-converted.
 
@@ -72,7 +73,10 @@ def triangulate_observation_buffers(
     By default the WHOLE keypoint set is used (`Observation.to_keypoints()`). Pass
     `stage_name` (and optionally `n_points`) to triangulate one detector stage — the
     board path uses `stage_name="charuco"` clamped to `board.n_corners`.
+    `point_names` declares a stable whole-keypoint axis for incremental calls.
     """
+    if point_names is not None and (stage_name is not None or not point_names or len(set(point_names)) != len(point_names)):
+        raise ValueError("Explicit point names require a unique nonempty whole-keypoint axis")
     if not observation_buffers:
         raise ValueError("No observation buffers provided to triangulate.")
 
@@ -99,7 +103,7 @@ def triangulate_observation_buffers(
             for camera_id, buffer in observation_buffers.items()
         }
     else:
-        prefixed_names = tuple(dict.fromkeys(
+        prefixed_names = point_names if point_names is not None else tuple(dict.fromkeys(
             name for buffer in observation_buffers.values() for name in buffer.keypoint_names
         ))
         data2d_by_camera = {
@@ -154,6 +158,11 @@ def reconstruct_skeletons_for_recording(
     request: RecordingReconstructionInput,
 ) -> dict[str, ModelRecordingReconstruction]:
     """Fit complete-recording evidence once, then reconstruct with fresh temporal state."""
+    return reconstruct_skeletons_with_fits(request=request, fits=fit_skeletons_for_recording(request))
+
+
+def fit_skeletons_for_recording(request: RecordingReconstructionInput) -> dict[str, FittedRecordingScale]:
+    """Fit recording-wide dimensions without running the reconstruction pass."""
     fit_inputs = {
         bundle.model_id: request.fit_inputs(bundle) for bundle in request.bundles
     }
@@ -195,7 +204,7 @@ def reconstruct_skeletons_for_recording(
         for bundle in request.bundles
     }
     request.timing.record("fit_recording_scale", time.perf_counter() - t0)
-    return reconstruct_skeletons_with_fits(request=request, fits=fits)
+    return fits
 
 
 def reconstruct_skeletons_with_fits(

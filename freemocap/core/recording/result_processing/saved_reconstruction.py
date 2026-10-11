@@ -7,6 +7,7 @@ from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
 
 import numpy as np
 from numpy.typing import NDArray
+import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
@@ -21,7 +22,7 @@ from freemocap.core.recording.result_processing.input_signatures import (
 )
 from freemocap.core.recording.sample_encoding.arrow_schema import SampleValidator
 from freemocap.core.recording.data_descriptors.recording_descriptor import Channel, RecordingMetadata
-from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
+from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata, recording_batches
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
@@ -215,10 +216,10 @@ def read_saved_channel(*, structure: RecordingStructure, run_id: int,
     values = np.full((count, len(channel.names), len(channel.components)), np.nan, dtype=np.float64)
     frame_indices: dict[int, int] = {}
     timestamps: dict[int, float] = {}
-    names = {name: index for index, name in enumerate(channel.names)}
-    components = {name: index for index, name in enumerate(channel.components)}
+    names = pa.array(channel.names)
+    components = pa.array(tuple(channel.components))
     with pq.ParquetFile(structure.data_parquet_path) as parquet:
-        for batch in parquet.iter_batches(batch_size=65536):
+        for batch in recording_batches(parquet):
             mask = pc.and_(
                 pc.equal(batch.column("run_id"), run_id),
                 pc.equal(batch.column("sensor_group"), channel.sensor_group),
@@ -233,15 +234,16 @@ def read_saved_channel(*, structure: RecordingStructure, run_id: int,
             if not selected.num_rows:
                 continue
             validator.accept(batch=selected)
-            columns = selected.to_pydict()
-            for frame, timestamp, name, component, value in zip(
-                columns["frame_number"],
-                columns["timestamp_s"],
-                columns["name"],
-                columns["component"],
-                columns["value"],
-                strict=True,
-            ):
+            # Keep scalar data in Arrow/NumPy. Only frame identities need Python
+            # bookkeeping; the validator above still checks every trajectory.
+            batch_frames = selected.column("frame_number").to_numpy()
+            batch_timestamps = selected.column("timestamp_s").to_numpy()
+            unique_frames, first, inverse = np.unique(batch_frames, return_index=True, return_inverse=True)
+            frame_times = batch_timestamps[first]
+            if not np.all(batch_timestamps == frame_times[inverse]):
+                raise ValueError("Point components disagree on the frame timestamp")
+            destination_frames = np.empty(len(unique_frames), dtype=np.int64)
+            for index, (frame, timestamp) in enumerate(zip(unique_frames.tolist(), frame_times.tolist(), strict=True)):
                 if frame not in frame_indices:
                     if len(frame_indices) == count:
                         raise ValueError(
@@ -251,9 +253,12 @@ def read_saved_channel(*, structure: RecordingStructure, run_id: int,
                     timestamps[frame] = timestamp
                 elif timestamps[frame] != timestamp:
                     raise ValueError("Point components disagree on the frame timestamp")
-                values[frame_indices[frame], names[name], components[component]] = (
-                    np.nan if value is None else value
-                )
+                destination_frames[index] = frame_indices[frame]
+            name_indices = pc.index_in(selected.column("name"), value_set=names).to_numpy()
+            component_indices = pc.index_in(selected.column("component"), value_set=components).to_numpy()
+            values[destination_frames[inverse], name_indices, component_indices] = (
+                selected.column("value").to_numpy(zero_copy_only=False)
+            )
     validator.finish()
     frames = tuple(sorted(frame_indices))
     if len(frames) != count:

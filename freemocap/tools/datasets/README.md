@@ -377,9 +377,15 @@ includes every graph sink (including annotation when requested), but excludes
 input-copy setup and the separate comparison harness's validation work. Compare
 like configurations and report repeated-run variability separately.
 
-This is a backend CLI experiment, separate from the dataset workflow's implementation
-selector and from HTTP/WebSocket/UI integration. Saved-stage resume, automatic board
-discovery, single-camera operation and Blender launch are explicitly unsupported.
+The CLI comparison remains separate from the dataset workflow's implementation
+selector. The same graph is now selectable in the application under Mocap processing
+settings > Processing stages > Processing pipeline > Experimental typed graph.
+It uses existing HTTP start/stop and WebSocket progress. Start at 2D tracking, select
+a calibration, and choose an explicit board if ChArUco is enabled. Saved-stage resume,
+automatic board discovery and single-camera operation remain unsupported. Optional
+application exports use the existing completion handler; Blender launch was not
+exercised in application acceptance tests. See the integration status document for
+test evidence and limitations.
 The graph currently exposes recording-level operations; streaming image loading and
 tracking remain inside their bounded adapter, and automatic camera assignment uses
 complete recorded observations. See `current-work-plans/02-pipeline/full-recording-loop.md`.
@@ -422,3 +428,36 @@ Reports split construction, validation, writer remainder and cached read time ac
 four batch sizes. Exact values and validation state are checked after readback.
 The experiment saves one real raw-3D channel, not a publishable complete recording.
 Its Parquet files deliberately remain diagnostic artifacts in the output directory.
+
+## Annotation execution comparisons
+
+The full-recording comparison accepts `--annotation-execution process` (default)
+or `--annotation-execution thread` with `--annotate`. Both use the same drawing and
+encoding operation. Process workers belong to one recording and shut down after
+it finishes; `--annotation-workers` bounds simultaneous camera annotation jobs.
+
+`graph_wall_seconds` includes worker launch and shutdown. The report separately
+records `scientific_completion_seconds`, worker readiness waits, per-camera
+drawing/encoding timings, and the number of workers still alive after cleanup.
+Compare variants sequentially; overlapping benchmark runs compete for resources.
+
+## Isolated component diagnostics
+
+Add `--isolate-components --annotation-execution thread` to the full recording
+comparison command to measure the existing graph handlers one at a time. It still
+uses the same input bindings, scientific code, complete recording, save operations,
+and output-parity checks. Internal camera batching/native-library workers remain
+active. This is diagnostic execution, not a production concurrency policy.
+
+`components/components.json` records each handler's wall time and process CPU time;
+the normal report includes those values and explicitly labels isolated execution.
+CPU time sums threads in this process and excludes GPU/child-process CPU. A serial
+scientific-completion timestamp can include earlier annotation jobs, so use the
+individual stage rows for this experiment.
+
+For a separate call-profile run, also add `--profile-components`. It writes one
+`.prof` and cumulative-time text report per handler under `components/`. Profiler
+overhead is included and its scope is the calling thread, not inference/decoder
+worker threads. Do not compare profiled wall time directly with the unprofiled
+baseline. Use a fresh ignored output directory for every run. See
+[current sample measurements](../../../current-work-plans/02-pipeline/component-measurements.md).

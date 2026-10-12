@@ -28,6 +28,12 @@ class PosthocMocapPipelineConfig(BaseModel):
     anchor_segment_name: str = Field(default="pelvis", min_length=1, alias="anchorSegmentName")
     model_config = ConfigDict(populate_by_name=True)
 
+    pipeline_implementation: Literal["current", "typed_dataflow"] = Field(
+        default="current", alias="pipelineImplementation")
+    graph_execution_provider: Literal["auto", "cpu", "cuda"] = Field(
+        default="auto", alias="graphExecutionProvider")
+    graph_annotate: bool = Field(default=True, alias="graphAnnotate")
+
     start_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction'] = Field(
         default='observations', alias='startStage')
     base_run_id: int = Field(default=0, ge=0, alias='baseRunId')

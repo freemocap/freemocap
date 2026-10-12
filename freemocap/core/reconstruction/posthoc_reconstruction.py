@@ -176,11 +176,7 @@ def fit_skeletons_for_recording(request: RecordingReconstructionInput) -> dict[s
     request.timing.record("build_states", time.perf_counter() - t0)
     t0 = time.perf_counter()
     for frame in request.scale_points:
-        points = {
-            name: frame[index]
-            for index, name in enumerate(request.keypoint_names)
-            if np.all(np.isfinite(frame[index]))
-        }
+        points = _finite_frame_points(frame=frame, point_names=request.keypoint_names)
         for bundle in request.bundles:
             mapped = bundle.landmark_mapping.apply(tracker_positions=points)
             if not mapped:
@@ -232,11 +228,7 @@ def reconstruct_skeletons_with_fits(
     }
     t0 = time.perf_counter()
     for frame in request.keypoints_3d:
-        points = {
-            name: frame[index]
-            for index, name in enumerate(request.keypoint_names)
-            if np.all(np.isfinite(frame[index]))
-        }
+        points = _finite_frame_points(frame=frame, point_names=request.keypoint_names)
         for bundle in request.bundles:
             if not points:
                 # Re-entry starts fresh roll state; frozen person dimensions remain.
@@ -264,3 +256,11 @@ def reconstruct_skeletons_with_fits(
         )
         for model_id, values in frames.items()
     }
+
+
+def _finite_frame_points(
+    *, frame: np.ndarray, point_names: tuple[str, ...],
+) -> dict[str, np.ndarray]:
+    """Check all XYZ points together, retaining the original named array views."""
+    valid_indices = np.flatnonzero(np.isfinite(frame).all(axis=1))
+    return {point_names[index]: frame[index] for index in valid_indices}

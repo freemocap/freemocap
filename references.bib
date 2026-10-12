@@ -194,3 +194,106 @@
   claim = {Error 1175 preserves both file names, whereas errors 1176 and 1177 can change the file state; retry logic must distinguish these outcomes.}
 }
 
+@misc{skellycamVideoWriter2026,
+  title = {{SkellyCam} {PyAV} video writer},
+  author = {{FreeMoCap}},
+  url = {https://github.com/freemocap/skellycam/blob/6b9ebe171e91dadacca04f99d9b6e7391c948f3e/skellycam/core/recorders/videos/pyav_video_writer.py},
+  urldate = {2026-10-11},
+  review = {source-code},
+  claim = {The installed writer creates a libx264 stream with CRF 18 and the fast preset without explicitly setting codec thread count.},
+  note = {Inspected the installed Python source and distribution direct_url.json at the pinned commit. No changes to SkellyCam; thread-budget changes were isolated diagnostic experiments in FreeMoCap.}
+}
+
+@misc{skellycamManagedWorkers2026,
+  title = {{SkellyCam} managed worker lifecycle and registry},
+  author = {{FreeMoCap}},
+  url = {https://github.com/freemocap/skellycam/tree/6b9ebe171e91dadacca04f99d9b6e7391c948f3e/skellycam/core/ipc/process_management},
+  urldate = {2026-10-11},
+  review = {source-code},
+  claim = {Managed workers support process and thread execution, owner-scoped shutdown flags, and escalating cleanup; registry failure domains follow shared shutdown-flag identity.},
+  note = {Reviewed the installed managed_worker.py and worker_registry.py at the commit reported by distribution metadata. Annotation integration retains independent owner flags and closes only its own workers.}
+}
+
+
+@misc{arrowParquetWriter,
+  title = {{PyArrow} Parquet write_table API},
+  author = {{Apache Software Foundation}},
+  url = {https://arrow.apache.org/docs/python/generated/pyarrow.parquet.write_table.html},
+  urldate = {2026-10-11},
+  review = {excerpt},
+  claim = {Row group size, per-column dictionary encoding and compression are explicit writer controls; the documented table row-group default is at most 1048576 rows.},
+  note = {Reviewed parameter documentation in version 25.0.1; local experiments use installed PyArrow 26.0.0. This source does not promise universal write throughput.}
+}
+
+@misc{parquetRowGroupGuidance,
+  title = {{Apache Parquet} configurations},
+  author = {{Apache Software Foundation}},
+  url = {https://parquet.apache.org/docs/file-format/configurations/},
+  urldate = {2026-10-11},
+  review = {excerpt},
+  claim = {Larger row groups improve sequential IO opportunities while requiring more write buffering.},
+  note = {The 512 MB to 1 GB recommendation is explicitly discussed alongside HDFS block sizing, not a universal prescription for a local scientific recording.}
+}
+
+@misc{arrowBenchmarkWorkflow,
+  title = {{Apache Arrow} benchmarks},
+  author = {{Apache Software Foundation}},
+  url = {https://arrow.apache.org/docs/developers/benchmarks.html},
+  urldate = {2026-10-11},
+  review = {excerpt},
+  claim = {Arrow provides a benchmark suite with persisted results and comparison tooling.},
+  note = {Reviewed benchmark execution documentation; no hardware-matched absolute performance result was obtained. The external Conbench file-write results page was inaccessible during this review.}
+}
+
+@misc{skellyforgeQuaternionMath2026,
+  title = {{SkellyForge} quaternion rotation and temporal roll resolution},
+  author = {{FreeMoCap}},
+  url = {https://github.com/freemocap/skellyforge/tree/0ede33e0a6e323dcd4f4b9de2e1b4fc9eff5e41d/skellyforge/core},
+  urldate = {2026-10-11},
+  review = {source-code},
+  claim = {Scalar vector rotation uses two NumPy cross products; the existing batch helper rotates every supplied vector by every supplied quaternion. Continuous roll resolution carries previous-pose and parent-segment dependencies.},
+  note = {Inspected installed rotation_quaternion.py, roll_resolution.py and coordinate_frame_ops.py. Revision verified from distribution direct_url.json. Also inspected skeleton synthesis, hydration, scale fitting, joint poses, rigid-body diagnostics and center-of-mass modules on 2026-10-12 for the math-loop audit. Local diagnostic replacements do not modify this dependency.}
+}
+
+@misc{skellycamFrameStorage2026,
+  title = {{SkellyCam} structured frame storage and shared-memory ring buffer},
+  author = {{FreeMoCap}},
+  url = {https://github.com/freemocap/skellycam/tree/6b9ebe171e91dadacca04f99d9b6e7391c948f3e/skellycam/core},
+  urldate = {2026-10-12},
+  review = {source-code},
+  claim = {Frames contain aligned metadata and uint8 image fields; multi-camera records contain one field per camera; ring-buffer read methods copy records into consumer arrays.},
+  note = {Read installed frame_dtype_factories.py and ring_buffer_shared_memory.py; revision verified from installed distribution metadata. No dependency changes.}
+}
+
+@misc{onnxruntimeIoBinding,
+  title = {{ONNX Runtime} I/O Binding},
+  author = {{Microsoft}},
+  url = {https://onnxruntime.ai/docs/performance/tune-performance/iobinding.html},
+  urldate = {2026-10-12},
+  review = {full-text},
+  claim = {CPU inputs and requested CPU outputs incur device transfers during Run; I/O binding permits explicit device input and output allocation.}
+}
+
+@misc{tensorrtBatchSizing,
+  title = {{NVIDIA TensorRT} Developer Guide, version 10.0 early access},
+  author = {{NVIDIA}},
+  url = {https://docs.nvidia.com/deeplearning/tensorrt/archives/tensorrt-1000-ea/pdf/TensorRT-Developer-Guide.pdf},
+  urldate = {2026-10-12},
+  review = {excerpt},
+  claim = {Batching can improve inference throughput, but smaller batches can outperform larger ones because of cache effects; benchmark multiple sizes.},
+  note = {Reviewed the indexed batching excerpt only. TensorRT guidance motivates measurement and does not establish a speedup for this project's ONNX Runtime CUDA provider.}
+}
+
+@inproceedings{zhuDeepFeatureFlow2017,
+  title = {Deep Feature Flow for Video Recognition},
+  author = {Zhu, Xizhou and Xiong, Yuwen and Dai, Jifeng and Yuan, Lu and Wei, Yichen},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  year = {2017},
+  pages = {2349--2358},
+  url = {https://openaccess.thecvf.com/content_cvpr_2017/html/Zhu_Deep_Feature_Flow_CVPR_2017_paper.html},
+  urldate = {2026-10-12},
+  review = {abstract},
+  claim = {Sparse keyframe convolutional computation with flow-based feature propagation is an established video-recognition acceleration approach.},
+  note = {Reviewed the publisher abstract and metadata; this does not validate the proposed bounding-box interpolation algorithm or establish a coverage guarantee.}
+}
+

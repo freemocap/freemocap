@@ -423,6 +423,8 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
         raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
     except HTTPException:
         raise
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as e:
         logger.exception(f"Error processing mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -169,7 +169,7 @@ def publish_posthoc_observations(
     if entries:
         run = run.model_copy(update={"processing": set_stage_provenance(run.processing, request.group.name, entries)})
 
-    def batches() -> Iterator[pa.RecordBatch]:
+    def batches(*, include_observations: bool = True) -> Iterator[pa.RecordBatch]:
         for series in diagnostics:
             yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=request.base_run_id))
         for reconstruction in request.reconstructions:
@@ -187,6 +187,8 @@ def publish_posthoc_observations(
                     run_id=request.base_run_id,
                 )
             )
+        if not include_observations:
+            return  # Retained rows are read from the existing recording below.
         for camera in request.group.videos:
             yield from observation_batches(
                 samples=(
@@ -322,7 +324,5 @@ def publish_posthoc_observations(
             metadata=metadata,
             plan=plan,
             result=result,
-            computed_batches=(batch for batch in batches()
-                if not request.reuse_observations or batch.column("channel")[0].as_py() not in
-                ("TIMESTAMPS", "OVERLAY_2D", "BOXES_2D")),
+            computed_batches=batches(include_observations=not request.reuse_observations),
         )

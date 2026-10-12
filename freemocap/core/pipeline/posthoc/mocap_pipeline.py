@@ -133,6 +133,10 @@ def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
 
 def _run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
     try:
+        if request.config.pipeline_implementation == "typed_dataflow":
+            from freemocap.core.pipeline.dataflow.application_pipeline import run_application_graph
+            run_application_graph(request=request)
+            return
         if request.config.start_stage != 'observations':
             from freemocap.core.pipeline.posthoc.saved_stage_processing import (
                 recording_structure, run_saved_numerical_stages, select_group,

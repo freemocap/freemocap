@@ -74,7 +74,11 @@ class RecordingPipelineTests(unittest.TestCase):
         self.assertEqual(assignment["error_units"], "pixels_at_1000_pixel_image_diagonal")
         self.assertEqual(len(assignment["fitness"]["cameras"]), 3)
         from freemocap.core.recording.result_processing.observation_publication import publish_posthoc_observations
-        publish_posthoc_observations(result.outputs["spatial_request"]["result"])
+        from unittest.mock import patch
+        # Reusing saved 2D data must not regenerate discarded observation batches.
+        with patch("freemocap.core.recording.result_processing.observation_publication.observation_batches",
+                   side_effect=AssertionError("Rebuilt reused observations")):
+            publish_posthoc_observations(result.outputs["spatial_request"]["result"])
         saved_again = read_metadata(path=RecordingStructure(base_directory=source.root.parent, recording_name=source.root.name).data_parquet_path)
         self.assertEqual(assignment, saved_again.runs[0].processing[source.sources.sensor_group]["camera_assignment"])
 

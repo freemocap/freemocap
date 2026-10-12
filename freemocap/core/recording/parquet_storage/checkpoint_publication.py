@@ -26,6 +26,16 @@ def channel_selection_mask(*, batch: pa.RecordBatch,
     channel_keys: set[tuple[str, str, str | None, str]],
 ) -> pa.Array:
     """Match complete channel identities without expanding scalar rows in Python."""
+    # Our writer emits single-channel batches. Establish that identity once,
+    # avoiding a full array comparison for every candidate channel.
+    identity = []
+    for name in ("sensor_group", "source", "reference_frame", "channel"):
+        values = pc.unique(batch.column(name))
+        if len(values) != 1:
+            break
+        identity.append(values[0].as_py())
+    if len(identity) == 4:
+        return pa.repeat(pa.scalar(tuple(identity) in channel_keys), batch.num_rows)
     selected = pa.repeat(pa.scalar(False), batch.num_rows)
     for group, source, reference, kind in channel_keys:
         matches = pc.and_(pc.equal(batch.column("sensor_group"), group),

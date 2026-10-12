@@ -15,3 +15,15 @@ class CheckpointColumnSelectionTests(unittest.TestCase):
             self.assertEqual(channel_selection_mask(batch=batch,channel_keys=keys).to_pylist(),
                              [row in keys for row in rows])
             self.assertEqual(channel_selection_mask(batch=batch.slice(0,0),channel_keys=keys).to_pylist(), [])
+
+    def test_uniform_batches_do_not_scan_every_candidate_channel(self):
+        from unittest.mock import patch
+        names = ("sensor_group", "source", "reference_frame", "channel")
+        for reference in (None, "world"):
+            row = ("group", "body", reference, "raw")
+            batch = pa.RecordBatch.from_pylist([dict(zip(names, row))] * 12)
+            keys = {("group", str(i), reference, "raw") for i in range(100)}
+            with patch("freemocap.core.recording.parquet_storage.checkpoint_publication.pc.equal",
+                       side_effect=AssertionError("Per-candidate comparison")):
+                self.assertEqual(channel_selection_mask(batch=batch, channel_keys=keys).to_pylist(), [False]*12)
+                self.assertEqual(channel_selection_mask(batch=batch, channel_keys=keys | {row}).to_pylist(), [True]*12)

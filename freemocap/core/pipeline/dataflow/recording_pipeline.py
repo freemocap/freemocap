@@ -1,13 +1,12 @@
 """Recording graph composition using the application's existing scientific operations."""
 from collections.abc import Callable
 from concurrent.futures import CancelledError
-from contextlib import closing
+from contextlib import closing, nullcontext
 from dataclasses import replace
 from pathlib import Path
 import multiprocessing
 from uuid import uuid4
 
-import cv2
 import numpy as np
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -21,15 +20,13 @@ from freemocap.core.pipeline.dataflow.definition import (
     GraphNode, GraphPort, InputBindingRule, PortReference, compile_graph,
 )
 from freemocap.core.pipeline.dataflow.recording_executor import RecordingExecutionResult, execute_recording_graph
+from freemocap.core.pipeline.dataflow.annotation_workers import CameraAnnotationJob, RecordingAnnotationWorkers, write_camera_annotation
 from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection, triangulate_completed_observations, camera_assignment_metadata
 from freemocap.core.pipeline.dataflow.tracker_adapter import SkellyTrackerAdapter
 from freemocap.core.pipeline.dataflow.camera_join import ProducerOutcome
 from freemocap.core.pipeline.dataflow.video_sources import RecordingVideoSources
 from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.performance_report import PerformanceReport
-from freemocap.core.pipeline.posthoc.annotation_input import AnnotationInput
-from freemocap.core.pipeline.posthoc.annotation_output import AnnotationOutputRequest, AnnotationVideoOutput
-from freemocap.core.pipeline.posthoc.annotation_style import build_observation_annotator
 from freemocap.core.reconstruction.posthoc_filtering import prepare_recording_points
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.posthoc_reconstruction import fit_skeletons_for_recording, reconstruct_skeletons_with_fits
@@ -83,6 +80,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     config: PosthocMocapPipelineConfig, execution_provider: str = "cpu", annotate: bool = False,
     shutdown_flag=None, performance: PerformanceReport | None = None,
     observation_loader: Callable[[], ObservationCollection] | None = None,
+    annotation_service: RecordingAnnotationWorkers | None = None,
+    progress: Callable[[str, str, float], None] | None = None,
 ) -> tuple[CompiledGraph, dict[str, Callable[[dict[str, object]], dict[str, object]]]]:
     """Build the same definition that execution consumes; callers may serialize it.
 
@@ -144,7 +143,12 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             for input_name, parent in dependencies.items())
         def invoke(inputs):
             check_cancelled()
-            return {"result": function(inputs)}
+            if progress is not None:
+                progress(name, "started", 0.0)
+            result = function(inputs)
+            if progress is not None:
+                progress(name, "finished", 1.0)
+            return {"result": result}
         handlers[name] = invoke
 
     def load_and_track(_):
@@ -159,8 +163,15 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 performance_report=performance, execution_provider=execution_provider,
                 mediapipe_disable_gpu=True if config.detector_type == "mediapipe" else None)
             with closing(adapter.track_recording(sources=sources, execution_id="recording-graph", shutdown_flag=shutdown_flag)) as events:
+                camera_frame_count = 0
+                total_camera_frames = sum(source.video_metadata.frame_count for source in sources.camera_sources)
+                from freemocap.core.pipeline.dataflow.tracker_adapter import TrackedCameraFrame
                 for event in events:
                     collection.accept(event)
+                    if isinstance(event, TrackedCameraFrame):
+                        camera_frame_count += 1
+                        if progress is not None and camera_frame_count % max(1, total_camera_frames // 100) == 0:
+                            progress("load_and_track", "tracking", camera_frame_count / total_camera_frames)
         finally:
             service.close()
             registry.remove_dead()
@@ -281,30 +292,20 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 collection = inputs["observations"]
                 if not any(outcome.camera_id == source.camera_id and outcome.outcome == ProducerOutcome.SUCCEEDED for outcome in collection.outcomes):
                     raise ValueError(f"Camera did not complete: {source.camera_id}")
-                annotator = build_observation_annotator(tracker_config)
-                reader = cv2.VideoCapture(str(source.video_metadata.file_path))
-                output = None
-                try:
-                    output = AnnotationVideoOutput(AnnotationOutputRequest(recording_path=Path(recording.full_recording_path),
-                        pipeline_id=execution_id, video=source.video_metadata, input_mode=AnnotationInput.RAW,
-                        performance=performance, camera_id=source.camera_id))
-                    for frame in collection.frames:
-                        check_cancelled()
-                        ok, image = reader.read()
-                        if not ok:
-                            raise ValueError("Annotation video ended before observations")
-                        output.write_frame(image=image, observation=frame[source.camera_id], annotator=annotator)
-                    output.publish()
-                    return output.destination
-                finally:
-                    reader.release()
-                    if output is not None:
-                        output.close()
+                job = CameraAnnotationJob(recording_path=Path(recording.full_recording_path),
+                    execution_id=execution_id, camera_id=source.camera_id, video=source.video_metadata,
+                    tracker_config=tracker_config, observations=tuple(frame[source.camera_id] for frame in collection.frames))
+                if annotation_service is not None:
+                    return annotation_service.run_job(job, cancelled=lambda: bool(shutdown_flag.value))
+                return write_camera_annotation(job, cancelled=lambda: bool(shutdown_flag.value), performance=performance)
             operation(f"annotate_camera_{index}", "annotated_video", {"observations": "load_and_track"}, annotate_camera, resource="annotation")
     return compile_graph(GraphDefinition(nodes=tuple(nodes), edges=tuple(edges))), handlers
 
 
 def run_recording_pipeline(**kwargs) -> RecordingExecutionResult:
-    graph, handlers = build_recording_pipeline(**kwargs)
-    flag = kwargs.get("shutdown_flag")
-    return execute_recording_graph(graph=graph, handlers=handlers, cancelled=lambda: bool(flag.value) if flag is not None else False)
+    with RecordingAnnotationWorkers() if kwargs.get("annotate") and kwargs.get("annotation_service") is None else nullcontext(None) as service:
+        if service is not None:
+            kwargs["annotation_service"] = service
+        graph, handlers = build_recording_pipeline(**kwargs)
+        flag = kwargs.get("shutdown_flag")
+        return execute_recording_graph(graph=graph, handlers=handlers, cancelled=lambda: bool(flag.value) if flag is not None else False)

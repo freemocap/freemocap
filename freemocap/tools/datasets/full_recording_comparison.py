@@ -4,6 +4,7 @@ Tracking runs once; both scientific paths consume identical observations. This i
 downstream parity, not a full old/new tracking-throughput benchmark.
 """
 import argparse
+from contextlib import nullcontext
 from dataclasses import replace, asdict
 import json
 from pathlib import Path
@@ -13,6 +14,7 @@ from time import perf_counter
 
 import numpy as np
 import cv2
+from freemocap.core.pipeline.dataflow.annotation_workers import RecordingAnnotationWorkers
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.timestamps.recording_timing_reader import recorded_camera_timing_path, recorded_multiframe_timing_path
@@ -115,6 +117,7 @@ def compare_saved_channels(left: RecordingStructure, right: RecordingStructure) 
 
 def render_report(report: dict) -> str:
     lines = ["FULL RECORDING GRAPH COMPARISON", "=" * 45, f"Status: {report['status']}",
+             f"Execution: {report.get('execution_mode', 'concurrent')}; profiled: {report.get('profiled', False)}",
              f"Recording: {report.get('recording', 'unknown')}",
              f"Detector: {report.get('detector', 'unknown')}; requested provider: {report.get('provider', 'unknown')}",
              "Scope: shared tracking observations; compare complete scientific processing and saved channels."]
@@ -126,21 +129,30 @@ def render_report(report: dict) -> str:
         rate = frames / seconds if seconds > 0 else 0
         unit = "video frames/s" if name.startswith("annotate_camera_") else "mocap frames/s"
         suffix = "" if name in ("observation_request", "spatial_request", "reconstruction_input") else f"   {rate:9.2f} {unit}"
-        lines.append(f"  {name:28} {seconds:10.3f} s{suffix}")
+        cpu = report.get("component_measurements", {}).get(name, {}).get("process_cpu_seconds")
+        cpu_text = "" if cpu is None else f"   process CPU {cpu:.3f} s"
+        lines.append(f"  {name:28} {seconds:10.3f} s{suffix}{cpu_text}")
+    if report.get("execution_mode") == "isolated":
+        lines.append("Diagnostic isolation: one graph handler at a time; internal batching/native workers remain enabled. Not a production scheduling proposal.")
+        lines.append("Process CPU sums this process's threads; excludes GPU time and child-process CPU. Profiled runs include profiler overhead.")
     if report.get("operations_seconds"):
         lines.append("Rates are recording coverage / elapsed handler time, including resource contention; not exclusive CPU time. Overlapping durations must not be added.")
     if report.get("scientific_subphases"):
         lines.append("Matching / triangulation breakdown:")
         for stage in report["scientific_subphases"]:
             lines.append(f"  {stage['name']:36} {stage['elapsed_seconds']:9.3f} s")
-    for name in ("graph_wall_seconds", "current_scientific_seconds"):
+    for name in ("graph_wall_seconds", "scientific_completion_seconds", "current_scientific_seconds"):
         if name in report:
             lines.append(f"{name}: {report[name]:.3f} s")
+    workers = report.get("annotation_workers")
+    if workers:
+        lines.append(f"Annotation workers: launch {workers['launch_seconds']:.3f} s; shutdown {workers['shutdown_seconds']:.3f} s; alive afterward {workers['alive_after_close']}")
+        lines.append("Process initialization overlaps graph work; any remaining readiness wait is included in each annotation handler.")
     if "motion_capture_throughput" in report:
         throughput = report["motion_capture_throughput"]
         lines.append(f"Full graph: {throughput['seconds_per_frame']:.6f} seconds per motion-capture frame; "
                      f"{throughput['frames_per_second']:.3f} motion-capture frames/s")
-        lines.append("One motion-capture frame includes all cameras. Includes annotation and all graph sinks; excludes comparison-harness verification.")
+        lines.append("One motion-capture frame includes all cameras. Includes requested sinks and worker lifecycle; excludes comparison-harness verification.")
     lines.append("These wall times cover different work; they are not a speedup ratio.")
     for row in report.get("channels", []):
         lines.append(f"{' / '.join(str(item) for item in row['channel'])}: {row['values']} values; max difference {row['maximum_absolute_error']:.6g}")
@@ -159,11 +171,17 @@ def render_report(report: dict) -> str:
 
 def run_comparison(*, recording: Path, calibration: Path, output: Path, provider: str,
                    annotate: bool = False, detector: str = "rtmpose", with_board: bool = False,
-                   annotation_workers: int = 2) -> dict:
+                   annotation_workers: int = 2, annotation_execution: str = "process",
+                   isolate_components: bool = False, profile_components: bool = False) -> dict:
+    if profile_components and not isolate_components:
+        raise ValueError("Component profiling requires isolated execution")
+    if annotation_execution not in ("thread", "process"):
+        raise ValueError("Annotation execution must be thread or process")
     if annotation_workers < 1:
         raise ValueError("Annotation worker count must be positive")
     output.mkdir(parents=True, exist_ok=False)
-    report = dict(status="running", recording=str(recording), provider=provider, detector=detector)
+    report = dict(status="running", recording=str(recording), provider=provider, detector=detector,
+                  execution_mode="isolated" if isolate_components else "concurrent", profiled=profile_components)
     def write_report():
         if report.get("graph_wall_seconds", 0) > 0 and report.get("frames_per_camera", 0) > 0:
             seconds = report["graph_wall_seconds"]
@@ -192,13 +210,33 @@ def run_comparison(*, recording: Path, calibration: Path, output: Path, provider
         report["resource_capacity"] = dict(compute=2, annotation=annotation_workers, recording_io=1)
         performance = PerformanceReport()
         recording_info = RecordingInfo(recording_name=recording.name, recording_directory=str(output / "graph"))
+        annotation_service = RecordingAnnotationWorkers(count=annotation_workers) if annotate and annotation_execution == "process" else None
+        report["annotation_execution"] = annotation_execution if annotate else "disabled"
         graph, handlers = build_recording_pipeline(sources=graph_sources, recording=recording_info,
-            config=config, execution_provider=provider, annotate=annotate, performance=performance)
+            config=config, execution_provider=provider, annotate=annotate, performance=performance,
+            annotation_service=annotation_service)
         (output / "graph.json").write_text(graph.model_dump_json(indent=2), encoding="utf-8")
         report["phase"] = "graph_execution"
         write_report()
         started = perf_counter()
-        result = execute_recording_graph(graph=graph, handlers=handlers, resource_capacity=report["resource_capacity"])
+        with annotation_service if annotation_service is not None else nullcontext():
+            execution_offset = perf_counter() - started
+            if isolate_components:
+                from freemocap.tools.datasets.component_diagnostics import measure_isolated_components
+                result = measure_isolated_components(graph=graph, handlers=handlers,
+                    output=output / "components", profile=profile_components)
+            else:
+                result = execute_recording_graph(graph=graph, handlers=handlers, resource_capacity=report["resource_capacity"])
+        if isolate_components:
+            report["component_measurements"] = json.loads((output / "components" / "components.json").read_text())["measurements"]
+        if annotation_service is not None:
+            report["annotation_workers"] = dict(launch_seconds=annotation_service.launch_seconds,
+                shutdown_seconds=annotation_service.shutdown_seconds, jobs=annotation_service.measurements,
+                alive_after_close=sum(worker.is_alive() for worker in annotation_service.workers))
+        scientific_nodes = {node.id for node in graph.definition.nodes if not node.id.startswith("annotate_camera_")}
+        if scientific_nodes.issubset(result.outputs):
+            report["scientific_completion_seconds"] = execution_offset + max(
+                result.finished_seconds[name] for name in scientific_nodes)
         report.update(graph_wall_seconds=perf_counter() - started, operations_seconds=result.elapsed_seconds,
             operation_started_seconds=result.started_seconds, operation_finished_seconds=result.finished_seconds,
             failures=result.failures, failure_tracebacks=result.failure_tracebacks,
@@ -266,11 +304,15 @@ def main() -> int:
     parser.add_argument("--annotate", action="store_true")
     parser.add_argument("--annotation-workers", type=int, default=2,
                         help="Experimental annotation concurrency; does not change scientific work")
+    parser.add_argument("--annotation-execution", choices=("thread", "process"), default="process")
+    parser.add_argument("--isolate-components", action="store_true", help="Diagnostic: run graph handlers one at a time")
+    parser.add_argument("--profile-components", action="store_true", help="Profile isolated handler thread; timings include profiler overhead")
     parser.add_argument("--with-board", action="store_true", help="Track the explicit board recorded in the selected calibration")
     args = parser.parse_args()
     report = run_comparison(recording=args.recording, calibration=args.calibration, output=args.output,
                             provider=args.provider, annotate=args.annotate, detector=args.detector, with_board=args.with_board,
-                            annotation_workers=args.annotation_workers)
+                            annotation_workers=args.annotation_workers, annotation_execution=args.annotation_execution,
+                            isolate_components=args.isolate_components, profile_components=args.profile_components)
     print(render_report(report))
     return 0 if report["status"] == "passed" else 1
 

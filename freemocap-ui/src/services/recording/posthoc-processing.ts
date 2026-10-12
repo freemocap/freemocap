@@ -6,4 +6,8 @@ export const PROCESSING_STAGES = [
     ['reconstruction', 'Skeleton reconstruction and biomechanics'],
 ] as const;
 export type ResumeStage = typeof PROCESSING_STAGES[number][0];
-export interface StageSelection {startStage: ResumeStage; baseRunId: number; sensorGroup?: string}
+export interface StageSelection {startStage: ResumeStage; baseRunId: number; sensorGroup?: string;
+    pipelineImplementation?: 'current' | 'typed_dataflow';
+    graphExecutionProvider?: 'auto' | 'cpu' | 'cuda';
+    graphAnnotate?: boolean;
+}

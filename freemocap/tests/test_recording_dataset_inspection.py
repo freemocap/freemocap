@@ -71,15 +71,19 @@ def test_rejects_camera_timeline_mismatch(tmp_path):
         inspect_recording(replace(TEST_DATA, expected_frame_count=4), recordings_root=tmp_path)
 
 
-@pytest.mark.parametrize("board", [None, {"square_size_mm": 1}, {
+@pytest.mark.parametrize("board", [{"square_size_mm": 1}, {
     "square_size_mm": 58, "num_squares_height": 7, "num_squares_width": 5,
 }])
-def test_rejects_missing_or_incompatible_board_metadata(tmp_path, board):
+def test_rejects_incompatible_board_metadata(tmp_path, board):
     folder = recording(tmp_path, (4, 4, 4))
     path = folder.parent / "charuco_board_info.json"
-    if board is None:
-        path.unlink()
-    else:
-        path.write_text(json.dumps(board), encoding="utf-8")
+    path.write_text(json.dumps(board), encoding="utf-8")
     with pytest.raises(ValueError, match="7x5 board metadata"):
         inspect_recording(replace(TEST_DATA, expected_frame_count=4), recordings_root=tmp_path)
+
+
+def test_catalog_board_definition_does_not_require_sidecar(tmp_path):
+    folder = recording(tmp_path, (4, 4, 4))
+    (folder.parent / 'charuco_board_info.json').unlink()
+    report = inspect_recording(replace(TEST_DATA, expected_frame_count=4), recordings_root=tmp_path)
+    assert report['board_metadata'] == dict(square_size_mm=58, num_squares_height=5, num_squares_width=7)

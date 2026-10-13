@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from freemocap.core.pipeline.posthoc.progress_messages import (
     PipelineProgressMessage,
+    OperationProgressSnapshot,
+    RunTimingSnapshot,
     VideoNodeProgressMessage,
 )
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
@@ -52,6 +54,8 @@ class TaskSnapshot(SnapshotModel):
     status: Literal["running", "complete", "failed", "cancelled"]
     progress: TaskProgress
     cameras: tuple[CameraTaskSnapshot, ...]
+    operations: tuple[OperationProgressSnapshot, ...] = ()
+    timing: RunTimingSnapshot | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -59,6 +63,8 @@ class TaskSnapshot(SnapshotModel):
     def validate_cameras(self) -> "TaskSnapshot":
         if len({camera.node_id for camera in self.cameras}) != len(self.cameras):
             raise ValueError("Camera task node IDs must be unique")
+        if len({operation.operation_id for operation in self.operations}) != len(self.operations):
+            raise ValueError("Operation IDs must be unique")
         return self
 
 
@@ -117,10 +123,16 @@ class TaskRegistry:
     def update(self, *, task_id: str, messages: list[PipelineProgressMessage]) -> None:
         previous = self.tasks[task_id]
         progress = previous.progress
+        operations = previous.operations
+        timing = previous.timing
         cameras = {camera.node_id: camera for camera in previous.cameras}
         for message in messages:
             if message.pipeline_id == task_id:
                 progress = TaskProgress.from_message(message=message)
+                if message.operations is not None:
+                    operations = message.operations
+                if message.timing is not None:
+                    timing = message.timing
             elif isinstance(message, VideoNodeProgressMessage):
                 cameras[message.pipeline_id] = CameraTaskSnapshot(
                     node_id=message.pipeline_id,
@@ -138,17 +150,26 @@ class TaskRegistry:
             if progress.phase == "failed"
             else "running"
         )
+        if status == "failed":
+            operations = tuple(operation.model_copy(update={
+                "status": "failed", "detail": progress.detail,
+            }) if operation.status in ("waiting", "running") else operation
+                for operation in operations)
         ordered = tuple(sorted(cameras.values(), key=lambda camera: camera.node_id))
-        if (progress, ordered, status) == (
+        if (progress, ordered, status, operations, timing) == (
             previous.progress,
             previous.cameras,
             previous.status,
+            previous.operations,
+            previous.timing,
         ):
             return
         self.tasks[task_id] = previous.model_copy(
             update={
                 "progress": progress,
                 "cameras": ordered,
+                "operations": operations,
+                "timing": timing,
                 "status": status,
                 "revision": previous.revision + 1,
                 "updated_at": datetime.now(tz=timezone.utc),
@@ -163,6 +184,9 @@ class TaskRegistry:
         self.tasks[task_id] = previous.model_copy(
             update={
                 "status": "cancelled",
+                "operations": tuple(operation.model_copy(update={"status": "cancelled"})
+                    if operation.status in ("waiting", "running") else operation
+                    for operation in previous.operations),
                 "progress": TaskProgress(
                     phase="failed", progress_fraction=None, detail="Stopped by user"
                 ),

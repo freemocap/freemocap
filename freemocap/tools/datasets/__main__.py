@@ -28,8 +28,8 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument('--timeout', type=float, default=1800.0, help='Seconds per pipeline')
             sub.add_argument('--dry-run', action='store_true', help='Show work and paths without changing files')
         if action in ('process', 'process-all'):
-            sub.add_argument('--implementation', choices=('current', 'graph'), default='current',
-                             help='Posthoc backend; graph is reserved and rejected until implemented')
+            sub.add_argument('--implementation', choices=('current', 'graph'), default='graph',
+                             help='Posthoc backend: graph = Typed data flow graph V1 (default); current = Legacy post hoc pipeline')
             sub.add_argument('--output-profile', choices=('standard', 'numerical'), default='standard',
                              help='Standard requires validated Blender output; numerical is explicitly partial')
             sub.add_argument('--blender-path', help='Blender executable for standard-output acceptance')

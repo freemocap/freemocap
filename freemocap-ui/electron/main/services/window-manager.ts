@@ -29,6 +29,9 @@ export class WindowManager {
 
         this.mainWindow = window;
         this.configureWindowHandlers(window);
+        if (APP_ENVIRONMENT.IS_DEV) {
+            LifecycleLogger.saveRendererConsole(window);
+        }
         this.loadContent(window);
 
         window.once('ready-to-show', () => {

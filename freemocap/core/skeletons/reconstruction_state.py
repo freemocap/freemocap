@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 import numpy as np
+from skellytracker.core.io.prepared_tracker_mapping import PreparedTrackerMapping
 from skellyforge.core.skeleton.pose.model_scale_fitting import (
     ModelScaleFit,
     InsufficientScaleEvidence,
@@ -112,6 +113,22 @@ class SkeletonReconstructionState:
     roll_resolver: ContinuousRollResolver | None = None
     previous_center_of_mass: tuple[np.ndarray, float] | None = None
     diagnostic_reference_fit: ModelScaleFit | None = None
+    prepared_mapping: PreparedTrackerMapping | None = None
+    mapping_bundle: TrackedSkeletonBundle | None = None
+
+    def map_frame(self, *, bundle: TrackedSkeletonBundle, points: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        """Compile per configuration; coordinate changes and occlusions reuse the plan."""
+        if self.mapping_bundle is not bundle:
+            snapshots = bundle.landmark_mapping.mapping_snapshots()
+            self.prepared_mapping = None if all(snapshot.passthrough for snapshot in snapshots) else PreparedTrackerMapping.prepare(
+                bundle.landmark_mapping, tracker_names=bundle.tracker_keypoint_names)
+            self.mapping_bundle = bundle
+        if self.prepared_mapping is None:
+            return bundle.landmark_mapping.apply(tracker_positions=points)
+        # A scene may contain board and human points; each bundle consumes its own axis.
+        return self.prepared_mapping.apply_frame(tracker_positions={
+            name: value for name, value in points.items() if name in self.prepared_mapping.tracker_columns})
+
 
     def reset(self) -> None:
         """Forget everything measured so far.

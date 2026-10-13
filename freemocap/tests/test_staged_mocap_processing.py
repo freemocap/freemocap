@@ -29,7 +29,7 @@ def rows(request):
 
 def test_filter_then_reconstruct_preserves_raw_and_timing(saved_request, monkeypatch):
     before = rows(saved_request)
-    config = PosthocMocapPipelineConfig(start_stage='filtering', base_run_id=3,
+    config = PosthocMocapPipelineConfig(pipeline_implementation='current', start_stage='filtering', base_run_id=3,
         sensor_group='mocap')
     processing.run_saved_numerical_stages(structure=saved_request.structure, config=config,
         reporter=TaskProgressReporter.noop())
@@ -59,7 +59,7 @@ def test_cancelled_resume_preserves_previous_file(saved_request):
     before = saved_request.structure.data_parquet_path.read_bytes()
     with pytest.raises(CancelledError):
         processing.run_saved_numerical_stages(structure=saved_request.structure,
-            config=PosthocMocapPipelineConfig(start_stage='filtering', base_run_id=3),
+            config=PosthocMocapPipelineConfig(pipeline_implementation='current', start_stage='filtering', base_run_id=3),
             reporter=TaskProgressReporter.noop(), cancelled=lambda: True)
     assert saved_request.structure.data_parquet_path.read_bytes() == before
 
@@ -68,7 +68,7 @@ def test_missing_input_does_not_fall_back_to_tracking(saved_request):
     before = saved_request.structure.data_parquet_path.read_bytes()
     with pytest.raises(ValueError, match='KEYPOINTS_3D'):
         processing.run_saved_numerical_stages(structure=saved_request.structure,
-            config=PosthocMocapPipelineConfig(start_stage='reconstruction', base_run_id=3),
+            config=PosthocMocapPipelineConfig(pipeline_implementation='current', start_stage='reconstruction', base_run_id=3),
             reporter=TaskProgressReporter.noop())
     assert saved_request.structure.data_parquet_path.read_bytes() == before
 
@@ -80,9 +80,9 @@ def test_saved_worker_never_starts_detection(monkeypatch, tmp_path):
     monkeypatch.setattr(processing, 'run_saved_numerical_stages', worker)
     detector = Mock(side_effect=AssertionError('Saved processing must not open videos or detectors'))
     monkeypatch.setattr(mocap_pipeline, 'detect_mocap_recording', detector)
-    request = Mock(spec=mocap_pipeline.MocapWorkerRequest, config=PosthocMocapPipelineConfig(start_stage='filtering'),
+    request = Mock(spec=mocap_pipeline.MocapWorkerRequest, config=PosthocMocapPipelineConfig(pipeline_implementation='current', start_stage='filtering', export_to_blender=False),
         recording=RecordingInfo(recording_name='recording', recording_directory=str(tmp_path)),
-        ipc=SimpleNamespace(should_continue=True), report=Mock())
+        ipc=SimpleNamespace(should_continue=True), report=Mock(), performance=PerformanceReport(), pipeline_id='test-saved-worker')
     mocap_pipeline.run_mocap_pipeline(request=request)
     worker.assert_called_once()
     detector.assert_not_called()
@@ -106,7 +106,7 @@ def test_completed_tracking_and_triangulation_survive_reconstruction_failure(tmp
     monkeypatch.setattr(task, 'reconstruct_skeletons_for_recording', Mock(side_effect=RuntimeError('test reconstruction failure')))
     with pytest.raises(RuntimeError, match='test reconstruction failure'):
         task.run_posthoc_mocap_task(frame_observations=frames, recording_info=info,
-            video_metadata={'cam': video}, task_config=PosthocMocapPipelineConfig(
+            video_metadata={'cam': video}, task_config=PosthocMocapPipelineConfig(pipeline_implementation='current',
                 detector_type='mediapipe', charuco_tracking_enabled=False), selected_board=None)
     inventory = processing.inspect_saved_stages(str(info.full_recording_path))
     stages = inventory['runs'][0]['groups'][0]['stages']
@@ -124,7 +124,7 @@ def test_completed_tracking_and_triangulation_survive_reconstruction_failure(tmp
     before = pa.Table.from_batches(list(read_batches(path=structure.data_parquet_path, run_id=0,
         sensor_groups=(camera_group_name(['cam']),)))).to_pylist()
     worker = Mock(spec=mocap_pipeline.MocapWorkerRequest,
-        config=PosthocMocapPipelineConfig(start_stage='triangulation', detector_type='rtmpose'),
+        config=PosthocMocapPipelineConfig(pipeline_implementation='current', start_stage='triangulation', detector_type='rtmpose', export_to_blender=False),
         recording=info, ipc=SimpleNamespace(should_continue=True), report=Mock(), performance=PerformanceReport(), pipeline_id="test-resume")
     mocap_pipeline.run_mocap_pipeline(request=worker)
     after = pa.Table.from_batches(list(read_batches(path=structure.data_parquet_path, run_id=0,
@@ -135,13 +135,21 @@ def test_completed_tracking_and_triangulation_survive_reconstruction_failure(tmp
 
 
 @pytest.mark.e2e
-def test_real_recording_filter_and_reconstruct_without_media(tmp_path):
+@pytest.mark.parametrize('name', ['freemocap_test_data', 'freemocap_sample_data'])
+def test_real_recording_filter_and_reconstruct_without_media(tmp_path, name, record_property):
     import os
-    name = 'freemocap_test_data'
+    import hashlib
+    from time import perf_counter
+
+    def digest(path):
+        with path.open('rb') as stream:
+            return hashlib.file_digest(stream, 'sha256').hexdigest()
+
     prepared = Path(os.environ.get('FREEMOCAP_PROVENANCE_PREPARED_ROOT', Path.home() / 'freemocap_data/testing/prepared'))
     source = prepared / name / 'current/recordings' / name / f'{name}_data.parquet'
     if not source.is_file():
-        pytest.skip('Prepare freemocap_test_data through the production pipeline first')
+        pytest.skip(f'Prepare {name} through the production pipeline first')
+    original_digest = digest(source)
     structure = processing.recording_structure(str(tmp_path / name))
     structure.full_path.mkdir()
     shutil.copy2(source, structure.data_parquet_path)
@@ -150,10 +158,31 @@ def test_real_recording_filter_and_reconstruct_without_media(tmp_path):
     group = processing.select_group(metadata.runs[run_id], None)
     filters = [('run_id', '=', run_id), ('sensor_group', '=', group), ('channel', '=', 'RAW_KEYPOINTS_3D')]
     raw = pq.read_table(structure.data_parquet_path, filters=filters).replace_schema_metadata(None)
-    config = PosthocMocapPipelineConfig(start_stage='filtering', base_run_id=run_id, sensor_group=group,
+    config = PosthocMocapPipelineConfig(pipeline_implementation='current', start_stage='filtering', base_run_id=run_id, sensor_group=group,
         filter_config=PosthocFilterConfig(cutoff=1.0))
-    for start in ('filtering', 'reconstruction'):
-        processing.run_saved_numerical_stages(structure=structure, config=config.model_copy(update={'start_stage': start}),
+    previous_output = None
+    for index, start in enumerate(('filtering', 'scale_fit', 'reconstruction', 'reconstruction')):
+        before = read_metadata(path=structure.data_parquet_path).runs[run_id]
+        settings = {'start_stage': start}
+        if start == 'reconstruction':
+            settings['anchor_segment_name'] = 'skull'
+        started = perf_counter()
+        processing.run_saved_numerical_stages(structure=structure, config=config.model_copy(update=settings),
             reporter=TaskProgressReporter.noop())
+        record_property(f'{index}_{start}_seconds', perf_counter() - started)
         assert raw.equals(pq.read_table(structure.data_parquet_path, filters=filters).replace_schema_metadata(None))
+        after = read_metadata(path=structure.data_parquet_path).runs[run_id]
+        assert after.sensor_groups == before.sensor_groups
+        assert after.reference_frames == before.reference_frames
+        if start == 'reconstruction':
+            assert after.scale_fits == before.scale_fits
+            assert after.models['standard_human'].anchor_segment_name == 'skull'
+            output = pq.read_table(structure.data_parquet_path, filters=[
+                ('run_id', '=', run_id), ('channel', 'in', ['LANDMARKS_3D', 'ROTATIONS_WORLD'])
+            ]).replace_schema_metadata(None)
+            assert output.num_rows > 0
+            if previous_output is not None:
+                assert output.equals(previous_output), 'Identical rerun changed numerical output'
+            previous_output = output
     assert not structure.videos_synchronized_dir.exists()
+    assert digest(source) == original_digest, 'Replay modified the reference recording'

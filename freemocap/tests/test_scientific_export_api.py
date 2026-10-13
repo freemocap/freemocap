@@ -8,6 +8,7 @@ import pytest
 
 from freemocap.api.http.posthoc.exports_router import exports_router
 from freemocap.api.http.posthoc import export_jobs
+from freemocap.core.pipeline.performance_report import PerformanceReport
 from freemocap.core.pipeline.posthoc.mocap_pipeline import complete_mocap, MocapWorkerRequest
 from freemocap.core.recording.exports import wide_csv
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
@@ -67,10 +68,10 @@ def test_automatic_export_binds_produced_run_and_separates_failure(scientific_re
         return SimpleNamespace(manifest_path=structure.exports_dir / 'metadata.json')
     monkeypatch.setattr(wide_csv, 'export_scientific', writer)
     request = Mock(spec=MocapWorkerRequest, config=config, recording=SimpleNamespace(full_recording_path=structure.full_path),
-        ipc=SimpleNamespace(should_continue=True), report=lambda *args: reports.append(args))
+        ipc=SimpleNamespace(should_continue=True), performance=PerformanceReport(), report=lambda *args: reports.append(args))
     before = structure.data_parquet_path.read_bytes()
     if fails:
-        with pytest.raises(RuntimeError, match='processing complete; requested exports incomplete'):
+        with pytest.raises(RuntimeError, match='requested exports incomplete'):
             complete_mocap(request)
         assert not any(r[0] == 'complete' for r in reports)
     else:

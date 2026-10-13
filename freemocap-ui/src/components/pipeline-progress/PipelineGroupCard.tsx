@@ -12,6 +12,8 @@ import {
   PIPELINE_TYPE_CONFIG,
 } from "@/store/slices/pipelines";
 import { stopPipeline } from "@/store/slices/pipelines/pipelines-thunks";
+import ProcessingTiming from "./ProcessingTiming";
+import OperationProgressBars from "./OperationProgressBars";
 import IconButton from "@/components/ui-components/IconButton";
 
 function formatTimeAgo(timestamp: number): string {
@@ -42,7 +44,7 @@ function SubProgressBar({
     isTerminal && pipeline.completedAt
       ? formatTimeAgo(pipeline.completedAt)
       : isIndeterminate
-        ? pipeline.detail || PHASE_LABELS[pipeline.phase]
+        ? "Running"
         : `${pipeline.progress ?? 0}%`;
 
   const progressColor = isFailed
@@ -76,10 +78,12 @@ function SubProgressBar({
           />
         )}
       </div>
-      {isFailed && pipeline.detail && (
+      {pipeline.detail && (
         <p
           title={pipeline.detail}
-          className="text md text-error block m-0 truncate pipeline-group-card__error-text"
+          role="status"
+          className={`text md block m-0 ${isFailed ? "text-error" : ""}`}
+          style={{whiteSpace: "normal", overflowWrap: "anywhere"}}
         >
           {pipeline.detail}
         </p>
@@ -99,7 +103,6 @@ export default function PipelineGroupCard({
   const navigate = useNavigate();
   const { api } = useElectronIPC();
 
-  const overallProgress = group.aggregator?.progress ?? null;
 
   const borderColor = group.isFailed
     ? "var(--color-error)"
@@ -174,7 +177,7 @@ export default function PipelineGroupCard({
         
         <div className="flex flex-row gap-2 items-center">
             <p className="text bg text-white flex-shrink-0 m-0 mr-2">
-          {overallProgress === null ? "In progress" : `${overallProgress}%`}
+          {group.isFailed ? "Failed" : group.isComplete ? "Complete 100%" : group.isActive ? "Running" : "Stopped"}
                 </p>
             <IconButton
               title="Open folder"
@@ -222,6 +225,7 @@ export default function PipelineGroupCard({
           <span className="pipeline-group-card__bold">{recordingName}</span>
         </p>
       </div>
+      <ProcessingTiming timing={group.aggregator?.timing ?? null} running={group.isActive}/>
       {group.videoNodes.length > 0 && (
         <div
           className={`flex flex-col gap-2 pl-2 pipeline-group-card__border-left ${group.aggregator ? "pipeline-group-card__border-left-aggregator" : "pipeline-group-card__border-left-no-aggregator"}`}
@@ -239,13 +243,9 @@ export default function PipelineGroupCard({
         </div>
       )}
 
-      {group.isComplete && group.aggregator?.detail && (
-        <p role="status" className="text sm" style={{overflowWrap: 'anywhere'}}>{group.aggregator.detail}</p>
-      )}
-
       {group.aggregator && (
         <div className="flex flex-col gap-2 p-2 br-2 bg-darkgray ">
-          {group.pipelineType === PipelineType.CALIBRATION &&
+          {group.aggregator.operations?.length ? <OperationProgressBars operations={group.aggregator.operations}/> : group.pipelineType === PipelineType.CALIBRATION &&
             (group.aggregator.calibrationStage || group.isComplete) ? (
             CALIBRATION_STAGES.map((stage, index) => {
               const aggregator = group.aggregator!;
@@ -265,12 +265,10 @@ export default function PipelineGroupCard({
             isAggregator={true}
             label={
               group.aggregator.phase === PipelinePhase.COMPLETE
-                ? "Aggregation complete"
+                ? "Processing complete"
                 : group.aggregator.phase === PipelinePhase.FAILED
-                  ? "Aggregation failed"
-                  : group.videoNodes.length > 0
-                    ? `Aggregating ${group.videoNodes.length} camera${group.videoNodes.length !== 1 ? "s" : ""}`
-                    : PHASE_LABELS[group.aggregator.phase]
+                  ? "Processing failed"
+                  : PHASE_LABELS[group.aggregator.phase]
             }
           />}
         </div>

@@ -297,3 +297,30 @@
   note = {Reviewed the publisher abstract and metadata; this does not validate the proposed bounding-box interpolation algorithm or establish a coverage guarantee.}
 }
 
+
+@misc{scipyRotationQuaternion,
+  title = {{SciPy} Rotation.as_quat documentation},
+  author = {{SciPy community}},
+  url = {https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.as_quat.html},
+  urldate = {2026-10-12},
+  review = {full-text},
+  claim = {Unit quaternions q and -q represent the same rotation; scalar-first ordering must be explicit.}
+}
+
+@misc{scipyRotationEuler,
+  title = {{SciPy} Rotation.as_euler documentation},
+  author = {{SciPy community}},
+  url = {https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.as_euler.html},
+  urldate = {2026-10-12},
+  review = {full-text},
+  claim = {Euler angles have sequence-dependent ranges and nonunique components at gimbal lock; uppercase axes designate intrinsic sequences.}
+}
+
+@misc{scipyRotationMagnitude,
+  title = {{SciPy} Rotation.magnitude documentation},
+  author = {{SciPy community}},
+  url = {https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.magnitude.html},
+  urldate = {2026-10-12},
+  review = {full-text},
+  claim = {Rotation magnitude returns the rotation angle in radians in the interval zero to pi.}
+}

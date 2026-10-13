@@ -29,7 +29,8 @@ class PosthocMocapPipelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     pipeline_implementation: Literal["current", "typed_dataflow"] = Field(
-        default="current", alias="pipelineImplementation")
+        default="typed_dataflow", alias="pipelineImplementation",
+        description="Typed data flow graph V1 (default), or the legacy post hoc pipeline (current).")
     graph_execution_provider: Literal["auto", "cpu", "cuda"] = Field(
         default="auto", alias="graphExecutionProvider")
     graph_annotate: bool = Field(default=True, alias="graphAnnotate")

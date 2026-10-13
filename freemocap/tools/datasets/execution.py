@@ -10,9 +10,7 @@ from .storage import write_json
 
 def require_implementation(value: str) -> str:
     """Reject unavailable paths before acquisition, output mutation or model setup."""
-    if value == 'graph':
-        raise ValueError('Graph posthoc execution is not implemented; no processing was started')
-    if value != 'current':
+    if value not in ('current', 'graph'):
         raise ValueError(f'Unknown posthoc implementation: {value}')
     return value
 

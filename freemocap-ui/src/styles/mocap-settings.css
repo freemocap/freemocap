@@ -34,8 +34,7 @@
 .mocap-settings-content {
   overflow-x: hidden;
   padding: 12px;
-  /* the last card fades rather than chopping flat against the footer */
-  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 22px), transparent 100%);
+
 }
 
 .mocap-settings-content::-webkit-scrollbar {

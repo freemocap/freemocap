@@ -82,7 +82,7 @@ def lifecycle(tmp_path, monkeypatch):
     video = videos / "camera.mp4"
     video.write_bytes(b"original input")
     (raw / "charuco_board_info.json").write_text("{}")
-    report = {"videos": [{"filename": video.name, "sha256": file_digest(video),
+    report = {"board_metadata": {}, "videos": [{"filename": video.name, "sha256": file_digest(video),
                            "decoded_frames": 222, "nominal_fps": 6.0}]}
     monkeypatch.setattr(preparation, "acquire_recording", lambda *a, **kw: raw)
     monkeypatch.setattr(preparation, "inspect_recording", lambda *a, **kw: report)
@@ -97,7 +97,7 @@ def lifecycle(tmp_path, monkeypatch):
         assert not (recording / f"{recording.name}_data.parquet").exists()
         calls.append(recording)
         parquet = recording / f"{recording.name}_data.parquet"
-        parquet.write_bytes(b"new output")
+        parquet.write_bytes(f"new output {len(calls)}".encode())
         calibration = recording / "calibration.toml"
         calibration.write_bytes(b"new calibration")
         result = {"validation": {"parquet_sha256": file_digest(parquet)},
@@ -115,7 +115,7 @@ def lifecycle(tmp_path, monkeypatch):
     return args, calls, raw
 
 
-def test_stable_results_survive_fresh_runs_and_software_changes(lifecycle, monkeypatch):
+def test_fresh_runs_replace_results_and_retain_one_comparison(lifecycle, monkeypatch):
     args, calls, raw = lifecycle
     current = preparation.prepare(TEST_DATA, fresh=False, **args)
     parquet = current / f"{current.name}_data.parquet"
@@ -125,7 +125,9 @@ def test_stable_results_survive_fresh_runs_and_software_changes(lifecycle, monke
     assert len(calls) == 1
     assert preparation.prepare(TEST_DATA, fresh=True, **args) == current
     assert len(calls) == 2
-    assert before == (file_digest(parquet), parquet.stat().st_mtime_ns)
+    assert before[0] != file_digest(parquet)
+    previous = next((args['prepared_root'] / TEST_DATA.name / 'history').glob('*/recordings/*/*_data.parquet'))
+    assert file_digest(previous) == before[0]
     assert not (args["prepared_root"] / TEST_DATA.name / "scratch").exists()
     assert (raw / "synchronized_videos" / "camera.mp4").read_bytes() == b"original input"
     assert (args["prepared_root"].parent / preparation.WARNING_FILENAME).is_file()
@@ -149,6 +151,18 @@ def test_failure_preserves_prepared_data_and_next_run_removes_stale_outputs(life
     monkeypatch.setattr(preparation, "execute_worker", worker)
     preparation.prepare(TEST_DATA, fresh=True, **args)
     assert not scratch.exists()
+
+
+def test_fresh_preparation_ignores_obsolete_generated_contents(lifecycle):
+    args, calls, raw = lifecycle
+    current = preparation.prepare(TEST_DATA, fresh=False, **args)
+    parquet = current / f'{current.name}_data.parquet'
+    parquet.write_bytes(b'obsolete generated format')
+    (current / 'calibration.toml').unlink()
+    assert preparation.prepare(TEST_DATA, fresh=True, **args) == current
+    assert len(calls) == 2
+    assert parquet.read_bytes() == b'new output 2'
+    assert (raw / 'synchronized_videos/camera.mp4').read_bytes() == b'original input'
 
 
 def test_preparation_rejects_output_inside_original_recordings(lifecycle):

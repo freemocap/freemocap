@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def checked_ready(root: Path, *, calibration_only: bool = False, require_complete: bool = True,
-                  check_exports: bool = True) -> dict | None:
+                  check_exports: bool = True, validate_generated: bool = True) -> dict | None:
     if (root / 'replacement.json').exists():
         raise ValueError(f'Interrupted save in {root}; run datasets recover for this dataset')
     marker = root / 'ready.json'
@@ -37,6 +37,10 @@ def checked_ready(root: Path, *, calibration_only: bool = False, require_complet
     recording = Path(ready['recording']).resolve()
     if not recording.is_relative_to((root / 'current').resolve()):
         raise ValueError(f'Prepared recording escapes current directory: {recording}')
+    if not validate_generated:
+        # Fresh work consumes source videos, not the previous generated file format.
+        # Retain only its publication envelope so replacement can keep one comparison.
+        return ready
     if not calibration_only:
         reuse_recording(root, ready['identity'], require_complete=require_complete, check_exports=check_exports)
     path = recording / ready['result']['calibration_filename']
@@ -67,8 +71,10 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
               start: str = 'observations', calibration: str | None = None, alignment: str | None = None,
               run_id: int | None = None, sensor_group: str | None = None,
               timeout: float = 1800.0, output_profile: str = 'standard', blender_path: str | None = None,
-              implementation: str = 'current') -> dict:
+              implementation: str = 'graph') -> dict:
     require_implementation(implementation)
+    if implementation == 'graph' and start != 'observations':
+        raise ValueError('Graph saved-stage restart is not implemented; choose observations')
     dataset = DATASETS[name]
     from .output_acceptance import required_outputs
     required_outputs(output_profile)
@@ -85,10 +91,12 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
     output_root = prepared_root.expanduser().resolve()
     if output_root.is_relative_to(source_root) or source_root.is_relative_to(output_root):
         raise ValueError('Prepared output must be separate from source recordings')
-    ready = checked_ready(root, require_complete=False, check_exports=False)
     choice = calibration or ('fresh' if start == 'observations' else 'existing')
     if operation == 'calibrate':
         choice = 'fresh'
+    fresh_inputs = (start == 'observations' or operation == 'calibrate') and choice == 'fresh'
+    ready = checked_ready(root, require_complete=False, check_exports=False,
+                          validate_generated=not fresh_inputs)
     plan = dict(dataset=name, operation=operation, start_stage=start, calibration_mode=choice,
                 alignment=alignment or 'auto', timeout=timeout,
                 raw=str(raw), root=str(root), run_id=run_id, sensor_group=sensor_group,
@@ -144,8 +152,9 @@ def process(name: str, **options) -> Path:
                     plan['alignment'])
         if 'calibration_path' in plan:
             logger.info('Calibration input: %s', plan['calibration_path'])
-        ready = checked_ready(root, require_complete=False, check_exports=False)
         full = plan['start_stage'] == 'observations' or plan['operation'] == 'calibrate'
+        ready = checked_ready(root, require_complete=False, check_exports=False,
+                              validate_generated=not (full and plan['calibration_mode'] == 'fresh'))
         if full:
             raw = acquire_recording(dataset, recordings_root=options['recordings_root'])
             source = inspect_recording(dataset, recordings_root=options['recordings_root'])
@@ -170,7 +179,7 @@ def process(name: str, **options) -> Path:
                 shutil.copy2(synchronized_video_directory(raw) / video['filename'], destination)
                 if file_digest(destination) != video['sha256']:
                     raise ValueError('Source video changed during copying')
-            shutil.copy2(raw / 'charuco_board_info.json', recording / 'charuco_board_info.json')
+            write_json(recording / 'charuco_board_info.json', source['board_metadata'])
         else:
             shutil.copytree(Path(ready['recording']), recording)
         if 'calibration_path' in plan:

@@ -27,6 +27,10 @@ class PerformanceReport:
         self.images = 0
         self.details: list[str] = []
 
+    @property
+    def elapsed_seconds(self) -> float:
+        return perf_counter() - self._started
+
     def record(self, name: str, seconds: float) -> None:
         with self._lock:
             row = self._rows.setdefault(name, TimingSummary())
@@ -63,7 +67,7 @@ class PerformanceReport:
                 for name, row in self._rows.items()}
 
     def log(self, *, pipeline_id: str, outcome: str) -> None:
-        elapsed = perf_counter() - self._started
+        elapsed = self.elapsed_seconds
         rows = self.snapshot()
         lines = [f"Posthoc performance [{pipeline_id}] outcome={outcome}; wall={elapsed:.3f}s",
             f"Completed detection: {self.frames} synchronized frames; {self.images} camera images.",

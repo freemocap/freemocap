@@ -90,8 +90,10 @@ def inspect_recording(dataset: RecordingDataset, *, recordings_root: Path) -> di
     if dataset.expected_frame_count is not None and count != dataset.expected_frame_count:
         raise ValueError(f"Expected {dataset.expected_frame_count} frames, decoded {count}: {recording}")
     board_path = recording / "charuco_board_info.json"
-    board = json.loads(board_path.read_text(encoding="utf-8")) if board_path.is_file() else None
     expected_board = {"square_size_mm": 58, "num_squares_height": 5, "num_squares_width": 7}
+    # These two catalog recordings use the known 7x5, 58 mm board. Physical scale
+    # comes from that reference definition, never an estimate from image pixels.
+    board = json.loads(board_path.read_text(encoding="utf-8")) if board_path.is_file() else expected_board
     if not isinstance(board, dict) or any(board.get(key) != value for key, value in expected_board.items()):
         raise ValueError(f"Expected 7x5 board metadata with 58 mm squares: {board_path}")
     return {

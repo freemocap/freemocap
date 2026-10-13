@@ -188,3 +188,21 @@ def test_a_frozen_scale_offers_one_fit_to_every_frame(
     # and having it branch on which scale source it holds is the duplication to avoid.
     frozen.observe_pose(pose=_hydrated_pose(human_bundle))
     assert frozen.current_fit() is measured
+
+
+def test_prepared_mapping_reuse_and_bundle_replacement(human_bundle):
+    state = _fresh_state(human_bundle)
+    points = _standing_keypoints()
+    expected = human_bundle.landmark_mapping.apply(tracker_positions=points)
+    actual = state.map_frame(bundle=human_bundle, points=points)
+    for name in expected:
+        np.testing.assert_allclose(actual[name], expected[name], rtol=1e-12, atol=1e-10)
+    plan = state.prepared_mapping
+    assert state.map_frame(bundle=human_bundle, points={}) == {}
+    state.reset()
+    state.map_frame(bundle=human_bundle, points=points)
+    assert state.prepared_mapping is plan
+    replacement = build_standard_human_bundle(detector_type='mediapipe')
+    state.map_frame(bundle=replacement, points={})
+    assert state.prepared_mapping is not plan
+    assert state.mapping_bundle is replacement

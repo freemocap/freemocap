@@ -4,6 +4,8 @@ import CameraGeometrySummary from './camera-geometry-summary';
 import ModalWindowControls from '@/components/ui-components/ModalWindowControls';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
+import SettingRow from '@/components/common/settings-layout/setting-row';
+import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
 import SettingsSection from "@/components/common/settings-layout/settings-section";
 import SettingsSummaryChip from "@/components/common/settings-layout/settings-summary-chip";
 
@@ -52,7 +54,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
 
     const config = useAppSelector(state => state.mocap.config);
     const blender = useAppSelector(selectBlender);
-    const [pipelineImplementation, setPipelineImplementation] = useState<'current' | 'typed_dataflow'>('current');
+    const [pipelineImplementation, setPipelineImplementation] = useState<'current' | 'typed_dataflow'>('typed_dataflow');
     const [graphExecutionProvider, setGraphExecutionProvider] = useState<'auto' | 'cpu' | 'cuda'>('auto');
     const [stageSelection, setStageSelection] = useState<StageSelection | null>(null);
 
@@ -100,18 +102,19 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                     : ''}
             </SettingsSummaryChip>,
             content: <>
-                <label>Processing pipeline <select aria-label="Processing pipeline" value={pipelineImplementation}
-                    onChange={event => setPipelineImplementation(event.target.value as 'current' | 'typed_dataflow')}>
-                    <option value="current">Current pipeline</option>
-                    <option value="typed_dataflow">Experimental typed graph</option>
-                </select></label>
-                {pipelineImplementation === 'typed_dataflow' && <>
-                    <p>Starts from 2D tracking. Requires multiple videos and a calibration. For ChArUco, select an explicit board. Saves annotated videos.</p>
-                    <label>Tracking device <select aria-label="Tracking device" value={graphExecutionProvider}
-                        onChange={event => setGraphExecutionProvider(event.target.value as 'auto' | 'cpu' | 'cuda')}>
-                        <option value="auto">Automatic</option><option value="cuda">CUDA GPU</option><option value="cpu">CPU</option>
-                    </select></label>
-                </>}
+                <SettingRow label="Processing pipeline" info={{title: 'Processing pipeline',
+                    text: 'Typed data flow graph V1 is the default. It starts at 2D tracking and uses your configured board detection settings. Choose Legacy post hoc pipeline to restart from saved intermediate stages.'}}
+                    control={<SettingSelectInput label="Processing pipeline" value={pipelineImplementation}
+                        onChange={setPipelineImplementation} options={[
+                            {value: 'typed_dataflow', label: 'Typed data flow graph V1'},
+                            {value: 'current', label: 'Legacy post hoc pipeline'},
+                        ]}/>}/>
+                {pipelineImplementation === 'typed_dataflow' && <SettingRow label="Tracking device"
+                    info={{title: 'Tracking device', text: 'Automatic uses CUDA when available for RTMPose, otherwise CPU. MediaPipe uses CPU. Requires multiple videos and a calibration; saves annotated videos.'}}
+                    control={<SettingSelectInput label="Tracking device" value={graphExecutionProvider}
+                        onChange={setGraphExecutionProvider} options={[
+                            {value: 'auto', label: 'Automatic'}, {value: 'cuda', label: 'CUDA GPU'}, {value: 'cpu', label: 'CPU'},
+                        ]}/>}/>}
                 <MocapStageSelection path={mocapRecordingPath} onChange={setStageSelection}/>
             </>,
         },
@@ -207,7 +210,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                             buttonType="" className="primary accent"
                             onClick={() => {if (stageSelection) {dispatchProcessMocapRecording({...stageSelection, pipelineImplementation, graphExecutionProvider}); onClose?.();}}}
                             disabled={!canProcessMocapRecording || !stageSelection || (pipelineImplementation === 'typed_dataflow' && stageSelection.startStage !== 'observations')} tooltip tooltipPosition="pos-top"
-                            tooltipText={processBlockedReason ?? (pipelineImplementation === 'typed_dataflow' && stageSelection?.startStage !== 'observations' ? "Experimental graph must start at 2D tracking" : stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
+                            tooltipText={processBlockedReason ?? (pipelineImplementation === 'typed_dataflow' && stageSelection?.startStage !== 'observations' ? "Typed data flow graph V1 starts at 2D tracking. Select Legacy post hoc pipeline to restart from saved stages." : stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
                     ) : (
                         <ButtonSm text="Save" textColor="text-white" buttonType="" className="primary accent"
                             onClick={onClose} tooltip tooltipPosition="pos-top" tooltipText="Save mocap settings"/>

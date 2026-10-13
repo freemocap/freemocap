@@ -8,14 +8,12 @@ from freemocap.core.reconstruction.recording_fit import FittedRecordingScale
 
 import numpy as np
 from skellyforge.core.math.geometry.spatial_vectors import Point
-from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
-from freemocap.core.skeletons.reconstruct_skeleton import reconstruct_skeleton
+from freemocap.core.reconstruction.recording_pose_outputs import RecordingPoseOutputs
 from freemocap.core.skeletons.reconstruction_state import (
     FrozenModelScale,
     build_reconstruction_states,
-    streaming_model_scale_source,
 )
 from freemocap.core.reconstruction.recording_reconstruction import (
     RecordingReconstructionInput,
@@ -167,38 +165,26 @@ def fit_skeletons_for_recording(request: RecordingReconstructionInput) -> dict[s
         bundle.model_id: request.fit_inputs(bundle) for bundle in request.bundles
     }
     t0 = time.perf_counter()
-    states = build_reconstruction_states(
-        bundles=request.bundles,
-        scale_source_for=streaming_model_scale_source(
-            window_frames=request.frame_count
-        ),
+    # Map and recover the recording arrays without per-frame dictionaries.
+    from skellytracker.core.io.prepared_tracker_mapping import PreparedTrackerMapping
+    from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
+    from skellyforge.core.skeleton.pose.model_scale_fitting import (
+        fit_model_scale_arrays, scale_voting_segment_names,
     )
-    request.timing.record("build_states", time.perf_counter() - t0)
-    t0 = time.perf_counter()
-    for frame in request.scale_points:
-        points = _finite_frame_points(frame=frame, point_names=request.keypoint_names)
-        for bundle in request.bundles:
-            mapped = bundle.landmark_mapping.apply(tracker_positions=points)
-            if not mapped:
-                continue
-            pose = hydrate_skeleton(
-                skeleton=bundle.skeleton,
-                observed={
-                    name: Point.from_array(values=position)
-                    for name, position in mapped.items()
-                },
-                require_all=False,
-            )
-            states[bundle.model_id].scale_source.observe_pose(pose=pose)
-    fits = {
-        bundle.model_id: FittedRecordingScale(
-            inputs=fit_inputs[bundle.model_id],
-            fit=states[bundle.model_id].scale_source.current_fit()
-            if states[bundle.model_id].scale_source.has_model_scale
-            else None,
-        )
-        for bundle in request.bundles
-    }
+    scale_points = request.scale_points
+    fits = {}
+    for bundle in request.bundles:
+        mapping = PreparedTrackerMapping.prepare(bundle.landmark_mapping, tracker_names=request.keypoint_names)
+        mapped = mapping.apply(tracker_names=request.keypoint_names, positions=scale_points)
+        geometry = LandmarkPoseGeometry.from_skeleton(skeleton=bundle.skeleton, landmark_names=mapped.landmark_names)
+        poses = geometry.recover(positions=mapped.positions, landmark_present=mapped.present)
+        voters = scale_voting_segment_names(skeleton=bundle.skeleton,
+            measured_landmark_names=bundle.landmark_mapping.directly_measured_landmark_names)
+        voting_columns = [column for column, name in enumerate(geometry.segment_names) if name in voters]
+        fit = fit_model_scale_arrays(skeleton=bundle.skeleton, segment_names=geometry.segment_names,
+            scales=poses.scale_estimates, segment_present=poses.segment_present,
+            voting_segment_names=voters) if poses.segment_present[:, voting_columns].any() else None
+        fits[bundle.model_id] = FittedRecordingScale(inputs=fit_inputs[bundle.model_id], fit=fit)
     request.timing.record("fit_recording_scale", time.perf_counter() - t0)
     return fits
 
@@ -227,20 +213,38 @@ def reconstruct_skeletons_with_fits(
         bundle.model_id: [] for bundle in request.bundles
     }
     t0 = time.perf_counter()
-    for frame in request.keypoints_3d:
-        points = _finite_frame_points(frame=frame, point_names=request.keypoint_names)
-        for bundle in request.bundles:
-            if not points:
-                # Re-entry starts fresh roll state; frozen person dimensions remain.
-                states[bundle.model_id].reset()
-            frames[bundle.model_id].append(
-                reconstruct_skeleton(
-                    bundle=bundle,
-                    state=states[bundle.model_id],
-                    filtered_keypoints=points,
-                    compute_center_of_mass=request.compute_center_of_mass,
-                )
-            )
+    from skellytracker.core.io.prepared_tracker_mapping import PreparedTrackerMapping
+    from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
+    from skellyforge.core.skeleton.skeleton_pose import SkeletonPose, SegmentPose
+    from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
+    empty_frames = ~np.isfinite(request.keypoints_3d).all(axis=-1).any(axis=-1)
+    for bundle in request.bundles:
+        mapping = PreparedTrackerMapping.prepare(bundle.landmark_mapping, tracker_names=request.keypoint_names)
+        geometry = LandmarkPoseGeometry.from_skeleton(skeleton=bundle.skeleton, landmark_names=mapping.landmark_names)
+        state = states[bundle.model_id]
+        outputs = RecordingPoseOutputs(bundle=bundle, fit=fits[bundle.model_id].fit,
+            compute_center_of_mass=request.compute_center_of_mass)
+        # Bound temporary geometry memory; temporal state crosses chunk boundaries.
+        for start in range(0, request.frame_count, 256):
+            mapped = mapping.apply(tracker_names=request.keypoint_names, positions=request.keypoints_3d[start:start+256])
+            poses = geometry.recover(positions=mapped.positions, landmark_present=mapped.present)
+            resolved_poses = []
+            mapped_frames = []
+            for index in range(len(mapped.positions)):
+                if empty_frames[start+index]:
+                    state.reset()
+                landmarks = {mapped.landmark_names[column]: mapped.positions[index,column]
+                    for column in np.flatnonzero(mapped.present[index])}
+                pose = SkeletonPose(segment_poses={geometry.segment_names[column]: SegmentPose(
+                    segment_name=geometry.segment_names[column],
+                    origin=Point.from_array(values=poses.origins[index,column]),
+                    orientation=RotationQuaternion.from_array(array=poses.orientations[index,column]),
+                    scale_estimate=float(poses.scale_estimates[index,column]), solved_by=poses.solutions[index,column])
+                    for column in np.flatnonzero(poses.segment_present[index])})
+                resolved_poses.append(state.roll_resolver.resolve_pose(pose=pose)
+                    if state.roll_resolver is not None and pose.segment_poses else pose)
+                mapped_frames.append(landmarks)
+            frames[bundle.model_id].extend(outputs.calculate(poses=resolved_poses, landmarks=mapped_frames))
     request.timing.record(
         "reconstruct_frames",
         time.perf_counter() - t0,

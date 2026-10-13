@@ -147,7 +147,7 @@ def run_worker(request_path: Path) -> None:
     """Called only in a dedicated process with FREEMOCAP_BASE_FOLDER isolated."""
     from .execution import require_implementation
     request = json.loads(request_path.read_text(encoding="utf-8"))
-    implementation = require_implementation(request.get('implementation', 'current'))
+    implementation = require_implementation(request.get('implementation', 'graph'))
     import multiprocessing
     from skellycam.core.ipc.process_management.managed_worker import WorkerMode
     from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -199,6 +199,7 @@ def run_worker(request_path: Path) -> None:
         calibration_input = calibration.to_metadata().model_dump(mode='json')
         from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
         config = PosthocMocapPipelineConfig(
+            pipeline_implementation='typed_dataflow' if implementation == 'graph' else 'current',
             calibration_toml_path=str(calibration_path), detector_type="rtmpose",
             board_mode=CharucoBoardMode.EXPLICIT, charuco_board=board,
             video_fps=request["fps"], export_to_blender=profile == 'standard', auto_open_blend_file=False,
@@ -324,8 +325,8 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
         "Do not store anything you care about here. Original recordings belong outside this directory.\n"
         "Prepared normal recording outputs are retained for reuse; scratch runs are disposable.\n", encoding="utf-8")
     with FileLock(str(root / "prepare.lock"), timeout=timeout * 2 + 120):
-        existing = reuse_recording(root, identity)
-        if existing is None and not (root / "ready.json").exists():
+        existing = None if fresh else reuse_recording(root, identity)
+        if not fresh and existing is None and not (root / "ready.json").exists():
             # Adopt a completed old-layout recording without rerunning detection.
             for marker in sorted(root.glob("*/ready.json")):
                 with FileLock(str(marker.parent / "prepare.lock"), timeout=0):
@@ -344,7 +345,7 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
                     marker.unlink()
                     existing = current
                     break
-        if (root / "ready.json").exists() and existing is None:
+        if not fresh and (root / "ready.json").exists() and existing is None:
             raise ValueError("Prepared inputs changed; explicitly remove the prepared dataset before rebuilding")
         if existing is not None and not fresh:
             validate_parquet(existing, expected_frames=dataset.expected_frame_count)
@@ -360,7 +361,7 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
             shutil.copy2(synchronized_video_directory(raw) / video["filename"], destination)
             if file_digest(destination) != video["sha256"]:
                 raise ValueError("Source video changed during preparation")
-        shutil.copy2(raw / "charuco_board_info.json", recording / "charuco_board_info.json")
+        (recording / "charuco_board_info.json").write_text(json.dumps(report['board_metadata']), encoding='utf-8')
         request = {"recording": str(recording), "timeout": timeout,
                    "filtering_enabled": dataset.name == SAMPLE_DATA.name,
                    "frames": report["videos"][0]["decoded_frames"], "fps": report["videos"][0]["nominal_fps"]}
@@ -380,23 +381,11 @@ def prepare(dataset, *, recordings_root: Path, prepared_root: Path, fresh: bool,
         verify_outputs(recording, result['validation'])
         if validate_fresh is not None:
             validate_fresh(recording, result)
-        if existing is not None:
-            logger.info("Fresh pipeline validation passed; retaining prepared recording: %s", existing)
-            remove_scratch(root)
-            return existing
         current = root / "current" / "recordings" / dataset.name
-        if current.exists():
-            raise ValueError("Unpublished current recording exists; inspect it before retrying")
-        current.parent.mkdir(parents=True, exist_ok=True)
-        recording.rename(current)
-        recording = current
-        ready = {"identity": identity, "recording": str(recording), "result": result}
-        temporary = root / "ready.json.tmp"
-        temporary.write_text(json.dumps(ready, indent=2), encoding="utf-8")
-        temporary.replace(root / "ready.json")
-        shutil.copy2(attempt / "preparation.log", root / "current" / "preparation.log")
-        remove_scratch(root)
-        return recording
+        ready = {"identity": identity, "recording": str(current), "result": result}
+        from .storage import save_current
+        save_current(root, attempt, ready)
+        return current
 
 
 def main() -> None:

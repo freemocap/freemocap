@@ -23,12 +23,14 @@ from skellyforge.core.biomechanics.composite_inertia import whole_body_center_of
 from skellyforge.core.math.geometry.spatial_vectors import Point
 from skellyforge.core.skeleton.chain.synthesis import synthesize_anchored_pose
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
+from skellyforge.core.skeleton.skeleton_pose import SkeletonPose  # noqa: TC001 - runtime type checking
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 from skellyforge.core.skeleton.pose.model_scale_fitting import scale_voting_segment_names
 from skellyforge.core.skeleton.pose.rigid_body_diagnostics import measure_rigid_body_residuals
 
 from freemocap.core.skeletons.reconstruction_state import SkeletonReconstructionState, FrozenModelScale
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
+from freemocap.core.skeletons.rotation_output import canonical_joint_angles, canonical_quaternion_outputs
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 
 
@@ -54,7 +56,7 @@ def reconstruct_skeleton(
         The observations and available reconstruction. Observations survive unsolved poses;
         `None` means there were no mapped observations.
     """
-    mapped_landmarks = bundle.landmark_mapping.apply(tracker_positions=filtered_keypoints)
+    mapped_landmarks = state.map_frame(bundle=bundle, points=filtered_keypoints)
     if not mapped_landmarks:
         return None
     observed = {
@@ -64,6 +66,20 @@ def reconstruct_skeleton(
     hydrated_pose = hydrate_skeleton(
         skeleton=bundle.skeleton, observed=observed, require_all=False
     )
+    return reconstruct_hydrated_skeleton(
+        bundle=bundle, state=state, mapped_landmarks=mapped_landmarks,
+        hydrated_pose=hydrated_pose, compute_center_of_mass=compute_center_of_mass,
+    )
+
+
+def reconstruct_hydrated_skeleton(
+    *, bundle: TrackedSkeletonBundle, state: SkeletonReconstructionState,
+    mapped_landmarks: dict[str, np.ndarray], hydrated_pose: SkeletonPose,
+    compute_center_of_mass: bool,
+) -> SkeletonReconstruction | None:
+    """Consume recovered geometry while retaining the shared temporal roll logic."""
+    if not mapped_landmarks:
+        return None
     if not hydrated_pose.segment_poses:
         return SkeletonReconstruction(model_id=bundle.model_id, mapped_keypoints=mapped_landmarks)
     # A skeleton that measures its own roll (every segment fully specified, as a rigid
@@ -131,24 +147,24 @@ def reconstruct_skeleton(
         mapped_keypoints=mapped_landmarks,
         landmarks={name: point.array for name, point in landmarks.items()},
         segment_origins={name: point.array for name, point in origins.items()},
-        segment_rotations_world={
+        segment_rotations_world=canonical_quaternion_outputs({
             name: rotation.as_array() for name, rotation in world_rotations.items()
-        },
-        segment_rotations_local={
+        }),
+        segment_rotations_local=canonical_quaternion_outputs({
             name: rotation.as_array()
             for name, rotation in relative.items() if name in selected
-        },
+        }),
         segment_lengths=dict(scale_fit.segment_lengths) if scale_fit else {},
         fitted_scale_mm=scale_fit.fitted_scale if scale_fit else None,
         joint_angles=(
-            {
+            canonical_joint_angles({
                 joint_name: joint_pose.angles
                 for joint_name, joint_pose in bundle.skeleton.compute_joint_poses(
                     pose=resolved_pose
                 ).items()
                 if bundle.skeleton.joints[joint_name].parent.name in selected
                 and bundle.skeleton.joints[joint_name].child.name in selected
-            }
+            })
             if bundle.skeleton.joints
             else None
         ),

@@ -20,7 +20,8 @@ application does not acquire these changes automatically.
 1. Open a recording in playback and open its Mocap processing settings.
 2. Under Processing stages, choose Processing pipeline: Experimental typed graph.
 3. Start at 2D tracking; provide an existing camera calibration. If ChArUco is
-   enabled, select an explicit board. Use CPU/Automatic for MediaPipe; RTMPose
+   enabled, use Automatic for supported 5x3/7x5 layouts or select an explicit board.
+   Automatic preserves the configured square length; it does not infer physical size. Use CPU/Automatic for MediaPipe; RTMPose
    supports the Automatic, CPU and CUDA GPU choices.
 4. Process Mocap. Existing task progress and stop controls operate on the graph.
 
@@ -83,3 +84,27 @@ before processing and are not acceptance evidence.
   remains measured experimental work, not an installed dependency change.
 - Desktop click-through acceptance and additional real recordings are next, followed
   by saved-stage integration and the careful numerical/performance comparison work.
+
+
+## Application settings repair — 2026-10-12
+
+Automatic board selection now runs inside the application worker before detector
+sessions and the recording graph are constructed. It uses the existing SkellyTracker
+selector and SkellyCam sequential readers, with bounded image memory and cancellation
+checks. The graph receives the resolved explicit board; the user's original AUTO
+request is not mutated. If no supported board is found, the task fails with an
+explanation rather than inventing board dimensions. This setup scan stops at the
+first match and tracking then starts at frame zero.
+
+Pipeline/device controls now use SettingRow and SettingSelectInput. The board editor
+is portalled to document.body, centred and viewport-bounded, with a close button.
+This avoids clipping under the transformed, scrolling processing modal; the scroll
+area's mask has also been removed. Browser verification used the actual settings
+components with mocked external services, not the running Electron window.
+
+Acceptance: full 1,108-frame, three-camera sample recording completed through real
+application HTTP/WebSocket endpoints with AUTO board selection and CUDA RTMPose.
+All three annotated videos contain 1,108 frames and the final Parquet is readable.
+The diagnostic disabled filtering and optional Blender/scientific exports; the
+original recording was untouched. Evidence: `.test-artifacts/application-graph/
+http-auto-sample-2/`. Sixteen focused backend tests and the frontend typecheck pass.

@@ -45,6 +45,33 @@ python -B -m pytest freemocap/tests/reference_recordings/test_blender_output_acc
 Extend this fixture chain for new exports instead of adding an independent
 sample-data generator. See the [recording contract](../../../RECORDING_CONTRACT.md).
 
+## Saved-stage replay coverage
+
+`../test_staged_mocap_processing.py::test_real_recording_filter_and_reconstruct_without_media`
+uses copies of both prepared reference recordings. It runs filtering, scale fitting,
+then reconstruction twice with a changed skull anchor. It checks unchanged raw
+points, timing and coordinate definitions; retained scale fits during reconstruction;
+identical numerical outputs on the repeated reconstruction; and unchanged source
+file hashes. Per-stage wall times are included as JUnit properties.
+
+```powershell
+python -B -m pytest freemocap/tests/test_staged_mocap_processing.py freemocap/tests/test_stage_provenance.py -q -p no:cacheprovider -o junit_family=legacy --junitxml=.test-artifacts/stage-replay.xml
+```
+
+Verify `.test-artifacts/` is ignored before running. This suite skips missing
+prepared recordings; inspect skips rather than treating them as acceptance.
+These are real saved-stage calculations through the existing pipeline, not a
+fresh detector run or graph resume. The application graph currently rejects
+saved-stage starts. The dataset workflow now supports `--implementation graph`
+for full runs; `freemocap.tools.datasets.pipeline_comparison` runs both pipelines
+with matched inputs and checks their saved numerical outputs.
+
+The tracker matrix in the dataset commands checks default ChArUco, MediaPipe CPU,
+and RTMPose CPU/CUDA configurations at the tracking boundary. It does not certify
+full pipeline reruns across different detector models. MediaPipe CUDA is explicitly
+unsupported. Saved-stage replay retains recorded scientific model definitions;
+changing a tracker requires new observations rather than relabeling existing data.
+
 Wide CSV and diagnostic tall CSV use this same prepared root:
 
 ```powershell

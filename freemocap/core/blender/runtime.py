@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 import sys
 import threading
+from concurrent.futures import CancelledError
+from time import monotonic
 
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 
@@ -36,7 +38,28 @@ def start_external(command, **kwargs):
                 raise ctypes.WinError(ctypes.get_last_error())
 
 
-def run_external(command, *, timeout, **kwargs):
+def run_external(command, *, timeout, cancelled=None, **kwargs):
+    if cancelled is not None:
+        if cancelled():
+            raise CancelledError('Blender operation cancelled')
+        started = monotonic()
+        with start_external(command, **kwargs) as process:
+            try:
+                while True:
+                    if cancelled():
+                        raise CancelledError('Blender operation cancelled')
+                    remaining = timeout - (monotonic() - started)
+                    if remaining <= 0:
+                        raise subprocess.TimeoutExpired(command, timeout)
+                    try:
+                        stdout, stderr = process.communicate(timeout=min(0.2, remaining))
+                        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+                    except subprocess.TimeoutExpired:
+                        continue
+            except BaseException:
+                process.kill()
+                process.communicate()
+                raise
     if not getattr(sys, 'frozen', False):
         return subprocess.run(command, timeout=timeout, **kwargs)
     with start_external(command, **kwargs) as process:
@@ -85,7 +108,7 @@ def environment(profile=None):
     return result
 
 
-def run_blender(blender, request, timeout=900, *, profile=None):
+def run_blender(blender, request, timeout=900, *, profile=None, cancelled=None):
     from .expected_build import expected_build
     request = dict(request, expected=expected_build())
     blender = executable(blender)
@@ -96,7 +119,8 @@ def run_blender(blender, request, timeout=900, *, profile=None):
         command = [str(blender), '--background', '--python-exit-code', '1',
                    '--python', str(SCRIPT.resolve()), '--', str(request_path), str(result_path)]
         result = run_external(command, cwd=work, env=environment(profile), stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, timeout=timeout, encoding='utf-8', errors='replace')
+                                stderr=subprocess.STDOUT, timeout=timeout, encoding='utf-8', errors='replace',
+                                **({'cancelled': cancelled} if cancelled is not None else {}))
         logger.debug('%s', result.stdout)
         payload = json.loads(result_path.read_text(encoding='utf-8')) if result_path.is_file() else None
         if payload and payload.get('error'):
@@ -107,5 +131,6 @@ def run_blender(blender, request, timeout=900, *, profile=None):
         return payload
 
 
-def inspect_blender(blender=None, development_build_hash=None, *, profile=None):
-    return run_blender(blender, dict(action='inspect', development_build_hash=development_build_hash), timeout=120, profile=profile)
+def inspect_blender(blender=None, development_build_hash=None, *, profile=None, cancelled=None):
+    return run_blender(blender, dict(action='inspect', development_build_hash=development_build_hash), timeout=120, profile=profile,
+        **({'cancelled': cancelled} if cancelled is not None else {}))

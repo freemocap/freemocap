@@ -118,8 +118,15 @@
 }
 
 .calibration-settings-flyout {
-  top: 340px;
-  left: 300px;
+  box-sizing: border-box;
+  width: 320px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1200;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
 }
 
 .segmented-control-button>p.text.sm {

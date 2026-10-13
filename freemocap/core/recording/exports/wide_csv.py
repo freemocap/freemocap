@@ -1,8 +1,10 @@
 """Selected channel tables, reloaded and verified before recoverable publication."""
 import csv
 from datetime import datetime, timezone
-import math
 import json
+import logging
+from time import perf_counter
+from itertools import islice
 from contextlib import ExitStack
 from zipfile import ZipFile, ZIP_DEFLATED
 import os
@@ -12,7 +14,7 @@ import tempfile
 
 from filelock import FileLock
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from freemocap.core.recording.exports.arrays import ScientificExportRequest, resolve_selection, ordered_arrays, check_cancelled, available_channels, scientific_channels
 from freemocap.core.recording.exports.publication import ExportArtifact, ExportManifest, digest, verified_manifest, publish, remove_staging
@@ -63,6 +65,7 @@ class ScientificExportResult(BaseModel):
     manifest_path: Path
     files: tuple[Path, ...]
     validated: bool = True
+    timings_s: dict[str, float] = Field(default_factory=dict)
 
 
 def header(name, component):
@@ -70,36 +73,63 @@ def header(name, component):
     return f'{name}.{component}'
 
 
+CSV_BATCH_ROWS = 128
+
+
 def rows_for(arrays, start, stop, first, last):
+    """Box and mark a bounded block in NumPy; csv.writer still owns CSV quoting."""
     values = arrays.values.reshape((-1, len(arrays.names) * len(arrays.components)))
     presence = arrays.present.reshape(values.shape)
-    for i in range(start, stop):
-        prefix = [] if arrays.context.static else [int(arrays.frames[i]), float(arrays.timestamps[i])]
-        yield prefix + [('' if not presence[i, j] else 'NaN' if np.isnan(values[i, j]) else float(values[i, j]))
-                        for j in range(first, last)]
+    for begin in range(start, stop, CSV_BATCH_ROWS):
+        end = min(begin + CSV_BATCH_ROWS, stop)
+        block = values[begin:end, first:last]
+        cells = block.astype(object)
+        cells[np.isnan(block)] = 'NaN'
+        cells[~presence[begin:end, first:last]] = ''
+        if not arrays.context.static:
+            rows = np.empty((end - begin, 2 + last - first), dtype=object)
+            rows[:, 0] = arrays.frames[begin:end]
+            rows[:, 1] = arrays.timestamps[begin:end]
+            rows[:, 2:] = cells
+            cells = rows
+        yield from cells.tolist()
 
 
 def validate_table(path, arrays, columns, bounds, cancelled):
-    """Independent CSV parser: exact float64 round trip and absence/null distinction."""
+    """Independent CSV parser; compare bounded blocks without scalar Python checks."""
+    start, stop, first, last = bounds
+    values = arrays.values.reshape((-1, len(arrays.names) * len(arrays.components)))
+    presence = arrays.present.reshape(values.shape)
     with path.open(encoding='utf-8-sig', newline='') as stream:
         reader = csv.reader(stream)
         if next(reader, None) != columns:
             raise ValueError('Wide CSV headers changed')
-        for expected in rows_for(arrays, *bounds):
+        for begin in range(start, stop, CSV_BATCH_ROWS):
             check_cancelled(cancelled)
-            actual = next(reader, None)
-            if actual is None or len(actual) != len(expected):
+            end = min(begin + CSV_BATCH_ROWS, stop)
+            rows = list(islice(reader, end - begin))
+            if len(rows) != end - begin or any(len(row) != len(columns) for row in rows):
                 raise ValueError('Wide CSV row shape mismatch')
-            for value, wanted in zip(actual, expected, strict=True):
-                if isinstance(wanted, str):
-                    equal = value == wanted
-                elif isinstance(wanted, int):
-                    equal = int(value) == wanted
-                else:
-                    parsed = float(value)
-                    equal = parsed == wanted and (wanted != 0 or math.copysign(1, parsed) == math.copysign(1, wanted))
-                if not equal:
+            # Object strings avoid padding every cell to the longest representation.
+            cells = np.asarray(rows, dtype=object)
+            if not arrays.context.static:
+                if not np.array_equal(cells[:, 0].astype(np.int64), arrays.frames[begin:end]):
                     raise ValueError('Wide CSV value or missingness mismatch')
+                times = cells[:, 1].astype(np.float64)
+                expected_times = arrays.timestamps[begin:end]
+                if not np.array_equal(times, expected_times) or not np.array_equal(np.signbit(times), np.signbit(expected_times)):
+                    raise ValueError('Wide CSV value or missingness mismatch')
+                cells = cells[:, 2:]
+            expected = values[begin:end, first:last]
+            present = presence[begin:end, first:last]
+            recorded_null = present & np.isnan(expected)
+            finite = present & ~recorded_null
+            if np.any(cells[~present] != '') or np.any(cells[recorded_null] != 'NaN'):
+                raise ValueError('Wide CSV value or missingness mismatch')
+            actual = cells[finite].astype(np.float64)
+            wanted = expected[finite]
+            if not np.array_equal(actual, wanted) or not np.array_equal(np.signbit(actual), np.signbit(wanted)):
+                raise ValueError('Wide CSV value or missingness mismatch')
         if next(reader, None) is not None:
             raise ValueError('Wide CSV contains unexpected rows')
 
@@ -118,10 +148,15 @@ def matching_timestamps(left, right):
 
 
 def _export_scientific(*, structure, request: ScientificExportRequest, cancelled=None, progress=None):
+    started = perf_counter()
+    timings = dict(array_assembly=0.0, csv_write=0.0, csv_validation=0.0,
+                   npy_write=0.0, npy_validation=0.0, npz_write=0.0, npz_validation=0.0)
     check_cancelled(cancelled)
     with recording_view(structure.data_parquet_path) as view:
         run_id, selected = resolve_selection(view, request)
+        step_started = perf_counter()
         source_hash = view.content_sha256()
+        timings["source_hash"] = perf_counter() - step_started
         names = table_names(view.metadata.runs[run_id])
         prefix = structure.recording_name + (f'.run-{run_id}' if request.keep else '')
         root = structure.exports_dir
@@ -158,7 +193,9 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                         context = item[0]
                         if progress:
                             progress(index, len(selected), f'Exporting {context.channel} ({context.source})')
+                        step_started = perf_counter()
                         with ordered_arrays(view, run_id, item, scratch=staging, cancelled=cancelled) as arrays:
+                            timings["array_assembly"] += perf_counter() - step_started
                             first_timeline = shared_frames is None
                             if numpy_requested or request.wide_csv is None:
                                 if context.static or len(arrays.values) != len(arrays.frames):
@@ -186,20 +223,28 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                                 if 'npy' in request.formats:
                                     filename = f'npy/{stem}.npy' if role == "values" else f'npy/{prefix}.{role}.npy'
                                     (staging / 'npy').mkdir(exist_ok=True)
+                                    step_started = perf_counter()
                                     np.save(staging / filename, value, allow_pickle=False)
+                                    timings["npy_write"] += perf_counter() - step_started
+                                    step_started = perf_counter()
                                     loaded = np.load(staging / filename, allow_pickle=False)
                                     validate_array(loaded, value)
+                                    timings["npy_validation"] += perf_counter() - step_started
                                     artifacts[filename] = ExportArtifact(filename=filename, sha256=digest(staging / filename),
                                         rows=len(value), columns=(), source_sha256=source_hash, source_revision=view.revision,
                                         run_id=run_id, format='npy', details=dict(context_key=context.key if role == "values" else None, role=role,
                                             shape=list(value.shape), dtype=str(value.dtype), validation='reload_exact', validator_version=1))
                                 if archive is not None:
                                     key = f'{names[context.key]}.values.npy' if role == 'values' else f'{role}.npy'
+                                    step_started = perf_counter()
                                     with archive.open(key, 'w', force_zip64=True) as stream:
                                         np.lib.format.write_array(stream, value, allow_pickle=False)
+                                    timings["npz_write"] += perf_counter() - step_started
+                                    step_started = perf_counter()
                                     # Reload the individual member before releasing this channel's arrays.
                                     with archive.open(key) as stream:
                                         validate_array(np.lib.format.read_array(stream, allow_pickle=False), value)
+                                    timings["npz_validation"] += perf_counter() - step_started
                             if 'wide_csv' not in request.formats:
                                 continue
                             mapping = [(name, component) for name in arrays.names for component in arrays.components]
@@ -218,6 +263,7 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                                     path = staging / name
                                     path.parent.mkdir(exist_ok=True)
                                     bounds = (row_start, row_stop, first, last)
+                                    step_started = perf_counter()
                                     with path.open('w', encoding='utf-8-sig', newline='') as stream:
                                         writer = csv.writer(stream)
                                         writer.writerow(columns)
@@ -226,7 +272,10 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                                             writer.writerow(row)
                                         stream.flush()
                                         os.fsync(stream.fileno())
+                                    timings["csv_write"] += perf_counter() - step_started
+                                    step_started = perf_counter()
                                     validate_table(path, arrays, columns, bounds, cancelled)
+                                    timings["csv_validation"] += perf_counter() - step_started
                                     artifacts[name] = ExportArtifact(filename=name, sha256=digest(path), rows=row_stop-row_start,
                                         columns=tuple(columns), source_sha256=source_hash, source_revision=view.revision, run_id=run_id,
                                         format='static_wide_csv' if context.static else 'wide_csv',
@@ -295,8 +344,14 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                 publish(directory, staging, manifest_name, manifest, (*generated, *guides), request.keep, obsolete=obsolete)
                 if progress:
                     progress(len(selected), len(selected), 'Selected exports saved and validated')
+                elapsed = perf_counter() - started
+                timings['other'] = max(0.0, elapsed - sum(timings.values()))
+                timings['total'] = elapsed
+                logging.getLogger(__name__).info(
+                    'Scientific exports saved and validated: %s',
+                    '; '.join(f'{name}={seconds:.3f}s' for name, seconds in timings.items()))
                 return ScientificExportResult(run_id=run_id, source_revision=view.revision, source_sha256=source_hash,
-                    manifest_path=manifest_path, files=tuple(directory / name for name in generated))
+                    manifest_path=manifest_path, files=tuple(directory / name for name in generated), timings_s=timings)
             finally:
                 if staging.exists() and not (directory / '.publication.json').exists():
                     remove_staging(directory, staging)

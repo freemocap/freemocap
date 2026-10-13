@@ -145,10 +145,11 @@ The consolidated report currently extracts existing diagnostic log records;
 it does not create unmeasured timing percentiles or concurrency statistics.
 
 Posthoc execution selection is recorded in workflow requests and worker results.
-`--implementation current` is the default for `process` and `process-all`.
-`--implementation graph` is reserved for the replacement and currently fails
-before acquisition or output creation, including in dry runs. It never silently
-falls back to the current pipeline. Realtime execution is unchanged.
+`--implementation graph` (Typed data flow graph V1) is the default for `process` and `process-all`.
+Use `--implementation current` to select the Legacy post hoc pipeline, including saved-stage restarts.
+`--implementation graph` selects the application's typed dataflow pipeline for
+full runs. Saved-stage starts remain unsupported by the graph and fail explicitly.
+It never silently falls back to the current pipeline. Realtime execution is unchanged.
 
 Workflow attempts also contain `performance.json` (schema version 1). It records
 implementation, operation, worker-lifecycle status and measured elapsed seconds,
@@ -159,7 +160,20 @@ parent-side input copying, preflight and publication. It is not inference-only o
 GPU timing, and `complete` here does not certify output acceptance. Existing output
 validators still decide readiness. A hard parent termination may leave a `running`
 report with no elapsed duration; that is incomplete evidence, not a successful run.
-Paired execution and numerical comparison are not implemented by this first step.
+Run paired full-pipeline comparisons through this same workflow:
+
+```powershell
+python -B -m freemocap.tools.datasets.pipeline_comparison --output C:/Users/USER/freemocap_data/testing/ab
+```
+
+Use a new, short output directory separate from source/prepared roots. The command
+runs current then graph for both datasets, independently loading/tracking all videos,
+using the same accepted calibration and settings. It validates Parquet and Blender,
+checks implementation identity, and compares saved channel definitions, values and
+missingness using the existing comparison checks. Reports distinguish mocap wall
+time from worker lifecycle including setup/validation. Standard comparison exports
+are Parquet and Blender, not CSV/NPY/NPZ. This is one paired measurement, not a
+statistical benchmark; fixed run order and machine load can affect timings.
 
 ```powershell
 poe process-all-data --dry-run
@@ -205,7 +219,7 @@ Default locations:
 - Original downloads: `~/freemocap_data/recordings/freemocap_{test,sample}_data/`.
 - Prepared results: `~/freemocap_data/testing/prepared/freemocap_{test,sample}_data/current/recordings/`.
 - Separate calibration-only results: the dataset's `calibration/current/recordings/`.
-- Previous accepted results: the dataset's `history/` directories.
+- Immediately previous result for comparison: one directory under `history/`.
 - Working files, requests, and logs: the dataset's `attempts/` directories.
 
 `--recordings-root PATH` and `--prepared-root PATH` override the first two roots.
@@ -225,15 +239,25 @@ Run `poe datasets recover test_data` (or `sample_data`) to finish a completed sa
 or restore the previous results. Recovery preserves interrupted output separately.
 Do not manually edit `ready.json` to bypass a checksum mismatch.
 
-Old prepared outputs and logs are not automatically pruned. Keep them while
-reviewing a change. Consumers should not hold open prepared files during replacement.
+Successful replacement prunes older `history/` recordings, keeping only the
+immediately previous result for comparison. Attempt logs remain available for
+diagnostics. Consumers should not hold open prepared files during replacement.
+
+Full processing with fresh calibration does not validate or read previous generated
+Parquet/calibration contents. Old generated formats are disposable, not a migration
+requirement. Only synchronized videos are needed from the source recording: the
+catalog supplies the known 7x5 board's 58 mm square size if its sidecar is absent.
+An explicitly supplied conflicting sidecar is still an error. Calibration is solved
+again from the videos. Saved-stage replay and explicit calibration reuse still
+validate the inputs they consume. Publication markers and path guards remain in
+force so a fresh run cannot overwrite another directory.
 
 ## Tests versus processing
 
 The old `freemocap.tests.prepare_recording_dataset` entry point remains compatible:
-it reuses existing preparation, and `--fresh` checks a fresh run without replacing
-an existing accepted recording. Use the commands above when the intention is to
-**save newly processed data**. The old reconstruction-refresh command remains
+it reuses existing preparation when requested, and `--fresh` now publishes the new
+accepted result with the same single-previous-result retention policy. The
+reconstruction-refresh command remains
 available for replacing model outputs from saved 3D points.
 
 Focused workflow checks:
@@ -379,10 +403,12 @@ like configurations and report repeated-run variability separately.
 
 The CLI comparison remains separate from the dataset workflow's implementation
 selector. The same graph is now selectable in the application under Mocap processing
-settings > Processing stages > Processing pipeline > Experimental typed graph.
+settings > Processing stages > Processing pipeline > Typed data flow graph V1 (the default).
 It uses existing HTTP start/stop and WebSocket progress. Start at 2D tracking, select
-a calibration, and choose an explicit board if ChArUco is enabled. Saved-stage resume,
-automatic board discovery and single-camera operation remain unsupported. Optional
+a calibration, and use automatic or explicit board selection if ChArUco is enabled.
+The application resolves AUTO using the existing board selector before constructing
+the graph. The CLI comparison still supplies an explicit board. Saved-stage resume
+and single-camera operation remain unsupported. Optional
 application exports use the existing completion handler; Blender launch was not
 exercised in application acceptance tests. See the integration status document for
 test evidence and limitations.

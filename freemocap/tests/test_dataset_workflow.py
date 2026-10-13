@@ -50,6 +50,16 @@ def test_failed_marker_save_restores_previous_result(tmp_path, monkeypatch):
     assert next((tmp_path / 'attempts').glob('interrupted-*/recordings/recording/data')).read_text() == 'second'
 
 
+def test_only_previous_generation_is_retained(tmp_path):
+    for label in ('first', 'second', 'third'):
+        candidate, ready = generation(tmp_path, label)
+        storage.save_current(tmp_path, candidate, ready)
+    previous = list((tmp_path / 'history').glob('*/ready.json'))
+    assert len(previous) == 1
+    assert (Path(json.loads(previous[0].read_text())['recording']) / 'data').read_text() == 'second'
+    assert (tmp_path / 'current/recordings/recording/data').read_text() == 'third'
+
+
 @pytest.mark.parametrize('moved_candidate', [False, True])
 def test_restart_recovers_interrupted_directory_replacement(tmp_path, moved_candidate):
     first, old = generation(tmp_path, 'first')
@@ -82,7 +92,7 @@ def recording_workflow(tmp_path, monkeypatch):
     video = videos / 'camera.mp4'
     video.write_bytes(b'original video')
     (raw / 'charuco_board_info.json').write_text('{}')
-    source = dict(videos=[dict(filename=video.name, sha256=workflow.file_digest(video), nominal_fps=6)])
+    source = dict(videos=[dict(filename=video.name, sha256=workflow.file_digest(video), nominal_fps=6)], board_metadata={})
     monkeypatch.setattr(workflow, 'acquire_recording', lambda *a, **kw: raw)
     monkeypatch.setattr(workflow, 'inspect_recording', lambda *a, **kw: source)
     monkeypatch.setattr(workflow, 'software_identity', lambda: {'revision': 'current'})
@@ -125,12 +135,25 @@ def test_processing_replaces_old_result_but_calibration_only_does_not(recording_
     workflow.process(name, operation='calibrate', **options)
     assert parquet.read_text() == 'result 2'
     assert calls[0]['alignment'] == 'auto'
-    assert calls[0]['implementation'] == 'current'
+    assert calls[0]['implementation'] == 'graph'
     report = json.loads((options['prepared_root'] / workflow.TEST_DATA.name / 'ready.json').read_text())
     assert report['result']['performance']['scope'] == 'worker_lifecycle'
     assert report['result']['performance']['status'] == 'complete'
     assert calls[0]['filtering_enabled'] is False
     assert (options['recordings_root'] / workflow.TEST_DATA.name / 'synchronized_videos/camera.mp4').read_bytes() == b'original video'
+
+
+def test_fresh_processing_does_not_require_readable_previous_outputs(recording_workflow):
+    name, options, calls = recording_workflow
+    current = workflow.process(name, **options)
+    (current / f'{current.name}_data.parquet').write_bytes(b'obsolete format')
+    (current / 'calibration.toml').unlink()
+    workflow.process(name, **options)
+    assert len(calls) == 2
+    assert (current / f'{current.name}_data.parquet').read_text() == 'result 2'
+    with pytest.raises(ValueError):
+        # A saved-stage request still validates inputs instead of inventing them.
+        workflow.preflight(name, start='reconstruction', implementation='current', **options)
 
 
 @pytest.mark.parametrize('failure, expected', [
@@ -158,9 +181,9 @@ def test_unavailable_backend_rejected_before_acquiring_or_creating_outputs(tmp_p
     acquire = Mock()
     monkeypatch.setattr(workflow, 'acquire_recording', acquire)
     output = tmp_path / 'prepared'
-    with pytest.raises(ValueError, match='not implemented'):
+    with pytest.raises(ValueError, match='Unknown posthoc implementation'):
         workflow.process('test_data', recordings_root=tmp_path / 'raw',
-                         prepared_root=output, implementation='graph')
+                         prepared_root=output, implementation='typo')
     acquire.assert_not_called()
     assert not output.exists()
 

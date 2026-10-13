@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom';
 import {CalibrationBoardMode, CALIBRATION_SOLVER_LABELS} from "@/store/slices/calibration/calibration-types";
 import React, {
   useCallback,
@@ -120,8 +121,8 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
     [board, updateCalibrationConfig],
   );
 
-  return (
-    <div className="z-10 calibration-settings-flyout pos-fixed draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
+  return createPortal(
+    <div role="dialog" aria-label="ChArUco board settings" className="calibration-settings-flyout pos-fixed draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
       <div
         className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1"
         ref={modalRef}
@@ -132,6 +133,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
         <div className="flex flex-row justify-content-space-between items-center">
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
             <SubactionHeader text="Charuco board settings" />
+            <IconButton icon="close-icon" ariaLabel="Close board settings" onClick={handleClose}/>
             <div
               data-onboarding="calibration:charuco-settings"
               className="flex flex-row pos-rel gap-1 items-center"
@@ -240,7 +242,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
           <span className="text sm">{CALIBRATION_SOLVER_LABELS[config.solverMethod]}</span>
         </div>
       </div>
-    </div>
+    </div>, document.body
   );
 };
 

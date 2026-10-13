@@ -104,7 +104,7 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
         raise ValueError("Graph destination must own its source videos")
     calibration_path = Path(config.calibration_toml_path).resolve()
     if not calibration_path.is_relative_to(Path(recording.full_recording_path).resolve()):
-        raise ValueError("Experimental graph requires a private calibration copy inside its recording")
+        raise ValueError("Typed data flow graph V1 requires a private calibration copy inside its recording")
     calibration_mtime = calibration_path.stat().st_mtime_ns / 1_000_000
     calibration = CalibrationResult.load_toml(calibration_path)
     if calibration_path.stat().st_mtime_ns / 1_000_000 != calibration_mtime:
@@ -145,7 +145,16 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             check_cancelled()
             if progress is not None:
                 progress(name, "started", 0.0)
-            result = function(inputs)
+            try:
+                result = function(inputs)
+            except CancelledError:
+                if progress is not None:
+                    progress(name, "cancelled", 0.0)
+                raise
+            except Exception:
+                if progress is not None:
+                    progress(name, "failed", 0.0)
+                raise
             if progress is not None:
                 progress(name, "finished", 1.0)
             return {"result": result}

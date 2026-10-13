@@ -21,6 +21,7 @@ from freemocap.core.pipeline.posthoc.mocap_detection import MocapDetectionReques
 from freemocap.core.pipeline.posthoc.mocap_video_node import MocapVideoNode
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, MocapStage, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.operation_progress import OperationProgressReporter
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_task
@@ -45,78 +46,29 @@ class MocapWorkerRequest:
     inference_service: InferenceService
     video_nodes: list[MocapVideoNode]
     performance: PerformanceReport = field(default_factory=PerformanceReport)
+    operation_progress: OperationProgressReporter = field(default_factory=OperationProgressReporter)
 
     def report(self, stage: str, detail: str, fraction: float) -> None:
-        self.progress_queue.put(AggregatorNodeProgressMessage(
-            pipeline_id=self.pipeline_id, pipeline_type=str(PosthocPipelineType.MOCAP),
-            phase=stage, detail=detail, progress_fraction=fraction,
-            recording_name=self.recording.recording_name,
-            recording_path=str(self.recording.full_recording_path),
-        ))
+        self.operation_progress.report(self, stage, detail, fraction)
+
+    def report_operation(self, operation_id: str, label: str, status: str,
+                         detail: str = "", completed: int | None = None,
+                         total: int | None = None, unit: str | None = None,
+                         *, phase: str = "reconstructing") -> None:
+        self.operation_progress.update(self, operation_id, label, status, detail,
+                                       completed, total, unit, phase=phase)
+
+    def report_export(self, task_id: str, label: str, state: str, detail: str,
+                      completed: int | None = None, total: int | None = None) -> None:
+        self.report_operation(task_id, label, state, detail, completed, total,
+                              "channels" if total is not None else None,
+                              phase="exporting_csv")
 
 
 def complete_mocap(request: MocapWorkerRequest) -> None:
-    """Publish optional exports after successful processing, preserving its outcome."""
-    detail = 'Mocap processing complete'
-    failures = []
-    from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure
-    from freemocap.core.recording.parquet_storage.recording_view import recording_view
-    structure = recording_structure(str(request.recording.full_recording_path))
-    run_id = request.config.base_run_id
-    revision = None
-    if request.config.scientific_exports.formats or request.config.export_tall_csv:
-        with recording_view(structure.data_parquet_path) as view:
-            revision = view.revision
-    if request.config.scientific_exports.formats:
-        from freemocap.core.recording.exports.requests import ScientificExportRequest
-        from freemocap.core.recording.exports.wide_csv import export_scientific
-        try:
-            result = export_scientific(structure=structure,
-                request=ScientificExportRequest(**request.config.scientific_exports.model_dump(),
-                    run_id=run_id, expected_revision=revision), cancelled=lambda: not request.ipc.should_continue,
-                progress=lambda done, total, message: request.report(MocapStage.EXPORTING_CSV, message, done / max(1, total)))
-            detail += f'; wide CSV saved and validated in {result.manifest_path.parent}'
-        except CancelledError:
-            raise
-        except Exception as error:
-            failures.append(f'Wide CSV export failed: {error}. Retry the saved result in Exports.')
-    if request.config.export_tall_csv:
-        from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv
-        from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure
-        try:
-            request.report(MocapStage.EXPORTING_CSV, 'Saving tall CSV to exports folder', 0.0)
-            result = export_tall_csv(
-                structure=recording_structure(str(request.recording.full_recording_path)),
-                request=TallCsvRequest(run_id=run_id, expected_revision=revision), cancelled=lambda: not request.ipc.should_continue)
-            detail += f'; tall CSV saved to {result.manifest_path.parent}'
-        except CancelledError:
-            raise
-        except Exception as error:
-            failures.append(f'tall CSV export failed: {error}. Retry in Exports.')
-    if request.config.export_to_blender and request.ipc.should_continue:
-        from freemocap.core.blender.export_to_blender import export_to_blender
-        try:
-            request.report(MocapStage.EXPORTING_BLENDER, 'Exporting the published recording to Blender', 0.0)
-            output = export_to_blender(
-                recording_folder_path=request.recording.full_recording_path,
-                blender_exe_path=request.config.blender_exe_path,
-                open_file_on_completion=request.config.auto_open_blend_file,
-                route=request.config.blender_import_route,
-                package=request.config.blender_package,
-                development_build_hash=request.config.blender_development_build_hash,
-                sensor_group=request.config.sensor_group,
-                run_id=run_id,
-                blender_export_config=request.config.blender_export.model_dump(),
-                progress=lambda message: request.report(MocapStage.EXPORTING_BLENDER, message, 0.0),
-            )
-            detail += f'; Blender scene saved to {output}'
-        except Exception as error:
-            failures.append(f'Blender export failed: {error}. Retry in Blender settings.')
-    if failures:
-        raise RuntimeError(detail + '; requested exports incomplete: ' + '; '.join(failures))
-    if not request.ipc.should_continue:
-        raise CancelledError('Processing results saved; remaining exports cancelled')
-    request.report(AggregatorPhase.COMPLETE, detail, 1.0)
+    """Finish independent exports before reporting the recording's final outcome."""
+    from freemocap.core.pipeline.posthoc.export_completion import complete_recording_exports
+    complete_recording_exports(request)
 
 
 def run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
@@ -289,6 +241,8 @@ class MocapPipeline(PipelineABC):
                 detail=f"Mocap worker exited without completing the task (exit code {self.worker.exitcode})",
                 recording_name=self.recording_info.recording_name,
                 recording_path=str(self.recording_info.full_recording_path),
+                operations=self._latest[self.id].operations if self.id in self._latest else None,
+                timing=self._latest[self.id].timing if self.id in self._latest else None,
             )
             self.ipc.shutdown_pipeline()
         return list(self._latest.values())

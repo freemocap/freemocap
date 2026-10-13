@@ -62,6 +62,12 @@ def private_recording(*, sources: RecordingVideoSources, calibration: Path, root
 def compare_saved_channels(left: RecordingStructure, right: RecordingStructure) -> list[dict]:
     metadata = [read_metadata(path=structure.data_parquet_path) for structure in (left, right)]
     def compare_definition(expected, actual, path):
+        if path.startswith('scale_fits/') and path.endswith(('/fit/measured_segment_names', '/fit/voting_segment_names')):
+            # ModelScaleFit declares these as frozensets. JSON order varies with
+            # each interpreter's hash seed; membership is the scientific contract.
+            if sorted(expected) != sorted(actual):
+                raise ValueError(f'Scientific segment membership differs: {path}')
+            return
         if path.startswith("scale_fits/") and path.endswith("/inputs/points"):
             # Roundoff-equivalent arrays can have different exact byte hashes;
             # their complete numerical channels are compared below.

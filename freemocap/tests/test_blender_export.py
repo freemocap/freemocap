@@ -9,6 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from freemocap.core.pipeline.performance_report import PerformanceReport
 from freemocap.core.blender import runtime
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.blender.helpers.install_blender_addon import validate_archive
@@ -121,11 +122,11 @@ def test_processing_completion_uses_exporter_without_losing_publication(enabled,
         blenderExportConfig=dict(rest_pose='apose', formats=['bvh']), detectorType='rtmpose')
     reports = []
     request = Mock(spec=MocapWorkerRequest, config=config, ipc=SimpleNamespace(should_continue=not cancelled),
-        recording=SimpleNamespace(full_recording_path=tmp_path), report=lambda *args: reports.append(args))
+        recording=SimpleNamespace(full_recording_path=tmp_path), performance=PerformanceReport(), report=lambda *args: reports.append(args))
     with patch('freemocap.core.blender.export_to_blender.export_to_blender',
         side_effect=RuntimeError('package unavailable') if failure else None, return_value=str(tmp_path/'output.blend')) as export:
         if failure:
-            with pytest.raises(RuntimeError, match='processing complete; requested exports incomplete'):
+            with pytest.raises(RuntimeError, match='requested exports incomplete'):
                 complete_mocap(request)
         elif cancelled:
             from concurrent.futures import CancelledError

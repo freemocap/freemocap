@@ -1,7 +1,7 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {stopAllPipelines, stopPipeline} from './pipelines-thunks';
-import type {TaskRegistrySnapshot} from '@/services/server/transport/message-contract';
+import type {TaskOperation, TaskRegistrySnapshot} from '@/services/server/transport/message-contract';
 import {loadFromStorage} from '@/store/persistence';
 
 export function phaseForTask(phase: string): PipelinePhase {
@@ -58,11 +58,11 @@ export const PHASE_LABELS: Record<PipelinePhase, string> = {
     [PipelinePhase.QUEUED]: 'Queued',
     [PipelinePhase.SETTING_UP]: 'Setting Up',
     [PipelinePhase.PROCESSING_VIDEOS]: 'Processing Videos',
-    [PipelinePhase.COLLECTING]: 'Collect observations',
+    [PipelinePhase.COLLECTING]: 'Detect points in camera videos',
     [PipelinePhase.SOLVING]: 'Calibrate cameras',
     [PipelinePhase.SAVING]: 'Save results',
-    [PipelinePhase.AGGREGATING]: 'Aggregating',
-    [PipelinePhase.FINALIZING]: 'Finalizing',
+    [PipelinePhase.AGGREGATING]: 'Reconstruct and save 3D motion',
+    [PipelinePhase.FINALIZING]: 'Save requested exports',
     [PipelinePhase.COMPLETE]: 'Complete',
     [PipelinePhase.FAILED]: 'Failed',
 };
@@ -81,6 +81,9 @@ export interface PipelineProgress {
     detail: string;
     recordingName: string;
     recordingPath: string;
+    operations?: TaskOperation[];
+    timing?: TaskRegistrySnapshot['tasks'][number]['timing'];
+    taskStatus?: TaskRegistrySnapshot['tasks'][number]['status'];
     calibrationStage?: PipelinePhase;
     completedAt?: number; // timestamp when completed/failed
 }
@@ -152,6 +155,7 @@ export const pipelinesSlice = createSlice({
                 const phase = phaseForTask(task.progress.phase);
                 const terminal = task.status !== 'running';
                 state.activePipelines[task.task_id] = {...common, pipelineId: task.task_id, cameraId: null,
+                    operations: task.operations, taskStatus: task.status, timing: task.timing,
                     phase, progress: task.progress.progress_fraction === null ? null : Math.round(task.progress.progress_fraction * 100),
                     detail: task.progress.detail, completedAt: terminal ? Date.parse(task.updated_at) : undefined,
                     calibrationStage: CALIBRATION_STAGES.includes(phase) ? phase : undefined};
@@ -299,9 +303,13 @@ const selectAllGroupsUnfiltered = createSelector(
         for (const group of groups.values()) {
             const allMembers = [...group.videoNodes, ...(group.aggregator ? [group.aggregator] : [])];
 
-            group.isFailed = allMembers.some((p) => p.phase === PipelinePhase.FAILED);
-            group.isComplete = !!group.aggregator && group.aggregator.phase === PipelinePhase.COMPLETE;
-            group.isActive = !group.isFailed && !group.isComplete && allMembers.some((p) => !isTerminalPhase(p));
+            group.isFailed = group.aggregator?.taskStatus !== undefined
+                ? group.aggregator.taskStatus === 'failed' : allMembers.some((p) => p.phase === PipelinePhase.FAILED);
+            group.isComplete = group.aggregator?.taskStatus !== undefined
+                ? group.aggregator.taskStatus === 'complete' : !!group.aggregator && group.aggregator.phase === PipelinePhase.COMPLETE;
+            group.isActive = group.aggregator?.taskStatus !== undefined
+                ? group.aggregator.taskStatus === 'running'
+                : !group.isFailed && !group.isComplete && allMembers.some((p) => !isTerminalPhase(p));
             group.recordingName = group.aggregator?.recordingName || group.videoNodes[0]?.recordingName || '';
             group.recordingPath = group.aggregator?.recordingPath || group.videoNodes[0]?.recordingPath || '';
             group.pipelineType = group.aggregator?.pipelineType ?? group.videoNodes[0]?.pipelineType ?? null;

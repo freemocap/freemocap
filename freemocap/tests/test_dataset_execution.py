@@ -9,23 +9,31 @@ from freemocap.tools.datasets.execution import measure_worker, require_implement
 
 
 class DatasetExecutionTests(unittest.TestCase):
-    def test_cli_and_preflight_reject_graph_before_filesystem_work(self):
+    def test_cli_and_preflight_select_graph(self):
         from freemocap.tools.datasets.__main__ import parser
         from freemocap.tools.datasets import workflow
         args = parser().parse_args(['process', 'test_data', '--implementation', 'graph'])
         self.assertEqual(args.implementation, 'graph')
-        self.assertEqual(parser().parse_args(['process-all']).implementation, 'current')
-        with patch.object(workflow, 'checked_ready') as ready:
-            with self.assertRaisesRegex(ValueError, 'not implemented'):
-                workflow.preflight('test_data', recordings_root=Path('raw'),
-                                   prepared_root=Path('prepared'), implementation=args.implementation)
-            ready.assert_not_called()
+        self.assertEqual(parser().parse_args(['process-all']).implementation, 'graph')
+        with patch.object(workflow, 'checked_ready', return_value=None):
+            plan = workflow.preflight('test_data', recordings_root=Path('raw'),
+                                      prepared_root=Path('prepared'), implementation=args.implementation)
+            self.assertEqual(plan['implementation'], 'graph')
 
     def test_selection_never_falls_back(self):
         self.assertEqual(require_implementation('current'), 'current')
-        for value in ('graph', 'typo'):
+        self.assertEqual(require_implementation('graph'), 'graph')
+        for value in ('typo',):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 require_implementation(value)
+
+    def test_graph_restart_is_rejected_before_reading_saved_files(self):
+        from freemocap.tools.datasets import workflow
+        with patch.object(workflow, 'checked_ready') as ready:
+            with self.assertRaisesRegex(ValueError, 'saved-stage restart'):
+                workflow.preflight('test_data', recordings_root=Path('raw'),
+                    prepared_root=Path('prepared'), implementation='graph', start='reconstruction')
+            ready.assert_not_called()
 
     def run_measured(self, error=None):
         writes = []
@@ -62,7 +70,7 @@ class DatasetExecutionTests(unittest.TestCase):
         with patch('freemocap.tools.datasets.execution.write_json') as write:
             with self.assertRaises(ValueError):
                 with measure_worker(report_path=Path('performance.json'),
-                                    implementation='graph', operation='process'):
+                                    implementation='typo', operation='process'):
                     self.fail('Unavailable execution started')
             write.assert_not_called()
 

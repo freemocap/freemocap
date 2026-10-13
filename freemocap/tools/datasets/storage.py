@@ -1,6 +1,7 @@
 """Recoverable replacement of local prepared recordings; caller holds prepare.lock."""
 
 import json
+import shutil
 from pathlib import Path
 from uuid import uuid4
 
@@ -85,3 +86,9 @@ def save_current(root: Path, candidate: Path, ready: dict) -> None:
         old = dict(old)
         old['recording'] = str(backup / Path(old['recording']).relative_to(current))
         write_json(backup / 'ready.json', old)
+    # Prepared results are disposable. Keep only the immediately previous run,
+    # and only prune after the replacement and its comparison marker are durable.
+    history = local_path(root, root / 'history')
+    for previous in history.iterdir():
+        if previous != backup and previous.is_dir():
+            shutil.rmtree(local_path(root, previous))

@@ -273,9 +273,27 @@ export const AppStateMessageSchema = z.object({
   }),
 });
 
+export const TaskOperationSchema = z.object({
+  operation_id: z.string().min(1), label: z.string().min(1),
+  status: z.enum(['waiting', 'running', 'complete', 'failed', 'cancelled']),
+  progress_fraction: z.number().min(0).max(1).nullable(), detail: z.string(),
+  completed: z.number().int().nonnegative().nullable(), total: z.number().int().nonnegative().nullable(),
+  unit: z.string().nullable(),
+  elapsed_seconds: z.number().nonnegative().nullable().default(null),
+  seconds_per_motion_frame: z.number().nonnegative().nullable().default(null),
+});
+export type TaskOperation = z.infer<typeof TaskOperationSchema>;
+
 const TaskProgressSchema = z.object({
   phase: z.string().min(1), progress_fraction: z.number().min(0).max(1).nullable(), detail: z.string(),
 });
+export const TaskTimingSchema = z.object({
+  elapsed_seconds: z.number().nonnegative(),
+  motion_frame_count: z.number().int().nonnegative().nullable(),
+  seconds_per_motion_frame: z.number().nonnegative().nullable(),
+});
+export type TaskTiming = z.infer<typeof TaskTimingSchema>;
+
 export const TaskRegistrySnapshotSchema = z.object({
   server_instance_id: z.string().uuid(), revision: z.number().int().nonnegative(),
   recording_owners: z.array(z.object({task_id: z.string(), recording: z.object({
@@ -286,6 +304,8 @@ export const TaskRegistrySnapshotSchema = z.object({
     task_type: z.enum(['calibration', 'mocap']),
     recording: z.object({base_directory: z.string(), recording_name: z.string(), full_path: z.string()}),
     status: z.enum(['running', 'complete', 'failed', 'cancelled']), progress: TaskProgressSchema,
+    operations: z.array(TaskOperationSchema).default([]),
+    timing: TaskTimingSchema.nullable().default(null),
     cameras: z.array(z.object({node_id: z.string(), camera_id: z.string(), progress: TaskProgressSchema})),
     created_at: z.string().datetime({offset: true}), updated_at: z.string().datetime({offset: true}),
   })),

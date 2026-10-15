@@ -37,8 +37,14 @@ def export_to_blender(recording_folder_path, detector=None, blend_file_path=None
     elif len(parquets) != 1:
         raise ValueError('Parquet export requires exactly one *_data.parquet in the recording folder')
     options = BlenderExportConfig.model_validate(blender_export_config or {}).addon_payload(route)
+    if route != 'legacy_npy' and run_id is None:
+        from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
+        run_id = read_metadata(path=parquets[0]).selected_run_id
     blender = executable(blender_exe_path)
-    output = Path(blend_file_path).expanduser().resolve() if blend_file_path else recording / (recording.name + '.blend')
+    from freemocap.core.recording.run_output_path import run_output_path
+    output = Path(blend_file_path).expanduser().resolve() if blend_file_path else run_output_path(recording / (recording.name + '.blend'), run_id or 0)
+    if blend_file_path is None:
+        output.parent.mkdir(parents=True, exist_ok=True)
     if output.suffix.lower() != '.blend' or not output.parent.is_dir():
         raise ValueError('Choose a .blend output in an existing directory')
     prepared = prepare_blender(blender, package, development_build_hash, progress=progress, **cancellation)

@@ -63,12 +63,14 @@ from freemocap.system.recording_structure.recording_structure import RecordingSt
 def publish_posthoc_observations(
     request: ObservationRecordingRequest,
 ) -> RecordingMetadata:
-    """Publish timing and detection in run 0, invalidating dependent saved computations.
+    """Save regenerated products and invalidate their downstream destination results.
 
     Input videos are already synchronized; an absent timing sidecar uses video frame zero
     as time zero. Per-camera recorded offsets are preserved. Other runs/groups survive.
     Numerical completion records are published atomically with their validated output rows.
     """
+    session = request.run_session
+    target_run_id = session.target_run_id if session else request.base_run_id
     frame_numbers = request.group.frame_numbers
     resolved_timing = request.resolved_timing or RecordingGroupTiming.resolve(
         recording_folder=Path(request.recording.full_recording_path),
@@ -171,12 +173,12 @@ def publish_posthoc_observations(
 
     def batches(*, include_observations: bool = True) -> Iterator[pa.RecordBatch]:
         for series in diagnostics:
-            yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=request.base_run_id))
+            yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=target_run_id))
         for reconstruction in request.reconstructions:
             for series in reconstruction.series():
                 yield from series.batches(
                     SeriesSampling(
-                        frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=request.base_run_id
+                        frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=target_run_id
                     )
                 )
         for series in request.spatial_series:
@@ -184,7 +186,7 @@ def publish_posthoc_observations(
                 SeriesSampling(
                     frame_numbers=frame_numbers,
                     timestamps_s=synchronized,
-                    run_id=request.base_run_id,
+                    run_id=target_run_id,
                 )
             )
         if not include_observations:
@@ -200,7 +202,7 @@ def publish_posthoc_observations(
                     )
                 ),
                 channel=camera_channels[camera].overlay,
-                run_id=request.base_run_id,
+                run_id=target_run_id,
                 batch_size=65536,
             )
             box_channel = camera_channels[camera].boxes
@@ -215,19 +217,19 @@ def publish_posthoc_observations(
                         )
                     ),
                     channel=box_channel,
-                    run_id=request.base_run_id,
+                    run_id=target_run_id,
                     batch_size=65536,
                 )
             yield from timing_batches(
                 samples=zip(frame_numbers, camera_times[camera], strict=True),
                 channel=camera_channels[camera].capture,
-                run_id=request.base_run_id,
+                run_id=target_run_id,
                 batch_size=65536,
             )
         yield from timing_batches(
             samples=zip(frame_numbers, synchronized, strict=True),
             channel=group_channel,
-            run_id=request.base_run_id,
+            run_id=target_run_id,
             batch_size=65536,
         )
 
@@ -236,12 +238,14 @@ def publish_posthoc_observations(
         recording_name=request.recording.recording_name,
     )
     with recording_write_lock(structure=structure):
+        if session:
+            session.check(read_metadata(path=structure.data_parquet_path) if structure.data_parquet_path.exists() else None)
         if not structure.data_parquet_path.exists():
             metadata = RecordingMetadata(
-                recording_id=structure.recording_name, selected_run_id=request.base_run_id, runs={request.base_run_id: run}
+                recording_id=structure.recording_name, selected_run_id=target_run_id, runs={target_run_id: run}
             )
-            publish_recording(structure=structure, metadata=metadata, batches=batches())
-            return metadata
+            publish_recording(structure=structure, metadata=metadata, batches=batches(), cancelled=request.cancelled)
+            return session.accept(metadata) if session else metadata
         metadata = read_metadata(
             path=structure.data_parquet_path
         )
@@ -253,7 +257,8 @@ def publish_posthoc_observations(
                 )
             },
             request=ProcessingRequest(
-                base_run_id=request.base_run_id,
+                base_run_id=session.base_run_id if session else request.base_run_id,
+                keep=bool(session and session.target_run_id != session.base_run_id),
                 sensor_groups=(request.group.name,),
                 start_stage=ProcessingStage.TIMING,
                 stop_stage=ProcessingStage.OBSERVATIONS,
@@ -282,7 +287,14 @@ def publish_posthoc_observations(
                 execute=tuple(stage for stage in plan.execute if stage not in (ProcessingStage.TIMING, ProcessingStage.OBSERVATIONS)),
                 invalidate=tuple(stage for stage in plan.invalidate if stage not in (ProcessingStage.TIMING, ProcessingStage.OBSERVATIONS)))
             channels = [channel for channel in channels if channel.stage in plan.execute]
-        retained = retained_run(base=metadata.runs[request.base_run_id], plan=plan)
+        if session and session.target_run_id != session.base_run_id:
+            # The reserved ID may skip an earlier failed attempt's output folder.
+            if target_run_id in metadata.runs:
+                raise ValueError('The new run ID already exists')
+            plan = replace(plan, target_run_id=target_run_id)
+        if plan.target_run_id != target_run_id:
+            raise ValueError("Processing destination changed before saving")
+        retained = retained_run(base=metadata.runs[plan.base_run_id], plan=plan)
         if request.reuse_observations:
             # Reused rows keep the provenance of the detectors and clocks that made them.
             for name, source in retained.sources.items():
@@ -296,20 +308,25 @@ def publish_posthoc_observations(
                 "Observation overwrite cannot change the saved sample grid"
             )
         # Reused observations keep the provenance from their actual detector run.
-        combined_processing = {**{group: settings for group, settings in retained.processing.items()
-            if group != request.group.name}, **run.processing}
+        combined_processing = dict(retained.processing)
+        for group, settings in run.processing.items():
+            combined_processing[group] = {**combined_processing.get(group, {}), **settings}
         retained_entries = stage_provenance(retained.processing, request.group.name).stages
         if retained_entries or entries:
             combined_processing = set_stage_provenance(combined_processing, request.group.name,
                 {**retained_entries, **entries})
+        for name, reference in references.items():
+            previous = retained.reference_frames.get(name)
+            if previous is not None and 'calibration_camera_id' in reference and reference['calibration_camera_id'] is None:
+                references[name] = dict(reference, calibration_camera_id=previous.get('calibration_camera_id'))
         result = RunDescriptor(
             calibration_updates={
-                **{group: update for group, update in retained.calibration_updates.items()
-                   if group != request.group.name},
+                **retained.calibration_updates,
                 **run.calibration_updates,
             },
             scale_fits=(*retained.scale_fits, *run.scale_fits),
-            camera_geometry={**retained.camera_geometry, **run.camera_geometry},
+            camera_geometry={**retained.camera_geometry,
+                **{group: geometry for group, geometry in run.camera_geometry.items() if geometry}},
             sensor_groups=retained.sensor_groups,
             sources={**retained.sources, **sources},
             reference_frames={**retained.reference_frames, **references},
@@ -319,10 +336,13 @@ def publish_posthoc_observations(
             static_channels=retained.static_channels,
             checkpoints=(*retained.checkpoints, *run.checkpoints),
         )
-        return publish_checkpoint(
+        published = publish_checkpoint(
             structure=structure,
             metadata=metadata,
             plan=plan,
             result=result,
             computed_batches=batches(include_observations=not request.reuse_observations),
+            cancelled=request.cancelled,
         )
+
+        return session.accept(published) if session else published

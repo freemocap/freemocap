@@ -59,9 +59,9 @@ snapshot: use each artifact's metadata, not folder modification time, as provena
 
 ## Notebook Explorer
 
-An optional `.ipynb` provides a guided Pandas/Matplotlib view of the selected
-Parquet channels. Open it in JupyterLab or VS Code, with its folder as the working
-directory. It requires pandas, pyarrow, numpy, and matplotlib in your analysis
+An optional `.ipynb` in the recording folder provides a guided NumPy/Pandas/Plotly
+view of the selected Parquet channels. Open it in JupyterLab or VS Code, with its folder as the working
+directory. It requires pandas, pyarrow, numpy, and plotly in your analysis
 environment; it does not install anything or process videos. Keep the recording
 folder layout intact. The notebook verifies its source hash before loading data;
 a retained notebook alone does not archive the underlying Parquet file. Save an

@@ -107,7 +107,7 @@ def test_canonical_channels_and_yaml_roundtrip(
     assert not list(structure.output_dir.glob("*.parquet"))
 
 
-def test_stage_invalidation_preserves_other_run_diagnostics(
+def test_explicit_destination_invalidation_preserves_source_diagnostics(
     publication: ObservationRecordingRequest, tmp_path: Path
 ) -> None:
     metadata = publish_posthoc_observations(with_reprojection(request=publication))
@@ -150,7 +150,7 @@ def test_stage_invalidation_preserves_other_run_diagnostics(
     assert ChannelKind.RIGID_BODY_RESIDUALS in by_run[0]
     assert ChannelKind.RIGID_BODY_RESIDUALS not in by_run[1]
     assert ChannelKind.REPROJECTION_ERROR in by_run[1]
-    assert not by_run[2]
+    assert ChannelKind.REPROJECTION_ERROR not in by_run[2]
     assert report.selected_run_id == 2
 
 

@@ -104,12 +104,13 @@ def test_selection_replacement_retention_and_failure(scientific_recording, monke
     first = export(structure)
     with recording_view(structure.data_parquet_path) as view:
         channel = arrays.available_channels(view.metadata.runs[3])[0][0]
+    original = {path: path.read_bytes() for path in first.files}
     selected = export(structure, wide_csv=(channel,))
     assert len(selected.files) == 1
-    assert all(not path.exists() for path in first.files if path not in selected.files)
-    retained = export(structure, wide_csv=(channel,), keep=True)
+    assert all(path.read_bytes() == original[path] for path in first.files if path not in selected.files)
+    retained = export(structure, wide_csv=(channel,), run_id=0, keep=True)
     with pytest.raises(FileExistsError):
-        export(structure, keep=True)
+        export(structure, run_id=0, keep=True)
     before = {p: p.read_bytes() for p in (*selected.files, selected.manifest_path, *retained.files)}
     def fail(*args, **kwargs):
         raise OSError('Disk full')
@@ -146,8 +147,8 @@ def test_partial_publication_recovers(scientific_recording, monkeypatch):
     with pytest.raises(OSError):
         export(structure)
     monkeypatch.setattr(publication.os, 'replace', replace)
-    recover_tall_export(structure=structure)
-    assert len(publication.verified_manifest(structure.exports_dir / 'recording_recording_info.json').artifacts) == 4
+    recover_tall_export(structure=structure, retained_run_id=3)
+    assert len(publication.verified_manifest(structure.exports_dir / 'run-3' / 'recording.run-3_recording_info.json').artifacts) == 4
 
 
 def test_empty_context_and_ordered_array_shape(scientific_recording, tmp_path):
@@ -216,8 +217,8 @@ def test_readable_names_and_compact_metadata(scientific_recording):
     structure, _ = scientific_recording
     result = export(structure)
     assert {p.name for p in result.files} == {
-        'recording.3d_keypoints_raw--points.csv', 'recording.rotations_world--points.csv',
-        'recording.timestamps--clock.csv', 'recording.segment_lengths--points.csv'}
+        'recording.run-3.3d_keypoints_raw--points.csv', 'recording.run-3.rotations_world--points.csv',
+        'recording.run-3.timestamps--clock.csv', 'recording.run-3.segment_lengths--points.csv'}
     manifest = publication.verified_manifest(result.manifest_path)
     assert manifest.version == 3
     assert all('value_columns' not in a.details for a in manifest.artifacts.values())
@@ -240,3 +241,19 @@ def test_filename_collisions_are_safe_and_independent_of_selection(scientific_re
         assert len({n.casefold() for n in names.values()}) == len(names)
         assert all('/' not in n and '\\' not in n and '..' not in n for n in names.values())
         assert names == wide_csv.table_names(run.model_copy(update={'channels': tuple(reversed(run.channels))}))
+
+
+def test_recovery_ignores_old_deletion_instructions(tmp_path):
+    import json
+    from freemocap.core.recording.exports import publication
+    saved = tmp_path / 'existing-result.csv'
+    saved.write_bytes(b'original scientific result')
+    staging = tmp_path / '.staging-test'
+    staging.mkdir()
+    journal = tmp_path / '.publication.json'
+    journal.write_text(json.dumps(dict(version=1, staging=staging.name, files=[],
+        remove=[dict(filename=saved.name, sha256=publication.digest(saved))])))
+    publication.finish_publication(tmp_path)
+    assert saved.read_bytes() == b'original scientific result'
+    assert not journal.exists()
+    assert not staging.exists()

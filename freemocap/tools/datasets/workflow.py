@@ -73,8 +73,6 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
               timeout: float = 1800.0, output_profile: str = 'standard', blender_path: str | None = None,
               implementation: str = 'graph') -> dict:
     require_implementation(implementation)
-    if implementation == 'graph' and start != 'observations':
-        raise ValueError('Graph saved-stage restart is not implemented; choose observations')
     dataset = DATASETS[name]
     from .output_acceptance import required_outputs
     required_outputs(output_profile)

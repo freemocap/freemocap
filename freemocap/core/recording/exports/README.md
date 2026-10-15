@@ -1,6 +1,6 @@
 # Scientific exports
 
-In **Open Mocap Processing → Exports**, choose data separately from formats.
+In **Open Mocap Processing Ã¢â€ â€™ Exports**, choose data separately from formats.
 All exports are optional. **3D landmarks** is the sole default data selection.
 Raw triangulated 3D keypoints, filtered 3D keypoints, per-camera 2D keypoints and
 rigid-body segment poses start unchecked. Joint-angle export is deferred.
@@ -112,7 +112,7 @@ The shared journal/recovery commands below apply to all three scientific formats
 
 ## Tall CSV diagnostics
 
-In **Open Mocap Processing → Exports**, **Save tall CSV after processing** is
+In **Open Mocap Processing Ã¢â€ â€™ Exports**, **Save tall CSV after processing** is
 off by default for new preferences. It applies to full processing
 and saved-stage reprocessing. **Export tall CSV now** exports the selected saved
 run without reprocessing and displays the saved file paths. Reload saved results
@@ -208,24 +208,38 @@ array axes, missing values, metadata, and loading/plotting with Matplotlib.
 Existing READMEs are preserved, including student annotations. Tutorials are
 published with the export transaction but are not scientific data artifacts.
 
-The optional `<recording>.explorer.ipynb` recreates the V1 notebook workflow
+The optional `<recording>.explorer.ipynb` is saved in the recording folder beside
+the Parquet file, rather than under `exports/`. Kept exports and nonzero runs use
+`<recording>.run-<id>.explorer.ipynb` in that same recording folder.
+It recreates the V1 notebook workflow
 for V2 Parquet. It uses the selected run and data products, with Pandas tables,
-ordered NumPy arrays and a Matplotlib coordinate plot. It requires no CSV/NPY
+ordered NumPy arrays, interactive coordinate plots, and playable 3D points. It requires no CSV/NPY
 export and does not rerun processing. Notebook generation requires no Jupyter
 or Pandas installation; execution in an analysis environment requires Python
-3.11+, Jupyter (or VS Code notebooks), pandas, pyarrow, numpy and matplotlib.
+3.11+, Jupyter (or VS Code notebooks), pandas, pyarrow, numpy and plotly.
 There are no automatic installation cells.
 
 The notebook uses a relative Parquet path and checks its SHA-256 before reading.
+Manifest version 4 marks root notebooks with `location: recording`; other artifacts
+remain relative to their export folder. The publication journal records the same
+location so interrupted exports can recover. Existing notebooks under `exports/`
+remain in place; requesting a new notebook publishes the new copy at the root.
 Keep the recording layout intact; retained notebooks do not copy or archive
 Parquet. Replaced source data produces an explicit error rather than silently
 plotting a newer run. Save edited notebooks with another filename before
 regenerating the exporter-owned file. Like other managed exports, externally
 modified notebook artifacts are detected by manifest verification.
 
-Historical reference: local tag `v1.8.2`,
-`freemocap/core_processes/export_data/generate_jupyter_notebook/`, plus
-`ipython_jupyter_notebooks/export_freemocap_npy_as_pandas_data_frame_csv.ipynb`.
+The walkthrough follows the generated v1.8.2 template: libraries, editable
+variables, joint selection, coordinate plots, and animated 3D points
+[@freemocapNotebookV182]. The export snapshot is stored in notebook metadata
+instead of a large literal in the first code cell. Channel names, components,
+units, frame numbers, and timestamps come from the saved run. The V1 center-of-mass
+comparison is omitted because this export does not provide a center-of-mass channel.
+The 3D view shows landmarks, keypoints, or segment origins according to the selected
+channel; it does not interpret quaternion components as positions. For 2D channels,
+the notebook plots XY and skips the 3D view. Playback uses the median saved interval;
+the slider preserves exact frame IDs and elapsed timestamps.
 
 
 ### Previewing an unprocessed recording

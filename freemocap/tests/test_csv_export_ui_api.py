@@ -1,4 +1,5 @@
 """Exercise the saved-result HTTP boundary and post-processing export failures."""
+from freemocap.core.pipeline.performance_report import PerformanceReport
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -45,10 +46,10 @@ def test_completion_exports_only_when_enabled_and_preserves_processing_success(s
     monkeypatch.setattr(tall_csv, 'export_tall_csv', export)
     request = Mock(spec=MocapWorkerRequest, config=PosthocMocapPipelineConfig(exportTallCsv=enabled, exportToBlender=False),
         recording=SimpleNamespace(full_recording_path=saved_request.structure.full_path),
-        ipc=SimpleNamespace(should_continue=True), report=lambda *args: reports.append(args))
+        ipc=SimpleNamespace(should_continue=True), performance=PerformanceReport(), report=lambda *args: reports.append(args))
     before = saved_request.structure.data_parquet_path.read_bytes()
     if fails:
-        with pytest.raises(RuntimeError, match='processing complete; requested exports incomplete'):
+        with pytest.raises(RuntimeError, match='requested exports incomplete'):
             complete_mocap(request)
         assert not any(report[0] == 'complete' for report in reports)
     else:

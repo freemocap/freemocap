@@ -6,7 +6,6 @@ import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
-import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
 import SettingsGroupHeading from '@/components/common/settings-layout/settings-group-heading';
 import SettingsSummaryChip from '@/components/common/settings-layout/settings-summary-chip';
 
@@ -28,11 +27,11 @@ const SAVED_INFO = {
 
 interface Selection {run_ids: number[]; selected_run_id: number; revision: string}
 
-export default function MocapCsvSettings({path, processing}: {path: string | null; processing: boolean}) {
+export default function MocapCsvSettings({path, processing, sourceRunId}: {path: string | null; processing: boolean; sourceRunId: number}) {
     const dispatch = useAppDispatch();
     const enabled = useAppSelector(state => state.mocap.config.exportTallCsv ?? false);
     const [selection, setSelection] = useState<Selection | null>(null);
-    const [run, setRun] = useState(0);
+    const run = sourceRunId;
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [noSavedResult, setNoSavedResult] = useState(false);
@@ -54,7 +53,7 @@ export default function MocapCsvSettings({path, processing}: {path: string | nul
                 }
                 if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
                 const data: Selection = await response.json();
-                if (!controller.signal.aborted) {setSelection(data); setRun(data.selected_run_id);}
+                if (!controller.signal.aborted) {setSelection(data);}
             } catch (reason) {
                 if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
             }
@@ -80,11 +79,7 @@ export default function MocapCsvSettings({path, processing}: {path: string | nul
         <SettingRow label="Save after processing" info={AUTOMATIC_INFO}
             control={<SettingToggleSwitch label="Save tall CSV after processing" isToggled={enabled}
                 onToggle={value => dispatch(exportTallCsvUpdated(value))}/>}/>
-        <SettingRow label="Saved result" info={SAVED_INFO} inactive={!selection || processing}
-            control={<SettingSelectInput label="CSV export run" value={String(run)}
-                options={selection ? selection.run_ids.map(id => ({value: String(id), label: `Run ${id}`}))
-                    : [{value: String(run), label: 'No saved result'}]}
-                disabled={!selection || busy || processing} onChange={value => setRun(Number(value))}/>}/>
+        <p className="settings-note">Export saved Run {run}, selected under Processing stages.</p>
         <SettingRow label="Export saved result" info={SAVED_INFO}
             inactive={!selection || processing}
             control={<ButtonSm text={busy ? 'Saving…' : 'Export now'} onClick={() => void save()}

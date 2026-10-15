@@ -38,7 +38,7 @@ def test_exact_rows_metadata_static_and_default_replacement(saved_request):
     original = path.read_bytes()
     result = export(saved_request)
     assert result.run_id == 3
-    assert result.files[0].name == 'recording.tall.csv'
+    assert result.files[0].name == 'recording.run-3.tall.csv'
     assert result.files[0].read_bytes().startswith(b'\xef\xbb\xbf')
     assert read_csv(result.files[0]).equals(table.replace_schema_metadata(None))
     manifest = publication.verified_manifest(result.manifest_path)
@@ -57,7 +57,7 @@ def test_unknown_run_and_stale_revision_do_not_create_exports(saved_request):
     assert not saved_request.structure.exports_dir.exists()
 
 
-def test_retained_exports_never_overwritten_by_default_or_keep(saved_request):
+def test_no_clobber_export_and_explicit_overwrite_use_same_run_folder(saved_request):
     result = export(saved_request, keep=True)
     before = {p: p.read_bytes() for p in (*result.files, result.manifest_path)}
     assert result.files[0].parent.name == 'csv'
@@ -65,8 +65,9 @@ def test_retained_exports_never_overwritten_by_default_or_keep(saved_request):
     assert result.files[0].name == 'recording.run-3.tall.csv'
     with pytest.raises(FileExistsError):
         export(saved_request, keep=True)
-    export(saved_request)
-    assert all(p.read_bytes() == contents for p, contents in before.items())
+    overwritten = export(saved_request)
+    assert overwritten.files == result.files
+    assert all(p.read_bytes() == contents for p, contents in before.items() if p in result.files)
 
 
 def test_cancellation_and_write_failure_preserve_previous_exports(saved_request, monkeypatch):
@@ -99,12 +100,12 @@ def test_partial_publication_is_detectable_and_recoverable(saved_request, monkey
     with pytest.raises(OSError, match='replacement failure'):
         export(saved_request, keep=keep)
     root = saved_request.structure.exports_dir
-    directory = root / 'run-3' if keep else root
-    manifest = directory / ('recording.run-3.metadata.json' if keep else 'recording.metadata.json')
+    directory = root / 'run-3'
+    manifest = directory / 'recording.run-3.metadata.json'
     with pytest.raises(ValueError, match='incomplete'):
         publication.verified_manifest(manifest)
     monkeypatch.setattr(publication.os, 'replace', replace)
-    tall_csv.recover_tall_export(structure=saved_request.structure, retained_run_id=3 if keep else None)
+    tall_csv.recover_tall_export(structure=saved_request.structure, retained_run_id=3)
     assert len(publication.verified_manifest(manifest).artifacts) == 2
     assert not (directory / '.publication.json').exists()
 

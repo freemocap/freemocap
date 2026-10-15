@@ -6,6 +6,8 @@ import logging
 from threading import Lock
 from time import perf_counter
 
+from tabulate import tabulate
+
 logger = logging.getLogger(__name__)
 
 
@@ -72,15 +74,24 @@ class PerformanceReport:
         lines = [f"Posthoc performance [{pipeline_id}] outcome={outcome}; wall={elapsed:.3f}s",
             f"Completed detection: {self.frames} synchronized frames; {self.images} camera images.",
             "Wall-clock timings, not GPU kernel timings. Worker and coordinator rows overlap; do not sum them.",
-            "Coordinator waits measure exposed blocking; worker rows measure work, including work hidden by overlap.",
-            "stage | n | total s | mean ms | first ms | mean after first ms | max ms"]
+            "Coordinator waits measure exposed blocking; worker rows measure work, including work hidden by overlap."]
         lines[1:1] = self.details
         lines.extend(f"count {name}: {count}" for name, count in sorted(self.counts_snapshot().items()))
-        for name, row in sorted(rows.items()):
-            lines.append(f"{name} | {row['count']} | {row['total_s']:.3f} | {row['mean_ms']:.3f} | "
-                         f"{row['first_ms']:.3f} | {row['mean_after_first_ms']:.3f} | {row['max_ms']:.3f}")
+        if rows:
+            lines.extend(["", tabulate(
+                [[name, row["count"], f"{row['total_s']:.3f}", f"{row['mean_ms']:.3f}",
+                  f"{row['first_ms']:.3f}", f"{row['mean_after_first_ms']:.3f}" if row["count"] > 1 else "-",
+                  f"{row['max_ms']:.3f}"]
+                 for name, row in sorted(rows.items())],
+                headers=["Stage", "Calls", "Total (s)", "Mean (ms)", "First (ms)",
+                         "After first (ms)", "Max (ms)"],
+                tablefmt="outline", disable_numparse=True,
+                colalign=("left", "right", "right", "right", "right", "right", "right"),
+            ), "After first: mean excluding the first call; '-' means only one call."])
+        else:
+            lines.extend(["", "No stage timings recorded."])
         detection = rows.get("detection.total", {}).get("total_s", 0.0)
         if detection:
             lines.insert(2, f"Detection throughput: {self.frames / detection:.2f} synchronized frames/s; "
                          f"{self.images / detection:.2f} camera images/s (includes setup and video finalization).")
-        logger.info("\n%s", "\n".join(lines))
+        logger.info("\n%s\n", "\n".join(lines))

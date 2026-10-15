@@ -205,9 +205,11 @@ def run_worker(request_path: Path) -> None:
             video_fps=request["fps"], export_to_blender=profile == 'standard', auto_open_blend_file=False,
             blender_exe_path=str(prepared_blender[0]) if prepared_blender else None,
             blender_import_route='parquet_segments', export_tall_csv=False,
-            filter_config=PosthocFilterConfig(enabled=request["filtering_enabled"]),
+            filter_config=PosthocFilterConfig(enabled=request["filtering_enabled"],
+                                              cutoff=request.get('filter_cutoff', 6.0)),
             body_alignment=MocapAlignmentConfig(mode=request.get('alignment', 'auto')),
             start_stage=request.get('start_stage', 'observations'),
+            stop_stage=request.get('stop_stage', 'reconstruction'),
             base_run_id=request.get('run_id', 0), sensor_group=request.get('sensor_group'),
         )
         mocap_status = None
@@ -216,24 +218,29 @@ def run_worker(request_path: Path) -> None:
             mocap_task = manager.create_mocap_pipeline(recording_info=info, mocap_config=config)
             mocap_status = wait_for_success(manager, mocap_task, timeout=request["timeout"])
             logger.info('validation: Checking recording channels and frame coverage (running)')
-            from freemocap.tools.datasets.validation import validate_outputs
-            stage_order = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
-            executed = list(stage_order[stage_order.index(request.get('start_stage', 'observations')):])
-            if 'observations' in executed:
-                executed.append('timing')
-            if 'reconstruction' in executed:
-                executed.append('biomechanics')
-            validation = validate_outputs(recording, expected_frames=request['frames'],
-                run_id=request.get('run_id'),
-                sensor_group=request.get('sensor_group'),
-                require_provenance_stages=tuple(executed),
-                require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
-                                   and request.get('alignment', 'auto') != 'calibration'))
-            # Numerical completion alone cannot certify a selected export. Reopen
-            # the actual saved scene in another Blender process before readiness.
-            from freemocap.tools.datasets.blender_validation import validate_blender
-            checks = validate_blender(recording, validation, prepared=prepared_blender) if profile == 'standard' else None
-            validation = accept_outputs(recording, validation, profile=profile, blender_checks=checks)
+            if request.get('stage_matrix', False):
+                from freemocap.tools.datasets.stage_matrix import validate_stage_output
+                validation = validate_stage_output(recording, stop=request['stop_stage'],
+                                                   expected_frames=request['frames'])
+            else:
+                from freemocap.tools.datasets.validation import validate_outputs
+                stage_order = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
+                executed = list(stage_order[stage_order.index(request.get('start_stage', 'observations')):])
+                if 'observations' in executed:
+                    executed.append('timing')
+                if 'reconstruction' in executed:
+                    executed.append('biomechanics')
+                validation = validate_outputs(recording, expected_frames=request['frames'],
+                    run_id=request.get('run_id'),
+                    sensor_group=request.get('sensor_group'),
+                    require_provenance_stages=tuple(executed),
+                    require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
+                                       and request.get('alignment', 'auto') != 'calibration'))
+                # Numerical completion alone cannot certify a selected export. Reopen
+                # the actual saved scene in another Blender process before readiness.
+                from freemocap.tools.datasets.blender_validation import validate_blender
+                checks = validate_blender(recording, validation, prepared=prepared_blender) if profile == 'standard' else None
+                validation = accept_outputs(recording, validation, profile=profile, blender_checks=checks)
             logger.info('validation: Recording checks passed (complete)')
         # Processing may have updated the recording-local calibration: hash the saved file.
         calibration = CalibrationResult.load_toml(calibration_path)

@@ -1,6 +1,7 @@
 """Publish a complete validated Parquet with its embedded data descriptor."""
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
+from concurrent.futures import CancelledError
 from contextlib import contextmanager
 import os
 import logging
@@ -37,6 +38,7 @@ def publish_recording(
     structure: RecordingStructure,
     metadata: RecordingMetadata,
     batches: Iterable[pa.RecordBatch],
+    cancelled: Callable[[], bool] = lambda: False,
 ) -> None:
     """Caller holds the recording write lock from run allocation through publication."""
     if metadata.recording_id != structure.recording_name:
@@ -56,6 +58,7 @@ def publish_recording(
             {DESCRIPTOR_KEY: metadata.model_dump_json().encode("utf-8")}
         ),
         batches=validated_batches(),
+        cancelled=cancelled,
     )
     write_recording_info(structure, metadata)
     logging.getLogger(__name__).info(
@@ -64,7 +67,8 @@ def publish_recording(
         structure.data_parquet_path)
 
 
-def publish_parquet(*, path: Path, schema: pa.Schema, batches: Iterable[pa.RecordBatch]) -> None:
+def publish_parquet(*, path: Path, schema: pa.Schema, batches: Iterable[pa.RecordBatch],
+                    cancelled: Callable[[], bool] = lambda: False) -> None:
     """Write compressed batches and replace the destination only after completion."""
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -75,9 +79,13 @@ def publish_parquet(*, path: Path, schema: pa.Schema, batches: Iterable[pa.Recor
     try:
         with pq.ParquetWriter(temporary, schema=schema, compression="zstd") as writer:
             for batch in batches:
+                if cancelled():
+                    raise CancelledError('Cancelled while writing temporary recording')
                 writer.write_batch(batch=batch)
         with temporary.open("rb+") as completed:
             os.fsync(completed.fileno())
+        if cancelled():
+            raise CancelledError('Cancelled before replacing saved recording')
         replace_recording_file(source=temporary, destination=path)
     finally:
         temporary.unlink(missing_ok=True)

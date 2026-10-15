@@ -1,6 +1,6 @@
 """Keep or overwrite a validated stage result without mixing retained runs."""
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -95,8 +95,9 @@ def publish_checkpoint(
     plan: StageExecutionPlan,
     result: RunDescriptor,
     computed_batches: Iterable[pa.RecordBatch],
+    cancelled: Callable[[], bool] = lambda: False,
 ) -> RecordingMetadata:
-    """Caller holds the recording lock, including planning and numerical work."""
+    """Caller holds the recording lock and verifies the input snapshot before saving."""
     if read_metadata(path=structure.data_parquet_path) != metadata:
         raise ValueError("Recording changed after stage planning")
     retained = retained_run(base=metadata.runs[plan.base_run_id], plan=plan)
@@ -104,11 +105,25 @@ def publish_checkpoint(
     retained_model_sources = {channel.source for channel in retained.channels} | {
         fit.source for fit in retained.scale_fits
     }
+    retained_model_ids = {retained.sources[name].definition.get('model_id')
+        for name in retained_model_sources if name in retained.sources}
     for name, model in retained.models.items():
-        if name in retained_model_sources and result.models.get(name) != model:
+        if name in retained_model_ids and result.models.get(name) != model:
             raise ValueError(
                 "Result must preserve scientific models used by retained outputs"
             )
+    retained_references = {channel.reference_frame for channel in retained.channels}
+    retained_references.update(item.channel.reference_frame for item in retained.static_channels)
+    retained_references.update(fit.reference_frame for fit in retained.scale_fits)
+    for name in retained_references - {None}:
+        previous, proposed = retained.reference_frames.get(name), result.reference_frames.get(name)
+        if previous is not None and 'calibration_camera_id' in previous and proposed is not None:
+            # Camera assignment is metadata about pixel coordinates, not a change
+            # to the camera's pixel coordinate system itself.
+            previous = {key: value for key, value in previous.items() if key != 'calibration_camera_id'}
+            proposed = {key: value for key, value in proposed.items() if key != 'calibration_camera_id'}
+        if proposed != previous:
+            raise ValueError('Cannot change coordinate definitions used by unselected saved results; existing data was not replaced')
     for fit in retained.scale_fits:
         if fit not in result.scale_fits:
             raise ValueError("Result must preserve reusable scale fits")
@@ -168,6 +183,7 @@ def publish_checkpoint(
     publish_recording(
         structure=structure,
         metadata=published,
+        cancelled=cancelled,
         batches=checkpoint_batches(
             structure=structure,
             metadata=metadata,

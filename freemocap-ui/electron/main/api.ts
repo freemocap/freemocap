@@ -5,6 +5,7 @@ import superjson from 'superjson';
 
 // Services
 import {PythonServer} from './services/python-server';
+import {isVSCodeAvailable, openFolderInVSCode} from './services/vscode';
 import {app, dialog, shell} from 'electron';
 import pkg from 'electron-updater';
 import path from 'node:path';
@@ -126,6 +127,11 @@ async function restartServerIfOwned(): Promise<boolean> {
 
 // Create the main API router
 export const api = t.router({
+    vscode: t.router({
+        available: t.procedure.query(() => isVSCodeAvailable()),
+        openFolder: t.procedure.input(z.object({path: z.string().min(1)}))
+            .mutation(({input}) => openFolderInVSCode(input.path)),
+    }),
     memoryInfo: t.procedure.query(() => ({totalBytes: os.totalmem(), availableBytes: os.freemem()})),
     // Python Server Management
     pythonServer: t.router({

@@ -1,4 +1,5 @@
 import ButtonSm from "@/components/ui-components/ButtonSm";
+import OpenInVSCode from './OpenInVSCode';
 import {fetchPlaybackBundle, selectPlaybackBundle} from '@/store/slices/playback-data/playback-data-slice';
 import React, {useCallback, useEffect, useState} from 'react';
 import {Footer} from '@/components/ui-components/Footer';
@@ -118,6 +119,7 @@ const RecordingPlaybackSession: React.FC = () => {
                                 text="Open recording folder" disabled={!recordingPath || !api}
                                 title={recordingPath ?? 'Select a recording'}
                                 onClick={() => void handleOpenFolder()}/>
+                            <OpenInVSCode recordingPath={recordingPath ?? null}/>
 
 
                             <div className="flex-1"/>

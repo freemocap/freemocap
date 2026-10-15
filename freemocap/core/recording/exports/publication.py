@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class ExportArtifact(BaseModel):
     model_config = ConfigDict(extra='forbid')
     filename: str
+    location: Literal['exports', 'recording'] = 'exports'
     sha256: str
     rows: int = Field(ge=0)
     columns: tuple[str, ...]
@@ -35,7 +36,7 @@ class ExportArtifact(BaseModel):
 
 class ExportManifest(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    version: Literal[1, 2, 3] = 1
+    version: Literal[1, 2, 3, 4] = 1
     status: Literal['complete'] = 'complete'
     artifacts: dict[str, ExportArtifact]
     snapshots: dict[str, dict]
@@ -63,6 +64,22 @@ def artifact_path(directory: Path, name: str) -> Path:
     return target
 
 
+def published_artifact_path(directory: Path, name: str, location: str = 'exports') -> Path:
+    """Resolve root notebooks without allowing arbitrary parent-relative paths."""
+    if location == 'exports':
+        return artifact_path(directory, name)
+    if location != 'recording' or '/' in name or not name.endswith('.ipynb'):
+        raise ValueError('Only notebook files can be published in the recording folder')
+    artifact_path(directory, name)  # Validate the export directory and filename too.
+    root = directory
+    if root.name.startswith('run-') and root.name[4:].isdigit():
+        root = root.parent
+    if root.name != 'exports':
+        raise ValueError('Recording notebooks must be published from an exports directory')
+    artifact_path(root, name)
+    return artifact_path(root.parent, name)
+
+
 def write_json(path: Path, value: dict) -> None:
     with path.open('w', encoding='utf-8', newline='\n') as stream:
         json.dump(value, stream, ensure_ascii=False, allow_nan=False, indent=2)
@@ -84,7 +101,7 @@ def verified_manifest(path: Path) -> ExportManifest:
         raise ValueError('Export publication is incomplete; recover it before reading or exporting')
     manifest = ExportManifest.model_validate_json(path.read_text(encoding='utf-8'))
     for artifact in manifest.artifacts.values():
-        target = artifact_path(path.parent, artifact.filename)
+        target = published_artifact_path(path.parent, artifact.filename, artifact.location)
         if target.is_symlink() or not target.is_file() or digest(target) != artifact.sha256:
             raise ValueError(f'Export file missing or changed: {artifact.filename}')
         if artifact.source_sha256 not in manifest.snapshots:
@@ -104,7 +121,8 @@ def finish_publication(directory: Path) -> None:
         raise ValueError('Export staging must not be a link')
     for entry in data['files']:
         name = ExportArtifact.safe_filename(entry['filename'])
-        target, pending = artifact_path(directory, name), artifact_path(staging, name)
+        target = published_artifact_path(directory, name, entry.get('location', 'exports'))
+        pending = artifact_path(staging, name)
         if target.is_symlink() or pending.is_symlink():
             raise ValueError('Export files must not be links')
         if not pending.exists():
@@ -123,29 +141,23 @@ def finish_publication(directory: Path) -> None:
             pending.unlink()
         else:
             os.replace(pending, target)
-    published_paths = {os.path.normcase(str(artifact_path(directory, entry['filename']).resolve())) for entry in data['files']}
-    for entry in data.get('remove', []):
-        target = artifact_path(directory, entry['filename'])
-        if os.path.normcase(str(target.resolve())) in published_paths:
-            continue  # Case-only path changes on Windows refer to the newly published file.
-        if target.exists():
-            if target.is_symlink() or digest(target) != entry['sha256']:
-                raise ValueError(f'Obsolete export changed: {target.name}')
-            target.unlink()
+    # Saved files outside this publication remain on disk. Dependency changes,
+    # selection changes and older journals' "remove" lists are not deletion authority.
     journal.unlink()
     remove_staging(directory, staging)
 
 
 def publish(directory: Path, staging: Path, manifest_name: str,
-            manifest: ExportManifest, filenames: tuple[str, ...], keep: bool,
-            obsolete: tuple[ExportArtifact, ...] = ()) -> None:
+            manifest: ExportManifest, filenames: tuple[str, ...], keep: bool) -> None:
     for name in (*filenames, manifest_name):
-        artifact_path(directory, name)
+        artifact = manifest.artifacts.get(name)
+        published_artifact_path(directory, name, artifact.location if artifact else 'exports')
         artifact_path(staging, name)
     write_json(staging / manifest_name, manifest.model_dump(mode='json'))
-    files = [dict(filename=name, sha256=digest(staging / name), no_clobber=keep) for name in filenames]
+    files = [dict(filename=name, sha256=digest(staging / name), no_clobber=keep,
+                  location=manifest.artifacts[name].location if name in manifest.artifacts else 'exports')
+             for name in filenames]
     files.append(dict(filename=manifest_name, sha256=digest(staging / manifest_name), no_clobber=False))
-    write_json(staging / 'journal.json', dict(version=1, staging=staging.name, files=files,
-        remove=[dict(filename=a.filename, sha256=a.sha256) for a in obsolete]))
+    write_json(staging / 'journal.json', dict(version=1, staging=staging.name, files=files))
     os.replace(staging / 'journal.json', directory / '.publication.json')
     finish_publication(directory)

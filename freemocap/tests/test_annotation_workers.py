@@ -54,6 +54,18 @@ class AnnotationWorkerTests(unittest.TestCase):
         self.assertEqual(len(frames), 8)
         return np.stack(frames)
 
+    def test_run_folder_does_not_replace_default_annotation(self):
+        default = write_camera_annotation(self.job, cancelled=lambda: False)
+        original = default.read_bytes()
+        kept_job = replace(self.job, run_id=2)
+        separate = write_camera_annotation(kept_job, cancelled=lambda: False)
+        self.assertEqual(separate.parent.name, 'run-2')
+        self.assertIn('.run-2.', separate.name)
+        self.assertEqual(default.read_bytes(), original)
+        overwritten = write_camera_annotation(kept_job, cancelled=lambda: False)
+        self.assertEqual(overwritten, separate)
+        self.assertEqual(default.read_bytes(), original)
+
     def test_process_parity_failed_job_recovery_and_cleanup(self):
         expected = self.read_frames(write_camera_annotation(self.job, cancelled=lambda: False))
         with RecordingAnnotationWorkers(count=1) as service:

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from contextlib import nullcontext
 from pathlib import Path
+from freemocap.core.recording.run_output_path import run_output_path
 from freemocap.core.pipeline.performance_report import PerformanceReport
 
 import cv2
@@ -26,15 +27,17 @@ class AnnotationOutputRequest:
     input_mode: AnnotationInput
     performance: PerformanceReport | None = None
     camera_id: str | None = None
+    run_id: int = 0
 
 
 class AnnotationVideoOutput:
     def __init__(self, request: AnnotationOutputRequest) -> None:
         self.request = request
         directory = request.recording_path / ANNOTATED_VIDEOS_FOLDER_NAME
-        directory.mkdir(parents=True, exist_ok=True)
         source = request.video.file_path
-        self.destination = directory / f"{source.name}.annotated.mp4"
+        self.destination = run_output_path(directory / f"{source.name}.annotated.mp4", request.run_id)
+        directory = self.destination.parent
+        directory.mkdir(parents=True, exist_ok=True)
         self.temporary = directory / f".{source.name}.{request.pipeline_id}.partial.mp4"
         self.writer: PyavVideoWriter | None = None
         self.base_reader: cv2.VideoCapture | None = None

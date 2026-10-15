@@ -1,3 +1,4 @@
+import TooltipSurface from '@/components/ui-components/TooltipSurface';
 import AnchoredInfo from '@/components/ui-components/AnchoredInfo';
 import {RecordingCalibrationOptions} from '@/components/mocap-setup/RecordingCalibrationOptions';
 import SettingRow from '@/components/common/settings-layout/setting-row';
@@ -424,7 +425,7 @@ const CalibrationModule = ({
                   <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0}}>{calibrationPathFilename.slice(0, Math.ceil(calibrationPathFilename.length / 2))}</span><span style={{flexShrink: 0}}>{calibrationPathFilename.slice(Math.ceil(calibrationPathFilename.length / 2))}</span>
                 </p>
                 {loadedCalibration?.path && (
-                  <div
+                  <TooltipSurface
                     className="tooltip-container elevated-sharp pos-bottom p-01 br-2 bg-dark"
                     style={{ minWidth: "auto", width: 270, maxWidth: "90vw" }}
                   >
@@ -440,7 +441,7 @@ const CalibrationModule = ({
                         {loadedCalibration.path}
                       </p>
                     </div>
-                  </div>
+                  </TooltipSurface>
                 )}
               </div>
             </div>

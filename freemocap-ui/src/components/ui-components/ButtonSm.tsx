@@ -1,5 +1,6 @@
 import React from "react";
 import clsx from "clsx";
+import TooltipSurface from './TooltipSurface';
 import { TooltipPosition } from "./ui-component-types";
 
 interface ButtonSmProps {
@@ -46,11 +47,11 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
   );
 
   const tooltipEl = tooltip && tooltipText && (
-    <div className={clsx("tooltip-container elevated-sharp", tooltipPosition, "p-01 br-2 bg-dark")}>
+    <TooltipSurface className={clsx("tooltip-container elevated-sharp", tooltipPosition, "p-01 br-2 bg-dark")}>
       <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
         <p className="text-white text bg">{tooltipText}</p>
       </div>
-    </div>
+    </TooltipSurface>
   );
 
   if (disabled && tooltip && tooltipText) {
@@ -58,6 +59,7 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
       <div
         className={clsx("button-sm-group pos-rel fit-content flex-inline")}
         style={{ opacity: 0.5, cursor: "not-allowed" }}
+        tabIndex={0}
       >
         <button
           disabled

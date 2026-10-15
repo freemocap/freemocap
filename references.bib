@@ -324,3 +324,51 @@
   review = {full-text},
   claim = {Rotation magnitude returns the rotation angle in radians in the interval zero to pi.}
 }
+
+@misc{freemocapNotebookV182,
+  title = {{FreeMoCap} v1.8.2 generated notebook template},
+  author = {{FreeMoCap contributors}},
+  url = {https://github.com/freemocap/freemocap/blob/a1cd374ac7c186d78d0552b8f69bf59be2f4bdcc/freemocap/core_processes/export_data/generate_jupyter_notebook/freemocap_template.ipynb},
+  urldate = {2026-10-14},
+  review = {source-code},
+  claim = {The generated V1 notebook walks through library imports, editable joint selection, Plotly coordinate trajectories, and animated 3D points.},
+  note = {Reviewed the complete template and generator from local tag v1.8.2. Adapted to V2 Parquet channels, saved timing, and metadata; the old center-of-mass file and fixed MediaPipe index list are not assumed. Remote latest-tag verification was unavailable.}
+}
+
+@misc{vscodeCommandLine,
+ title = {Visual Studio Code Command Line Interface},
+ author = {{Microsoft}},
+ url = {https://code.visualstudio.com/docs/configure/command-line},
+ urldate = {2026-10-14},
+ review = {excerpt},
+ claim = {VS Code supports opening project folders through vscode URLs.},
+ note = {Reviewed Opening VS Code with URLs for playback folder launching.}
+}
+@misc{electronAppProtocol,
+ title = {Electron app API},
+ author = {{Electron contributors}},
+ url = {https://www.electronjs.org/docs/latest/api/app},
+ urldate = {2026-10-14},
+ review = {excerpt},
+ claim = {getApplicationNameForProtocol returns a handler name or an empty string.},
+ note = {Reviewed protocol handler lookup and platform differences in returned names.}
+}
+@misc{electronShellExternal,
+ title = {Electron shell API},
+ author = {{Electron contributors}},
+ url = {https://www.electronjs.org/docs/latest/api/shell},
+ urldate = {2026-10-14},
+ review = {excerpt},
+ claim = {openExternal delegates URLs to the desktop handler with a 2081 character Windows limit.},
+ note = {Reviewed openExternal; OS handoff does not establish that the destination opened the folder.}
+}
+
+@misc{mdnPopoverAPI,
+  title = {Popover API},
+  author = {{MDN contributors}},
+  url = {https://developer.mozilla.org/en-US/docs/Web/API/Popover_API},
+  urldate = {2026-10-14},
+  review = {excerpt},
+  claim = {Manual popovers render in the browser top layer without making the page modal.},
+  note = {Reviewed concepts and showPopover/hidePopover behavior for shared tooltip surfaces.}
+}

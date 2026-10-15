@@ -18,14 +18,13 @@ interface Job {
     result?: {files: string[]; manifest_path: string};
 }
 
-export default function MocapScientificSettings({path, processing}: {path: string | null; processing: boolean}) {
+export default function MocapScientificSettings({path, processing, sourceRunId}: {path: string | null; processing: boolean; sourceRunId: number}) {
     const dispatch = useAppDispatch();
     const config = useAppSelector(state => state.mocap.config);
     const formats = config.scientificExportFormats ?? [];
     const data = config.scientificExportData ?? ['LANDMARKS_3D'];
     const [selection, setSelection] = useState<Selection | null>(null);
-    const [run, setRun] = useState(0);
-    const [keep, setKeep] = useState(false);
+    const run = sourceRunId;
     const [job, setJob] = useState<Job | null>(null);
     const [starting, setStarting] = useState(false);
     const [error, setError] = useState('');
@@ -61,7 +60,7 @@ export default function MocapScientificSettings({path, processing}: {path: strin
                 }
                 if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
                 const data: Selection = await response.json();
-                if (!controller.signal.aborted) {setSelection(data); setRun(data.selected_run_id);}
+                if (!controller.signal.aborted) {setSelection(data);}
             } catch (reason) {
                 if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
             }
@@ -94,7 +93,7 @@ export default function MocapScientificSettings({path, processing}: {path: strin
         try {
             const response = await fetch(`${base}/scientific`, {method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({recording_path: path, run_id: run, expected_revision: selection.revision,
-                    formats, data, keep})});
+                    formats, data, keep: false})});
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             const result: {job_id: string} = await response.json();
             setJob({...result, status: 'queued', detail: 'Queued', completed_channels: 0, total_channels: 0});
@@ -121,10 +120,8 @@ export default function MocapScientificSettings({path, processing}: {path: strin
                 {{wide_csv:'Wide CSV', npy:'NumPy NPY', npz:'NumPy NPZ package', notebook:'Jupyter Notebook Explorer'}[format]}</label>)}
             <label><input type="checkbox" checked={config.scientificExportAfterProcessing ?? false}
                 onChange={e => dispatch(scientificExportAfterProcessingUpdated(e.target.checked))}/> Export selected formats after processing</label>
-            <label>Saved run <select aria-label="Scientific export run" value={run} disabled={!selection}
-                onChange={e => setRun(Number(e.target.value))}>
-                {selection ? selection.runs.map(r => <option key={r.run_id} value={r.run_id}>Run {r.run_id}</option>) : <option value={run}>No saved result</option>}
-            </select></label>
+            <p className="settings-note">Export saved Run {run}, selected under Processing stages.
+                Automatic exports use the processing attempt’s destination run.</p>
             <div role="group" aria-label="Data to export">
                 {choices.map(({key, label}) => <label key={key}><input type="checkbox" checked={data.includes(key)}
                     onChange={e => dispatch(scientificExportDataUpdated(e.target.checked ? [...data, key] : data.filter(d => d !== key)))}/>
@@ -135,7 +132,6 @@ export default function MocapScientificSettings({path, processing}: {path: strin
             {formats.includes('notebook') && <p className="settings-note">Notebook Explorer reads the selected Parquet data with Pandas and Matplotlib in Jupyter or VS Code. Keep it with the recording; save your edited analysis under a new filename.</p>}
             {selection && validSelection && formats.length > 0 && <p>At least {minimumFiles} data files and one compact export metadata file.
                 {formats.includes('npy') && ' NPY files go in npy/: each measurement file contains values; one shared .frames file contains frame numbers and one shared .timestamps file contains seconds; unavailable values are NaN. CSV files go in csv/.'}</p>}
-            <label><input type="checkbox" checked={keep} onChange={e => setKeep(e.target.checked)}/> Keep this export in a run folder (do not replace it)</label>
             <button type="button" onClick={() => void save()} disabled={!selection || !validSelection || !formats.length}>Export saved result</button>
             <button type="button" onClick={() => setRefresh(r => r + 1)} disabled={!path}>Reload saved results</button>
         </fieldset>
@@ -153,6 +149,6 @@ export default function MocapScientificSettings({path, processing}: {path: strin
                 }).catch(reason => setError(String(reason)));
             }}>Open output folder</button>}
         </div>}
-        <details><summary>Tall CSV diagnostic export</summary><MocapCsvSettings path={path} processing={processing || !!busy}/></details>
+        <details><summary>Tall CSV diagnostic export</summary><MocapCsvSettings sourceRunId={sourceRunId} path={path} processing={processing || !!busy}/></details>
     </div>;
 }

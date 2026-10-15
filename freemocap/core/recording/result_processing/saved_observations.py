@@ -66,8 +66,15 @@ def read_saved_observations(*, structure: RecordingStructure, run_id: int,
             fps = source['nominal_fps']
             camera_timing[camera] = RecordingTiming(timestamps_s=points.timestamps_s,
                 method=TimingMethod(source['timing_method']))
+            video_path = structure.videos_synchronized_dir / source['video_filename']
+            # The application still records and imports synchronized_videos/.
+            # Locate the saved camera filename without decoding it: numerical
+            # restarts do not require images, but annotation needs the real path.
+            flat_path = structure.full_path / 'synchronized_videos' / source['video_filename']
+            if not video_path.is_file() and flat_path.is_file():
+                video_path = flat_path
             videos[camera] = VideoMetadata(
-                file_path=structure.videos_synchronized_dir / source['video_filename'],
+                file_path=video_path,
                 width=image['width'], height=image['height'], fps=fps,
                 frame_count=points.frames[-1] + 1, start_frame=points.frames[0],
                 end_frame=points.frames[-1] + 1, fourcc='', duration_seconds=(points.frames[-1] + 1) / fps,

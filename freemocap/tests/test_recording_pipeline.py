@@ -2,6 +2,7 @@
 from freemocap.tests import test_dataflow_scientific_recording as fixtures
 from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection
 from freemocap.core.pipeline.dataflow.recording_pipeline import build_recording_pipeline
+from freemocap.core.pipeline.dataflow.video_sources import RecordingVideoSources
 from freemocap.core.pipeline.dataflow.recording_executor import execute_recording_graph
 from freemocap.core.pipeline.dataflow.definition import compile_graph, PortReference
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
@@ -30,16 +31,64 @@ class RecordingPipelineTests(unittest.TestCase):
             reprojection_error_px=0., initial_cost=0., final_cost=0., n_iterations=1,
             time_seconds=0., n_observations_used=360, n_observations_rejected=0).save_toml(self.calibration)
 
-    def graph(self, *, observation_override=None, **options):
+    def graph(self, *, observation_override=None, stop_stage='reconstruction', alignment=None, run_save_mode='overwrite', base_run_id=0, start_stage='observations', **options):
         source = self.fixture
         observations = ObservationCollection(sources=source.sources, execution_id="run")
         for event in source.events + source.outcomes:
             observations.accept(event)
-        config = PosthocMocapPipelineConfig(charuco_tracking_enabled=False, export_to_blender=False,
-            calibration_toml_path=str(self.calibration), body_alignment=MocapAlignmentConfig(mode="calibration"))
+        config = PosthocMocapPipelineConfig(charuco_tracking_enabled=False, export_to_blender=False, stop_stage=stop_stage, start_stage=start_stage, run_save_mode=run_save_mode, base_run_id=base_run_id,
+            calibration_toml_path=str(self.calibration), body_alignment=alignment or MocapAlignmentConfig(mode="calibration"))
         return build_recording_pipeline(sources=source.sources,
             recording=RecordingInfo(recording_name=source.root.name, recording_directory=str(source.root.parent)),
             config=config, observation_loader=lambda: observation_override or observations, **options)
+
+    def test_early_spatial_finishes_include_alignment_before_saving(self):
+        from freemocap.core.reconstruction.reference_transform import ReferenceTransform
+        matrix = np.eye(4)
+        matrix[:3, 3] = [100., 200., 300.]
+        alignment = MocapAlignmentConfig(mode='calibration',
+            additional_transform=ReferenceTransform(matrix=tuple(matrix.ravel())))
+        for stop in ('observations', 'triangulation', 'filtering'):
+            with self.subTest(stop=stop):
+                graph, handlers = self.graph(stop_stage=stop, alignment=alignment)
+                self.assertEqual('align_reference' in handlers, stop != 'observations')
+                self.assertNotIn('fit_model_dimensions', handlers)
+                self.assertNotIn('reconstruct_skeletons', handlers)
+                self.assertEqual('filter_trajectories' in handlers, stop != 'observations')
+                self.assertEqual('match_and_triangulate' in handlers, stop != 'observations')
+                result = execute_recording_graph(graph=graph, handlers=handlers)
+                self.assertTrue(result.complete, result.failures)
+                structure = RecordingStructure(base_directory=self.fixture.root.parent, recording_name=self.fixture.root.name)
+                run = read_metadata(path=structure.data_parquet_path).runs[0]
+                kinds = {channel.kind for channel in run.channels}
+                self.assertEqual(ChannelKind.RAW_KEYPOINTS_3D in kinds, stop != 'observations')
+                self.assertEqual(ChannelKind.KEYPOINTS_3D in kinds, stop == 'filtering')
+                if stop != 'observations':
+                    self.assertEqual(run.reference_frames['calibrated_world']['additional_transform'],
+                        alignment.additional_transform.model_dump(mode='json'))
+                    from freemocap.core.recording.result_processing.saved_reconstruction import read_saved_channel
+                    channel = next(c for c in run.channels if c.kind == ChannelKind.RAW_KEYPOINTS_3D)
+                    points = read_saved_channel(structure=structure, metadata=read_metadata(path=structure.data_parquet_path),
+                        run_id=0, channel=channel)
+                    np.testing.assert_allclose(points.values,
+                        result.outputs['match_and_triangulate']['result'].triangulation.reconstruction.points_3d
+                        + np.array([100., 200., 300.]), equal_nan=True)
+
+    def test_failed_alignment_prevents_spatial_save_but_keeps_tracking(self):
+        for stop in ('triangulation', 'filtering'):
+            with self.subTest(stop=stop):
+                graph, handlers = self.graph(stop_stage=stop)
+                def fail(_):
+                    raise ValueError('Alignment failed')
+                handlers['align_reference'] = fail
+                result = execute_recording_graph(graph=graph, handlers=handlers)
+                self.assertIn('align_reference', result.failures)
+                self.assertIn('save_stage_result', result.blocked)
+                self.assertIn('save_observations', result.outputs)
+                structure = RecordingStructure(base_directory=self.fixture.root.parent, recording_name=self.fixture.root.name)
+                run = read_metadata(path=structure.data_parquet_path).runs[0]
+                self.assertFalse(any(c.kind in (ChannelKind.RAW_KEYPOINTS_3D, ChannelKind.KEYPOINTS_3D)
+                    for c in run.channels))
 
     def test_failed_reconstruction_preserves_completed_checkpoints_and_annotations(self):
         graph, handlers = self.graph(annotate=True)
@@ -81,6 +130,33 @@ class RecordingPipelineTests(unittest.TestCase):
             publish_posthoc_observations(result.outputs["spatial_request"]["result"])
         saved_again = read_metadata(path=RecordingStructure(base_directory=source.root.parent, recording_name=source.root.name).data_parquet_path)
         self.assertEqual(assignment, saved_again.runs[0].processing[source.sources.sensor_group]["camera_assignment"])
+
+    def test_saved_tracking_restarts_triangulation_without_video_or_detector_access(self):
+        from freemocap.core.pipeline.dataflow.saved_observation_source import load_saved_observation_source
+        from unittest.mock import patch
+        graph, handlers = self.graph(stop_stage='triangulation')
+        original = execute_recording_graph(graph=graph, handlers=handlers)
+        self.assertTrue(original.complete, original.failures)
+        expected = original.outputs['match_and_triangulate']['result'].triangulation.reconstruction.points_3d.copy()
+        video_folder = self.fixture.root / 'synchronized_videos'
+        video_folder.mkdir()
+        for camera in self.fixture.sources.camera_sources:
+            # Deliberately not decodable: source restoration must only locate it.
+            (video_folder / camera.video_metadata.file_path.name).touch()
+        config = PosthocMocapPipelineConfig(start_stage='triangulation', stop_stage='triangulation',
+            calibration_toml_path=str(self.calibration), export_to_blender=False,
+            body_alignment=MocapAlignmentConfig(mode='calibration'))
+        with patch.object(RecordingVideoSources, 'resolve', side_effect=AssertionError('Opened videos')):
+            sources, saved, effective = load_saved_observation_source(path=str(self.fixture.root), config=config)
+            self.assertTrue(all(s.video_metadata.file_path.parent == video_folder for s in sources.camera_sources))
+            restarted, handlers = build_recording_pipeline(sources=sources,
+                recording=RecordingInfo(recording_name=self.fixture.root.name, recording_directory=str(self.fixture.root.parent)),
+                config=effective, observation_loader=lambda: saved, execution_provider="auto")
+            self.assertNotIn('load_and_track', handlers)
+            result = execute_recording_graph(graph=restarted, handlers=handlers)
+        self.assertTrue(result.complete, result.failures)
+        np.testing.assert_array_equal(expected,
+            result.outputs['match_and_triangulate']['result'].triangulation.reconstruction.points_3d)
 
     def test_wrong_producer_cannot_redefine_consumer_contract(self):
         graph, _ = self.graph()

@@ -46,8 +46,7 @@ def organize_exports(structure):
                             os.fsync(target.fileno())
                         artifacts[new] = artifacts.pop(old).model_copy(update={'filename': new})
                     publish(directory, staging, name, manifest.model_copy(update={'artifacts': artifacts}),
-                            tuple(relocations.values()), True,
-                            obsolete=tuple(manifest.artifacts[old] for old in relocations))
+                            tuple(relocations.values()), True)
                     moved.extend(str(directory / new) for new in relocations.values())
                 finally:
                     if staging.exists() and not (directory / '.publication.json').exists():

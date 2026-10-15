@@ -30,6 +30,7 @@ class CameraAnnotationJob:
     video: VideoMetadata
     tracker_config: TrackerConfig
     observations: tuple[Observation, ...]
+    run_id: int = 0
 
 
 def write_camera_annotation(job: CameraAnnotationJob, *, cancelled: Callable[[], bool],
@@ -45,7 +46,7 @@ def write_camera_annotation(job: CameraAnnotationJob, *, cancelled: Callable[[],
             raise ValueError(f"Cannot open annotation source: {job.video.file_path}")
         output = AnnotationVideoOutput(AnnotationOutputRequest(recording_path=job.recording_path,
             pipeline_id=job.execution_id, video=job.video, input_mode=AnnotationInput.RAW,
-            performance=performance, camera_id=job.camera_id))
+            performance=performance, camera_id=job.camera_id, run_id=job.run_id))
         for observation in job.observations:
             if cancelled():
                 raise CancelledError("Annotation cancelled")

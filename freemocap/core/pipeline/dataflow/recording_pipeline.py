@@ -1,4 +1,5 @@
 """Recording graph composition using the application's existing scientific operations."""
+from freemocap.core.recording.result_processing.run_save_session import RunSaveSession
 from collections.abc import Callable
 from concurrent.futures import CancelledError
 from contextlib import closing, nullcontext
@@ -57,6 +58,7 @@ from freemocap.system.recording_structure.recording_structure import RecordingSt
 
 RECORDING_INPUT_CONTRACTS = {
     "load_and_track": {},
+    "load_saved_observations": {},
     "observation_request": {"observations": "camera_observations"},
     "save_observations": {"request": "observation_recording_request"},
     "match_and_triangulate": {"observations": "camera_observations"},
@@ -73,11 +75,15 @@ RECORDING_INPUT_CONTRACTS = {
     "export_scientific": {"saved": "saved_recording"},
     "export_tall_csv": {"saved": "saved_recording"},
     "annotate_camera": {"observations": "camera_observations"},
+    "stage_result_request": {"request": "spatial_recording_request"},
+    "filtered_request": {"request": "spatial_recording_request", "filtered": "filtered_trajectories"},
+    "save_stage_result": {"request": "spatial_recording_request", "saved_observations": "saved_observations"},
+    "save_model_fits": {"saved": "saved_spatial", "fits": "recording_model_fits"},
 }
 
 
 def build_recording_pipeline(*, sources: RecordingVideoSources, recording: RecordingInfo,
-    config: PosthocMocapPipelineConfig, execution_provider: str = "cpu", annotate: bool = False,
+    config: PosthocMocapPipelineConfig, run_session: RunSaveSession | None = None, execution_provider: str = "cpu", annotate: bool = False,
     shutdown_flag=None, performance: PerformanceReport | None = None,
     observation_loader: Callable[[], ObservationCollection] | None = None,
     annotation_service: RecordingAnnotationWorkers | None = None,
@@ -86,28 +92,31 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     """Build the same definition that execution consumes; callers may serialize it.
 
     An injected observation loader is the comparison seam, not another numerical
-    implementation. First route supports fresh multicamera processing. Saved-stage
-    resume, automatic board discovery and Blender launch require later adapters.
+    implementation. This builder handles video and saved-2D starts. Saved-3D
+    starts use saved_spatial_pipeline; board selection and exports belong to the app.
     """
     config = config.model_copy(deep=True)
-    if execution_provider not in ("cpu", "cuda") or (config.detector_type == "mediapipe" and execution_provider != "cpu"):
+    structure = RecordingStructure(base_directory=sources.recording_path.parent, recording_name=sources.recording_path.name)
+    run_session = run_session or RunSaveSession.resolve(structure=structure, source_run_id=config.base_run_id, mode=config.run_save_mode)
+    if observation_loader is None and (execution_provider not in ("cpu", "cuda") or (config.detector_type == "mediapipe" and execution_provider != "cpu")):
         raise ValueError("Choose CPU/CUDA for RTMPose; the installed MediaPipe adapter supports CPU only")
-    if config.start_stage != "observations" or config.export_to_blender:
-        raise ValueError("Experimental recording graph requires fresh observations and Blender export disabled")
+    if config.start_stage not in ('observations', 'triangulation') or config.export_to_blender:
+        raise ValueError("Recording graph requires observations or triangulation start and Blender export disabled")
+    if config.start_stage == 'triangulation' and observation_loader is None:
+        raise ValueError('Triangulation restart requires validated saved observations')
     if config.charuco_tracking_enabled and config.board_mode != CharucoBoardMode.EXPLICIT:
-        raise ValueError("Experimental recording graph requires an explicit board definition")
-    if len(sources.camera_sources) < 2 or not config.calibration_toml_path:
-        raise ValueError("Experimental recording graph requires multicamera calibration")
+        raise ValueError("Recording graph requires an explicit board definition")
+    needs_geometry = config.stop_stage != 'observations'
+    if needs_geometry and (len(sources.camera_sources) < 2 or not config.calibration_toml_path):
+        raise ValueError("Recording graph requires multicamera calibration")
     if config.sensor_group is not None and config.sensor_group != sources.sensor_group:
         raise ValueError("Configured sensor group differs from resolved recording sources")
     if Path(recording.full_recording_path).resolve() != sources.recording_path.resolve():
         raise ValueError("Graph destination must own its source videos")
-    calibration_path = Path(config.calibration_toml_path).resolve()
-    if not calibration_path.is_relative_to(Path(recording.full_recording_path).resolve()):
-        raise ValueError("Typed data flow graph V1 requires a private calibration copy inside its recording")
-    calibration_mtime = calibration_path.stat().st_mtime_ns / 1_000_000
-    calibration = CalibrationResult.load_toml(calibration_path)
-    if calibration_path.stat().st_mtime_ns / 1_000_000 != calibration_mtime:
+    calibration_path = Path(config.calibration_toml_path).resolve() if needs_geometry else None
+    calibration_mtime = calibration_path.stat().st_mtime_ns / 1_000_000 if needs_geometry else None
+    calibration = CalibrationResult.load_toml(calibration_path) if needs_geometry else None
+    if needs_geometry and calibration_path.stat().st_mtime_ns / 1_000_000 != calibration_mtime:
         raise ValueError("Calibration changed while loading")
     shutdown_flag = shutdown_flag if shutdown_flag is not None else multiprocessing.Value("b", False)
     performance = performance if performance is not None else PerformanceReport()
@@ -186,7 +195,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             registry.remove_dead()
         return collection
 
-    operation("load_and_track", "camera_observations", {}, load_and_track)
+    observation_node = 'load_and_track' if config.start_stage == 'observations' else 'load_saved_observations'
+    operation(observation_node, "camera_observations", {}, load_and_track)
 
     def triangulate(inputs):
         collection = inputs["observations"]
@@ -194,7 +204,7 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             calibration_cameras=tuple(calibration.cameras), matching_config=config.camera_matching,
             triangulation_config=config.triangulation_config, cancelled=lambda: bool(shutdown_flag.value))
 
-    operation("match_and_triangulate", "raw_recording_geometry", {"observations": "load_and_track"}, triangulate)
+    operation("match_and_triangulate", "raw_recording_geometry", {"observations": observation_node}, triangulate)
     operation("filter_trajectories", "filtered_trajectories", {"science": "match_and_triangulate"}, lambda inputs:
         prepare_recording_points(points=inputs["science"].triangulation.reconstruction.points_3d,
             timestamps_s=np.asarray(timing.synchronized.timestamps_s), config=config.filter_config))
@@ -236,12 +246,19 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 if config.detector_type == "rtmpose" else None,
             models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
             camera_geometry=(), spatial_series=(), filtering=None, reprojection=None, reconstructions=(),
-            base_run_id=config.base_run_id, resolved_timing=timing,
+            base_run_id=config.base_run_id, run_session=run_session, cancelled=lambda: bool(shutdown_flag.value),
+            resolved_timing=timing, reuse_observations=config.start_stage != 'observations',
             provenance_context=ProvenanceContext.create(), provenance_defaults=PosthocMocapPipelineConfig().model_dump(mode="json"))
 
-    operation("observation_request", "observation_recording_request", {"observations": "load_and_track"}, observation_request)
+    operation("observation_request", "observation_recording_request", {"observations": observation_node}, observation_request)
+    def save_observations(inputs):
+        if config.start_stage == 'observations':
+            return publish_posthoc_observations(inputs['request'])
+        from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
+        structure = RecordingStructure(base_directory=sources.recording_path.parent, recording_name=sources.recording_path.name)
+        return read_metadata(path=structure.data_parquet_path)
     operation("save_observations", "saved_observations", {"request": "observation_request"},
-              lambda inputs: publish_posthoc_observations(inputs["request"]), resource="recording_io")
+              save_observations, resource="recording_io")
 
     def spatial_request(inputs):
         request, science, filtered, aligned = (inputs[name] for name in ("request", "science", "filtered", "aligned"))
@@ -275,7 +292,12 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             calibration_update=CalibrationUpdateRequest(path=calibration_path, expected_mtime_ms=calibration_mtime,
                 transformations=aligned.transformations, recording_id=recording.recording_name) if aligned.transformations else None)
         check_cancelled()
-        return publish_posthoc_observations(publication)
+        saved = publish_posthoc_observations(publication)
+        from freemocap.core.tasks.calibration.shared.calibration_exports import save_aligned_calibration
+        save_aligned_calibration(source_path=calibration_path, source=calibration,
+            recording_path=sources.recording_path, transformations=aligned.transformations,
+            recording_id=recording.recording_name, run_id=run_session.target_run_id)
+        return saved
 
     operation("save_recording", "saved_recording", {"request": "spatial_request", "saved_spatial": "save_spatial",
         "aligned": "align_reference", "reconstructions": "reconstruct_skeletons"}, save_recording, resource="recording_io")
@@ -285,14 +307,14 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             from freemocap.core.recording.exports.requests import ScientificExportRequest
             from freemocap.core.recording.exports.wide_csv import export_scientific
             return export_scientific(structure=RecordingStructure(base_directory=Path(recording.recording_directory), recording_name=recording.recording_name),
-                request=ScientificExportRequest(**config.scientific_exports.model_dump(), run_id=config.base_run_id),
+                request=ScientificExportRequest(**config.scientific_exports.model_dump(), run_id=run_session.target_run_id),
                 cancelled=lambda: bool(shutdown_flag.value))
         operation("export_scientific", "export_manifest", {"saved": "save_recording"}, export_science)
     if config.export_tall_csv:
         def export_tall(_):
             from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv
             return export_tall_csv(structure=RecordingStructure(base_directory=Path(recording.recording_directory), recording_name=recording.recording_name),
-                request=TallCsvRequest(run_id=config.base_run_id), cancelled=lambda: bool(shutdown_flag.value))
+                request=TallCsvRequest(run_id=run_session.target_run_id), cancelled=lambda: bool(shutdown_flag.value))
         operation("export_tall_csv", "tall_csv_manifest", {"saved": "save_recording"}, export_tall)
 
     if annotate:
@@ -302,16 +324,71 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 if not any(outcome.camera_id == source.camera_id and outcome.outcome == ProducerOutcome.SUCCEEDED for outcome in collection.outcomes):
                     raise ValueError(f"Camera did not complete: {source.camera_id}")
                 job = CameraAnnotationJob(recording_path=Path(recording.full_recording_path),
-                    execution_id=execution_id, camera_id=source.camera_id, video=source.video_metadata,
+                    execution_id=execution_id, run_id=run_session.target_run_id, camera_id=source.camera_id, video=source.video_metadata,
                     tracker_config=tracker_config, observations=tuple(frame[source.camera_id] for frame in collection.frames))
                 if annotation_service is not None:
                     return annotation_service.run_job(job, cancelled=lambda: bool(shutdown_flag.value))
                 return write_camera_annotation(job, cancelled=lambda: bool(shutdown_flag.value), performance=performance)
-            operation(f"annotate_camera_{index}", "annotated_video", {"observations": "load_and_track"}, annotate_camera, resource="annotation")
+            operation(f"annotate_camera_{index}", "annotated_video", {"observations": observation_node}, annotate_camera, resource="annotation")
+    if config.stop_stage in ('observations', 'triangulation', 'filtering', 'scale_fit'):
+        if config.stop_stage == 'observations':
+            terminal = 'save_observations'
+        elif config.stop_stage == 'scale_fit':
+            def save_model_fits(inputs):
+                from freemocap.core.pipeline.dataflow.saved_spatial_source import load_saved_spatial_source
+                from freemocap.core.recording.result_processing.numerical_checkpoint import save_numerical_checkpoint
+                save_config = config.model_copy(update={'start_stage': 'scale_fit', 'base_run_id': run_session.target_run_id, 'run_save_mode': 'overwrite'})
+                source = load_saved_spatial_source(path=sources.recording_path, config=save_config)
+                if source.metadata != inputs['saved']:
+                    raise ValueError('Recording changed after saving spatial results')
+                return save_numerical_checkpoint(source=source, config=save_config, numerical=source.numerical,
+                    filtering=source.filtering, fits=inputs['fits'], results={}, run_session=run_session, cancelled=lambda: bool(shutdown_flag.value))
+            operation('save_model_fits', 'saved_recording', {'saved': 'save_spatial', 'fits': 'fit_model_dimensions'},
+                      save_model_fits, resource='recording_io')
+            terminal = 'save_model_fits'
+        else:
+            def stage_result_request(inputs):
+                request = inputs['request']
+                if config.stop_stage == 'triangulation':
+                    # Alignment preparation may use filtered points, but this save
+                    # publishes only the requested raw points in the resolved frame.
+                    return replace(request, filtering=None, spatial_series=tuple(
+                        series for series in request.spatial_series
+                        if series.definition.kind == ChannelKind.RAW_KEYPOINTS_3D))
+                return request
+            operation('stage_result_request', 'spatial_recording_request',
+                {'request': 'spatial_request'}, stage_result_request)
+            operation('save_stage_result', 'saved_recording',
+                {'request': 'stage_result_request', 'saved_observations': 'save_observations'},
+                lambda inputs: publish_posthoc_observations(inputs['request']), resource='recording_io')
+            terminal = 'save_stage_result'
+        # Compile the selected sinks and their dependencies, not a full graph with
+        # handlers that run and discard unchecked work. Annotation stays independent.
+        selected = {terminal, *(node.id for node in nodes if node.id.startswith('annotate_camera_'))}
+        pending = list(selected)
+        while pending:
+            target = pending.pop()
+            for edge in edges:
+                if edge.target.node == target and edge.source.node not in selected:
+                    selected.add(edge.source.node)
+                    pending.append(edge.source.node)
+        nodes = [node for node in nodes if node.id in selected]
+        edges = [edge for edge in edges if edge.source.node in selected and edge.target.node in selected]
+        handlers = {name: handler for name, handler in handlers.items() if name in selected}
     return compile_graph(GraphDefinition(nodes=tuple(nodes), edges=tuple(edges))), handlers
 
 
 def run_recording_pipeline(**kwargs) -> RecordingExecutionResult:
+    from filelock import FileLock
+    # App callers already hold admission for their shared save session. Direct
+    # callers must also avoid overlapping writes to the same annotation paths.
+    admission = (nullcontext() if kwargs.get('run_session') is not None else
+                 FileLock(kwargs['sources'].recording_path / '.processing-run.lock', timeout=0))
+    with admission:
+        return _execute_recording_pipeline(**kwargs)
+
+
+def _execute_recording_pipeline(**kwargs) -> RecordingExecutionResult:
     with RecordingAnnotationWorkers() if kwargs.get("annotate") and kwargs.get("annotation_service") is None else nullcontext(None) as service:
         if service is not None:
             kwargs["annotation_service"] = service

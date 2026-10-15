@@ -17,7 +17,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from freemocap.core.recording.exports.arrays import ScientificExportRequest, resolve_selection, ordered_arrays, check_cancelled, available_channels, scientific_channels
-from freemocap.core.recording.exports.publication import ExportArtifact, ExportManifest, digest, verified_manifest, publish, remove_staging
+from freemocap.core.recording.exports.publication import ExportArtifact, ExportManifest, digest, verified_manifest, publish, remove_staging, published_artifact_path
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 
 from freemocap.core.recording.exports.guides import stage_guides
@@ -158,9 +158,9 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
         source_hash = view.content_sha256()
         timings["source_hash"] = perf_counter() - step_started
         names = table_names(view.metadata.runs[run_id])
-        prefix = structure.recording_name + (f'.run-{run_id}' if request.keep else '')
+        prefix = structure.recording_name + (f'.run-{run_id}' if request.keep or run_id != 0 else '')
         root = structure.exports_dir
-        directory = root / f'run-{run_id}' if request.keep else root
+        directory = root / f'run-{run_id}' if request.keep or run_id != 0 else root
         if root.is_symlink() or directory.is_symlink():
             raise ValueError('Export directories must not be links')
         directory.mkdir(parents=True, exist_ok=True)
@@ -308,8 +308,12 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                             validation='reload_exact', validator_version=1))
                 if 'notebook' in request.formats:
                     notebook_name = f'{prefix}.explorer.ipynb'
-                    write_notebook(staging / notebook_name, snapshot=snapshot, retained=request.keep)
-                    artifacts[notebook_name] = ExportArtifact(filename=notebook_name,
+                    notebook_target = published_artifact_path(directory, notebook_name, 'recording')
+                    prior_notebook = previous.artifacts.get(notebook_name) if previous else None
+                    if notebook_target.exists() and (prior_notebook is None or prior_notebook.location != 'recording'):
+                        raise FileExistsError(f'Notebook already exists outside this export: {notebook_target}')
+                    write_notebook(staging / notebook_name, snapshot=snapshot)
+                    artifacts[notebook_name] = ExportArtifact(filename=notebook_name, location='recording',
                         sha256=digest(staging / notebook_name), rows=0, columns=(),
                         source_sha256=source_hash, source_revision=view.revision, run_id=run_id,
                         format='notebook', details=dict(context_keys=[item[0].key for item in selected]))
@@ -332,16 +336,13 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                               for context in ([a.details['context_key']] if 'context_key' in a.details else a.details.get('context_keys', []))}
                     description['channels'] = {k: v for k, v in description.get('channels', {}).items() if k in needed}
                 snapshots = {key: value for key, value in snapshots.items() if key in {a.source_sha256 for a in artifacts.values()}}
-                manifest = ExportManifest(version=3, artifacts=artifacts, snapshots=snapshots,
+                manifest = ExportManifest(version=4 if any(a.location == 'recording' for a in artifacts.values()) else 3,
+                    artifacts=artifacts, snapshots=snapshots,
                     csv=dict(encoding='utf-8-sig', delimiter=',', absent='empty field', null='NaN',
                              float_precision='round-trip float64', column_order='descriptor names, explicit components'))
-                obsolete = tuple(a for name, a in previous.artifacts.items() if name not in artifacts) if previous else ()
-                if previous is not None and previous_path != manifest_path:
-                    obsolete += (ExportArtifact(filename=previous_path.name, sha256=digest(previous_path), rows=0, columns=(),
-                        source_sha256=source_hash, source_revision=view.revision, run_id=run_id, format='metadata'),)
                 check_cancelled(cancelled)
                 guides = stage_guides(directory, staging, request.formats)
-                publish(directory, staging, manifest_name, manifest, (*generated, *guides), request.keep, obsolete=obsolete)
+                publish(directory, staging, manifest_name, manifest, (*generated, *guides), request.keep)
                 if progress:
                     progress(len(selected), len(selected), 'Selected exports saved and validated')
                 elapsed = perf_counter() - started
@@ -351,7 +352,7 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                     'Scientific exports saved and validated: %s',
                     '; '.join(f'{name}={seconds:.3f}s' for name, seconds in timings.items()))
                 return ScientificExportResult(run_id=run_id, source_revision=view.revision, source_sha256=source_hash,
-                    manifest_path=manifest_path, files=tuple(directory / name for name in generated), timings_s=timings)
+                    manifest_path=manifest_path, files=tuple(published_artifact_path(directory, name, artifacts[name].location) for name in generated), timings_s=timings)
             finally:
                 if staging.exists() and not (directory / '.publication.json').exists():
                     remove_staging(directory, staging)

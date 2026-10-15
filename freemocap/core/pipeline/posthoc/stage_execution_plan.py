@@ -1,4 +1,4 @@
-"""Validate reusable checkpoints and invalidate descendants before processing."""
+"""Plan atomic replacement and downstream invalidation within the destination run."""
 
 from dataclasses import dataclass
 import hashlib
@@ -25,6 +25,7 @@ class StageExecutionPlan:
     target_run_id: int
     sensor_groups: tuple[str, ...]
     execute: tuple[ProcessingStage, ...]
+    # Removed from the destination run only when a valid replacement saves.
     invalidate: tuple[ProcessingStage, ...]
 
 
@@ -94,7 +95,7 @@ def build_execution_plan(
 
 
 def retained_run(*, base: RunDescriptor, plan: StageExecutionPlan) -> RunDescriptor:
-    """Remove invalid dynamic/static outputs and their completion records together."""
+    """Retain prerequisites and unrelated groups; discard affected destination results."""
     data = base.model_dump()
     for group in plan.sensor_groups:
         entries = stage_provenance(base.processing, group).stages

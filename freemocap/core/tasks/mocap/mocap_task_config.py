@@ -37,7 +37,12 @@ class PosthocMocapPipelineConfig(BaseModel):
 
     start_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction'] = Field(
         default='observations', alias='startStage')
+    # Keep unsupported finish points explicit until their scientific save contracts
+    # are implemented. Pydantic otherwise ignores stopStage and runs everything.
+    stop_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction'] = Field(default='reconstruction', alias='stopStage',
+        description='Last requested scientific stage; early finishes require typed data flow graph V1.')
     base_run_id: int = Field(default=0, ge=0, alias='baseRunId')
+    run_save_mode: Literal['overwrite', 'new_run'] = Field(default='overwrite', alias='runSaveMode')
     sensor_group: str | None = Field(default=None, alias='sensorGroup')
 
     camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig, alias="cameraMatching")
@@ -156,6 +161,17 @@ class PosthocMocapPipelineConfig(BaseModel):
         alias="autoOpenBlendFile",
         description="If True, open the .blend file in Blender after export completes.",
     )
+
+    @model_validator(mode="after")
+    def _validate_stage_range(self) -> "PosthocMocapPipelineConfig":
+        if self.pipeline_implementation == 'current' and self.run_save_mode != 'overwrite':
+            raise ValueError('Creating a processing run requires typed data flow graph V1')
+        stages = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
+        if stages.index(self.start_stage) > stages.index(self.stop_stage):
+            raise ValueError('stopStage must not precede startStage')
+        if self.pipeline_implementation == 'current' and self.stop_stage != 'reconstruction':
+            raise ValueError('stopStage before reconstruction requires typed data flow graph V1')
+        return self
 
     @model_validator(mode="after")
     def _build_tracker_config_from_detector_type(self) -> "PosthocMocapPipelineConfig":

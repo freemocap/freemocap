@@ -22,7 +22,7 @@ def test_process_failure_cannot_pass_with_old_output(tmp_path):
     output = tmp_path / 'old.blend'; output.write_bytes(b'old successful scene')
     with patch.object(runtime.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout='failed binary import')):
         with pytest.raises(RuntimeError, match='failed binary import'):
-            export_to_blender(tmp_path, blend_file_path=output, blender_exe_path=blender, open_file_on_completion=False)
+            export_to_blender(tmp_path, blend_file_path=output, blender_exe_path=blender, run_id=0, open_file_on_completion=False)
     assert output.read_bytes() == b'old successful scene'
 
 
@@ -94,7 +94,7 @@ def test_export_options_reach_blender_and_invalid_native_options_fail_early(tmp_
         output.write_bytes(b'blend')
         return dict(output=str(output))
     with patch('freemocap.core.blender.export_to_blender.prepare_blender', return_value=SimpleNamespace(package='test', profile=None)), patch('freemocap.core.blender.export_to_blender.run_blender', side_effect=export) as launch:
-        export_to_blender(tmp_path, blend_file_path=output, blender_exe_path=blender,
+        export_to_blender(tmp_path, blend_file_path=output, blender_exe_path=blender, run_id=0,
             route='parquet_constraints', open_file_on_completion=False,
             blender_export_config=dict(restPose='apose', applyFootLocking=True, formats=['bvh']))
         with pytest.raises(ValueError, match='Saved segment poses'):
@@ -143,3 +143,22 @@ def test_processing_completion_uses_exporter_without_losing_publication(enabled,
         assert export.call_args.kwargs['route'] == 'parquet_constraints'
         assert export.call_args.kwargs['blender_export_config']['rest_pose'] == 'apose'
         assert export.call_args.kwargs['blender_export_config']['formats'] == ['bvh']
+
+
+def test_implicit_selected_run_uses_its_own_blender_destination(tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    from freemocap.core.blender.export_to_blender import export_to_blender
+    source = tmp_path / 'recording_data.parquet'
+    source.write_bytes(b'placeholder; reader mocked')
+    expected = tmp_path / 'run-3' / f'{tmp_path.name}.run-3.blend'
+    def export(_blender, payload, **kwargs):
+        assert payload['run_id'] == 3
+        assert payload['output'] == str(expected)
+        expected.write_bytes(b'new scene')
+        return {'output': str(expected)}
+    with patch('freemocap.core.recording.parquet_storage.parquet_reader.read_metadata', return_value=SimpleNamespace(selected_run_id=3)), \
+         patch('freemocap.core.blender.export_to_blender.executable', return_value=tmp_path/'blender.exe'), \
+         patch('freemocap.core.blender.export_to_blender.prepare_blender', return_value=SimpleNamespace(package=None, profile=None)), \
+         patch('freemocap.core.blender.export_to_blender.run_blender', side_effect=export):
+        assert export_to_blender(tmp_path, open_file_on_completion=False) == str(expected)

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import clsx from "clsx";
 import IconButton from "./IconButton";
 import ButtonSm from "./ButtonSm";
+import TooltipSurface from './TooltipSurface';
 
 type TooltipPosition = "pos-top" | "pos-top-left" | "pos-top-right" | "pos-bottom" | "pos-bottom-left" | "pos-bottom-right" | "pos-left" | "pos-right";
 type TooltipVariant = "default" | "warning" | "boarding";
@@ -70,7 +71,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
   };
 
   return (
-    <div
+    <TooltipSurface open onDismiss={handleClose}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -133,7 +134,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </TooltipSurface>
   );
 };
 

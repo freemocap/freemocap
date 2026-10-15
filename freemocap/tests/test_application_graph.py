@@ -29,9 +29,9 @@ class ApplicationGraphTests(TestCase):
         self.assertEqual(PosthocMocapPipelineConfig().pipeline_implementation,'typed_dataflow')
         self.assertEqual(PosthocMocapPipelineConfig(pipeline_implementation='current').pipeline_implementation, 'current')
 
-    def test_saved_stage_is_rejected_explicitly(self):
-        with self.assertRaisesRegex(ValueError,'starts at 2D tracking'):
-            validate_application_graph(config=self.config.model_copy(update={'start_stage':'reconstruction'}))
+    def test_saved_3d_starts_do_not_require_external_calibration(self):
+        for start in ('filtering', 'scale_fit', 'reconstruction'):
+            validate_application_graph(config=self.config.model_copy(update={'start_stage': start, 'calibration_toml_path': None}))
 
     def test_worker_routes_to_graph(self):
         request=Mock(spec=MocapWorkerRequest,config=self.config)
@@ -39,7 +39,7 @@ class ApplicationGraphTests(TestCase):
             _run_mocap_pipeline(request=request)
             run.assert_called_once_with(request=request)
 
-    def test_graph_exports_run_once_and_calibration_stays_local(self):
+    def test_graph_exports_run_once_and_reuses_unchanged_calibration(self):
         from queue import Queue
         destination=self.root/'recording'; destination.mkdir()
         request=MocapWorkerRequest(pipeline_id='test',recording=RecordingInfo(recording_name='recording',recording_directory=str(self.root)),
@@ -75,14 +75,12 @@ class ApplicationGraphTests(TestCase):
             complete.assert_called_once()
             self.assertFalse(run.call_args.kwargs['config'].scientific_exports.formats)
             self.assertFalse(run.call_args.kwargs['config'].export_to_blender)
-            self.assertTrue(Path(run.call_args.kwargs['config'].calibration_toml_path).is_relative_to(destination))
-            self.assertEqual(self.calibration.read_text(),'test calibration')
-            first_copy = Path(run.call_args.kwargs['config'].calibration_toml_path)
-            first_copy.write_text('aligned geometry from the previous run')
+            self.assertEqual(Path(run.call_args.kwargs['config'].calibration_toml_path), self.calibration)
+            self.assertEqual(self.calibration.read_text(), 'test calibration')
             run_application_graph(request=request)
-            second_copy = Path(run.call_args.kwargs['config'].calibration_toml_path)
-            self.assertNotEqual(first_copy, second_copy)
-            self.assertEqual(second_copy.read_text(), 'test calibration')
+            self.assertEqual(Path(run.call_args.kwargs['config'].calibration_toml_path), self.calibration)
+            self.assertFalse((destination / 'calibration_copies').exists())
+            self.assertFalse((destination / 'exports' / 'calibration_copies').exists())
 
     def test_failed_or_cancelled_graph_never_reports_complete(self):
         from queue import Queue

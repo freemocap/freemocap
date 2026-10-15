@@ -1,7 +1,9 @@
 """Typed construction inputs and descriptor factories for observation recordings."""
 
+from freemocap.core.recording.result_processing.run_save_session import RunSaveSession
+
 import hashlib
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
@@ -121,6 +123,8 @@ class ObservationRecordingRequest:
     camera_assignment: dict[str, object] | None = None
     calibration_update: CalibrationUpdateRequest | None = None
     base_run_id: int = 0
+    run_session: RunSaveSession | None = None
+    cancelled: Callable[[], bool] = lambda: False
     reuse_observations: bool = False
     resolved_timing: RecordingGroupTiming | None = None
     provenance_context: ProvenanceContext | None = None

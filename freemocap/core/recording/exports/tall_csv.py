@@ -59,9 +59,9 @@ def export_tall_csv(*, structure: RecordingStructure, request: TallCsvRequest,
         source_hash = view.content_sha256()
         check_cancelled()
         run = view.metadata.runs[run_id]
-        prefix = structure.recording_name + (f'.run-{run_id}' if request.keep else '')
+        prefix = structure.recording_name + (f'.run-{run_id}' if request.keep or run_id != 0 else '')
         root = structure.exports_dir
-        directory = root / f'run-{run_id}' if request.keep else root
+        directory = root / f'run-{run_id}' if request.keep or run_id != 0 else root
         if root.is_symlink() or directory.is_symlink():
             raise ValueError('Export directories must not be links')
         directory.mkdir(parents=True, exist_ok=True)
@@ -136,7 +136,7 @@ def export_tall_csv(*, structure: RecordingStructure, request: TallCsvRequest,
                 manifest = ExportManifest(artifacts=artifacts, snapshots=snapshots)
                 check_cancelled()
                 # Commit is short and recoverable; cancellation no longer interrupts it.
-                publish(directory, staging, manifest_name, manifest, filenames, request.keep, obsolete=obsolete)
+                publish(directory, staging, manifest_name, manifest, filenames, request.keep)
                 return TallCsvResult(run_id=run_id, source_revision=view.revision, source_sha256=source_hash,
                     manifest_path=manifest_path, files=tuple(directory / name for name in filenames))
             finally:

@@ -405,3 +405,27 @@
   border-bottom: 6px solid transparent;
   border-right: 6px solid var(--color-bg-primary);
 }
+
+/* Shared top-layer surfaces escape overflow and stacking contexts. Geometry is
+   measured by TooltipSurface; the legacy position classes remain placement hints. */
+.tooltip-container.tooltip-surface {
+  box-sizing: border-box;
+  min-width: 0 !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  transition: none;
+}
+.tooltip-container.tooltip-surface.prompt-tooltip-container {
+  width: 248px;
+}
+.tour-bubble-layer .tooltip-container.tooltip-surface { width: 300px; }
+.tooltip-container.tooltip-surface:popover-open {
+  opacity: 1;
+  visibility: visible;
+}
+/* A clamped or flipped surface cannot use the old fixed-position arrow. */
+.tooltip-container.tooltip-surface::before { display: none; }
+.tooltip-container.tooltip-surface::backdrop { pointer-events: none; }

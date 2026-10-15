@@ -1,3 +1,4 @@
+import TooltipSurface from '@/components/ui-components/TooltipSurface';
 import React, { useRef, useState } from "react";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
@@ -92,7 +93,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
                 camera.connectionStatus === "connected" ? "streaming" : ""
               }
             />
-            <div className="tooltip-container elevated-sharp pos-right p-01 br-2 bg-dark">
+            <TooltipSurface className="tooltip-container elevated-sharp pos-right p-01 br-2 bg-dark">
               <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
                 <p className="text-white text md">
                   {camera.selected
@@ -100,7 +101,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
                     : "Add to capture group"}
                 </p>
               </div>
-            </div>
+            </TooltipSurface>
           </div>
         </div>
 
@@ -146,7 +147,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
                 )}
                 onClick={camera.selected ? handleToggleRealtime : undefined}
               />
-              <div className="tooltip-container elevated-sharp pos-right p-01 br-2 bg-dark">
+              <TooltipSurface className="tooltip-container elevated-sharp pos-right p-01 br-2 bg-dark">
                 <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
                   <p className="text-white text md">
                     {camera.realtimeEnabled
@@ -154,7 +155,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
                       : "Add to realtime pipeline"}
                   </p>
                 </div>
-              </div>
+              </TooltipSurface>
             </div>
 
             {configSummary.length > 0 && (

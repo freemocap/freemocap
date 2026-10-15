@@ -1,33 +1,37 @@
-"""Generate an unexecuted, portable Pandas/Matplotlib recording explorer."""
+"""Generate a portable recording notebook following the v1.8.2 walkthrough.
+
+Imports, editable variables, trajectories, and animated points follow the original
+FreeMoCap template [@freemocapNotebookV182]. Loading uses V2 channel metadata.
+"""
 import json
 from pathlib import Path
 
-LOAD = r"""from pathlib import Path
+IMPORTS = """from pathlib import Path
 import hashlib
+import json
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+"""
 
-# Start Jupyter in the notebook's folder, or set this path explicitly.
-parquet_path = Path(SOURCE_PATH)
-if not parquet_path.is_file():
-    raise FileNotFoundError(f"Keep this notebook with its recording, or update parquet_path: {parquet_path}")
+LOAD = r"""# The export snapshot lives in this notebook's metadata.
+notebook = json.loads(notebook_path.read_text(encoding='utf-8'))
+snapshot = notebook['metadata']['freemocap']
+RUN_ID = snapshot['run_id']
+CHANNELS = list(snapshot['channels'].values())
+parquet_path = path_to_recording / snapshot['source_file']
 with parquet_path.open('rb') as stream:
     actual_hash = hashlib.file_digest(stream, 'sha256').hexdigest()
-if actual_hash != SOURCE_HASH:
+if actual_hash != snapshot['source_sha256']:
     raise ValueError('The recording changed after this notebook was exported. Export a new explorer for the new result.')
 print('Selected run:', RUN_ID)
 for index, channel in enumerate(CHANNELS):
-    print(index, channel['context']['channel'], channel['context']['source'],
-          channel['context']['reference_frame'])
+    context = channel['context']
+    print(index, context['channel'], context['source'], context['reference_frame'])
 """
 
-TABLE = r"""# Choose an index from the channel list above.
-channel_index = 0
-channel = CHANNELS[channel_index]
-context = channel['context']
-
-def read_channel(kind):
+TABLE = r"""def read_channel(kind):
     filters = [('run_id', '=', RUN_ID), ('sensor_group', '=', context['sensor_group']),
                ('source', '=', context['source']), ('channel', '=', kind)]
     rows = pd.read_parquet(parquet_path, filters=filters,
@@ -62,65 +66,138 @@ print('Components:', dict(zip(channel['components'], channel['units'])))
 table.head()
 """
 
-PLOT = r"""# Choose a name and component from the printed metadata, not a hardcoded point index.
-name = channel['names'][0]
-component = channel['components'][0]
-unit = channel['units'][channel['components'].index(component)]
-plt.figure(figsize=(10, 4))
-plt.plot(times.to_numpy() - times.iloc[0], table[(name, component)].to_numpy())
-plt.xlabel('Elapsed time (s)')
-plt.ylabel(f'{component} ({unit})')
-plt.title(f"{context['source']}: {name}")
-plt.tight_layout()
-plt.show()
+JOINT = """# Choose any name printed above, then rerun the plotting cells.
+joint_to_plot = next((name for name in channel['names'] if name in ('nose', 'body.nose')),
+                     channel['names'][0])
+joint_to_plot_index = channel['names'].index(joint_to_plot)
+joint_data = values[:, joint_to_plot_index, :]
+elapsed_time = times.to_numpy() - times.iloc[0]
+"""
+
+PLOT = r"""# One plot per coordinate, with shared time axes for zooming.
+coordinates = [axis for axis in ('x', 'y', 'z') if axis in channel['components']]
+fig = make_subplots(rows=len(coordinates), cols=1, shared_xaxes=True,
+                    subplot_titles=[f'{joint_to_plot}: {axis.upper()}' for axis in coordinates])
+for row, axis in enumerate(coordinates, start=1):
+    component_index = channel['components'].index(axis)
+    unit = channel['units'][component_index]
+    fig.add_trace(go.Scatter(x=elapsed_time, y=joint_data[:, component_index],
+                            mode='lines', name=axis.upper(), connectgaps=False), row=row, col=1)
+    fig.update_yaxes(title_text=f'{axis.upper()} ({unit})', row=row, col=1)
+fig.update_xaxes(title_text='Elapsed time (s)', row=len(coordinates), col=1)
+fig.update_layout(height=650, showlegend=False, title=f"{context['source']}: {joint_to_plot}")
+fig.show()
+"""
+
+ANIMATION = r"""# Increase frame_step for a lighter preview of a long recording.
+frame_step = 1
+if not all(axis in channel['components'] for axis in ('x', 'y', 'z')):
+    print('Select a 3D channel above to view the movement in 3D.')
+else:
+    xyz_indices = [channel['components'].index(axis) for axis in ('x', 'y', 'z')]
+    xyz = values[:, :, xyz_indices]
+    frame_indices = list(range(0, len(xyz), frame_step))
+
+    def points_at(index):
+        return go.Scatter3d(x=xyz[index, :, 0], y=xyz[index, :, 1], z=xyz[index, :, 2],
+                            mode='markers', marker=dict(size=3), text=channel['names'],
+                            hovertemplate='%{text}<br>X: %{x}<br>Y: %{y}<br>Z: %{z}<extra></extra>')
+
+    # One fixed 3-meter cube, centered on the median across all frames and points.
+    # Outliers outside the cube stay outside the view; they never expand the axes.
+    scene = dict(aspectmode='cube')
+    for coordinate, axis in enumerate(('x', 'y', 'z')):
+        finite = xyz[:, :, coordinate][np.isfinite(xyz[:, :, coordinate])]
+        center = float(np.median(finite)) if finite.size else 0.0
+        unit = channel['units'][xyz_indices[coordinate]]
+        # Pixel-space recordings have no metric scale: use a fixed 3000-pixel cube.
+        half_width = {'mm': 1500.0, 'cm': 150.0, 'm': 1.5, 'px': 1500.0}[unit]
+        scene[axis + 'axis'] = dict(title=f'{axis.upper()} ({unit})',
+                                    range=[center - half_width, center + half_width],
+                                    autorange=False)
+
+    frames = [go.Frame(data=[points_at(i)], name=str(table.index[i])) for i in frame_indices]
+    # Playback uses the median recorded interval; slider labels retain exact timestamps.
+    intervals = np.diff(times.to_numpy()[frame_indices])
+    positive_intervals = intervals[np.isfinite(intervals) & (intervals > 0)]
+    duration_ms = float(np.median(positive_intervals) * 1000) if positive_intervals.size else 33.0
+    animation = go.Figure(data=[points_at(0)], frames=frames)
+    animation.update_layout(
+        height=700, scene=scene, title=f"{context['channel']}: {context['source']}",
+        updatemenus=[dict(type='buttons', showactive=False, buttons=[
+            dict(label='Play', method='animate', args=[None, dict(
+                frame=dict(duration=duration_ms, redraw=True), transition=dict(duration=0), fromcurrent=True)]),
+            dict(label='Pause', method='animate', args=[[None], dict(
+                frame=dict(duration=0, redraw=False), mode='immediate')])])],
+        sliders=[dict(currentvalue=dict(prefix='Frame / elapsed seconds: '), steps=[
+            dict(label=f'{table.index[i]} / {elapsed_time[i]:.3f}', method='animate',
+                 args=[[str(table.index[i])], dict(mode='immediate',
+                       frame=dict(duration=0, redraw=True), transition=dict(duration=0))])
+            for i in frame_indices])])
+    animation.show()
 """
 
 
-def write_notebook(path: Path, *, snapshot: dict, retained: bool) -> None:
+def write_notebook(path: Path, *, snapshot: dict) -> None:
     def cell(kind, source):
         result = dict(cell_type=kind, metadata={}, source=source.splitlines(keepends=True))
         if kind == 'code':
             result.update(execution_count=None, outputs=[])
         return result
-    source_path = ('../../' if retained else '../') + snapshot['source_file']
-    setup = ('import json\n' +
-        f'SOURCE_PATH = {source_path!r}\nSOURCE_HASH = {snapshot["source_sha256"]!r}\nRUN_ID = {snapshot["run_id"]!r}\n' +
-        'CHANNELS = json.loads(' + repr(json.dumps(list(snapshot['channels'].values()))) + ')\n')
-    cells = [cell('markdown', """# FreeMoCap Notebook Explorer
 
-A guided view of your selected saved run. This notebook follows the V1 explorer
-idea using V2 Parquet, explicit channel metadata, Pandas, NumPy, and Matplotlib.
-It does not rerun video tracking or alter recording files.
+    recording_path = '.'
+    cells = [
+        cell('markdown', """## Load necessary libraries
 
-Use Python 3.11 or newer with pandas, pyarrow, numpy, and matplotlib installed in
-your Jupyter/VS Code analysis environment. No automatic installs are performed.
-Keep this notebook in its export folder with the recording folder structure intact.
-The first step checks that the Parquet file still matches the exported snapshot.
-A retained notebook is not a backup of Parquet. Save your edited analysis under
-a new filename before regenerating the exporter-owned notebook.
+We'll use NumPy and Pandas to load your recording, and Plotly for interactive plots.
+Your notebook environment needs numpy, pandas, pyarrow, and plotly.
+"""),
+        cell('code', IMPORTS),
+        cell('markdown', """## Define variables
 
-See README.md here for the path from videos to keypoints to reconstructed landmarks,
-coordinate conventions, confidence, and the difference between raw and filtered.
-"""), cell('code', setup + LOAD),
-        cell('markdown', """## Select a data channel
+Run from this notebook's folder, or edit the paths below to match its location.
+"""),
+        cell('code', f'path_to_recording = Path({recording_path!r})\nnotebook_path = Path({path.name!r})\n'),
+        cell('markdown', """## Load your recording
 
-Each channel belongs to a source/model and reference frame. Body/hand/face prefixes
-identify points within a tracker; they are not different people. Select the channel
-index below. The DataFrame uses recorded frame IDs as rows and (name, component)
-as column pairs. The array uses (frames, names, components). NaN means unavailable.
-2D: XY/confidence; 3D points: XYZ; segment poses: XYZ and world WXYZ quaternions.
-Position units are read from metadata; confidence/quaternions are dimensionless.
-"""), cell('code', TABLE),
-        cell('markdown', """## Plot a coordinate over time
+The list below shows the saved data available in this export.
+"""),
+        cell('code', LOAD),
+        cell('code', r"""# Pick a channel index from the list above.
+channel_index = 0
+channel = CHANNELS[channel_index]
+context = channel['context']
+print('Available names:')
+print(*channel['names'], sep='\n')
+"""),
+        cell('markdown', """### Load the selected channel
 
-Use recorded seconds rather than assuming a frame rate. NaNs appear as gaps.
-A quaternion component is not an angle; confidence is not a distance or spatial
-error. Start by inspecting a coordinate before attempting derivatives or joint
-angles. This is a plot of one channel, not a reconstructed skeleton animation.
-"""), cell('code', PLOT)]
+The array is ordered as frames, names, components. Missing samples stay as NaN.
+"""),
+        cell('code', TABLE),
+        cell('markdown', """## Choose a joint
+
+Change `joint_to_plot` to a name from the list above to explore another point.
+For segment poses, these points are segment origins.
+"""),
+        cell('code', JOINT),
+        cell('markdown', """## Plotting
+
+Here are your chosen point's coordinates over time. Drag to zoom; hover to inspect.
+Units come from the recording. Gaps are missing samples.
+"""),
+        cell('code', PLOT),
+        cell('markdown', """## 3D Plotting
+
+Press **Play** to watch the recorded points move. Drag to rotate the view, or use
+the slider to choose a frame. The view stays fixed at three meters per side,
+centered on the median position. A 2D channel only has the coordinate plots above.
+"""),
+        cell('code', ANIMATION),
+    ]
     document = dict(nbformat=4, nbformat_minor=5, metadata=dict(
         kernelspec=dict(display_name='Python 3', language='python', name='python3'),
-        language_info=dict(name='python')), cells=cells)
+        language_info=dict(name='python'), freemocap=snapshot), cells=cells)
     for index, entry in enumerate(cells):
         entry['id'] = f'freemocap-{index}'
     path.write_text(json.dumps(document, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')

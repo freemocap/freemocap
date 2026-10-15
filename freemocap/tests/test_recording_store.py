@@ -402,7 +402,7 @@ def test_mixed_rates_and_missing_components_round_trip(tmp_path: Path) -> None:
     assert eye.num_rows == 24
     assert eye.column("value").null_count == 3
     assert eye.column("timestamp_s")[6].as_py() == 2 / 120
-    assert not structure.recording_info_path.exists()
+    assert json.loads(structure.recording_info_path.read_text(encoding="utf-8"))["processed"]["recording_id"] == "recording"
 
 
 def test_publication_preserves_capture_metadata(tmp_path: Path) -> None:
@@ -416,7 +416,8 @@ def test_publication_preserves_capture_metadata(tmp_path: Path) -> None:
             metadata=metadata_fixture(),
             batches=[sample_batch(group="mocap", count=2, fps=30.0), sample_batch(group="eye", count=8, fps=120.0)],
         )
-    assert structure.recording_info_path.read_text(encoding="utf-8") == capture_metadata
+    saved_info = json.loads(structure.recording_info_path.read_text(encoding="utf-8"))
+    assert all(saved_info[key] == value for key, value in json.loads(capture_metadata).items())
     assert not (structure.full_path / "output_data").exists()
     assert not (structure.full_path / "tracker_schema.json").exists()
 
@@ -443,7 +444,7 @@ def test_failed_write_preserves_completed_recording(tmp_path: Path) -> None:
         assert structure.data_parquet_path.read_bytes() == before
 
 
-def test_keep_and_stop_invalidate_only_selected_group() -> None:
+def test_keep_and_stop_invalidate_destination_descendants_only() -> None:
     metadata = metadata_fixture()
     request = ProcessingRequest(
         keep=True,
@@ -528,12 +529,9 @@ def test_keep_then_overwrite_publishes_independent_runs(tmp_path: Path) -> None:
             == 6
         )
         assert (
-            list(
-                read_batches(
-                    path=structure.data_parquet_path, run_id=1, sensor_groups=("mocap",)
-                )
-            )
-            == []
+            sum(batch.num_rows for batch in read_batches(
+                path=structure.data_parquet_path, run_id=1, sensor_groups=("mocap",)))
+            == 0
         )
         assert (
             sum(
@@ -566,12 +564,9 @@ def test_keep_then_overwrite_publishes_independent_runs(tmp_path: Path) -> None:
         assert set(overwritten.runs) == {0, 1}
         assert overwritten.runs[1] == kept.runs[1]
         assert (
-            list(
-                read_batches(
-                    path=structure.data_parquet_path, run_id=0, sensor_groups=("mocap",)
-                )
-            )
-            == []
+            sum(batch.num_rows for batch in read_batches(
+                path=structure.data_parquet_path, run_id=0, sensor_groups=("mocap",)))
+            == 0
         )
 
 

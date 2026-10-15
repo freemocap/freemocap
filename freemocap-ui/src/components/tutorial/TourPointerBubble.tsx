@@ -1,5 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
+import TooltipSurface from '@/components/ui-components/TooltipSurface';
 import {FloatingOnboarding} from '@/hooks/floatingOnboarding';
 import {TourNav} from './TourNav';
 import type {TourPosition} from './tutorial-types';
@@ -7,7 +8,7 @@ import type {TourPosition} from './tutorial-types';
 // The contextual callout for a pointer step. It reuses the exact class recipe
 // from PromptTooltip so it inherits the tooltip chrome from styles/tooltips.css:
 //   - .prompt-tooltip-container → pointer-events:auto + fixed width
-//   - .tooltip-container + .pos-* → the arrow triangle and offset toward the target
+//   - .pos-* → preferred placement, flipped/clamped by TooltipSurface
 // The Back/Next/Skip controls live right here on the bubble (via TourNav) so they
 // sit in the user's eyeline next to the target — not pinned to the screen edge.
 interface BubbleProps {
@@ -18,7 +19,7 @@ interface BubbleProps {
 }
 
 const Bubble: React.FC<BubbleProps> = ({title, text, position}) => (
-    <div
+    <TooltipSurface open
         className={clsx(
             'prompt-tooltip-container text-wrap border-1 border-solid border-mid-black tooltip-container elevated-sharp',
             position,
@@ -36,7 +37,7 @@ const Bubble: React.FC<BubbleProps> = ({title, text, position}) => (
             </div>
             <TourNav/>
         </div>
-    </div>
+    </TooltipSurface>
 );
 
 interface TourPointerBubbleProps {

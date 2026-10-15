@@ -1,5 +1,47 @@
 # Reference dataset processing
 
+## Optional stage-range release check
+
+Run the complete **15-range** matrix explicitly; normal tests never launch it.
+It uses only `test_data` (222 motion-capture frames across three cameras), the
+existing isolated reference worker, and the application's V1 pipeline manager.
+Use an existing accepted calibration and a **new, short output directory** outside
+the source recordings. No source recording or accepted reference result is changed.
+
+```powershell
+.venv/Scripts/python.exe -B -m freemocap.tools.datasets.stage_matrix `
+  --calibration C:/path/to/accepted_camera_calibration.toml `
+  --output C:/path/to/new-stage-matrix
+```
+
+The stages are 2D tracking, triangulation (including requested alignment before
+saving), filtering, scale fitting, and reconstruction. All contiguous ranges are
+attempted, including each stage alone. A fresh full run supplies the comparison;
+fresh partial runs supply minimal saved inputs for subsequent restarts where
+available. Otherwise a private copy of the full run supplies saved inputs, and
+operation checks reject replay of excluded stages. RTMPose uses automatic device
+selection; ChArUco, annotation, automatic alignment and filtering are enabled.
+Filtering uses a 1 Hz cutoff, below this 6 FPS recording's 3 Hz Nyquist limit.
+It is enabled here deliberately, even though ordinary test-data processing
+defaults to filtering disabled. Blender is excluded: this checks scientific stage
+boundaries, not final-export acceptance or every detector/device configuration.
+
+Each case checks complete saved sample grids, exactly the expected channels and
+stages, frame/timestamp identity, coordinate references, camera geometry and
+numerical parity (`atol=1e-6`, `rtol=1e-8`) against the full run. Full results also
+use the existing reference-output validator and scale-fit comparison. Operation
+checks verify that a saved-2D restart does not repeat detection or run skeleton
+reconstruction past an earlier selected finish.
+
+`report.txt` gives every outcome and timing; `matrix.json` includes channel errors,
+executed operations, configuration, source/software fingerprints and log paths.
+Application processing time is separate from total case time, which also includes
+copying, process startup, validation and shutdown. Cases run sequentially to avoid
+competing for the GPU. Failure does not stop later cases. **Unsupported ranges are
+failures**, and the command returns nonzero unless all 15 pass. V1 implements all five starts and finishes. This remains an opt-in
+release-readiness test; missing capabilities and failed comparisons never count
+as successful cases.
+
 Run commands from **the FreeMoCap repository**, `project/repos/freemocap`,
 with its environment activated. Without activation, use
 `uv run --no-sync poe ...` after setting up that environment.
@@ -148,7 +190,8 @@ Posthoc execution selection is recorded in workflow requests and worker results.
 `--implementation graph` (Typed data flow graph V1) is the default for `process` and `process-all`.
 Use `--implementation current` to select the Legacy post hoc pipeline, including saved-stage restarts.
 `--implementation graph` selects the application's typed dataflow pipeline for
-full runs. Saved-stage starts remain unsupported by the graph and fail explicitly.
+full runs and all saved-stage starts. The stage matrix also exercises every
+finish point; the ordinary `process --from` command continues through reconstruction.
 It never silently falls back to the current pipeline. Realtime execution is unchanged.
 
 Workflow attempts also contain `performance.json` (schema version 1). It records

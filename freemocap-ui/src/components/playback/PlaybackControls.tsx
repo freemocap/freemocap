@@ -1,3 +1,4 @@
+import TooltipSurface from '@/components/ui-components/TooltipSurface';
 import {DisplayFramerate} from './DisplayFramerate';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
@@ -221,11 +222,11 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                             title={t("playbackSpeed")}
                         >
                             <span className="text-gray text md text-nowrap">{playbackRate}×</span>
-                            <div className="tooltip-container elevated-sharp pos-top p-01 br-2 bg-dark">
+                            <TooltipSurface className="tooltip-container elevated-sharp pos-top p-01 br-2 bg-dark">
                                 <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
                                     <p className="text-white text md">{t("playbackSpeed")}</p>
                                 </div>
-                            </div>
+                            </TooltipSurface>
                         </button>
 
                         {speedDropdownOpen && (

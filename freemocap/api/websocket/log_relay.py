@@ -4,12 +4,31 @@ Keep this reader alive until every producer has exited. Per-client buffers are
 best-effort relay copies; console/file handlers remain the durable logging path.
 """
 from contextlib import contextmanager
+import logging
+import os
 from queue import Empty, Full, Queue
 from threading import Lock, Thread
 from uuid import uuid4
 
 CLIENT_LOG_BACKLOG = 1000
 RELAY_STOP_TIMEOUT_SECONDS = 5.0
+
+
+def _write_worker_record_to_main_file(payload):
+    # Main-process records already passed through these handlers. Dispatch only
+    # to files: logging through the root logger would enqueue the record again.
+    if payload.get('process') in (None, os.getpid()):
+        return
+    record = logging.makeLogRecord({
+        **payload,
+        'msg': payload['message'],
+        'args': (),
+        'exc_info': None,
+        'exc_text': payload.get('exc_info') or payload.get('exc_text'),
+    })
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, logging.FileHandler) and record.levelno >= handler.level:
+            handler.handle(record)
 
 
 class LogRelay:
@@ -59,6 +78,7 @@ class LogRelay:
                     return
                 if not isinstance(record, dict):
                     continue
+                _write_worker_record_to_main_file(record)
                 with self._lock:
                     self.received += 1
                     if not self._clients:

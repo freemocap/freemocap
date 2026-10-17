@@ -1,9 +1,58 @@
 """The IPC consumer outlives websocket clients and producer joins."""
 import multiprocessing
+import logging
+import os
 from queue import Queue, Full
 
 import pytest
 from freemocap.api.websocket.log_relay import LogRelay
+
+
+def test_worker_logs_reach_main_file_without_frontend(tmp_path):
+    path = tmp_path / 'application.log'
+    handler = logging.FileHandler(path)
+    root = logging.getLogger()
+    root.addHandler(handler)
+    source = Queue()
+    relay = LogRelay(source)
+    relay.start()
+    try:
+        record = logging.LogRecord('worker', logging.ERROR, __file__, 1, 'failure %s', ('detail',), None)
+        payload = dict(record.__dict__, process=os.getpid() + 1,
+                       message='failure detail', exc_info='Serialized traceback', exc_text=None)
+        source.put(payload)
+        relay.stop()
+        handler.flush()
+        assert path.read_text() == 'failure detail\nSerialized traceback\n'
+    finally:
+        relay.stop()
+        root.removeHandler(handler)
+        handler.close()
+
+
+def test_main_records_are_not_written_twice_or_requeued(tmp_path):
+    path = tmp_path / 'application.log'
+    handler = logging.FileHandler(path)
+    root = logging.getLogger()
+    root.addHandler(handler)
+    source = Queue()
+    relay = LogRelay(source)
+    relay.start()
+    try:
+        record = logging.LogRecord('main', logging.ERROR, __file__, 1, 'main message', (), None)
+        handler.handle(record)
+        payload = dict(record.__dict__, message='main message')
+        with relay.subscribe() as first, relay.subscribe() as second:
+            source.put(payload)
+            assert first.get(timeout=2) == second.get(timeout=2) == payload
+        relay.stop()
+        handler.flush()
+        assert path.read_text() == 'main message\n'
+        assert relay.received == 1
+    finally:
+        relay.stop()
+        root.removeHandler(handler)
+        handler.close()
 
 
 def produce(queue):

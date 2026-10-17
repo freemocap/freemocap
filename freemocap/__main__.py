@@ -23,10 +23,12 @@ async def main(force_preferred_port:bool=True, *, reload_stop=None) -> None:
     # package __init__ stays side-effect free so sandboxes/CI/child processes
     # can import it without I/O or thread spawns.
     from skellylogs import configure_logging, create_websocket_log_queue, LogLevels
+    from freemocap.system.default_paths import get_log_file_path
     # This application owns its log queue even when a reload supervisor spawned
     # it. SkellyLogs otherwise treats non-MainProcess processes as plain workers
     # and skips logging initialization when no queue is supplied.
-    configure_logging(LogLevels.TRACE, ws_queue=create_websocket_log_queue())
+    configure_logging(LogLevels.TRACE, ws_queue=create_websocket_log_queue(),
+                      log_file_path=get_log_file_path())
 
     from skellylogs import get_websocket_log_queue
     from freemocap.api.websocket.log_relay import LogRelay

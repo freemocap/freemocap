@@ -34,16 +34,12 @@ export const LogRecordSchema = z.object({
 
 export type LogRecord = z.infer<typeof LogRecordSchema>;
 
+// One retention limit for both live scrollback and restoration after UI refresh.
 const MAX_ENTRIES = 10_000;
-// Only the most recent slice is persisted to localStorage. Serializing the full
-// 10k-entry in-memory buffer on every save was a ~84ms main-thread stall on the
-// save interval (seen in profiles); persisting a small tail keeps writes cheap
-// while logs still survive restarts. The full 10k stays in memory for scrollback.
-const MAX_PERSISTED_ENTRIES = 300;
 const STORAGE_KEY = 'freemocap_log_store';
-// Longer interval (was 5s) so the JSON.stringify + localStorage write happens far
-// less often. The periodic write is also deferred to requestIdleCallback so it
-// never blocks a render frame. The dirty flag still gates writes to real changes.
+// Save changed logs periodically, deferring scheduled writes to idle time where
+// available. Serialization and storage remain synchronous and need performance
+// validation at the retention limit; beforeunload also flushes synchronously.
 const AUTO_SAVE_INTERVAL_MS = 20_000;
 
 export type LogSnapshot = {
@@ -62,9 +58,9 @@ export type LogSnapshot = {
  * changed since the last snapshot. The snapshot's entries array is only
  * reallocated when new logs have arrived.
  *
- * Persists log entries to localStorage so logs survive page refreshes / app
- * restarts. A divider entry is inserted on each mount to visually separate
- * sessions. Persistence uses a dirty flag + periodic save to avoid serializing
+ * Persists log entries to sessionStorage so logs survive UI refreshes,
+ * but a fresh app session starts clean.
+ * Persistence uses a dirty flag + periodic save to avoid serializing
  * the full entries array on every incoming log message.
  */
 export class LogStore {
@@ -92,7 +88,7 @@ export class LogStore {
     private idlePersistHandle: number | null = null;
 
     constructor() {
-        this.restoreFromLocalStorage();
+        this.restoreFromSessionStorage();
     }
 
     start(): void {
@@ -116,7 +112,7 @@ export class LogStore {
             this.idlePersistHandle = null;
         }
         // Final flush is synchronous — idle callbacks won't run during unload.
-        this.persistToLocalStorage();
+        this.persistToSessionStorage();
     }
 
     add(record: LogRecord): void {
@@ -177,12 +173,12 @@ export class LogStore {
         this.cachedEntries = [];
         this.cachedCountsByLevel = {};
         this.lastSnapshotVersion = this.version;
-        this.clearLocalStorage();
+        this.clearSessionStorage();
     }
 
     /** Force an immediate persist (used for beforeunload). */
     persistNow(): void {
-        this.persistToLocalStorage();
+        this.persistToSessionStorage();
     }
 
     // ── private persistence helpers ──────────────────────────────────────
@@ -196,30 +192,25 @@ export class LogStore {
         }).requestIdleCallback;
         const run = (): void => {
             this.idlePersistHandle = null;
-            this.persistToLocalStorage();
+            this.persistToSessionStorage();
         };
         this.idlePersistHandle = ric
             ? ric(run, { timeout: AUTO_SAVE_INTERVAL_MS })
             : (setTimeout(run, 0) as unknown as number);
     }
 
-    private persistToLocalStorage(): void {
+    private persistToSessionStorage(): void {
         try {
-            // Persist only the most recent slice — serializing all 10k entries
-            // on the main thread was the source of a periodic save-interval stall.
-            const toPersist = this.entries.length > MAX_PERSISTED_ENTRIES
-                ? this.entries.slice(this.entries.length - MAX_PERSISTED_ENTRIES)
-                : this.entries;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.entries));
             this.dirty = false;
         } catch {
-            // localStorage full or unavailable — silently ignore
+            // sessionStorage full or unavailable — silently ignore
         }
     }
 
-    private restoreFromLocalStorage(): void {
+    private restoreFromSessionStorage(): void {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
+            const raw = sessionStorage.getItem(STORAGE_KEY);
             if (!raw) return;
 
             const parsed = JSON.parse(raw);
@@ -236,9 +227,9 @@ export class LogStore {
 
             if (restored.length === 0) return;
 
-            // Truncate to capacity, leaving room for the divider + new logs
-            if (restored.length >= MAX_ENTRIES) {
-                restored.splice(0, restored.length - MAX_ENTRIES + 1);
+            // Truncate to capacity
+            if (restored.length > MAX_ENTRIES) {
+                restored.splice(0, restored.length - MAX_ENTRIES);
             }
 
             this.entries = restored;
@@ -247,7 +238,6 @@ export class LogStore {
             this.countsByLevel = {};
             this.hasErrors = false;
             for (const entry of this.entries) {
-                if (entry.type === 'divider') continue;
                 const lvl = entry.levelname;
                 this.countsByLevel[lvl] = (this.countsByLevel[lvl] || 0) + 1;
                 if (lvl === 'ERROR' || lvl === 'CRITICAL') {
@@ -255,50 +245,15 @@ export class LogStore {
                 }
             }
 
-            this.addDivider();
             this.version++;
         } catch {
             // Corrupted data — start fresh
         }
     }
 
-    private addDivider(): void {
-        const now = new Date();
-        const divider: LogRecord = {
-            name: '',
-            msg: '',
-            args: [],
-            levelname: 'DIVIDER',
-            levelno: -1,
-            pathname: '',
-            filename: '',
-            module: '',
-            exc_info: null,
-            exc_text: null,
-            stack_info: null,
-            lineno: 0,
-            funcName: '',
-            created: now.getTime() / 1000,
-            msecs: now.getMilliseconds(),
-            relativeCreated: 0,
-            thread: 0,
-            threadName: '',
-            processName: '',
-            process: 0,
-            delta_t: '',
-            message: '────── App restarted ──────',
-            asctime: now.toLocaleString(),
-            formatted_message: '',
-            type: 'divider',
-            source: 'system',
-        };
-        this.entries.push(divider);
-        this.dirty = true;
-    }
-
-    private clearLocalStorage(): void {
+    private clearSessionStorage(): void {
         try {
-            localStorage.removeItem(STORAGE_KEY);
+            sessionStorage.removeItem(STORAGE_KEY);
         } catch {
             // ignore
         }

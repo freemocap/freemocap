@@ -146,35 +146,9 @@ class VideoNode(SourceNode):
             recording_name=recording_path.name,
             recording_path=str(recording_path),
         ))
-        tracker = build_configured_tracker(config=detector_config, batch_size=1)
-        tracker_state = TrackerState()
-
-        cache = _build_recording_frame_cache(
-            recording_path=recording_path,
-            camera_id=camera_id,
-            detector_config=detector_config,
-        )
-        if cache is not None:
-            logger.info(
-                f"VideoNode [{camera_id}]: reusing {len(cache)} realtime Charuco "
-                f"observations — only uncached frames will be detected"
-            )
-
-        video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
-        if not video_reader.isOpened():
-            raise RuntimeError(f"Failed to open video file: {video_path}")
-        frame_count: int = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
-        video_progress_pub.put(VideoNodeProgressMessage(
-            camera_id=camera_id,
-            pipeline_id=node_pipeline_id,
-            pipeline_type=str(pipeline_type),
-            phase=VideoNodePhase.SETTING_UP,
-            progress_fraction=0.0,
-            detail=f"Preparing {frame_count} frames",
-            recording_name=recording_path.name,
-            recording_path=str(recording_path),
-        ))
-
+        tracker = None
+        video_reader = None
+        frame_count = 0
         annotator = None
         annotation_output: AnnotationVideoOutput | None = None
 
@@ -185,15 +159,44 @@ class VideoNode(SourceNode):
         tracker_times_ms = []
         published_frames = 0
         processing_started = time.perf_counter()
-        logger.info(
-            f"Video processing start: {pipeline_type} / {video_path.name}; "
-            f"PID={os.getpid()}, thread={threading.get_ident()} ({threading.current_thread().name}); "
-            f"OpenCV video opened, {frame_count} frames; "
-            f"observation cache entries={len(cache) if cache is not None else 0}; "
-            f"tracker={type(tracker).__module__}.{type(tracker).__name__}"
-        )
         _error_occurred = False
         try:
+            tracker = build_configured_tracker(config=detector_config, batch_size=1)
+            tracker_state = TrackerState()
+
+            cache = _build_recording_frame_cache(
+                recording_path=recording_path,
+                camera_id=camera_id,
+                detector_config=detector_config,
+            )
+            if cache is not None:
+                logger.info(
+                    f"VideoNode [{camera_id}]: reusing {len(cache)} realtime Charuco "
+                    f"observations — only uncached frames will be detected"
+                )
+
+            video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
+            if not video_reader.isOpened():
+                raise RuntimeError(f"Failed to open video file: {video_path}")
+            frame_count: int = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
+            video_progress_pub.put(VideoNodeProgressMessage(
+                camera_id=camera_id,
+                pipeline_id=node_pipeline_id,
+                pipeline_type=str(pipeline_type),
+                phase=VideoNodePhase.SETTING_UP,
+                progress_fraction=0.0,
+                detail=f"Preparing {frame_count} frames",
+                recording_name=recording_path.name,
+                recording_path=str(recording_path),
+            ))
+
+            logger.info(
+                f"Video processing start: {pipeline_type} / {video_path.name}; "
+                f"PID={os.getpid()}, thread={threading.get_ident()} ({threading.current_thread().name}); "
+                f"OpenCV video opened, {frame_count} frames; "
+                f"observation cache entries={len(cache) if cache is not None else 0}; "
+                f"tracker={type(tracker).__module__}.{type(tracker).__name__}"
+            )
             if save_annotated_video:
                 annotator = build_observation_annotator(detector_config)
                 fps = video_reader.get(cv2.CAP_PROP_FPS)
@@ -253,7 +256,7 @@ class VideoNode(SourceNode):
                         pipeline_id=node_pipeline_id,
                         pipeline_type=str(pipeline_type),
                         phase=VideoNodePhase.PROCESSING_IMAGES,
-                        progress_fraction=frame_number / frame_count,
+                        progress_fraction=frame_number / frame_count if frame_count > 0 else 0.0,
                         detail=f"Camera {camera_id}: {frame_number}/{frame_count} frames",
                         recording_name=recording_path.name,
                         recording_path=str(recording_path),
@@ -311,8 +314,16 @@ class VideoNode(SourceNode):
             ))
             ipc.shutdown_pipeline()
         finally:
-            tracker.close()
-            video_reader.release()
+            try:
+                if tracker is not None:
+                    tracker.close()
+            finally:
+                try:
+                    if video_reader is not None:
+                        video_reader.release()
+                finally:
+                    if annotation_output is not None:
+                        annotation_output.close()
             if not _error_occurred:
                 video_progress_pub.put(VideoNodeProgressMessage(
                     camera_id=camera_id,
@@ -323,8 +334,6 @@ class VideoNode(SourceNode):
                     recording_name=recording_path.name,
                     recording_path=str(recording_path),
                 ))
-            if annotation_output is not None:
-                annotation_output.close()
             logger.debug(f"VideoNode for {video_path.stem} exiting")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:

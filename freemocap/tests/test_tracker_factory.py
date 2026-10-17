@@ -11,6 +11,26 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 from freemocap.core.tracking.tracker_factory import build_configured_tracker
 
 
+def test_face_detection_uses_body_derived_head_crop() -> None:
+    from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker_config
+
+    config = build_mediapipe_tracker_config(num_faces=2, detection_confidence=0.6,
+                                          presence_confidence=0.7, tracking_confidence=0.8)
+    body = config.stages[0]
+    assert [child.name for child in body.children] == ['right_hand', 'left_hand', 'face']
+    face = body.children[2]
+    assert face.object_detector.center_keypoint_names == ('nose',)
+    assert face.object_detector.scale_keypoint_pairs == (('left_ear', 'right_ear'),)
+    assert face.object_detector.scale_factor == 3.0
+    assert face.object_detector.min_box_size_px == 120.0
+    assert face.bbox_smoothing.alpha == 0.4
+    detector = face.keypoint_detectors[0]
+    assert detector.num_faces == 2
+    assert detector.min_face_detection_confidence == 0.6
+    assert detector.min_face_presence_confidence == 0.7
+    assert detector.min_face_tracking_confidence == 0.8
+
+
 def test_wrist_crops_request_both_cpu_and_mediapipe_backends() -> None:
     from freemocap.core.tracking.tracker_factory import (
         build_mediapipe_tracker_config, tracker_session_requests,

@@ -340,6 +340,52 @@ def _mediapipe_hand_child_stage(
 
 
 
+def _mediapipe_face_child_stage(
+    *,
+    num_faces: int,
+    detection_confidence: float,
+    presence_confidence: float,
+    tracking_confidence: float,
+) -> DetectionStageConfig:
+    """Build a head-cropped face child stage.
+
+    Crops around the head using the parent body stage's own nose/ear keypoints
+    (pure keypoint arithmetic, no inference), then runs MediaPipe's face
+    landmarker on that crop.
+
+    The crop matters as much here as it does for hands: on a full-body frame the
+    head occupies a small fraction of the image and MediaPipe's face detector
+    frequently returns nothing at all, which silently yields an all-NaN face
+    stage (136 empty face_* rows in the output). Ear-to-ear span sizes the box
+    and sits the nose at its centre, so the whole head is inside the crop.
+    """
+    from skellytracker.core.detectors.keypoint_detectors.mediapipe.face.mediapipe_face_detector import (
+        MediapipeFaceDetectorConfig,
+    )
+
+    return DetectionStageConfig(
+        name="face",
+        object_detector=KeypointBoundingBoxDetectorConfig(
+            center_keypoint_names=("nose",),
+            scale_keypoint_pairs=(("left_ear", "right_ear"),),
+            # The head is taller than it is wide (face oval height ~= 1.4x
+            # ear-to-ear), so scale generously off the ear span to keep the
+            # forehead and chin inside the box.
+            scale_factor=3.0,
+            min_box_size_px=120.0,
+        ),
+        keypoint_detectors=[
+            MediapipeFaceDetectorConfig(
+                num_faces=num_faces,
+                min_face_detection_confidence=detection_confidence,
+                min_face_presence_confidence=presence_confidence,
+                min_face_tracking_confidence=tracking_confidence,
+            )
+        ],
+        bbox_smoothing=BBoxSmoothingConfig(alpha=0.4),
+    )
+
+
 def build_mediapipe_tracker_config(
     *,
     model_complexity=None,
@@ -348,21 +394,13 @@ def build_mediapipe_tracker_config(
     tracking_confidence: float = 0.5,
     num_faces: int = 1,
 ) -> TrackerConfig:
-    """Build a MediaPipe body+hands+face TrackerConfig.
+    """Build body tracking with wrist-cropped hands and a head-cropped face.
 
-    Pose is the parent "body" stage; left_hand/right_hand are wrist-cropped
-    child stages (see _mediapipe_hand_child_stage) instead of full-frame
-    sibling detectors, since hands occupy a tiny fraction of a full-body frame
-    and MediaPipe's palm detector struggles to find them at that scale. Face
-    is also a child stage (full-frame, no crop) purely to preserve the
-    existing pose/right_hand/left_hand/face point ordering that
-    merge_mediapipe_hand_face_children() and tracker_definitions.py expect.
+    Child ordering remains body/right hand/left hand/face for downstream merging.
+    The head crop makes small faces in full-body camera views detectable.
     """
     from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
         MediapipePoseDetectorConfig,
-    )
-    from skellytracker.core.detectors.keypoint_detectors.mediapipe.face.mediapipe_face_detector import (
-        MediapipeFaceDetectorConfig,
     )
     from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
         MediapipePoseModelComplexity,
@@ -397,16 +435,11 @@ def build_mediapipe_tracker_config(
                         presence_confidence=presence_confidence,
                         tracking_confidence=tracking_confidence,
                     ),
-                    DetectionStageConfig(
-                        name="face",
-                        keypoint_detectors=[
-                            MediapipeFaceDetectorConfig(
-                                num_faces=num_faces,
-                                min_face_detection_confidence=detection_confidence,
-                                min_face_presence_confidence=presence_confidence,
-                                min_face_tracking_confidence=tracking_confidence,
-                            )
-                        ],
+                    _mediapipe_face_child_stage(
+                        num_faces=num_faces,
+                        detection_confidence=detection_confidence,
+                        presence_confidence=presence_confidence,
+                        tracking_confidence=tracking_confidence,
                     ),
                 ],
                 keypoint_reset_policy=KeypointResetPolicyConfig(max_consecutive_misses=10),

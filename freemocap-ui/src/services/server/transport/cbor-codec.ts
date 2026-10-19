@@ -18,6 +18,14 @@ function toOwnedBytes(value: unknown): Uint8Array | null {
 }
 
 function normalizeValue(value: unknown): unknown {
+  // CBOR uint64/int64 values decode as bigint, including macOS thread IDs.
+  // The message contract uses numbers; convert only losslessly representable
+  // integers. Leave larger values for schema validation to reject.
+  if (typeof value === "bigint"
+      && value >= BigInt(Number.MIN_SAFE_INTEGER)
+      && value <= BigInt(Number.MAX_SAFE_INTEGER)) {
+    return Number(value);
+  }
   const bytes = toOwnedBytes(value);
   if (bytes !== null) return bytes;
   if (Array.isArray(value)) return value.map(normalizeValue);

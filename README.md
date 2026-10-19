@@ -33,12 +33,67 @@ retention, compatibility, and reproducible validation.
 
 ## Run the FreeMoCap application in development mode 
 1. Start the Python Server:
-   - `python freemocap/__main__.py`
-   - The server should start on `http://localhost:8005`
+   - `python -m freemocap`
+   - The server should start on `http://localhost:53117`
 2. Start the React GUI:
    - `npm run dev`
    - An Electron window should pop up with the FreeMoCap GUI
 
+
+### Intel Mac development and local builds
+
+Intel Macs use the CPU tracker and platform-specific native dependency versions.
+Use Python 3.11 or 3.12 and a current uv executable:
+
+```sh
+uv sync --python 3.11 --no-default-groups --group cpu --group dev
+.venv/bin/python -m freemocap
+```
+
+The backend's default address is `http://localhost:53117`. For UI development,
+use Node 22.12 or newer, enter `freemocap-ui`, run `npm ci`, then `npm run dev`.
+Dependencies come from their declared Git branches; the lockfile records the
+specific revisions. No sibling checkout or local dependency override is required.
+
+Use RTMPose with the CPU execution provider. MediaPipe remains visible but
+is disabled on Intel, with an explanation supplied by the connected backend.
+MediaPipe 0.10.21 has Intel wheels and the pose Tasks API used here, but its
+NumPy <2 and protobuf <5 requirements conflict with the current dependency set
+[@mediapipe01021Intel; @mediapipe01021Requirements; @mediapipe01021Pose].
+Intel uses ONNX Runtime 1.23.2, Numba 0.62.1, and NumPy 2.2.6; the typing package
+matches that NumPy minor version [@numba062IntelMac; @numpyTypingCompat].
+Other platforms retain their existing constraints.
+
+For a local Intel app, from this repository root with the CPU environment and
+UI dependencies installed, use a fresh generated output directory:
+
+```sh
+FREEMOCAP_BUILD_VARIANT=cpu .venv/bin/python -m PyInstaller freemocap.spec
+# Preserve framework symlinks; do not flatten the Python framework when copying.
+# The destination freemocap-ui/freemocap_server must not already exist.
+cp -a dist/freemocap_server freemocap-ui/freemocap_server
+cd freemocap-ui
+npm run build -- --mac --x64 --dir --publish never --config.mac.identity=null --config.mac.notarize=false
+cd ..
+node tools/sign_local_macos_app.cjs /absolute/path/to/the/generated/FreeMoCap.app
+```
+
+The final signing command applies the existing camera/microphone entitlements
+and verifies the resulting signature. An unsigned app can start and enumerate
+cameras yet be denied camera capture. Launch the signed app through Finder and
+allow camera access when macOS prompts. This ad-hoc signature is for local
+testing; release CI uses Developer ID signing and notarization.
+
+The release matrix builds Apple Silicon and Intel separately, using
+`macos-15-intel` for native x86_64 builds [@githubHostedIntelRunner]. Each app must
+contain a server built for its own architecture.
+
+On macOS 14.3.1 x86_64, backend startup, health/OpenAPI endpoints, CPU tracker
+inference, frontend log decoding, and camera access in a signed local app have
+been verified. Full multi-camera recording/processing, clean-machine installation,
+and the new hosted Intel release job remain to be validated. The local native
+build reported an unresolved Numba OpenMP library; audio synchronization and
+other Numba workloads still need explicit packaged testing.
 
 ## Build the FreeMoCap application 
 (NOTE - This is not necessary for development, and does not handle the Python server yet)

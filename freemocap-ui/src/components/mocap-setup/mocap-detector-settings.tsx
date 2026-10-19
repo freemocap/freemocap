@@ -99,6 +99,7 @@ const BOARD_GROUP_INFO = {
 
 export default function MocapDetectorSettings() {
     const dispatch = useAppDispatch();
+    const mediapipeUnavailableReason = useAppSelector(state => state.connection.mediapipeUnavailableReason);
     const detectBoard = useAppSelector(state => state.mocap.config.charucoTrackingEnabled);
     const {
         detectorType,
@@ -122,8 +123,14 @@ export default function MocapDetectorSettings() {
     return <>
         {/* The detector reframes every row beneath it, so it leads the section. */}
         <SettingRow promoted label="Skeleton detector" info={DETECTOR_INFO}
-            control={<SettingSelectInput label="Skeleton detector" value={detector} options={DETECTORS}
-                onChange={setDetectorType}/>}/>
+            control={<SettingSelectInput label="Skeleton detector" value={detector}
+                options={DETECTORS.map(option => ({...option,
+                    disabledReason: option.value === 'mediapipe' ? mediapipeUnavailableReason ?? undefined : undefined,
+                }))}
+                onChange={value => {
+                    if (value === 'mediapipe' && mediapipeUnavailableReason) return;
+                    setDetectorType(value);
+                }}/>}/>
 
         {detector === "rtmpose" && <>
             <SettingRow label="Model" info={MODEL_INFO}

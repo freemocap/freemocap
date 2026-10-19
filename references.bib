@@ -363,6 +363,65 @@
  note = {Reviewed openExternal; OS handoff does not establish that the destination opened the folder.}
 }
 
+@misc{mediapipe01021Intel,
+  title = {MediaPipe 0.10.21 release files},
+  author = {{Google AI Edge}},
+  url = {https://pypi.org/project/mediapipe/0.10.21/},
+  urldate = {2026-10-18},
+  review = {excerpt},
+  claim = {MediaPipe 0.10.21 distributes Intel macOS wheels.},
+  note = {Reviewed wheel platform tags; this does not establish compatibility with the current application.}
+}
+
+@misc{mediapipe01021Requirements,
+  title = {MediaPipe v0.10.21 Python requirements},
+  author = {{Google AI Edge}},
+  url = {https://raw.githubusercontent.com/google-ai-edge/mediapipe/v0.10.21/requirements.txt},
+  urldate = {2026-10-18},
+  review = {source-code},
+  claim = {This MediaPipe release requires NumPy below 2 and protobuf from 4.25.3 up to, but excluding, 5.}
+}
+
+@misc{mediapipe01021Pose,
+  title = {MediaPipe v0.10.21 Pose Landmarker Python API},
+  author = {{Google AI Edge}},
+  url = {https://raw.githubusercontent.com/google-ai-edge/mediapipe/v0.10.21/mediapipe/tasks/python/vision/pose_landmarker.py},
+  urldate = {2026-10-18},
+  review = {excerpt},
+  claim = {The older release provides the pose Tasks API used by the tracker.},
+  note = {Reviewed API declarations; no native inference compatibility test was performed with this older release.}
+}
+
+@misc{numpyTypingCompat,
+  title = {numpy-typing-compat},
+  author = {{numpy-typing-compat contributors}},
+  url = {https://pypi.org/project/numpy-typing-compat/},
+  urldate = {2026-10-18},
+  review = {excerpt},
+  claim = {The 20251206.2.2 typing distribution supports NumPy versions from 2.2 up to, but excluding, 2.3.},
+  note = {Reviewed the NumPy compatibility table and package-manager guidance.}
+}
+
+@misc{numba062IntelMac,
+  title = {Version 0.62.0 release notes},
+  author = {{Numba developers}},
+  url = {https://numba.readthedocs.io/en/stable/release/0.62.0-notes.html},
+  urldate = {2026-10-18},
+  review = {excerpt},
+  claim = {Numba 0.62 adds NumPy 2.3 support and is the last release series providing official Intel macOS binary artifacts.},
+  note = {Reviewed the release introduction and NumPy support section. The NumPy upper bound is also checked by the package resolver during the Intel installation experiment.}
+}
+
+@misc{astralUvDependencySources,
+  title = {Managing dependencies},
+  author = {{Astral}},
+  url = {https://docs.astral.sh/uv/concepts/projects/dependencies/},
+  urldate = {2026-10-18},
+  review = {excerpt},
+  claim = {uv project sources can select a local directory and install it editable so source edits are available without reinstalling.},
+  note = {Reviewed dependency sources, path sources, and editable dependencies for the local worktree integration experiment.}
+}
+
 @misc{mdnPopoverAPI,
   title = {Popover API},
   author = {{MDN contributors}},
@@ -371,4 +430,14 @@
   review = {excerpt},
   claim = {Manual popovers render in the browser top layer without making the page modal.},
   note = {Reviewed concepts and showPopover/hidePopover behavior for shared tooltip surfaces.}
+}
+
+@misc{githubHostedIntelRunner,
+  title = {GitHub-hosted runners reference},
+  author = {{GitHub}},
+  url = {https://docs.github.com/en/actions/reference/runners/github-hosted-runners},
+  urldate = {2026-10-18},
+  review = {excerpt},
+  claim = {The macos-15-intel label selects a standard Intel macOS runner.},
+  note = {Reviewed the public repository standard runner table to select a native x86_64 build job. The hosted installer job has not yet been executed for this change.}
 }

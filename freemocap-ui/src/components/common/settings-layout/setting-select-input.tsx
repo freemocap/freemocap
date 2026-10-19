@@ -3,6 +3,7 @@ import './settings-layout.css';
 interface SettingSelectOption<Value extends string> {
     label: string;
     value: Value;
+    disabledReason?: string;
 }
 
 interface SettingSelectInputProps<Value extends string> {
@@ -24,10 +25,12 @@ interface SettingSelectInputProps<Value extends string> {
 export default function SettingSelectInput<Value extends string>(
     {label, value, options, onChange, disabled = false}: SettingSelectInputProps<Value>,
 ) {
-    return <span className="setting-select-input">
+    const unavailableReasons = options.flatMap(option => option.disabledReason ? [option.disabledReason] : []);
+    return <span className="setting-select-input" title={unavailableReasons.join(' ') || undefined}>
         <select aria-label={label} value={value} disabled={disabled}
             onChange={event => onChange(event.target.value as Value)}>
-            {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            {options.map(option => <option key={option.value} value={option.value}
+                disabled={!!option.disabledReason} title={option.disabledReason}>{option.label}</option>)}
         </select>
     </span>;
 }

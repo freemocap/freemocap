@@ -9,7 +9,10 @@ dependencies = [
     "filelock>=3.0",
     "PyYAML>=6.0",
     #    "aniposelib>=0.7.0",
-    "numba>=0.65.1",
+    # Numba 0.62 is the last release series with Intel Mac wheels.
+    # See [@numba062IntelMac].
+    "numba==0.62.1; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "numba>=0.65.1; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "libsass>=0.23.0",
     "opencv-contrib-python",#==4.10.*",
     "pyinstaller>=6.11.0",
@@ -75,8 +78,15 @@ packages = ["freemocap"]
   # (--no-default-groups is required — cuda and cpu both ship skellytracker with a
   # different onnxruntime backend and can't coexist on disk, see the rtmlib note below.)
   default-groups = ["tracker-default"]
+  constraint-dependencies = [
+      # Match the typing package to Intel's NumPy minor version. [@numpyTypingCompat]
+      "numpy-typing-compat==20251206.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+  ]
   override-dependencies = [
-      "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
+      # Intel's Numba 0.62 requires NumPy <2.4; SkellyCam's OpenCV 4.12
+      # requires <2.3. Use their common supported range. [@numba062IntelMac]
+      "numpy>=2.2.6,<2.3; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+      "numpy>=2.3.4,<2.5; sys_platform != 'darwin' or platform_machine != 'x86_64'",  # <2.5: beartype NDArray introspection
       "pandas>=2.2.2,<3",  # pandas<2.2.2 wheels are built against the NumPy 1.x C ABI and crash importing against NumPy 2.x; <3 avoids the major-version jump
       "mediapipe==0.10.33; sys_platform != 'darwin' or platform_machine != 'x86_64'",
   ]

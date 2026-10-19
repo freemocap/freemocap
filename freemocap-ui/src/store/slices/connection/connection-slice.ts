@@ -4,6 +4,7 @@ import { AppStateMessage, ConnectionState } from './connection-types';
 const initialState: ConnectionState = {
     isConnected: false,
     serverPid: null,
+    mediapipeUnavailableReason: null,
     cameraGroups: [],
     realtimePipelines: [],
 };
@@ -20,6 +21,7 @@ export const connectionSlice = createSlice({
         // The cameras and realtime slices also listen for this to reconcile.
         serverStateReceived: (state, action: PayloadAction<AppStateMessage>) => {
             state.serverPid = action.payload.server_pid;
+            state.mediapipeUnavailableReason = action.payload.mediapipe_unavailable_reason ?? null;
             state.cameraGroups = Object.values(action.payload.state.camera_groups);
             state.realtimePipelines = action.payload.state.realtime_pipelines ?? [];
         },
@@ -27,6 +29,7 @@ export const connectionSlice = createSlice({
         serverDisconnected: (state) => {
             state.isConnected = false;
             state.serverPid = null;
+            state.mediapipeUnavailableReason = null;
             state.cameraGroups = [];
             state.realtimePipelines = [];
         },

@@ -628,10 +628,13 @@ class AppStateMessage:
     envelope: MessageEnvelope = field(default_factory=MessageEnvelope)
     server_pid: int = 0
     state: AppStateSnapshot = field(default_factory=AppStateSnapshot)
+    mediapipe_unavailable_reason: str | None = None
 
     @classmethod
     def from_state_dict(cls, *, server_pid: int, state: dict[str, Any]) -> "AppStateMessage":
-        return cls(server_pid=server_pid, state=AppStateSnapshot.from_state_dict(state))
+        from freemocap.system.tracker_capabilities import mediapipe_unavailable_reason
+        return cls(server_pid=server_pid, state=AppStateSnapshot.from_state_dict(state),
+                   mediapipe_unavailable_reason=mediapipe_unavailable_reason())
 
 
 @dataclass(frozen=True, slots=True)

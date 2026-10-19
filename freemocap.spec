@@ -44,36 +44,39 @@ binaries.extend(collect_dynamic_libs('pandas'))
 hiddenimports.append('pandas._libs._cyutility')
 
 # ── mediapipe (needs .tflite model files at runtime; only solutions/vision/formats) ──
-import mediapipe
-mp_path = os.path.dirname(mediapipe.__file__)
-datas.append((os.path.join(mp_path, 'modules'), 'mediapipe/modules'))
-hiddenimports.extend([
-    'mediapipe',
-    'mediapipe.python.solutions',
-    'mediapipe.python.solutions.holistic',
-    'mediapipe.python.solutions.drawing_utils',
-    'mediapipe.python.solutions.face_mesh',
-    'mediapipe.python.solutions.face_mesh_connections',
-    'mediapipe.framework.formats',
-    'mediapipe.framework.formats.landmark_pb2',
-    'mediapipe.tasks.python',
-    'mediapipe.tasks.python.vision',
-])
+if importlib.util.find_spec('mediapipe') is not None:
+    import mediapipe
+    mp_path = os.path.dirname(mediapipe.__file__)
+    datas.append((os.path.join(mp_path, 'modules'), 'mediapipe/modules'))
+    hiddenimports.extend([
+        'mediapipe',
+        'mediapipe.python.solutions',
+        'mediapipe.python.solutions.holistic',
+        'mediapipe.python.solutions.drawing_utils',
+        'mediapipe.python.solutions.face_mesh',
+        'mediapipe.python.solutions.face_mesh_connections',
+        'mediapipe.framework.formats',
+        'mediapipe.framework.formats.landmark_pb2',
+        'mediapipe.tasks.python',
+        'mediapipe.tasks.python.vision',
+    ])
 
-# `mediapipe.tasks.python.core.mediapipe_c_bindings` loads a native shared
-# library (libmediapipe.dll/.dylib/.so) out of the `mediapipe.tasks.c`
-# package directory via `importlib.resources.files('mediapipe.tasks.c')` at
-# runtime. PyInstaller won't discover that binary on its own since it's
-# never `import`ed as a normal module — it must be bundled as data so it
-# lands next to `tasks/c/__init__.py` in the frozen app, and `tasks.c` must
-# be a hiddenimport so the package (and thus its resource location) exists.
-mp_tasks_c_path = os.path.join(mp_path, 'tasks', 'c')
-if os.path.isdir(mp_tasks_c_path):
-    for lib_name in ('libmediapipe.dll', 'libmediapipe.dylib', 'libmediapipe.so'):
-        lib_file = os.path.join(mp_tasks_c_path, lib_name)
-        if os.path.isfile(lib_file):
-            binaries.append((lib_file, 'mediapipe/tasks/c'))
-hiddenimports.append('mediapipe.tasks.c')
+    # `mediapipe.tasks.python.core.mediapipe_c_bindings` loads a native shared
+    # library (libmediapipe.dll/.dylib/.so) out of the `mediapipe.tasks.c`
+    # package directory via `importlib.resources.files('mediapipe.tasks.c')` at
+    # runtime. PyInstaller won't discover that binary on its own since it's
+    # never `import`ed as a normal module — it must be bundled as data so it
+    # lands next to `tasks/c/__init__.py` in the frozen app, and `tasks.c` must
+    # be a hiddenimport so the package (and thus its resource location) exists.
+    mp_tasks_c_path = os.path.join(mp_path, 'tasks', 'c')
+    if os.path.isdir(mp_tasks_c_path):
+        for lib_name in ('libmediapipe.dll', 'libmediapipe.dylib', 'libmediapipe.so'):
+            lib_file = os.path.join(mp_tasks_c_path, lib_name)
+            if os.path.isfile(lib_file):
+                binaries.append((lib_file, 'mediapipe/tasks/c'))
+    hiddenimports.append('mediapipe.tasks.c')
+else:
+    print('[freemocap.spec] MediaPipe is not installed; building without it.')
 
 # ── skellyforge (yaml definition files needed at runtime) ──
 import skellyforge
@@ -199,7 +202,6 @@ a = Analysis(
         'libsass',
         'sass',
         'sklearn',
-        'numpydantic',
 
         # ── onnxruntime dev tools (not needed at runtime) ──
         'onnxruntime.transformers',

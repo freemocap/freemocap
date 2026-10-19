@@ -26,6 +26,7 @@ export interface AppStateSnapshot {
  * pushed on connect and whenever it changes. */
 export interface AppStateMessage {
     server_pid: number;
+    mediapipe_unavailable_reason?: string | null;
     state: AppStateSnapshot;
 }
 
@@ -33,6 +34,7 @@ export interface AppStateMessage {
 export interface ConnectionState {
     isConnected: boolean;
     serverPid: number | null;
+    mediapipeUnavailableReason: string | null;
     cameraGroups: CameraGroupSnapshot[];
     realtimePipelines: RealtimePipelineSnapshot[];
 }

@@ -41,6 +41,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     onRigidBodyToggle,
 }) => {
     const dispatch = useAppDispatch();
+    const mediapipeUnavailableReason = useAppSelector(state => state.connection.mediapipeUnavailableReason);
 
     // ── Realtime pipeline config (for context="realtime") ──────────────────────
     const pipelineConfig = useAppSelector(state => state.realtime.pipelineConfig);
@@ -88,12 +89,13 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     );
 
     const handleSetDetectorType = useCallback((type: DetectorType) => {
+        if (type === "mediapipe" && mediapipeUnavailableReason) return;
         if (context === "realtime") {
             handleCameraNodeConfigUpdate({ detector_type: type });
         } else {
             setPosThocDetectorType(type);
         }
-    }, [context, handleCameraNodeConfigUpdate, setPosThocDetectorType]);
+    }, [context, handleCameraNodeConfigUpdate, setPosThocDetectorType, mediapipeUnavailableReason]);
 
     // ── Skeleton filter config ─────────────────────────────────────────────────
     const handleUpdateSkeletonFilterConfig = useCallback(
@@ -185,13 +187,17 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                             <span className="text-sm">Detector</span>
                             <div className="flex flex-row gap-1">
                                 {(["rtmpose", "mediapipe"] as DetectorType[]).map((type) => (
+                                    <span key={type}
+                                          title={type === "mediapipe" ? mediapipeUnavailableReason ?? undefined : undefined}
+                                          tabIndex={type === "mediapipe" && mediapipeUnavailableReason ? 0 : undefined}>
                                     <button
-                                        key={type}
                                         className={`button sm br-1 ${activeDetectorType === type ? "primary accent" : "quaternary"}`}
+                                        disabled={type === "mediapipe" && !!mediapipeUnavailableReason}
                                         onClick={() => handleSetDetectorType(type)}
                                     >
                                         {type === "rtmpose" ? "RTMPose" : "MediaPipe"}
                                     </button>
+                                    </span>
                                 ))}
                             </div>
                         </div>

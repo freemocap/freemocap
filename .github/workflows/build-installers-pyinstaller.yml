@@ -57,6 +57,16 @@ jobs:
             electron-arch: arm64
             install-gpu: false
 
+          # Intel macOS has a separate native runner and server bundle. [@githubHostedIntelRunner]
+          - os: macos-15-intel
+            platform: macos
+            arch: x64
+            variant: cpu
+            label: macos-x64-intel
+            server-binary: freemocap_server
+            electron-arch: x64
+            install-gpu: false
+
           # ── Linux x64 CPU (fits on GitHub Releases) ──
           - os: ubuntu-22.04
             platform: linux
@@ -558,8 +568,8 @@ jobs:
             freemocap-ui/release/**/latest.yml
           include-hidden-files: true
 
-      - name: Upload auto-update metadata (macOS ARM)
-        if: matrix.platform == 'macos' && matrix.arch == 'arm64'
+      - name: Upload auto-update metadata (macOS)
+        if: matrix.platform == 'macos'
         uses: actions/upload-artifact@v7
         with:
           name: update-metadata-${{ matrix.label }}
@@ -604,6 +614,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - name: Install updater metadata tooling
+        run: python -m pip install PyYAML==6.0.3
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -744,19 +757,7 @@ jobs:
 
           # macOS: latest-mac.yml (combine x64 and arm64 entries)
           # electron-updater picks the right arch from a single latest-mac.yml
-          MAC_YML=""
-          for dir in artifacts/update-metadata-macos-*; do
-            found=$(find "$dir" -name 'latest-mac.yml' 2>/dev/null | head -1)
-            if [ -n "$found" ] && [ -z "$MAC_YML" ]; then
-              MAC_YML="$found"
-            fi
-          done
-          if [ -n "$MAC_YML" ]; then
-            # Patch filenames to match renamed assets (Apple Silicon only)
-            sed -i "s|freemocap_.*_installer\.zip|freemocap_${VERSION}_macos-arm64-apple-silicon.zip|g" "$MAC_YML"
-            cp "$MAC_YML" "release-assets/latest-mac.yml"
-            echo "Copied latest-mac.yml for macOS"
-          fi
+          python tools/merge_macos_update_metadata.py artifacts "$VERSION" release-assets/latest-mac.yml
 
           # Linux CPU: latest-linux.yml
           if [ -d "artifacts/update-metadata-linux-x64-cpu" ]; then

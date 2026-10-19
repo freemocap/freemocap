@@ -250,6 +250,7 @@ export const AppStateMessageSchema = z.object({
   kind: z.literal("app_state"),
   ...ENVELOPE,
   server_pid: z.number().int(),
+  mediapipe_unavailable_reason: z.string().nullable().optional().default(null),
   state: z.object({
     camera_groups: z.record(
       z.string(),

@@ -106,11 +106,11 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 `freemocap` requires the `cuda` or `cpu` extra to be specified — plain `pip install freemocap` will install without its tracker. Pick one:
 
 ```
-pip install freemocap[cuda]   # Windows/Linux with an NVIDIA GPU
+pip install 'freemocap[cuda]'   # Windows/Linux with an NVIDIA GPU
 ```
 
 ```
-pip install freemocap[cpu]    # macOS, or Windows/Linux without a supported GPU
+pip install 'freemocap[cpu]'    # macOS, or Windows/Linux without a supported GPU
 ```
 
 #### 2. Launch the GUI by entering the command:

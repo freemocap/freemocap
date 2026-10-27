@@ -249,55 +249,73 @@ class VideoNode(SourceNode):
         pipeline_type: PosthocPipelineType,
     ) -> None:
         node_pipeline_id = f"{pipeline_id}:{camera_id}"
-        video_progress_pub.put(VideoNodeProgressMessage(
-            camera_id=camera_id,
-            pipeline_id=node_pipeline_id,
-            pipeline_type=str(pipeline_type),
-            phase=VideoNodePhase.SETTING_UP,
-            progress_fraction=0.0,
-            detail="Loading tracker...",
-            recording_name=recording_path.name,
-            recording_path=str(recording_path),
-        ))
-        tracker, session = _build_tracker(detector_config)
-        tracker_state = TrackerState()
 
-        cache = _build_recording_frame_cache(
-            recording_path=recording_path,
-            camera_id=camera_id,
-            detector_config=detector_config,
-        )
-        if cache is not None:
-            logger.info(
-                f"VideoNode [{camera_id}]: reusing {len(cache)} realtime Charuco "
-                f"observations — only uncached frames will be detected"
+        video_progress_pub.put(
+            VideoNodeProgressMessage(
+                camera_id=camera_id,
+                pipeline_id=node_pipeline_id,
+                pipeline_type=str(pipeline_type),
+                phase=VideoNodePhase.SETTING_UP,
+                progress_fraction=0.0,
+                detail="Loading tracker...",
+                recording_name=recording_path.name,
+                recording_path=str(recording_path),
             )
+        )
 
-        video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
-        if not video_reader.isOpened():
-            raise RuntimeError(f"Failed to open video file: {video_path}")
-        frame_count: int = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
-        video_progress_pub.put(VideoNodeProgressMessage(
-            camera_id=camera_id,
-            pipeline_id=node_pipeline_id,
-            pipeline_type=str(pipeline_type),
-            phase=VideoNodePhase.SETTING_UP,
-            progress_fraction=0.0,
-            detail=f"Preparing {frame_count} frames",
-            recording_name=recording_path.name,
-            recording_path=str(recording_path),
-        ))
+        tracker = None
+        session = None
+        tracker_state = None
+        cache = None
 
+        video_reader: cv2.VideoCapture | None = None
         annotator = None
         video_writer: cv2.VideoWriter | None = None
         base_reader: cv2.VideoCapture | None = None
         prev_annotated_path: Path | None = None
 
-        frame_number: int = 0
+        frame_number = 0
+        frame_count = 0
         _error_occurred = False
+
         try:
+            tracker, session = _build_tracker(detector_config)
+            tracker_state = TrackerState()
+
+            cache = _build_recording_frame_cache(
+                recording_path=recording_path,
+                camera_id=camera_id,
+                detector_config=detector_config,
+            )
+
+            if cache is not None:
+                logger.info(
+                    f"VideoNode [{camera_id}]: reusing {len(cache)} realtime Charuco "
+                    f"observations — only uncached frames will be detected"
+                )
+
+            video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
+            if not video_reader.isOpened():
+                raise RuntimeError(f"Failed to open video file: {video_path}")
+
+            frame_count = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
+
+            video_progress_pub.put(
+                VideoNodeProgressMessage(
+                    camera_id=camera_id,
+                    pipeline_id=node_pipeline_id,
+                    pipeline_type=str(pipeline_type),
+                    phase=VideoNodePhase.SETTING_UP,
+                    progress_fraction=0.0,
+                    detail=f"Preparing {frame_count} frames",
+                    recording_name=recording_path.name,
+                    recording_path=str(recording_path),
+                )
+            )
+
             if save_annotated_video:
                 annotator = _build_annotator(detector_config)
+
                 annotated_output_path, prev_annotated_path = VideoNode._resolve_annotated_video_paths(
                     recording_path=recording_path,
                     video_path=video_path,
@@ -305,20 +323,27 @@ class VideoNode(SourceNode):
 
                 if prev_annotated_path is not None:
                     base_reader = cv2.VideoCapture(str(prev_annotated_path), cv2.CAP_FFMPEG)
+
                     if not base_reader.isOpened():
                         logger.warning(
                             f"Failed to open previous annotated video for {video_path.stem} — "
                             f"will annotate from source frames instead"
                         )
+                        base_reader.release()
                         base_reader = None
 
                 fps = video_reader.get(cv2.CAP_PROP_FPS)
                 width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
                 for fourcc in ("avc1", "mp4v", "MJPG"):
                     video_writer = cv2.VideoWriter(
-                        str(annotated_output_path), cv2.VideoWriter.fourcc(*fourcc), fps, (width, height)
+                        str(annotated_output_path),
+                        cv2.VideoWriter.fourcc(*fourcc),
+                        fps,
+                        (width, height),
                     )
+
                     if video_writer.isOpened():
                         if fourcc != "avc1":
                             logger.warning(
@@ -326,16 +351,17 @@ class VideoNode(SourceNode):
                                 f"using '{fourcc}' instead"
                             )
                         break
+
                     video_writer.release()
-                if not video_writer.isOpened():
-                    raise RuntimeError(
-                        f"Failed to create video writer for: {annotated_output_path}"
-                    )
+
+                if video_writer is None or not video_writer.isOpened():
+                    raise RuntimeError(f"Failed to create video writer for: {annotated_output_path}")
 
             logger.info(
                 f"VideoNode started for {video_path.stem}"
                 f"{' (with annotation)' if save_annotated_video else ''}"
             )
+
             with tqdm(
                 total=frame_count,
                 desc=video_path.stem,
@@ -344,6 +370,7 @@ class VideoNode(SourceNode):
                 dynamic_ncols=True,
             ) as pbar:
                 success, image = video_reader.read()
+
                 while success and not shutdown_self_flag.value and ipc.should_continue:
                     observation, tracker_state = _get_observation(
                         frame_number=frame_number,
@@ -352,21 +379,23 @@ class VideoNode(SourceNode):
                         state=tracker_state,
                         cache=cache,
                     )
+
                     video_output_pub.put(
                         VideoNodeOutputMessage(
                             camera_id=camera_id,
                             frame_number=frame_number,
                             observation=observation,
-                        ),
+                        )
                     )
 
                     if annotator is not None and video_writer is not None:
                         if base_reader is not None:
                             base_ok, base_frame = base_reader.read()
+
                             if not base_ok or base_frame is None:
                                 logger.warning(
-                                    f"Previous annotated video ran out of frames at frame {frame_number} "
-                                    f"for {video_path.stem} — falling back to source frames"
+                                    f"Previous annotated video ran out of frames at frame "
+                                    f"{frame_number} for {video_path.stem} — falling back to source frames"
                                 )
                                 base_reader.release()
                                 base_reader = None
@@ -381,58 +410,75 @@ class VideoNode(SourceNode):
 
                     success, image = video_reader.read()
                     frame_number += 1
-                    video_progress_pub.put(VideoNodeProgressMessage(
-                        camera_id=camera_id,
-                        pipeline_id=node_pipeline_id,
-                        pipeline_type=str(pipeline_type),
-                        phase=VideoNodePhase.PROCESSING_IMAGES,
-                        progress_fraction=frame_number / frame_count,
-                        detail=f"Camera {camera_id}: {frame_number}/{frame_count} frames",
-                        recording_name=recording_path.name,
-                        recording_path=str(recording_path),
-                    ))
+
+                    video_progress_pub.put(
+                        VideoNodeProgressMessage(
+                            camera_id=camera_id,
+                            pipeline_id=node_pipeline_id,
+                            pipeline_type=str(pipeline_type),
+                            phase=VideoNodePhase.PROCESSING_IMAGES,
+                            progress_fraction=frame_number / frame_count if frame_count > 0 else 0.0,
+                            detail=f"Camera {camera_id}: {frame_number}/{frame_count} frames",
+                            recording_name=recording_path.name,
+                            recording_path=str(recording_path),
+                        )
+                    )
+
                     pbar.update(1)
 
             logger.info(
-                f"VideoNode for {video_path.stem} finished reading "
-                f"{frame_number} frames"
+                f"VideoNode for {video_path.stem} finished reading {frame_number} frames"
             )
 
         except Exception as e:
-            logger.exception(
-                f"Exception in VideoNode for {video_path.stem}: {e}"
-            )
             _error_occurred = True
-            video_progress_pub.put(VideoNodeProgressMessage(
-                camera_id=camera_id,
-                pipeline_id=node_pipeline_id,
-                pipeline_type=str(pipeline_type),
-                phase=VideoNodePhase.FAILED,
-                progress_fraction=frame_number / frame_count if frame_count > 0 else 0.0,
-                detail=f"{type(e).__name__}: {e}",
-                recording_name=recording_path.name,
-                recording_path=str(recording_path),
-            ))
-            ipc.shutdown_pipeline()
-        finally:
-            tracker.close()
-            video_reader.release()
-            if not _error_occurred:
-                video_progress_pub.put(VideoNodeProgressMessage(
+
+            logger.exception(f"Exception in VideoNode for {video_path.stem}: {e}")
+
+            video_progress_pub.put(
+                VideoNodeProgressMessage(
                     camera_id=camera_id,
                     pipeline_id=node_pipeline_id,
                     pipeline_type=str(pipeline_type),
-                    phase=VideoNodePhase.COMPLETE,
-                    progress_fraction=1.0,
+                    phase=VideoNodePhase.FAILED,
+                    progress_fraction=frame_number / frame_count if frame_count > 0 else 0.0,
+                    detail=f"{type(e).__name__}: {e}",
                     recording_name=recording_path.name,
                     recording_path=str(recording_path),
-                ))
+                )
+            )
+
+            ipc.shutdown_pipeline()
+
+        finally:
+            if tracker is not None:
+                tracker.close()
+
+            if video_reader is not None:
+                video_reader.release()
+
+            if not _error_occurred:
+                video_progress_pub.put(
+                    VideoNodeProgressMessage(
+                        camera_id=camera_id,
+                        pipeline_id=node_pipeline_id,
+                        pipeline_type=str(pipeline_type),
+                        phase=VideoNodePhase.COMPLETE,
+                        progress_fraction=1.0,
+                        recording_name=recording_path.name,
+                        recording_path=str(recording_path),
+                    )
+                )
+
             if video_writer is not None:
                 video_writer.release()
+
             if base_reader is not None:
                 base_reader.release()
+
             if prev_annotated_path is not None and prev_annotated_path.exists():
                 prev_annotated_path.unlink()
+
             logger.debug(f"VideoNode for {video_path.stem} exiting")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:

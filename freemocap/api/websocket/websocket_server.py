@@ -14,7 +14,7 @@ import msgspec
 import numpy as np
 from fastapi import FastAPI
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
-from skellylogs import get_websocket_log_queue
+from freemocap.system.logging.log_queue_consumer import FRONTEND_LOG_QUEUE
 from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
@@ -319,16 +319,13 @@ class WebsocketServer:
 
     async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):
         logger.info("Starting websocket log relay listener...")
-        logs_queue = get_websocket_log_queue()
         try:
             while self.should_continue:
                 if self.websocket.client_state == WebSocketState.CONNECTED:
                     try:
-                        # Skellycam's WebSocketQueueHandler puts LogRecordModel dicts
-                        # into the queue via put_nowait(). On rare occasions a child
-                        # process exit (cancel_join_thread) can leave a partial pickle
-                        # in the pipe — EOFError/OSError handles that gracefully.
-                        log_entry: dict = logs_queue.get_nowait()
+                        # The central log queue consumer forwards LogRecordModel dicts
+                        # here for delivery to the frontend.
+                        log_entry: dict = FRONTEND_LOG_QUEUE.get_nowait()
                     except Empty:
                         await await_10ms()
                         continue

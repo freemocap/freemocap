@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from freemocap.core.pipeline.posthoc.task_snapshot import TaskRegistrySnapshot
 from freemocap.core.diagnostics.pipeline_diagnostics import PipelineDiagnostics
 from freemocap.core.types.channel_kind import ChannelKind
+from freemocap.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
 from skellycam.core.types.type_overloads import (
     CameraGroupIdString,
     CameraIdString,
@@ -419,6 +420,40 @@ class ChannelBlock:
     # points without depending on a calibration entry existing for the camera.
     image_size: tuple[int, int] | None = None
 
+    def tensor_layout(
+        self, *, entity_ids: tuple[str, ...] | None = None,
+        source_identity: SourceIdentity | None = None,
+    ) -> TensorLayout:
+        """Resolve the same ordered axes as recording, with explicit wire precision.
+
+        Channels without inline names require their model's authored entity IDs.
+        The wire does not declare per-component units, so this adapter does not
+        invent them. Producers supply source identity; camera channels require it
+        so prepared selections cannot silently cross camera identities.
+        """
+        if self.camera_id is not None and (
+            source_identity is None or source_identity.camera_id != self.camera_id
+        ):
+            raise ValueError("Channel requires source identity with its declared camera ID")
+        if self.names is not None and entity_ids is not None and self.names != entity_ids:
+            raise ValueError("Inline and model entity order disagree")
+        resolved_names = self.names if self.names is not None else entity_ids
+        if resolved_names is None:
+            raise ValueError("Channel requires explicit model entity IDs")
+        channel_layout = TensorLayout(
+            axes=(
+                AxisDefinition("entity_identity", resolved_names),
+                AxisDefinition("component_identity", self.columns),
+            ),
+            dtype="<f4",
+            channel_kind=str(self.kind),
+            source_identity=source_identity,
+        )
+        expected_bytes = len(resolved_names) * len(self.columns) * channel_layout.dtype.itemsize
+        if len(self.data) != expected_bytes:
+            raise ValueError(f"Channel payload requires {expected_bytes} bytes, received {len(self.data)}")
+        return channel_layout
+
     @classmethod
     def from_float32_rows(
         cls,
@@ -431,7 +466,11 @@ class ChannelBlock:
     ) -> "ChannelBlock":
         packed = bytearray()
         for row in rows:
+            if len(row) != len(columns):
+                raise ValueError("Channel row width must match declared components")
             packed += struct.pack(f"<{len(row)}f", *row)
+        if names is not None and len(names) != len(rows):
+            raise ValueError("Channel row count must match declared entity IDs")
         return cls(kind=kind, columns=tuple(columns), data=bytes(packed), camera_id=camera_id, names=names)
 
 

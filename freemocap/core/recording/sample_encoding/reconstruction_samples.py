@@ -57,7 +57,7 @@ class ReconstructionSourceDefinition(Descriptor):
     landmark_names: tuple[str, ...]
     segment_origins: dict[str, str]
     segment_parents: dict[str, str | None]
-    joint_angle_names: dict[str, tuple[str, str, str]]
+    joint_angle_names: dict[str, tuple[str, ...]]
 
     @property
     def source_name(self) -> str:
@@ -133,25 +133,28 @@ class ReconstructionRecording:
         }
 
     def __post_init__(self) -> None:
-        if not self.result.frames:
-            raise ValueError("Reconstruction recording requires frames")
+        if self.result.model_id != self.definition.model_id:
+            raise ValueError("Reconstruction belongs to another model")
         if self.result.scale_fit is not None and set(
             self.result.scale_fit.segment_scales
         ) != set(self.definition.segment_origins):
             raise ValueError("Recording fit must cover the declared segments")
-        for frame in self.result.frames:
-            if frame is None:
-                continue
-            if frame.model_id != self.definition.model_id:
-                raise ValueError("Reconstruction frame belongs to another model")
-            if (set(frame.landmarks) | set(frame.mapped_keypoints)) - set(self.definition.landmark_names):
-                raise ValueError("Reconstruction contains undeclared landmarks")
-            if set(frame.joint_angles or {}) - set(self.definition.joint_angle_names):
-                raise ValueError("Reconstruction contains undeclared joints")
-            if (
-                set(frame.segment_origins) | set(frame.segment_rotations_world) | set(frame.segment_rotations_local)
-            ) - set(self.definition.segment_origins):
-                raise ValueError("Reconstruction contains undeclared segments")
+        if self.result.residual_reference != "recording_fit":
+            raise ValueError("Rigid-body diagnostic reference must match the recorded scale fit")
+        declared = tuple(self.channels())
+        if {str(channel.kind) for channel in declared} != {
+            tensor.tensor_layout.channel_kind for tensor in self.result.channel_tensors
+        }:
+            raise ValueError("Reconstruction tensors must exactly cover declared channels")
+        for channel in declared:
+            tensor = self.result.channel_tensor(str(channel.kind))
+            layout = tensor.tensor_layout
+            if (tuple(axis.axis_name for axis in layout.axes) != ("sample_position", "entity_identity", "component_identity")
+                    or layout.axes[1].identifiers != channel.names
+                    or layout.axes[2].identifiers != tuple(channel.components)):
+                raise ValueError("Reconstruction tensor axes differ from declared channel layout")
+            if tensor.data_values.dtype != np.float64:
+                raise ValueError("Reconstruction channels must retain float64 precision")
 
     def to_scale_fit(self) -> RecordingScaleFit:
         return RecordingScaleFit(
@@ -259,67 +262,9 @@ class ReconstructionRecording:
             )
 
     def series(self) -> Iterator[ChannelSeries]:
-        """World landmarks and orientations retain float64 precision and missing frames."""
+        """Publish existing channel buffers without frame/scalar reconstruction."""
         for channel in self.channels():
-            values = np.full(
-                (len(self.result.frames), len(channel.names), len(channel.components)),
-                np.nan,
-                dtype=np.float64,
-            )
-            for index, frame in enumerate(self.result.frames):
-                if frame is None:
-                    continue
-                match channel.kind:
-                    case ChannelKind.RIGID_BODY_RESIDUALS:
-                        positions = {}
-                        for name, reading in frame.rigid_body_residuals.items():
-                            fit = self.result.scale_fit
-                            reference = fit.segment_lengths[name] if fit is not None else None
-                            if reading.reference_kind != "recording_fit" or reading.reference_length != reference:
-                                raise ValueError("Rigid-body diagnostic reference must match the recorded scale fit")
-                            positions[name] = np.array([
-                                reading.measured_length if reading.measured_length is not None else np.nan,
-                                reading.residual if reading.residual is not None else np.nan,
-                            ], dtype=np.float64)
-                    case ChannelKind.ROTATIONS_WORLD:
-                        positions = frame.segment_rotations_world
-                    case ChannelKind.ROTATIONS_LOCAL:
-                        positions = frame.segment_rotations_local
-                    case ChannelKind.JOINT_ANGLES:
-                        positions = {
-                            name: np.array([value], dtype=np.float64)
-                            for joint, angles in (frame.joint_angles or {}).items()
-                            for name, value in zip(
-                                self.definition.joint_angle_names[joint],
-                                angles,
-                                strict=True,
-                            )
-                        }
-                    case ChannelKind.DERIVED_POINTS:
-                        positions = (
-                            {DerivedPointName.CENTER_OF_MASS: frame.center_of_mass}
-                            if frame.center_of_mass is not None
-                            else {}
-                        )
-                    case ChannelKind.MAPPED_KEYPOINTS_3D:
-                        positions = frame.mapped_keypoints
-                    case ChannelKind.SEGMENT_ORIGINS:
-                        positions = frame.segment_origins
-                    case ChannelKind.LANDMARKS_3D:
-                        positions = frame.landmarks
-                    case _:
-                        raise ValueError(
-                            f"Unsupported reconstruction channel: {channel.kind}"
-                        )
-                for point, name in enumerate(channel.names):
-                    key = name
-                    if key in positions:
-                        if positions[key].shape != (len(channel.components),):
-                            raise ValueError(
-                                "Reconstruction value has the wrong component shape"
-                            )
-                        values[index, point] = positions[key]
-            yield ChannelSeries(channel=channel, values=values)
+            yield ChannelSeries(channel=channel, values=self.result.channel_tensor(str(channel.kind)).data_values)
 
 
 class ParentRotationReference(Descriptor):

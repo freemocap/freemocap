@@ -1,7 +1,7 @@
 """Preserve point identity and missing-data decisions when checking an array at once."""
 import unittest
 import numpy as np
-from freemocap.core.reconstruction.posthoc_reconstruction import _finite_frame_points
+from freemocap.tests.recording_tensor_assertions import _finite_frame_points
 
 class FiniteFramePointTests(unittest.TestCase):
     def test_matches_old_checks_with_missing_coordinates_and_strided_input(self):

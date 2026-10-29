@@ -11,6 +11,7 @@ from freemocap.core.recording.data_descriptors.sample_conventions import (
 )
 
 import numpy as np
+from freemocap.core.tracking.observation_arrays import observation_arrays, point_selection
 import pyarrow as pa
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
 from skellytracker.core.data_primitives.observation import Observation
@@ -109,10 +110,9 @@ def observation_batches(
         raise ValueError("Expected an image-frame OVERLAY_2D observation channel")
     last_frame = -1
     last_timestamp = -math.inf
-    declared = {name: index for index, name in enumerate(channel.names)}
     component_axes = [("x", "y", "visibility").index(name) for name in channel.components]
-    frames_per_batch = max(1, batch_size // (len(channel.names) * 3))
-    values = np.empty((frames_per_batch, len(channel.names), 3), dtype=np.float64)
+    frames_per_batch = max(1, batch_size // (len(channel.names) * len(channel.components)))
+    values = np.empty((frames_per_batch, len(channel.names), len(channel.components)), dtype=np.float64)
     frames: list[int] = []
     timestamps: list[float] = []
     for sample in samples:
@@ -123,20 +123,18 @@ def observation_batches(
         if observation.frame_number <= last_frame:
             raise ValueError("Observation frame numbers must be nonnegative and strictly increasing")
         last_frame, last_timestamp = observation.frame_number, timestamp
-        points = observation.to_keypoints()
-        if len(set(points.names)) != len(points.names) or set(points.names) - declared.keys():
-            raise ValueError("Observation contains duplicate or undeclared point names")
-        if not np.isfinite(points.visibility).all() or np.any((points.visibility < 0) | (points.visibility > 1)):
+        points = observation_arrays(observation)
+        source_indices, indices = point_selection(points.point_names, channel.names)
+        if not np.isfinite(points.confidence_scores).all() or np.any((points.confidence_scores < 0) | (points.confidence_scores > 1)):
             raise ValueError("Invalid observation visibility")
-        coordinates = points.xy
+        coordinates = points.image_coordinates
         if np.isinf(coordinates).any():
             raise ValueError("Infinite image coordinate")
         frame_values = values[len(frames)]
         frame_values[:, :2] = np.nan
         frame_values[:, 2] = 0.0
-        indices = [declared[name] for name in points.names]
-        frame_values[indices, :2] = coordinates
-        frame_values[indices, 2] = points.visibility
+        frame_values[indices, :2] = coordinates[source_indices]
+        frame_values[indices, 2] = points.confidence_scores[source_indices]
         frames.append(observation.frame_number)
         timestamps.append(timestamp)
         if len(frames) == frames_per_batch:

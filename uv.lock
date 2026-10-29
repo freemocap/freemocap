@@ -3,13 +3,13 @@ revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'darwin'",
-    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
-    "python_full_version < '3.12' and sys_platform == 'darwin'",
     "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version >= '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
+    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version == '3.12.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'darwin'",
+    "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version < '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 supported-markers = [
@@ -143,10 +143,10 @@ version = "19.0.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'darwin'",
-    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version >= '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
+    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version == '3.12.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/90/bc/a2a40e503250fe5d4174471911828f31658864eb69a8a7cb960c715e17b7/av-19.0.1.tar.gz", hash = "sha256:08674930eaf1af78a3ed8f93d3ba49383323b3a867e84349d9c399e36f7497da", size = 4274648, upload-time = "2026-10-03T01:48:28.575Z" }
@@ -440,10 +440,10 @@ version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'darwin'",
-    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version >= '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
+    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version == '3.12.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 dependencies = [
@@ -706,7 +706,7 @@ requires-dist = [
     { name = "beartype", specifier = ">=0.22.9,<0.23" },
     { name = "cbor2", specifier = ">=5.6.0" },
     { name = "filelock", specifier = ">=3.0" },
-    { name = "freemocap-blender-addon", git = "https://github.com/freemocap/freemocap_blender_addon?branch=development-streaming" },
+    { name = "freemocap-blender-addon", editable = "../freemocap_blender_addon" },
     { name = "libsass", specifier = ">=0.23.0" },
     { name = "msgspec", specifier = ">=0.19" },
     { name = "numba", specifier = ">=0.65.1" },
@@ -720,19 +720,19 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "scipy-stubs", specifier = "~=1.17.1" },
     { name = "skelly-synchronize", git = "https://github.com/freemocap/skellysync?branch=philip%2Frewrite" },
-    { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=development-streaming" },
-    { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=development-streaming" },
-    { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
-    { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", git = "https://github.com/freemocap/skellytracker?branch=development-streaming" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", git = "https://github.com/freemocap/skellytracker?branch=development-streaming" },
+    { name = "skellycam", editable = "../skellycam" },
+    { name = "skellyforge", editable = "../skellyforge" },
+    { name = "skellylogs", editable = "../utils/skellylogs" },
+    { name = "skellypings", editable = "../utils/skellypings" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", editable = "../skellytracker" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", editable = "../skellytracker" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 provides-extras = ["cuda", "cpu"]
 
 [package.metadata.requires-dev]
-cpu = [{ name = "skellytracker", extras = ["all-cpu"], git = "https://github.com/freemocap/skellytracker?branch=development-streaming" }]
-cuda = [{ name = "skellytracker", extras = ["all-cuda"], git = "https://github.com/freemocap/skellytracker?branch=development-streaming" }]
+cpu = [{ name = "skellytracker", extras = ["all-cpu"], editable = "../skellytracker" }]
+cuda = [{ name = "skellytracker", extras = ["all-cuda"], editable = "../skellytracker" }]
 dev = [
     { name = "bumpver" },
     { name = "httpx", specifier = ">=0.28.0" },
@@ -746,14 +746,13 @@ dev = [
     { name = "ruff", specifier = ">=0.9.0" },
 ]
 tracker-default = [
-    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=development-streaming" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=development-streaming" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", editable = "../skellytracker" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", editable = "../skellytracker" },
 ]
 
 [[package]]
 name = "freemocap-blender-addon"
-version = "2026.4.1041"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development-streaming#73e1b3e0829b80f5a6818a4723e9b01bc526b708" }
+source = { editable = "../freemocap_blender_addon" }
 
 [[package]]
 name = "h11"
@@ -2274,10 +2273,10 @@ version = "1.18.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'darwin'",
-    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
     "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version >= '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'darwin'",
+    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version == '3.12.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 dependencies = [
@@ -2397,7 +2396,7 @@ dependencies = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#6b9ebe171e91dadacca04f99d9b6e7391c948f3e" }
+source = { editable = "../skellycam" }
 dependencies = [
     { name = "av", version = "18.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "av", version = "19.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -2425,10 +2424,46 @@ dependencies = [
     { name = "websockets" },
 ]
 
+[package.metadata]
+requires-dist = [
+    { name = "av", specifier = ">=18.1.0" },
+    { name = "beartype", specifier = ">=0.19" },
+    { name = "cv2-enumerate-cameras", specifier = ">=1.2.2" },
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "httpx", specifier = ">=0.27.2" },
+    { name = "msgspec", specifier = ">=0.19" },
+    { name = "numpy" },
+    { name = "numpydantic", specifier = ">=1.6.9" },
+    { name = "opencv-contrib-python", specifier = "==4.12.*" },
+    { name = "pillow" },
+    { name = "polars" },
+    { name = "psutil", specifier = ">=7.0.0" },
+    { name = "pydantic", specifier = "==2.*" },
+    { name = "scipy", specifier = ">=1.11.4" },
+    { name = "setproctitle", specifier = "==1.3.3" },
+    { name = "skellylogs", editable = "../utils/skellylogs" },
+    { name = "skellypings", editable = "../utils/skellypings" },
+    { name = "sounddevice", specifier = ">=0.4.6" },
+    { name = "tabulate", specifier = ">=0.9.0" },
+    { name = "tzlocal", specifier = ">=5.2" },
+    { name = "uvicorn", specifier = ">=0.30.6" },
+    { name = "websockets", specifier = ">=13.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bumpver" },
+    { name = "pip-tools" },
+    { name = "poethepoet", specifier = ">=0.32.0" },
+    { name = "pyinstaller", specifier = ">=6.15.0" },
+    { name = "pytest", specifier = ">=8.4.0" },
+    { name = "pytest-asyncio", specifier = ">=0.24.0" },
+    { name = "ruff", specifier = ">=0.9.0" },
+]
+
 [[package]]
 name = "skellyforge"
-version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#f5404db5791c69afedf95652ef7cebca316e5ec0" }
+source = { editable = "../skellyforge" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },
@@ -2436,27 +2471,63 @@ dependencies = [
     { name = "skellylogs" },
 ]
 
+[package.metadata]
+requires-dist = [
+    { name = "beartype", specifier = ">=0.22.9" },
+    { name = "numpy" },
+    { name = "pyarrow", marker = "extra == 'recording-viewer'", specifier = ">=18" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "skellylogs", editable = "../utils/skellylogs" },
+]
+provides-extras = ["recording-viewer"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black" },
+    { name = "bumpver" },
+    { name = "coverage" },
+    { name = "isort" },
+    { name = "pip-tools" },
+    { name = "poethepoet" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "skellytracker", editable = "../skellytracker" },
+]
+
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs?branch=main#33a3611932ce3d43e54cefb2051171d565137445" }
+source = { editable = "../utils/skellylogs" }
 dependencies = [
     { name = "tqdm" },
 ]
 
+[package.metadata]
+requires-dist = [{ name = "tqdm", specifier = ">=4.66" }]
+
+[package.metadata.requires-dev]
+test = [{ name = "pytest" }]
+
 [[package]]
 name = "skellypings"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellypings#2fedf21356758569ccab069967f127a804f5241d" }
+source = { editable = "../utils/skellypings" }
 dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
 ]
 
+[package.metadata]
+requires-dist = [
+    { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "requests", specifier = ">=2.31.0" },
+]
+
+[package.metadata.requires-dev]
+admin = [{ name = "google-cloud-firestore", specifier = ">=2.19.0" }]
+
 [[package]]
 name = "skellytracker"
-version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#700599ba874c8a243df3513e4cc1bf191ebf9b03" }
+source = { editable = "../skellytracker" }
 dependencies = [
     { name = "beartype" },
     { name = "filelock" },
@@ -2486,6 +2557,55 @@ all-cuda = [
     { name = "nvidia-cufft-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
     { name = "onnx" },
     { name = "onnxruntime-gpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "beartype", specifier = ">=0.19" },
+    { name = "filelock", specifier = ">=4.0.8" },
+    { name = "mediapipe", marker = "extra == 'mediapipe'", specifier = "==0.10.33" },
+    { name = "numpy", specifier = "==2.4.6" },
+    { name = "numpydantic", specifier = ">=1.6.7" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-cuda'" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-trt'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-cuda'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-trt'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-cuda'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-trt'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-cuda'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-trt'" },
+    { name = "onnx", marker = "extra == 'onnx'" },
+    { name = "onnxruntime", marker = "extra == 'onnx-cpu'" },
+    { name = "onnxruntime-directml", marker = "sys_platform == 'win32' and extra == 'onnx-directml'" },
+    { name = "onnxruntime-gpu", marker = "sys_platform != 'darwin' and extra == 'onnx-cuda'", specifier = "<1.27" },
+    { name = "onnxruntime-gpu", marker = "sys_platform != 'darwin' and extra == 'onnx-trt'", specifier = "<1.27" },
+    { name = "opencv-contrib-python" },
+    { name = "polars" },
+    { name = "pydantic", specifier = "==2.*" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "requests", specifier = ">=2.32.3" },
+    { name = "scipy" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'recommended-cpu'" },
+    { name = "skellytracker", extras = ["all-trt"], marker = "extra == 'recommended-cuda'" },
+    { name = "skellytracker", extras = ["mediapipe", "onnx", "onnx-cpu"], marker = "extra == 'all-cpu'" },
+    { name = "skellytracker", extras = ["mediapipe", "onnx", "onnx-cuda"], marker = "extra == 'all-cuda'" },
+    { name = "skellytracker", extras = ["mediapipe", "onnx", "onnx-directml"], marker = "extra == 'all-directml'" },
+    { name = "skellytracker", extras = ["mediapipe", "onnx", "onnx-trt"], marker = "extra == 'all-trt'" },
+    { name = "tensorrt-cu12", marker = "sys_platform != 'darwin' and extra == 'onnx-trt'", specifier = ">=10,<11" },
+    { name = "tqdm", specifier = "==4.*" },
+]
+provides-extras = ["all-cpu", "all-cuda", "all-directml", "all-trt", "mediapipe", "onnx", "onnx-cpu", "onnx-cuda", "onnx-directml", "onnx-trt", "recommended-cpu", "recommended-cuda"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black" },
+    { name = "bumpver" },
+    { name = "isort" },
+    { name = "pip-tools" },
+    { name = "poethepoet", specifier = ">=0.32.0" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "skellyforge", editable = "../skellyforge" },
 ]
 
 [[package]]

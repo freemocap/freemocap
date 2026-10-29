@@ -1,5 +1,11 @@
 # Current Work Plans
 
+2026-10-28: [runtime tensor and export contract](01-data-model/tensor-contract.md)
+records the implemented shared tensor interfaces and the core tracking/reconstruction
+array migration, with reference-data validation. Global 2 remains open at Forge's
+object-based temporal roll API and live result interfaces. Storage, export and
+frontend migrations remain later work; current disk formats are unchanged.
+
 2026-10-10: [typed executable dataflow](02-pipeline/typed-dataflow.md) is the current
 graph architecture proposal, grounded in the refactored SkellySpeak graph core and
 the current FreeMoCap pipeline. Includes formal contracts, server/client isolation,

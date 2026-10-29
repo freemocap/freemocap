@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 from freemocap.tests.test_saved_reconstruction import saved_request
 from freemocap.core.recording.result_processing.saved_reconstruction import read_saved_reconstruction
-from freemocap.core.reconstruction.posthoc_reconstruction import fit_skeletons_for_recording, _finite_frame_points
+from freemocap.core.reconstruction.posthoc_reconstruction import fit_skeletons_for_recording
+from freemocap.tests.recording_tensor_assertions import _finite_frame_points
 from freemocap.core.skeletons.reconstruction_state import streaming_model_scale_source
 from skellyforge.core.math.geometry.spatial_vectors import Point
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton

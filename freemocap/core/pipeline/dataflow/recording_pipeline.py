@@ -31,6 +31,7 @@ from freemocap.core.pipeline.performance_report import PerformanceReport
 from freemocap.core.reconstruction.posthoc_filtering import prepare_recording_points
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.posthoc_reconstruction import fit_skeletons_for_recording, reconstruct_skeletons_with_fits
+from freemocap.core.tracking.observation_arrays import collected_point_names
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
 from freemocap.core.reconstruction.recording_reconstruction import RecordingReconstructionInput
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
@@ -238,8 +239,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
         return ObservationRecordingRequest(recording=recording,
             group=ObservationGroup(name=sources.sensor_group, frames=collection.frames, videos=videos),
             tracker=TrackerRecordingDefinition(name=tracker_source,
-                point_names=tuple(dict.fromkeys(name for frame in collection.frames for observation in frame.values()
-                                                for name in observation.to_keypoints().names)), configuration=definition),
+                point_names=collected_point_names(observation for frame in collection.frames for observation in frame.values()),
+                configuration=definition),
             detector=DetectorRecordingDefinition(name="object_detector:yolox-m",
                 box_names=tuple(dict.fromkeys(stage.name for frame in collection.frames for observation in frame.values()
                                               for stage in observation.stages.values())), configuration=definition)

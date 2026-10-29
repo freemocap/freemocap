@@ -19,7 +19,6 @@ from freemocap.core.reconstruction.recording_reconstruction import (
     RecordingReconstructionInput,
     ModelRecordingReconstruction,
 )
-from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction  # noqa: TC001 - runtime type checking
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_state import (
     _strip_stage_prefix,
@@ -68,7 +67,7 @@ def triangulate_observation_buffers(
     Retains source/name axes, solver weights and reprojection errors. Points whose mean reprojection error exceeds
     `max_reprojection_error_px` are set to NaN.
 
-    By default the WHOLE keypoint set is used (`Observation.to_keypoints()`). Pass
+    By default the declared whole-keypoint tensor axis is used. Pass
     `stage_name` (and optionally `n_points`) to triangulate one detector stage — the
     board path uses `stage_name="charuco"` clamped to `board.n_corners`.
     `point_names` declares a stable whole-keypoint axis for incremental calls.
@@ -209,62 +208,54 @@ def reconstruct_skeletons_with_fits(
         bundles=request.bundles,
         scale_source_for=lambda bundle: FrozenModelScale(fit=fits[bundle.model_id].fit),
     )
-    frames: dict[str, list[SkeletonReconstruction | None]] = {
-        bundle.model_id: [] for bundle in request.bundles
-    }
     t0 = time.perf_counter()
     from skellytracker.core.io.prepared_tracker_mapping import PreparedTrackerMapping
     from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
-    from skellyforge.core.skeleton.skeleton_pose import SkeletonPose, SegmentPose
-    from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
+    from freemocap.core.data_tensors import AxisDefinition, CompanionTensor, DataTensor
+    from freemocap.core.reconstruction.recording_roll_adapter import resolve_recording_roll
     empty_frames = ~np.isfinite(request.keypoints_3d).all(axis=-1).any(axis=-1)
+    sample_axis = AxisDefinition("sample_position", range(request.frame_count))
+    results = {}
     for bundle in request.bundles:
         mapping = PreparedTrackerMapping.prepare(bundle.landmark_mapping, tracker_names=request.keypoint_names)
         geometry = LandmarkPoseGeometry.from_skeleton(skeleton=bundle.skeleton, landmark_names=mapping.landmark_names)
         state = states[bundle.model_id]
         outputs = RecordingPoseOutputs(bundle=bundle, fit=fits[bundle.model_id].fit,
             compute_center_of_mass=request.compute_center_of_mass)
-        # Bound temporary geometry memory; temporal state crosses chunk boundaries.
+        channel_arrays = {}
+        # Bound geometry temporaries; only the unchanged Forge roll resolver is sequential.
         for start in range(0, request.frame_count, 256):
-            mapped = mapping.apply(tracker_names=request.keypoint_names, positions=request.keypoints_3d[start:start+256])
+            stop = min(start + 256, request.frame_count)
+            mapped = mapping.apply(tracker_names=request.keypoint_names, positions=request.keypoints_3d[start:stop])
             poses = geometry.recover(positions=mapped.positions, landmark_present=mapped.present)
-            resolved_poses = []
-            mapped_frames = []
-            for index in range(len(mapped.positions)):
-                if empty_frames[start+index]:
-                    state.reset()
-                landmarks = {mapped.landmark_names[column]: mapped.positions[index,column]
-                    for column in np.flatnonzero(mapped.present[index])}
-                pose = SkeletonPose(segment_poses={geometry.segment_names[column]: SegmentPose(
-                    segment_name=geometry.segment_names[column],
-                    origin=Point.from_array(values=poses.origins[index,column]),
-                    orientation=RotationQuaternion.from_array(array=poses.orientations[index,column]),
-                    scale_estimate=float(poses.scale_estimates[index,column]), solved_by=poses.solutions[index,column])
-                    for column in np.flatnonzero(poses.segment_present[index])})
-                resolved_poses.append(state.roll_resolver.resolve_pose(pose=pose)
-                    if state.roll_resolver is not None and pose.segment_poses else pose)
-                mapped_frames.append(landmarks)
-            frames[bundle.model_id].extend(outputs.calculate(poses=resolved_poses, landmarks=mapped_frames))
+            poses = resolve_recording_roll(poses=poses, segment_names=geometry.segment_names,
+                resolver=state.roll_resolver, empty_frames=empty_frames[start:stop])
+            for tensor in outputs.calculate(poses=poses, landmark_names=mapped.landmark_names,
+                landmark_positions=mapped.positions, landmark_present=mapped.present, start_position=start):
+                kind = tensor.tensor_layout.channel_kind
+                if kind not in channel_arrays:
+                    layout = replace(tensor.tensor_layout, axes=(sample_axis, *tensor.tensor_layout.axes[1:]))
+                    values = np.empty(layout.shape, dtype=layout.dtype)
+                    companions = tuple(CompanionTensor(item.metadata_name,
+                        np.empty((request.frame_count, *item.data_values.shape[1:]), dtype=item.data_values.dtype),
+                        replace(item.tensor_layout, axes=(sample_axis, *item.tensor_layout.axes[1:])))
+                        for item in tensor.companion_tensors)
+                    channel_arrays[kind] = (layout, values, companions, tensor.scientific_provenance)
+                _, values, companions, _ = channel_arrays[kind]
+                values[start:stop] = tensor.data_values
+                for destination, source in zip(companions, tensor.companion_tensors, strict=True):
+                    destination.data_values[start:stop] = source.data_values
+        channel_tensors = []
+        # Publish once per channel; temporary output buffers are released as each is owned.
+        for kind in tuple(channel_arrays):
+            layout, values, companions, provenance = channel_arrays.pop(kind)
+            channel_tensors.append(DataTensor(values, layout, provenance, companions).immutable_copy())
+        results[bundle.model_id] = ModelRecordingReconstruction(
+            fit_inputs=fits[bundle.model_id].inputs, compute_center_of_mass=request.compute_center_of_mass,
+            model_id=bundle.model_id, channel_tensors=tuple(channel_tensors), scale_fit=fits[bundle.model_id].fit)
     request.timing.record(
-        "reconstruct_frames",
-        time.perf_counter() - t0,
+        "reconstruct_frames", time.perf_counter() - t0,
         call_count=request.frame_count * len(request.bundles),
         note=f"{request.frame_count} frames x {len(request.bundles)} model(s)",
     )
-    return {
-        model_id: ModelRecordingReconstruction(
-            fit_inputs=fits[model_id].inputs,
-            compute_center_of_mass=request.compute_center_of_mass,
-            frames=tuple(values),
-            scale_fit=fits[model_id].fit,
-        )
-        for model_id, values in frames.items()
-    }
-
-
-def _finite_frame_points(
-    *, frame: np.ndarray, point_names: tuple[str, ...],
-) -> dict[str, np.ndarray]:
-    """Check all XYZ points together, retaining the original named array views."""
-    valid_indices = np.flatnonzero(np.isfinite(frame).all(axis=1))
-    return {point_names[index]: frame[index] for index in valid_indices}
+    return results

@@ -233,7 +233,7 @@ input[readonly]{color:var(--ink-3)}
 .edge.lit{opacity:1;stroke-width:2.75}
 svg.focusing .edge:not(.lit){opacity:.08}
 svg.focusing .node:not(.near){opacity:.35}
-svg.lod-low .slot text,svg.lod-low .meta,svg.lod-low .disk-label,svg.lod-low .disk-file,svg.lod-low .badge,svg.lod-low .count,svg.lod-low .port-none{display:none}
+svg.lod-low .io-tag,svg.lod-low .slot text,svg.lod-low .meta,svg.lod-low .disk-label,svg.lod-low .disk-file,svg.lod-low .badge,svg.lod-low .count,svg.lod-low .port-none{display:none}
 @media (prefers-reduced-motion:reduce){.edge.flow,.st-pulse,.node.running .disk .rail-in{animation:none}}
 
 /* Events drawer */
@@ -433,7 +433,7 @@ pre{font:11px/1.5 var(--mono);white-space:pre-wrap;word-break:break-word;backgro
      <div class="legend-row"><b>Keys</b>
       <span class="key" title="Fan-in: gathers every camera for one frame"><code>3→1</code> fan-in</span>
       <span class="key" title="Fan-out: one frame result feeds each camera item"><code>1→3</code> fan-out</span>
-      <span class="key" title="One recording-wide artifact supplies every item"><code>bcast</code> broadcast</span>
+      <span class="key" title="One saved output is reused by every work item that needs it; no copy or network broadcast is implied">shared input (reused)</span>
       <span class="key" title="Waits for every item in the finite upstream stream"><code>barrier</code> sealed</span>
      </div>
      <div class="legend-row" id="edge-legend"></div>
@@ -477,10 +477,10 @@ const RULES={
  same_key:{label:'same key',text:'Consumes the producer item at the same camera/frame key.'},
  all_sources:{label:'fan-in',text:'Gathers every camera for one frame.'},
  frame:{label:'fan-out',text:'One frame result feeds each camera-specific item.'},
- broadcast:{label:'broadcast',text:'One recording-wide artifact supplies every consumer item.'},
+ broadcast:{label:'shared input',text:'The same output is reused by each work item that needs it. This does not mean a network broadcast or copying image data.'},
  sealed:{label:'barrier',text:'Waits for every item in the finite upstream stream.'}};
 function rule(name){const r=RULES[name];if(!r)throw Error(`Unknown key rule "${name}"`);return r}
-function ruleBadge(name,edge){rule(name);if(name==='same_key')return '';if(name==='all_sources')return `${edge.inputs_per_item}→1`;if(name==='frame')return `1→${edge.consumers_per_item}`;if(name==='broadcast')return 'bcast';return 'barrier'}
+function ruleBadge(name,edge){rule(name);if(name==='same_key')return '';if(name==='all_sources')return `${edge.inputs_per_item}→1`;if(name==='frame')return `1→${edge.consumers_per_item}`;if(name==='broadcast')return '';return 'barrier'}
 const SCOPE={recording:'once',frame:'per frame',camera_frame:'per cam × frame'};
 function workUnit(n){return n.work_unit||(n.scope==='camera_frame'?'camera frames':n.scope==='frame'?'frame groups':'operations')}
 function workExplanation(n){const cameras=n.camera!=null?1:graph.config.cameras,frames=graph.config.frames;return n.scope==='camera_frame'?`${cameras} camera(s) x ${frames} frames = ${cameras*frames} camera frames. One item handles one image from one camera.`:n.scope==='frame'?`${frames} synchronized frame groups. Each group contains ${graph.config.cameras} camera images; ${frames*graph.config.cameras} images in total.`:'Runs once for the recording. Counts show completed operations, not frames or a frame rate.'}
@@ -619,6 +619,7 @@ function computeLayout(nodes,edges){
 }
 
 /* ---------- SVG rendering ---------- */
+
 function truncate(text,max){return text.length>max?text.slice(0,max-1)+'…':text}
 function nodeSvg(n,box){
  const g=box.g,W=g.bw,H=g.bh,side=direction==='right',logical=logicalOf(n),ht=g.headTop,io=ioRole(n);
@@ -630,7 +631,7 @@ function nodeSvg(n,box){
  if(io)s+=diskTerminal(n,W,H);
  s+=io?`<path class="halo" d="${chamfer(-4,-4,W+8,H+8,16)}"/><path class="body" d="${chamfer(0,0,W,H,13)}"/>`
       :`<rect class="halo" x="-4" y="-4" width="${W+8}" height="${H+8}" rx="13"/><rect class="body" width="${W}" height="${H}" rx="10"/>`;
- s+=`<text class="title" x="14" y="${ht+22}">${esc(truncate(label,titleChars))}</text><text class="meta" x="14" y="${ht+39}">${esc(meta)}</text>`;
+ s+=`<defs><clipPath id="title-${esc(n.id)}"><rect x="14" y="${ht+6}" width="${W-28-(io?66:26)}" height="22"/></clipPath></defs><text class="title" clip-path="url(#title-${esc(n.id)})" x="14" y="${ht+22}">${esc(truncate(label,titleChars))}</text><text class="meta" x="14" y="${ht+39}">${esc(meta)}</text>`;
  s+=`<g class="st" transform="translate(${W-20},${ht+18})"></g>`;
  if(io)s+=`<text class="io-tag" x="${W-34}" y="${ht+22}" text-anchor="end">${io.tag}</text>`;
  if(side){s+=`<path class="divider" d="M0 ${g.headTop+LR.head}H${W}M0 ${g.footTop}H${W}"/>`;if(n.input_slots.length&&n.outputs.length)s+=`<path class="divider soft" d="M14 ${g.split}H${W-14}"/>`}
@@ -702,8 +703,9 @@ document.addEventListener('pointerdown',e=>{if(!$('#path-pop').hidden&&!e.target
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePaths()});
 
 /* ---------- Camera ---------- */
-function sizeGraph(){const svg=$('#graph');svg.setAttribute('viewBox',`${camera.x} ${camera.y} ${viewport.clientWidth/zoom} ${viewport.clientHeight/zoom}`);svg.classList.toggle('lod-low',zoom<.5);$('#zoom-level').textContent=`${Math.round(zoom*100)}%`;viewport.style.backgroundSize=`${24*zoom}px ${24*zoom}px`;viewport.style.backgroundPosition=`${-camera.x*zoom}px ${-camera.y*zoom}px`}
+function sizeGraph(){const svg=$('#graph');svg.setAttribute('viewBox',`${camera.x} ${camera.y} ${viewport.clientWidth/zoom} ${viewport.clientHeight/zoom}`);svg.classList.toggle('lod-low',zoom<.55);$('#zoom-level').textContent=`${Math.round(zoom*100)}%`;viewport.style.backgroundSize='24px 24px';viewport.style.backgroundPosition=`${-camera.x*zoom}px ${-camera.y*zoom}px`}
 function zoomAt(value,x=viewport.clientWidth/2,y=viewport.clientHeight/2){const old=zoom;zoom=Math.min(2.5,Math.max(.06,value));camera.x+=x/old-x/zoom;camera.y+=y/old-y/zoom;sizeGraph()}
+
 function focusNode(){const p=layout.get(selected)||layout.values().next().value;if(!p)return;zoom=1;camera={x:p.x+p.w/2-viewport.clientWidth/2,y:p.y+p.h/2-viewport.clientHeight/2};sizeGraph()}
 // Fit inside the band left free by the toolbar (top) and the legend/resource overlays (bottom).
 const BAND={top:104,bottom:64,side:24};

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow.compute as pc
-from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
+from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion, quaternions_to_rotation_matrices
 
 from freemocap.core.recording.playback_queries import recording_view
 from freemocap.core.recording.sample_encoding.reconstruction_samples import (
@@ -232,15 +232,17 @@ def reconstruct_current(path, previous):
     if result.scale_fit is None:
         raise ValueError("Current reconstruction did not produce a scale fit")
     parents = dict(bundle.rest_pose.parents)
-    positions = {name: np.full((len(result.frames), 3), np.nan) for name in parents}
-    rotations = {name: np.full((len(result.frames), 3, 3), np.nan) for name in parents}
-    for index, frame in enumerate(result.frames):
-        if frame is None:
-            continue
-        for name, segment in bundle.skeleton.segments.items():
-            positions[name][index] = frame.landmarks.get(segment.frame_definition.origin_point_name, np.full(3, np.nan))
-            if name in frame.segment_rotations_world:
-                rotations[name][index] = RotationQuaternion.from_array(array=frame.segment_rotations_world[name]).to_rotation_matrix()
+    landmark_tensor = result.channel_tensor(ChannelKind.LANDMARKS_3D)
+    rotation_tensor = result.channel_tensor(ChannelKind.ROTATIONS_WORLD)
+    landmark_indices = {name: index for index, name in enumerate(landmark_tensor.tensor_layout.axes[1].identifiers)}
+    rotation_indices = {name: index for index, name in enumerate(rotation_tensor.tensor_layout.axes[1].identifiers)}
+    valid = rotation_tensor.companion_values("entry_presence").all(axis=-1)
+    coordinate_count = landmark_tensor.data_values.shape[-1]
+    matrices = np.full((*valid.shape, coordinate_count, coordinate_count), np.nan)
+    matrices[valid] = quaternions_to_rotation_matrices(quaternions=rotation_tensor.data_values[valid])
+    positions = {name: landmark_tensor.data_values[:, landmark_indices[segment.frame_definition.origin_point_name]]
+                 for name, segment in bundle.skeleton.segments.items()}
+    rotations = {name: matrices[:, rotation_indices[name]] for name in parents}
     fitted_offsets = {
         name: bundle.skeleton.landmarks[bundle.rest_pose.connect_ats[name]].local_position.array
               * result.scale_fit.segment_scales[parent]
@@ -254,7 +256,7 @@ def reconstruct_current(path, previous):
         "packages": {name: json.loads(distribution(name).read_text("direct_url.json") or "{}")
                      for name in ("skellytracker", "skellyforge")},
         "before": previous,
-        "after": {"frames": len(result.frames), "segments": len(parents),
+        "after": {"frames": result.frame_count, "segments": len(parents),
                   "fitted_model_scale_mm": result.scale_fit.fitted_scale,
                   "edges": measure_hierarchy(parents, positions, rotations, fitted_offsets)},
     }

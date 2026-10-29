@@ -8,7 +8,7 @@ from threading import RLock, Thread
 from time import monotonic
 from uuid import uuid4
 
-from graph import compile_graph
+from graph import SYNTHETIC_RECORDING_ROOT, compile_graph
 from contracts import validate_payload
 from lifecycle import ResourceOwner
 
@@ -52,14 +52,14 @@ async def execute(node, work, inputs, config):
     f, cam = work.frame, work.camera
     match node.handler:
         case "recording":
-            result = dict(recording_id='synthetic_recording', frames=config["frames"], cameras=config["cameras"], fps=30, seed=0)
+            result = dict(videos=[dict(camera_id=i, path=str(SYNTHETIC_RECORDING_ROOT / 'videos' / 'synchronized' / f'cam_{i}.mp4'), frame_count=config['frames'], frame_rate_hz=30.0) for i in range(config['cameras'])])
         case 'timing':
-            recording = data['recording'][0]
-            result = dict(camera_ids=list(range(recording['cameras'])), frame_numbers=list(range(recording['frames'])),
-                          timestamps_s=[i / recording['fps'] for i in range(recording['frames'])], provenance='synthetic uniform grid')
+            videos = data['videos'][0]['videos']
+            result = dict(camera_ids=[video['camera_id'] for video in videos], frame_numbers=list(range(videos[0]['frame_count'])),
+                          timestamps_s=[i / videos[0]['frame_rate_hz'] for i in range(videos[0]['frame_count'])], provenance='synthetic uniform grid')
             validate_timing(result)
         case 'publication_plan':
-            result = dict(recording_id=data['recording'][0]['recording_id'], task=config['task'], mode='simulated', durable=False)
+            result = dict(recording_id='synthetic_recording', output_directory=str(SYNTHETIC_RECORDING_ROOT), task=config['task'], mode='simulated', durable=False)
         case 'detector_config':
             result = dict(family='RTMPose', pose_model='fixture:pose', person_model='fixture:person',
                           requested_provider='CUDAExecutionProvider', allow_cpu_fallback=False)
@@ -70,10 +70,12 @@ async def execute(node, work, inputs, config):
         case 'board_definition':
             result = dict(board_id='fixture:charuco', selection='explicit', synthetic=True)
         case 'calibration_load':
-            result = dict(camera_ids=list(range(data['recording'][0]['cameras'])), file=node.io_files[0].path,
+            result = dict(camera_ids=list(range(config['cameras'])), file=node.io_files[0].path,
                           identity='synthetic fixture; no file hash', synthetic=True)
         case "decode":
             timing = data['timing'][0]
+            video = next(v for v in data['videos'][0]['videos'] if v['camera_id'] == cam)
+            if f >= video['frame_count']: raise ValueError('Frame outside selected video')
             validate_timing(timing)
             if cam not in timing['camera_ids']: raise ValueError('Unknown camera')
             result = dict(frame=f, camera=cam, timestamp=timing['timestamps_s'][f], synthetic_image=True)
@@ -91,9 +93,10 @@ async def execute(node, work, inputs, config):
         case "observations":
             result = dict(frame=f, poses=data["poses"][0]["poses"], boards=len(data.get("boards", [])))
         case "geometry":
-            if config['cameras'] > 1 and data['calibration'][0]['camera_ids'] != list(range(config['cameras'])):
+            cameras = data['timing'][0]['camera_ids']
+            if len(cameras) > 1 and data['calibration'][0]['camera_ids'] != cameras:
                 raise ValueError('Calibration camera assignment mismatch')
-            result = dict(cameras=config["cameras"], source='synthetic camera matching' if config['cameras'] > 1 else 'single-camera planar fallback',
+            result = dict(cameras=len(cameras), source='synthetic camera matching' if config['cameras'] > 1 else 'single-camera planar fallback',
                           evidence_frames=len(data.get('evidence', [])))
         case "triangulate":
             poses = data["observations"][0]["poses"]

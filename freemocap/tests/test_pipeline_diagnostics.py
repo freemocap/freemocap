@@ -142,11 +142,12 @@ def test_posthoc_residuals_use_one_frozen_fit_and_do_not_invent_missing_measurem
         keypoints_3d=np.stack((values, values * 1.1, np.full_like(values, np.nan))),
         compute_center_of_mass=False, timing=PosthocTimingReport(),
     ))[bundle.model_id]
-    assert result.scale_fit is not None and result.frames[2] is None
-    for frame in result.frames[:2]:
-        assert frame is not None
-        for name, reading in frame.rigid_body_residuals.items():
-            assert reading.reference_kind == 'recording_fit'
-            assert reading.reference_length == result.scale_fit.segment_lengths[name]
-            if reading.measured_length is None:
-                assert reading.residual is None
+    assert result.scale_fit is not None
+    mapped = result.channel_tensor("MAPPED_KEYPOINTS_3D")
+    assert not mapped.companion_values("entry_presence")[2].any()
+    assert result.residual_reference == 'recording_fit'
+    diagnostic = result.channel_tensor("RIGID_BODY_RESIDUALS")
+    assert np.isnan(diagnostic.data_values[2]).all()
+    measured, residual = diagnostic.data_values[:2, :, 0], diagnostic.data_values[:2, :, 1]
+    reference = np.asarray([result.scale_fit.segment_lengths[name] for name in diagnostic.tensor_layout.axes[1].identifiers])
+    np.testing.assert_allclose(residual, measured - reference, equal_nan=True)

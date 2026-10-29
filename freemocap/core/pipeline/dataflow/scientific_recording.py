@@ -36,6 +36,7 @@ from freemocap.core.tasks.triangulation.helpers.triangulation_config import Tria
 from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import ReprojectionDiagnostics, NamedReprojectionDiagnostics
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
+from freemocap.core.tracking.observation_arrays import observation_point_names
 from freemocap.core.types.channel_kind import ChannelKind
 
 
@@ -79,9 +80,7 @@ class ObservationCollection:
             raise ValueError("Observation frame/image identity differs from its source")
         if event.timestamp_s != source.camera_timing.timestamps_s[key.frame]:
             raise ValueError("Observation timestamp differs from the declared camera timeline")
-        points = event.observation.to_keypoints()
-        if len(set(points.names)) != len(points.names):
-            raise ValueError("Duplicate observation point names")
+        observation_point_names(event.observation)  # Validates identity without assembling numerical arrays.
         ready = self.join.receive(key)
         self.frames[key.frame][key.camera] = deepcopy(event.observation)
         return key.frame if ready is not None else None
@@ -121,7 +120,7 @@ class FrameTriangulation:
         self.results: dict[int, RecordingTriangulation] = {}
 
     def accept(self, event: TrackedCameraFrame | VideoSourceFinished) -> RecordingTriangulation | None:
-        if isinstance(event, TrackedCameraFrame) and not set(event.observation.to_keypoints().names).issubset(self.point_names):
+        if isinstance(event, TrackedCameraFrame) and not set(observation_point_names(event.observation)).issubset(self.point_names):
             raise ValueError("Observation contains points outside the declared triangulation axis")
         frame = self.observations.accept(event)
         if frame is None:

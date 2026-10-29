@@ -146,7 +146,7 @@ class ObservationRecordingRequest:
         if len(set(model_ids)) != len(model_ids):
             raise ValueError("Reconstruction sources must be unique")
         for item in self.reconstructions:
-            if item.sensor_group != self.group.name or len(item.result.frames) != len(
+            if item.sensor_group != self.group.name or item.result.frame_count != len(
                 self.group.frames
             ):
                 raise ValueError(

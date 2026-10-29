@@ -1,0 +1,40 @@
+:root{
+ color-scheme:dark;
+ --bg:#14171c;--bar:#101216;--sheet:#1a1e24;--node:#1f242c;--node-annot:#25231f;--field:#232932;--hover:#2b323d;
+ --line:#343c48;--line-soft:#272d36;
+ --ink:#e9edf2;--ink-2:#b9c2ce;--ink-3:#8c97a6;
+ --accent:#8ab6ff;--accent-fill:#2f5ecc;--accent-line:#5079cc;--accent-tint:#1f2c44;
+ --ok:#6fd39b;--ok-line:#3d7457;--ok-tint:#1b3026;
+ --warn:#f0bd62;--warn-tint:#3a2f1a;
+ --bad:#f58b8b;--bad-line:#7a3a3d;--bad-tint:#3b2124;
+ --read:#7ec8ff;--write:#d6a6f5;--read-tint:#16273a;--write-tint:#28203a;
+ --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+ --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+ --r-md:6px;--r-lg:10px;--r-pill:999px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:13px/1.45 var(--sans);overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h2,h3,p{margin:0}
+code{font:11.5px var(--mono)}
+
+/* Buttons */
+.btn{height:32px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--field);font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:background .12s,border-color .12s}
+.btn:hover:not(:disabled){background:var(--hover)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:#fff}
+.btn.primary:hover:not(:disabled){background:#3a6be0}
+.btn.danger{color:var(--bad);border-color:var(--bad-line);background:transparent}
+.btn.danger:hover:not(:disabled){background:var(--bad-tint)}
+.btn.quiet{background:transparent;border-color:transparent}
+.btn.quiet:hover:not(:disabled){background:var(--hover)}
+.btn.icon{width:32px;padding:0;justify-content:center}
+.btn[aria-pressed=true]{background:var(--accent-tint);border-color:var(--accent-line);color:var(--accent)}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.seg{display:inline-flex}
+.seg .btn{border-radius:0}.seg .btn+.btn{margin-left:-1px}
+.seg .btn:first-child{border-radius:var(--r-md) 0 0 var(--r-md)}.seg .btn:last-child{border-radius:0 var(--r-md) var(--r-md) 0}
+.seg .btn[aria-pressed=true]{position:relative;z-index:1}
+

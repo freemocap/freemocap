@@ -64,7 +64,7 @@ def refresh_reconstruction(structure, bundle):
     result = reconstruct_skeletons_for_recording(replace(
         loaded.numerical_input, bundles=(bundle,), timing=PosthocTimingReport(),
     ))[bundle.model_id]
-    if len(result.frames) != len(loaded.points.frames):
+    if result.frame_count != len(loaded.points.frames):
         raise ValueError("Reconstruction changed the saved frame count")
     recording = ReconstructionRecording(
         sensor_group=group,
@@ -111,7 +111,7 @@ def refresh_reconstruction(structure, bundle):
             raise RuntimeError("Recording changed during reconstruction; nothing published")
         publish_recording(structure=structure, metadata=updated, batches=batches())
     return {"input_sha256": before, "output_sha256": file_digest(path),
-            "frames": len(result.frames), "model_id": bundle.model_id,
+            "frames": result.frame_count, "model_id": bundle.model_id,
             "method": "Current mapping and reconstruction from saved 3D points; no detection, calibration, triangulation or refiltering"}
 
 

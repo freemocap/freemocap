@@ -6,6 +6,8 @@ import math
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
+from freemocap.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
+
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
@@ -44,6 +46,20 @@ class Channel(Descriptor):
     names: tuple[str, ...]
     components: dict[str, str]
     stage: ProcessingStage
+
+    def tensor_layout(self) -> TensorLayout:
+        """Bind authored entity/component order without changing the saved format."""
+        return TensorLayout(
+            axes=(
+                AxisDefinition("entity_identity", self.names),
+                AxisDefinition("component_identity", tuple(self.components)),
+            ),
+            dtype="float64",
+            component_units=tuple(self.components.values()),
+            reference_id=self.reference_frame,
+            source_identity=SourceIdentity(source_id=self.source, sensor_group=self.sensor_group),
+            channel_kind=str(self.kind),
+        )
 
     @model_validator(mode="after")
     def validate_names(self) -> "Channel":

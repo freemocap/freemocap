@@ -6,6 +6,7 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import RunDe
 from freemocap.core.recording.result_processing.observation_inputs import ObservationRecordingRequest
 from freemocap.core.recording.result_processing.provenance import stage_settings
 from freemocap.core.recording.result_processing.input_signatures import definition_signature, point_array_signature
+from freemocap.core.tracking.observation_arrays import observation_arrays
 
 def observation_provenance(*, request: "ObservationRecordingRequest", run: "RunDescriptor",
                            timestamps_s: tuple[float, ...]) -> dict[ProcessingStage, StageProvenance]:
@@ -19,9 +20,13 @@ def observation_provenance(*, request: "ObservationRecordingRequest", run: "RunD
     observation_content = []
     if ProcessingStage.OBSERVATIONS in stages:
         for frame in request.group.frames:
-            observation_content.append({camera: definition_signature(dict(
-                names=obs.to_keypoints().names, xyz=point_array_signature(obs.to_keypoints().xyz),
-                visibility=point_array_signature(obs.to_keypoints().visibility))) for camera, obs in frame.items()})
+            fingerprints = {}
+            for camera, observation in frame.items():
+                points = observation_arrays(observation)
+                fingerprints[camera] = definition_signature(dict(names=points.point_names,
+                    xyz=point_array_signature(points.coordinate_values),
+                    visibility=point_array_signature(points.confidence_scores)))
+            observation_content.append(fingerprints)
     point_inputs = {series.definition.kind.value: dict(
         names=series.definition.names, values=point_array_signature(series.values)) for series in request.spatial_series}
     result = {}

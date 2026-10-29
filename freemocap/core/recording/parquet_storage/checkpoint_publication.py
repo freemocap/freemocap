@@ -19,6 +19,7 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
 )
 from freemocap.core.recording.parquet_storage.parquet_reader import read_batches, read_metadata
 from freemocap.core.recording.parquet_storage.parquet_writer import publish_recording
+from freemocap.core.recording.result_processing.input_signatures import definition_signature
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 
@@ -102,16 +103,26 @@ def publish_checkpoint(
         raise ValueError("Recording changed after stage planning")
     retained = retained_run(base=metadata.runs[plan.base_run_id], plan=plan)
     result_channels = {channel_key(channel=item): item for item in result.channels}
-    retained_model_sources = {channel.source for channel in retained.channels} | {
-        fit.source for fit in retained.scale_fits
+    channel_sources = {channel.source for channel in retained.channels} | {
+        item.channel.source for item in retained.static_channels
     }
-    retained_model_ids = {retained.sources[name].definition.get('model_id')
-        for name in retained_model_sources if name in retained.sources}
+    channel_models = {retained.sources[name].definition.get('model_id')
+        for name in channel_sources if name in retained.sources}
+    fit_models = {retained.sources[fit.source].definition.get('model_id')
+        for fit in retained.scale_fits if fit.source in retained.sources}
     for name, model in retained.models.items():
-        if name in retained_model_ids and result.models.get(name) != model:
+        proposed = result.models.get(name)
+        if name in channel_models and proposed != model:
             raise ValueError(
                 "Result must preserve scientific models used by retained outputs"
             )
+        if name in fit_models and proposed is not model:
+            # RecordingFitInputs excludes placement from scale evidence. A new
+            # anchor is safe only when no retained channel still uses the old pose.
+            if proposed is None or definition_signature(
+                proposed.model_dump(exclude={"anchor_segment_name"})
+            ) != definition_signature(model.model_dump(exclude={"anchor_segment_name"})):
+                raise ValueError("Result must preserve scientific models used by retained scale fits")
     retained_references = {channel.reference_frame for channel in retained.channels}
     retained_references.update(item.channel.reference_frame for item in retained.static_channels)
     retained_references.update(fit.reference_frame for fit in retained.scale_fits)

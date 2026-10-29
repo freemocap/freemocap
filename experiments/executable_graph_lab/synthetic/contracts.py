@@ -9,6 +9,19 @@ from typing import Literal, get_args, get_origin, get_type_hints
 
 
 @dataclass(frozen=True)
+class VideoFile:
+    camera_id: int
+    path: str
+    frame_count: int
+    frame_rate_hz: float
+
+
+@dataclass(frozen=True)
+class VideoFileList:
+    videos: list[VideoFile]
+
+
+@dataclass(frozen=True)
 class DetectorConfiguration:
     family: Literal['RTMPose']
     pose_model: str
@@ -56,6 +69,7 @@ class EncodedFrameReceipt:
 @dataclass(frozen=True)
 class PublicationPlan:
     recording_id: str
+    output_directory: str
     task: Literal['mocap', 'pose', 'calibration']
     mode: Literal['simulated']
     durable: Literal[False]
@@ -72,7 +86,7 @@ class PublicationReceipt:
     provenance: dict[str, list[str]]
 
 
-CONTRACTS = dict(recording_timing=RecordingTiming, detector_configuration=DetectorConfiguration,
+CONTRACTS = dict(video_file_list=VideoFileList, recording_timing=RecordingTiming, detector_configuration=DetectorConfiguration,
                  inference_session=InferenceSession, video_frame=VideoFrame,
                  encoded_frame_receipt=EncodedFrameReceipt, publication_plan=PublicationPlan,
                  publication_receipt=PublicationReceipt)

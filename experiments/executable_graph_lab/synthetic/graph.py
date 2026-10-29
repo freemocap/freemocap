@@ -16,7 +16,7 @@ SYNTHETIC_RECORDING_ROOT = Path.home() / "freemocap_data" / "recording_sessions"
 # Application concepts, not assertions that the synthetic JSON payloads implement
 # these production Python classes. Bindings and outputs use the same vocabulary.
 DATA_TYPES = {
-    'recording': 'recording_context', 'image': 'video_frame',
+    'recording': 'video_file_list', 'image': 'video_frame',
     'board': 'charuco_observation', 'pose': 'keypoint_observations_2d',
     'observations': 'camera_observations', 'geometry': 'camera_models',
     'raw_3d': 'raw_keypoints_3d', 'trajectory': 'prepared_keypoint_trajectories',
@@ -129,6 +129,7 @@ class Node:
     io_files: tuple[DiskFile, ...] = ()
     source_refs: tuple[str, ...] = ()
     resource_uses: tuple[ResourceUse, ...] = ()
+    overview_label: str = ""
 
 
 @dataclass(frozen=True)
@@ -194,25 +195,32 @@ def definitions(c):
     science_file = (disk(f"{root.name}_calibration.toml", "Solved camera geometry") if c['task'] == 'calibration'
                     else disk(f"{root.name}_data.parquet", "Reconstructed skeleton samples and embedded recording metadata" if c['task'] == 'mocap' else "Tracked observations and embedded recording metadata"))
     def add(id, label, handler, scope, resource, output, inputs=(), ordered=False, branch="science", description="", io_role="none", optional_slots=(), io_files=()):
+        overview_titles = {'recording': 'Video files', 'timing': 'Frame timing', 'publication': 'Output plan',
+            'calibration_load': 'Load calibration', 'decode': 'Load frames', 'annotation_decode': 'Load overlay frames',
+            'board_definition': 'Board definition', 'detector_config': 'Detector settings', 'session': 'Open detector',
+            'board': 'Detect board', 'pose': 'Track poses', 'observations': 'Join detections', 'geometry': 'Match cameras',
+            'triangulate': 'Calculate 3D', 'filter': 'Filter movement', 'scale': 'Fit body size',
+            'reconstruct': 'Fit skeleton', 'draw': 'Draw overlays', 'encode': 'Save videos',
+            'video_output': 'Video results', 'science_output': 'Save results', 'calibrate': 'Calibrate cameras'}
         slots = tuple(InputSlot(b.port, b.data_type) for b in inputs if b.port not in {s.name for s in optional_slots}) + tuple(optional_slots)
         refs = APP_REFERENCES.get(id, ())
         if id == 'science_output' and c['task'] == 'calibration':
             refs = ('freemocap/core/tasks/calibration/posthoc_calibration_task.py:_save_result',)
         uses = ((ResourceUse('inference_session', 'recording'),) if id in ('session', 'pose') else
                 (ResourceUse('annotation_writer', 'camera'),) if id == 'encode' else ())
-        nodes.append(Node(id, label, handler, scope, resource, (OutputSlot("out", DATA_TYPES[output]),), tuple(inputs), ordered, branch, description, io_role, slots, tuple(io_files), refs, uses))
+        nodes.append(Node(id, label, handler, scope, resource, (OutputSlot("out", DATA_TYPES[output]),), tuple(inputs), ordered, branch, description, io_role, slots, tuple(io_files), refs, uses, overview_titles.get(id, label)))
     def bind(port, source, kind, rule):
         return Binding(port, source, DATA_TYPES[kind], rule)
-    add("recording", "Recording context", "recording", "recording", "io", "recording",
-        description="Models VideoGroupHelper metadata and recording identity. Synthetic camera IDs and frame counts; no manifest or video is read.")
+    add("recording", "Video files", "recording", "recording", "io", "recording",
+        description="One entry per video: camera ID, file path, frame count and frame rate. These are synthetic file descriptions, not image pixels or a generic recording context.")
     add('timing', 'Resolve recording timing', 'timing', 'recording', 'cpu', 'timing',
-        [bind('recording', 'recording', 'recording', 'broadcast')],
+        [bind('videos', 'recording', 'recording', 'broadcast')],
         description='Models RecordingGroupTiming.resolve. Publishes camera IDs, frame numbers and synchronized timestamps. The lab validates a synthetic 30 Hz grid; production must resolve recorded timing and fallback provenance.')
     add('publication', 'Plan artifact publication', 'publication_plan', 'recording', 'cpu', 'publication',
-        [bind('recording', 'recording', 'recording', 'broadcast')],
-        description='Proposed run-scoped publication contract: recording identity, completed-stage provenance and durable-versus-simulated receipt semantics. No files are opened. Actual atomic publication and rollback remain adapter responsibilities.')
+        [],
+        description='Recording ID and output destination come from the run configuration. Proposed run-scoped publication contract: recording identity, completed-stage provenance and durable-versus-simulated receipt semantics. No files are opened. Actual atomic publication and rollback remain adapter responsibilities.')
     add("decode", "Decode synchronized video", "decode", "camera_frame", "io", "image",
-        [bind("recording", "recording", "recording", "broadcast"), bind('timing', 'timing', 'timing', 'broadcast')], True,
+        [bind("videos", "recording", "recording", "broadcast"), bind('timing', 'timing', 'timing', 'broadcast')], True,
         description="Maps to ReadFrame in MocapVideoNode: ordered decoding per camera. This handler emits frame descriptors, not decoded pixel arrays.", io_role="read", io_files=(source_video,))
     if c["task"] == "calibration" or c["board"]:
         add('board_definition', 'Select ChArUco board', 'board_definition', 'recording', 'cpu', 'board_definition',
@@ -238,10 +246,10 @@ def definitions(c):
         if c["task"] == "mocap":
             if c['cameras'] > 1:
                 add('calibration_load', 'Load selected calibration', 'calibration_load', 'recording', 'io', 'calibration',
-                    [bind('recording', 'recording', 'recording', 'broadcast')],
-                    description='Models CalibrationResult.load_toml with file-identity validation. Explicit synthetic selection; no TOML is read. Camera matching must succeed before triangulation.', io_role='read',
+                    [],
+                    description='The selected calibration file path is configured on this source node. Models CalibrationResult.load_toml with file-identity validation. Explicit synthetic selection; no TOML is read. Camera matching must succeed before triangulation.', io_role='read',
                     io_files=(disk('selected_calibration.toml', 'Explicitly selected calibration fixture'),))
-            geometry_inputs = [bind('recording', 'recording', 'recording', 'broadcast')]
+            geometry_inputs = [bind('timing', 'timing', 'timing', 'broadcast')]
             if c['cameras'] > 1:
                 geometry_inputs += [bind('calibration', 'calibration_load', 'calibration', 'broadcast'), bind('evidence', 'observations', 'observations', 'sealed')]
             add("geometry", "Resolved camera models", "geometry", "recording", "cpu", "geometry",
@@ -274,7 +282,7 @@ def definitions(c):
         description="Represents Parquet checkpoint publication via publish_posthoc_observations. Production publishes several completed stages with provenance, not just this final sink. The lab declares one intended file and returns a simulated receipt.", io_role="write", io_files=(science_file,))
     if c["annotation"]:
         add("annotation_decode", "Decode annotation source", "decode", "camera_frame", "io", "image",
-            [bind("recording", "recording", "recording", "broadcast"), bind('timing', 'timing', 'timing', 'broadcast')], True, "annotation",
+            [bind("videos", "recording", "recording", "broadcast"), bind('timing', 'timing', 'timing', 'broadcast')], True, "annotation",
             "Proposed independent source-video decoding for AnnotationVideoOutput. Current MocapVideoNode reuses inference images; decoupled read scheduling is part of the replacement, not current app behavior.", io_role="read", io_files=(source_video,))
         add("draw", "Render observation overlays", "draw", "camera_frame", "cpu", "annotated_image",
             [bind("image", "annotation_decode", "image", "same_key"), annotation_input], False, "annotation",

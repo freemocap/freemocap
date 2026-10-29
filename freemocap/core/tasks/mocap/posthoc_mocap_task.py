@@ -28,6 +28,7 @@ from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import logging
 import numpy as np
+from freemocap.core.tracking.observation_arrays import collected_point_names
 from skellyforge.core.biomechanics.alignment_definition import AlignmentDefinition
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
@@ -122,8 +123,7 @@ def run_posthoc_mocap_task(
         models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles), recording=recording_info,
         group=ObservationGroup(name=group_name, frames=frame_observations, videos=video_metadata),
         tracker=TrackerRecordingDefinition(name=keypoint_source, configuration=task_config.model_dump(mode='json'),
-            point_names=tuple(dict.fromkeys(name for frame in frame_observations for obs in frame.values()
-                for name in obs.to_keypoints().names))),
+            point_names=collected_point_names(obs for frame in frame_observations for obs in frame.values())),
         detector=DetectorRecordingDefinition(name=detector_source, configuration=task_config.model_dump(mode='json'),
             box_names=tuple(dict.fromkeys(stage.name for frame in frame_observations for obs in frame.values()
                 for stage in obs.stages.values()))) if detector_source else None,

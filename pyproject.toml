@@ -44,12 +44,22 @@ cuda = ["skellytracker[all-cuda]"]
 cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
-skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development-streaming"}
-skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development-streaming"}
-skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development-streaming" }
-freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "development-streaming" }
+# Development uses the sibling checkouts managed by the project workspace.
+skellycam = { path = "../skellycam", editable = true }
+skellytracker = { path = "../skellytracker", editable = true }
+skellyforge = { path = "../skellyforge", editable = true }
+freemocap_blender_addon = { path = "../freemocap_blender_addon", editable = true }
 skelly_synchronize = { git = "https://github.com/freemocap/skellysync", branch = "philip/rewrite" }
 
+skellylogs = { path = "../utils/skellylogs", editable = true }
+skellypings = { path = "../utils/skellypings", editable = true }
+
+# Clone/switch metadata for the workspace tools; UV installs the paths above.
+[tool.freemocap.workspace.sources]
+skellycam = { git = "https://github.com/freemocap/skellycam", branch = "sfn26" }
+skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "sfn26" }
+skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "sfn26" }
+freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "sfn26" }
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }
 skellypings = { git = "https://github.com/freemocap/skellypings" }
 

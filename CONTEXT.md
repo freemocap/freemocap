@@ -66,3 +66,50 @@ _Avoid_: Resume when implying continuation of an interrupted worker's in-memory 
 A saved result slot that can be replaced or preserved while a new run is created.
 Its run ID identifies the slot; its revision identifies the particular saved content.
 _Avoid_: Treating a run ID as immutable content identity.
+
+**Clock domain**:
+The time basis in which a source's timestamps have meaning, including its origin
+and epoch. Relating distinct clock domains requires an explicit synchronization relation.
+_Avoid_: Assuming equal frame numbers or nominal frequencies establish synchronization.
+
+**Sample timeline**:
+An identified ordered sequence of sample IDs and timestamps in one recording clock
+domain. Sources sharing a clock can have different sample timelines.
+_Avoid_: Using one global frame index for every source in a recording.
+
+**Recording dataset**:
+An identified collection of scientific measurements with their axes, timelines,
+missingness, definitions and provenance. A recording dataset can contain multiple independent sample timelines.
+_Avoid_: Treating a single synchronized array as the whole recording.
+
+## Naming guidance
+
+Use meaningful two-word names for domain concepts, proposed types and public
+interfaces, in both explanations and new code. Name what the thing contains or
+does: data tensor, time series, channel layout, sample timeline,
+entry presence, value validity, confidence scores, solver status. Do not introduce
+vague standalone names such as block, snapshot, data, context or manager.
+Use established single-word terms only when genuinely unambiguous and explain
+non-obvious exceptions. Existing code identifiers and external API names remain
+accurate when quoted; this rule does not authorize incidental compatibility breaks.
+Use the same term in prose, type names and serialization descriptions.
+
+**Data tensor**:
+A numeric array with explicit ordered axis definitions; each dimension derives
+from its identifiers. Neither time nor empirical origin is implicit. Live and
+post-hoc processing use the same authored entity and declared component order.
+_Avoid_: Block as a name for scientific data, or fixed coordinate counts in generic storage.
+
+**Time series**:
+A data tensor whose designated sample axis binds to sample identifiers and
+timestamps. It may carry measurements, estimates, predictions or generated data;
+scientific provenance preserves those distinctions. Current timestamp production
+is unchanged by the initial layout implementation.
+_Avoid_: Measurement series as the generic container name.
+
+**Companion tensors**:
+Separate typed arrays describing entry presence, value validity, confidence,
+measurement support or solver status. Declare their axes and semantics explicitly.
+Component metadata matches measurement shape; entity metadata omits the component
+axis and can broadcast without allocating duplicate values.
+_Avoid_: One ambiguous quality mask combining unrelated scientific meanings.

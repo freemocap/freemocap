@@ -12,6 +12,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
+from freemocap.core.tracking.observation_arrays import observation_arrays
 
 
 def project_2d_observation_to_3d(
@@ -23,21 +24,16 @@ def project_2d_observation_to_3d(
     Returns {point_name: ndarray(3,)} — the same shape as the ``points`` dict
     try_angulate() produces for multi-camera triangulation.
     """
-    kpts = observation.to_keypoints()
-    xy = kpts.xyz[:, :2]  # (n_points, 2)
-    names = kpts.names  # tuple[str, ...]
+    points = observation_arrays(observation)
+    xy = points.image_coordinates
+    names = points.point_names
     h, w = observation.image_size  # (height, width) in pixels
 
     # Strip the stage prefix that Observation.to_keypoints() adds ("body.nose" → "nose")
-    result: dict[str, NDArray[np.float64]] = {}
-    for i, name in enumerate(names):
-        u, v = xy[i]
-        if np.isnan(u) or np.isnan(v):
-            continue
-        dot = name.find(".")
-        canonical = name[dot + 1:] if dot != -1 else name
-        result[canonical] = np.array([u - w / 2, 0.0, h - v], dtype=np.float64)
-    return result
+    values = np.column_stack((xy[:, 0] - w / 2, np.zeros(len(xy)), h - xy[:, 1]))
+    # The current realtime result API still requires named views; projection is batched.
+    return {names[index].split(".", 1)[-1]: values[index]
+            for index in np.flatnonzero(~np.isnan(xy).any(axis=-1))}
 
 
 def project_2d_batch_to_3d(

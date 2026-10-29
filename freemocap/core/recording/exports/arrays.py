@@ -13,6 +13,10 @@ import pyarrow.compute as pc
 
 from freemocap.core.recording.parquet_storage.parquet_reader import read_static_channels
 from freemocap.core.recording.parquet_storage.recording_view import RecordingView
+from freemocap.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
+from freemocap.core.data_tensors.data_tensor import CompanionTensor, DataTensor, ScientificProvenance
+from freemocap.core.data_tensors.sample_timeline import SampleTimeline
+from freemocap.core.data_tensors.time_series import TimeSeries
 
 
 from freemocap.core.recording.exports.requests import ChannelSelection, ScientificExportRequest
@@ -119,6 +123,45 @@ class ChannelArrays:
     values: np.ndarray
     present: np.ndarray
     source_components: tuple[str, ...] | None = None
+
+    def to_data_tensor(
+        self, *, scientific_provenance: ScientificProvenance,
+        source_identity: SourceIdentity | None = None,
+    ) -> DataTensor:
+        """Bind saved channel identities without copying its numerical buffers.
+
+        The returned borrowed arrays have the same lifetime as ordered_arrays.
+        Callers publishing beyond that context must take an owned copy.
+        """
+        if source_identity is None:
+            source_identity = SourceIdentity(source_id=self.context.source, sensor_group=self.context.sensor_group)
+        if (source_identity.source_id != self.context.source
+                or source_identity.sensor_group != self.context.sensor_group):
+            raise ValueError("Tensor source identity disagrees with the saved channel")
+        entity_axes = (
+            AxisDefinition("entity_identity", self.names),
+            AxisDefinition("component_identity", self.components if self.source_components is None else self.source_components),
+        )
+        tensor_axes = entity_axes if self.context.static else (AxisDefinition("sample_identity", self.frames), *entity_axes)
+        layout = TensorLayout(axes=tensor_axes, dtype=self.values.dtype, component_units=self.units,
+            reference_id=self.context.reference_frame, source_identity=source_identity, channel_kind=self.context.channel)
+        presence = CompanionTensor(metadata_name="entry_presence", data_values=self.present,
+                                   tensor_layout=TensorLayout(axes=tensor_axes, dtype=bool))
+        return DataTensor(data_values=self.values, tensor_layout=layout,
+                          scientific_provenance=scientific_provenance, companion_tensors=(presence,))
+
+    def to_time_series(
+        self, *, sample_timeline: SampleTimeline, scientific_provenance: ScientificProvenance,
+        source_identity: SourceIdentity | None = None,
+    ) -> TimeSeries:
+        """Bind exact saved sampling; matching counts alone do not establish timing."""
+        if self.context.static:
+            raise ValueError("Static fits have no sample timeline")
+        if (not np.array_equal(self.frames, sample_timeline.sample_ids)
+                or not np.array_equal(self.timestamps, sample_timeline.timestamps_s)):
+            raise ValueError("Sample timeline differs from saved channel IDs or timestamps")
+        return TimeSeries(data_tensor=self.to_data_tensor(scientific_provenance=scientific_provenance,
+                          source_identity=source_identity), sample_timeline=sample_timeline)
 
     def descriptor(self):
         return dict(context=self.context.model_dump(mode='json'), names=self.names,

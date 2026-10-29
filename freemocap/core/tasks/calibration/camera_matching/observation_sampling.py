@@ -7,23 +7,33 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 from skellytracker.core.data_primitives.observation import Observation
+from freemocap.core.tracking.observation_arrays import (
+    aligned_coordinates, collected_point_names, observation_arrays, point_selection,
+)
 
 
 def select_matching_point_names(*, frames: list[dict[str, Observation]], minimum_visibility: float) -> tuple[str, ...]:
     """Prefer confidently observed cross-view points within the matching budget."""
-    scores: dict[str, float] = {}
+    names = collected_point_names(observation for frame in frames for observation in frame.values())
+    scores = np.zeros(len(names), dtype=np.float64)
+    eligible = np.zeros(len(names), dtype=bool)
     for observations in frames:
-        shared: dict[str, list[float]] = {}
-        for observation in observations.values():
-            points = observation.to_keypoints()
-            for index, name in enumerate(points.names):
-                visibility = float(points.visibility[index])
-                if np.isfinite(visibility) and visibility >= minimum_visibility and np.isfinite(points.xy[index]).all():
-                    shared.setdefault(name, []).append(visibility)
-        for name, visibility in shared.items():
-            if len(visibility) >= 2:
-                scores[name] = scores.get(name, 0.0) + min(visibility)
-    return tuple(sorted(scores, key=lambda name: (-scores[name], name)))[:64]
+        if len(observations) < 2:
+            continue
+        confidence = np.full((len(observations), len(names)), np.inf)
+        for camera_index, observation in enumerate(observations.values()):
+            points = observation_arrays(observation)
+            source, target = point_selection(points.point_names, names)
+            valid = (np.isfinite(points.confidence_scores) & (points.confidence_scores >= minimum_visibility)
+                     & np.isfinite(points.image_coordinates).all(axis=-1))
+            confidence[camera_index, target[valid[source]]] = points.confidence_scores[source[valid[source]]]
+        shared = np.isfinite(confidence).sum(axis=0) >= 2
+        eligible |= shared
+        scores[shared] += confidence[:, shared].min(axis=0)
+    selected = np.flatnonzero(eligible)
+    # The existing matching budget ranks evidence; it does not reorder tensor axes.
+    order = np.lexsort((np.asarray(names)[selected], -scores[selected]))
+    return tuple(names[index] for index in selected[order[:64]])
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,15 +65,10 @@ class MatchingSampleLayout:
             observation = observations[source]
             if observation.image_size[::-1] != self.image_sizes[source_index]:
                 raise ValueError(f"Matching image dimensions changed for source {source}")
-            points = observation.to_keypoints()
-            if len(set(points.names)) != len(points.names):
-                raise ValueError("Matching observation has duplicate qualified point names")
-            indices = {name: index for index, name in enumerate(points.names)}
-            for target, name in enumerate(self.point_names):
-                index = indices.get(name)
-                if index is not None and np.isfinite(points.visibility[index]) and points.visibility[index] >= self.minimum_visibility:
-                    if np.isfinite(points.xy[index]).all():
-                        pixels[source_index, target] = points.xy[index]
+            pixels[source_index] = aligned_coordinates(observation_arrays(observation),
+                point_names=self.point_names, image_only=True, minimum_visibility=self.minimum_visibility,
+                require_all=False)
+            pixels[source_index, ~np.isfinite(pixels[source_index]).all(axis=-1)] = np.nan
         return pixels
 
 

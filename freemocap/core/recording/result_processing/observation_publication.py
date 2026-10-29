@@ -1,6 +1,8 @@
 """Publish posthoc observations with SkellyCam timing into the canonical store."""
 
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
+from freemocap.core.data_tensors.sample_timeline import SampleTimeline
+from freemocap.core.data_tensors.layout_definitions import SourceIdentity
 from collections.abc import Iterator
 from dataclasses import replace
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
@@ -171,24 +173,21 @@ def publish_posthoc_observations(
     if entries:
         run = run.model_copy(update={"processing": set_stage_provenance(run.processing, request.group.name, entries)})
 
+    synchronized_timeline = SampleTimeline(
+        timeline_id=f"{request.group.name}:synchronized", clock_id=f"{request.group.name}:recording_relative",
+        source_identity=SourceIdentity(source_id=group_source, sensor_group=request.group.name),
+        sample_ids=frame_numbers, timestamps_s=synchronized,
+    )
+    synchronized_sampling = SeriesSampling.from_timeline(sample_timeline=synchronized_timeline, run_id=target_run_id)
+
     def batches(*, include_observations: bool = True) -> Iterator[pa.RecordBatch]:
         for series in diagnostics:
-            yield from series.batches(SeriesSampling(frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=target_run_id))
+            yield from series.batches(synchronized_sampling)
         for reconstruction in request.reconstructions:
             for series in reconstruction.series():
-                yield from series.batches(
-                    SeriesSampling(
-                        frame_numbers=frame_numbers, timestamps_s=synchronized, run_id=target_run_id
-                    )
-                )
+                yield from series.batches(synchronized_sampling)
         for series in request.spatial_series:
-            yield from series.batches(
-                SeriesSampling(
-                    frame_numbers=frame_numbers,
-                    timestamps_s=synchronized,
-                    run_id=target_run_id,
-                )
-            )
+            yield from series.batches(synchronized_sampling)
         if not include_observations:
             return  # Retained rows are read from the existing recording below.
         for camera in request.group.videos:

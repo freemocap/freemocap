@@ -20,6 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 from skellytracker.core.data_primitives.observation import Observation
+from freemocap.core.tracking.observation_arrays import observation_arrays, aligned_coordinates
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_transform import (
@@ -403,7 +404,7 @@ class CalibrationStateTracker:
     ) -> AngulationResult | None:
         """Attempt triangulation with reprojection error gating.
 
-        Uses to_keypoints() to get named 2D observations from each camera,
+        Uses shared observation arrays to align named image coordinates from each camera,
         finds points visible in ≥2 cameras, triangulates via DLT, and rejects
         points whose mean reprojection error exceeds max_reprojection_error_px.
 
@@ -483,16 +484,10 @@ class CalibrationStateTracker:
             ordered_obs: list[Observation] = [
                 matched_obs_by_cam[c] for c in ordered_cam_names
             ]
-            keypoints = [observation.to_keypoints() for observation in ordered_obs]
-            point_names_seq = tuple(dict.fromkeys(name for points in keypoints for name in points.names))
-            stacked = np.full((n_cameras, len(point_names_seq), 2), np.nan, dtype=np.float64)
-            for camera_index, points in enumerate(keypoints):
-                indices = {name: index for index, name in enumerate(points.names)}
-                if len(indices) != len(points.names):
-                    raise ValueError('Triangulation point names must be unique within each camera')
-                for point_index, name in enumerate(point_names_seq):
-                    if name in indices:
-                        stacked[camera_index, point_index] = points.xy[indices[name]]
+            keypoints = [observation_arrays(observation) for observation in ordered_obs]
+            point_names_seq = tuple(dict.fromkeys(name for points in keypoints for name in points.point_names))
+            stacked = np.stack([aligned_coordinates(points, point_names=point_names_seq, image_only=True)
+                                for points in keypoints])
             # Triangulate the single frame
             _t0 = time.perf_counter()
             triangulation_result = sub_triangulator.triangulate(

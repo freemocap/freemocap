@@ -70,13 +70,13 @@ def test_early_noisy_frames_use_the_same_fit_as_late_frames() -> None:
             compute_center_of_mass=True,
             timing=PosthocTimingReport(),
         )
-    )[bundle.model_id].frames
-    assert all(result is not None for result in results)
-    scales = [result.fitted_scale_mm for result in results if result is not None]
-    assert scales[0] is not None
-    assert len(set(scales)) == 1
-    lengths = [result.segment_lengths for result in results if result is not None]
-    assert all(value == lengths[0] for value in lengths)
+    )[bundle.model_id]
+    assert results.scale_fit is not None
+    assert results.frame_count == len(recording)
+    assert results.channel_tensor("MAPPED_KEYPOINTS_3D").companion_values("entry_presence").any(axis=(1, 2)).all()
+    # The fitted scale and segment lengths are stored once for the whole recording.
+    assert results.scale_fit.fitted_scale > 0
+    assert all(length > 0 for length in results.scale_fit.segment_lengths.values())
 
 
 def test_all_missing_recording_remains_missing() -> None:
@@ -91,7 +91,7 @@ def test_all_missing_recording_remains_missing() -> None:
             timing=PosthocTimingReport(),
         )
     )
-    assert results[bundle.model_id].frames == (None, None)
+    assert not results[bundle.model_id].channel_tensor("MAPPED_KEYPOINTS_3D").companion_values("entry_presence").any()
     assert results[bundle.model_id].scale_fit is None
 
 
@@ -199,11 +199,11 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
 
     monkeypatch.setattr(Path, "read_text", forbid_definition_file)
 
-    def forbid_fitting(*, window_frames: int) -> None:
+    def forbid_fitting(*args, **kwargs) -> None:
         raise AssertionError("Saved-fit reconstruction must not create a scale fitter")
 
     monkeypatch.setattr(
-        posthoc_reconstruction, "streaming_model_scale_source", forbid_fitting
+        posthoc_reconstruction, "fit_skeletons_for_recording", forbid_fitting
     )
     saved = read_saved_reconstruction(
         SavedReconstructionRequest(
@@ -223,19 +223,11 @@ def test_saved_fit_reproduces_reconstruction_without_fitting(
         request=saved.numerical_input,
         fits={bundle.model_id: saved.fit.for_reconstruction()},
     )[bundle.model_id]
-    for before, after in zip(expected.frames, actual.frames, strict=True):
-        assert before is not None and after is not None
-        assert before.segment_lengths == after.segment_lengths
-        assert before.fitted_scale_mm == after.fitted_scale_mm
-        for name in before.landmarks:
-            npt.assert_array_equal(before.landmarks[name], after.landmarks[name])
-        for name in before.segment_rotations_world:
-            npt.assert_array_equal(
-                before.segment_rotations_world[name],
-                after.segment_rotations_world[name],
-            )
-            npt.assert_array_equal(
-                before.segment_rotations_local[name],
-                after.segment_rotations_local[name],
-            )
-        npt.assert_array_equal(before.center_of_mass, after.center_of_mass)
+    assert expected.scale_fit == actual.scale_fit
+    assert expected.frame_count == actual.frame_count
+    for before, after in zip(expected.channel_tensors, actual.channel_tensors, strict=True):
+        assert before.tensor_layout == after.tensor_layout
+        npt.assert_array_equal(before.data_values, after.data_values)
+        for before_metadata, after_metadata in zip(before.companion_tensors, after.companion_tensors, strict=True):
+            assert before_metadata.metadata_name == after_metadata.metadata_name
+            npt.assert_array_equal(before_metadata.data_values, after_metadata.data_values)

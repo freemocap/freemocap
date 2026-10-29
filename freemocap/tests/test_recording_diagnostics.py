@@ -189,23 +189,8 @@ def test_wrong_residual_reference_fails_before_replacing_output(
     original_data = structure.data_parquet_path.read_bytes()
     original_report = structure.recording_info_path.read_bytes()
     reconstruction = publication.reconstructions[0]
-    frame = reconstruction.result.frames[0]
-    assert frame is not None
-    readings = dict(frame.rigid_body_residuals)
-    name = next(iter(readings))
-    readings[name] = replace(readings[name], reference_kind="prior_live_fit")
-    altered = replace(
-        reconstruction,
-        result=replace(
-            reconstruction.result,
-            frames=(
-                replace(frame, rigid_body_residuals=readings),
-                *reconstruction.result.frames[1:],
-            ),
-        ),
-    )
     with pytest.raises(ValueError, match="reference must match"):
-        publish_posthoc_observations(replace(publication, reconstructions=(altered,)))
+        replace(reconstruction, result=replace(reconstruction.result, residual_reference="prior_live_fit"))
     assert structure.data_parquet_path.read_bytes() == original_data
     assert structure.recording_info_path.read_bytes() == original_report
 

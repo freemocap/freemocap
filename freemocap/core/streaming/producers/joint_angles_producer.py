@@ -35,10 +35,16 @@ class JointAnglesProducer(ChannelProducer):
 
         names: list[str] = []
         values: list[float] = []
-        for joint_name, angles in sorted(reconstruction.joint_angles.items()):
-            for angle_index, name in enumerate(skeleton.skeleton.joints[joint_name].angle_names):
+        unknown_joints = set(reconstruction.joint_angles) - set(skeleton.skeleton.joints)
+        if unknown_joints:
+            raise ValueError(f"Undeclared joint identities: {unknown_joints}")
+        for joint_name, joint_definition in skeleton.skeleton.joints.items():
+            angles = reconstruction.joint_angles.get(joint_name)
+            if angles is not None and len(angles) != len(joint_definition.angle_names):
+                raise ValueError(f"Joint {joint_name} values do not match its declared angles")
+            for angle_index, name in enumerate(joint_definition.angle_names):
                 names.append(name)
-                value = float(angles[angle_index])
+                value = float(angles[angle_index]) if angles is not None else float("nan")
                 values.append(value if np.isfinite(value) else np.nan)
 
         column = np.asarray(values, dtype=np.float32)

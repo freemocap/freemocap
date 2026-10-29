@@ -1,5 +1,25 @@
 # Parked experiment: executable pipeline graphs
 
+## Visual target accepted on 2026-10-28
+
+The full-pipeline synthetic viewer is the accepted visual direction: typed node
+slots, curved connections, a left-to-right overview, camera progress bars, and
+an inspector driven by the backend graph definition. This accepts the visual
+methodology, not the experimental scheduler as a production implementation.
+
+Zoom only changes the view: node positions, dimensions, ports, and title styling
+stay fixed. Titles scale with their boxes and are clipped to the header area.
+At distant zoom, hide secondary details; text need not remain readable. Never
+enlarge labels independently or rearrange the graph in response to zoom.
+Do not repeat delivery jargon such as `bcast` on every input. The inspector
+explains shared inputs as one output reused by the work items that need it.
+
+The synthetic source now declares a `video_file_list`: camera ID, file path,
+frame count, and frame rate for each video. It feeds timing and frame readers.
+Calibration selection and the output plan are separate configured sources;
+there is no generic recording-context dependency on every operation. The lab
+still reads no real videos and writes no scientific results.
+
 **Status: experimental sidebar, not approved for application integration.**
 Parked on 2026-10-06 so it can be reconsidered alongside the separate posthoc
 pipeline work. Nothing in the application imports or launches this folder.

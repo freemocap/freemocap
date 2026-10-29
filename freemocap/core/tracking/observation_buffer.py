@@ -8,6 +8,9 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray  # noqa: TC002
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
+from freemocap.core.tracking.observation_arrays import (
+    TRACKER_COMPONENTS, collected_point_names, observation_arrays, point_selection,
+)
 
 
 class ObservationBuffer:
@@ -26,25 +29,26 @@ class ObservationBuffer:
     @property
     def keypoint_names(self) -> tuple[str, ...]:
         """Stage-qualified names encountered anywhere in the recording, in first-seen order."""
-        return tuple(dict.fromkeys(
-            name for observation in self.observations for name in observation.to_keypoints().names
-        ))
+        return collected_point_names(self.observations)
 
     def to_keypoints_array(self, *, names: tuple[str, ...]) -> NDArray[np.float64]:
         """Align each observation to a shared name axis; absent measurements remain NaN."""
-        indices = {name: index for index, name in enumerate(names)}
-        if len(indices) != len(names):
-            raise ValueError("The recording keypoint axis contains duplicate names")
-        values = np.full((len(self.observations), len(names), 3), np.nan, dtype=np.float64)
-        for frame_index, observation in enumerate(self.observations):
-            points = observation.to_keypoints()
-            if len(set(points.names)) != len(points.names):
-                raise ValueError(f"Duplicate keypoint names in frame {observation.frame_number}")
-            for point_index, name in enumerate(points.names):
-                if name not in indices:
-                    raise ValueError(f"Keypoint {name} is missing from the recording keypoint axis")
-                if np.isfinite(points.visibility[point_index]) and points.visibility[point_index] > 0.0:
-                    values[frame_index, indices[name]] = points.xyz[point_index]
+        point_selection((), names)
+        values = np.full((len(self.observations), len(names), len(TRACKER_COMPONENTS)), np.nan, dtype=np.float64)
+        # Source observations arrive as individual objects. Group only their layout
+        # metadata, then assemble and mask entire frame/keypoint tensors in NumPy.
+        for start in range(0, len(self.observations), 256):
+            groups = {}
+            for index, observation in enumerate(self.observations[start:start + 256], start):
+                points = observation_arrays(observation)
+                groups.setdefault(points.point_names, []).append((index, points))
+            for source_names, frames in groups.items():
+                source, target = point_selection(source_names, names)
+                coordinates = np.stack([points.coordinate_values for _, points in frames])
+                confidence = np.stack([points.confidence_scores for _, points in frames])
+                coordinates = np.where((np.isfinite(confidence) & (confidence > 0.0))[..., None], coordinates, np.nan)
+                frame_indices = np.asarray([index for index, _ in frames])
+                values[frame_indices[:, None], target] = coordinates[:, source]
         return values
 
     def to_stage_array(self, stage_name: str, n_points: int | None = None) -> NDArray[np.float64]:
@@ -68,10 +72,15 @@ class ObservationBuffer:
                     f"from observation at frame {obs.frame_number}"
                 )
             kpts = stage.keypoints
+            if n_points is not None and (n_points < 0 or n_points > len(kpts.names)):
+                raise ValueError("Stage selection exceeds its declared keypoint names")
+            selected_names = kpts.names if n_points is None else kpts.names[:n_points]
+            if arrays and selected_names != first_names:
+                raise ValueError("Stage keypoint order changed within the recording")
+            first_names = selected_names
             xyz = kpts.xyz if n_points is None else kpts.xyz[:n_points]
             vis = kpts.visibility if n_points is None else kpts.visibility[:n_points]
-            xyz_out = xyz.copy().astype(np.float64)
-            xyz_out[vis <= 0.0] = np.nan
+            xyz_out = np.where((np.isfinite(vis) & (vis > 0.0))[:, None], xyz, np.nan).astype(np.float64, copy=False)
             arrays.append(xyz_out)
         return np.stack(arrays)
 

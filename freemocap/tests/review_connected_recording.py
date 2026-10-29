@@ -9,9 +9,8 @@ from pathlib import Path
 import subprocess
 
 import numpy as np
-from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
-from skellyforge.core.math.geometry.spatial_vectors import Point
-from skellyforge.core.skeleton.chain.synthesis import synthesize_fitted_pose
+from skellyforge.core.math.geometry.rotation_quaternion import quaternions_to_rotation_matrices
+from skellyforge.core.skeleton.chain.anchored_batch import AnchoredSkeletonGeometry
 
 from freemocap.core.recording.playback_queries import recording_view
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionSourceDefinition, model_source_name
@@ -28,41 +27,16 @@ def file_digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def connected_geometry(bundle, fit, frame):
-    """Only connect finite poses with a complete observed ancestor path."""
-    if frame is None:
-        return {}, {}
-    parents = bundle.rest_pose.parents
-    root = bundle.rest_pose.root_segment_name
-    available = {
-        name for name, segment in bundle.skeleton.segments.items()
-        if name in frame.segment_rotations_world
-        and np.isfinite(frame.segment_rotations_world[name]).all()
-        and segment.frame_definition.origin_point_name in frame.landmarks
-        and np.isfinite(frame.landmarks[segment.frame_definition.origin_point_name]).all()
-    }
-    selected = set()
-    def include(name):
-        if name not in available:
-            return False
-        parent = parents[name]
-        if parent is not None and not include(parent):
-            return False
-        selected.add(name)
-        return True
-    for name in available:
-        include(name)
-    if root not in selected:
-        return {}, {}
-    rotations = {name: RotationQuaternion.from_array(array=frame.segment_rotations_world[name]) for name in selected}
-    _, origins, _ = synthesize_fitted_pose(
-        skeleton=bundle.skeleton, fit=fit, segment_names=frozenset(selected),
-        root_origin=Point.from_array(values=frame.landmarks[bundle.skeleton.segments[root].frame_definition.origin_point_name]),
-        root_world_orientation=rotations[root],
-        segment_relative_orientations={name: rotations[parents[name]].inverse() * rotations[name]
-                                       for name in selected if name != root},
-    )
-    return origins, rotations
+def connected_geometry(bundle, fit, origins, rotations, present):
+    """Connect all frame poses with complete root paths using Forge batch geometry."""
+    geometry = AnchoredSkeletonGeometry.from_skeleton(skeleton=bundle.skeleton, fit=fit,
+        anchor_segment_name=bundle.rest_pose.root_segment_name)
+    selected = np.zeros_like(present)
+    selected[:, geometry.anchor_index] = present[:, geometry.anchor_index]
+    for parents, children, _, _ in geometry.traversal_levels:
+        selected[:, children] = selected[:, parents] & present[:, children]
+    return geometry.positions(world_orientations=rotations, segment_present=selected,
+        anchor_origins=origins[:, geometry.anchor_index])
 
 
 def build_review(path, sensor_group=None):
@@ -96,36 +70,46 @@ def build_review(path, sensor_group=None):
         loaded.numerical_input, bundles=(bundle,), timing=PosthocTimingReport()))[bundle.model_id]
     if result.scale_fit is None:
         raise ValueError("Current reconstruction produced no scale fit")
-    if len(result.frames) != len(timestamps):
+    if result.frame_count != len(timestamps):
         raise ValueError("Reconstruction must preserve the saved frame count")
     fit = result.scale_fit
+    rotation_tensor = result.channel_tensor(ChannelKind.ROTATIONS_WORLD)
+    landmark_tensor = result.channel_tensor(ChannelKind.LANDMARKS_3D)
+    mapped_tensor = result.channel_tensor(ChannelKind.MAPPED_KEYPOINTS_3D)
+    segment_names = rotation_tensor.tensor_layout.axes[1].identifiers
+    landmark_names = landmark_tensor.tensor_layout.axes[1].identifiers
+    origin_columns = [landmark_names.index(bundle.skeleton.segments[name].frame_definition.origin_point_name) for name in segment_names]
+    origins = landmark_tensor.data_values[:, origin_columns]
+    rotations = rotation_tensor.data_values
+    present = rotation_tensor.companion_values("entry_presence").all(axis=-1) & np.isfinite(origins).all(axis=-1)
+    connected = connected_geometry(bundle, fit, origins, rotations, present)
+    component_count = origins.shape[-1]
+    matrices = np.full((*present.shape, component_count, component_count), np.nan)
+    matrices[present] = quaternions_to_rotation_matrices(quaternions=rotations[present])
+    local_vectors = np.asarray([bundle.skeleton.landmarks[bundle.skeleton.segments[name].frame_definition.primary_point_name].local_position.array
+                               * fit.segment_scales[name] for name in segment_names])
+    directions = np.einsum("fsij,sj->fsi", matrices, local_vectors)
+    ends = origins + directions
+    connected_ends = connected.segment_origins + directions
+    shifts = np.linalg.norm(connected.segment_origins - origins, axis=-1)
+    mapped_present = mapped_tensor.companion_values("entry_presence").all(axis=-1)
+    shoulder_columns = {name: loaded.points.channel.names.index(name) for name in ('left_shoulder', 'right_shoulder') if name in loaded.points.channel.names}
+    coverage = {name: int(connected.segment_present[:, column].sum()) for column, name in enumerate(segment_names)}
     frames = []
-    coverage = dict.fromkeys(bundle.skeleton.segments, 0)
-    for index, frame in enumerate(result.frames):
-        connected, _ = connected_geometry(bundle, fit, frame)
-        points = {name: point for name, point in zip(loaded.points.channel.names, loaded.points.values[index], strict=True)
-                  if np.isfinite(point).all()}
-        mapped = bundle.landmark_mapping.apply(tracker_positions=points)
+    # Numerical work is complete. This loop only serializes the HTML review's JSON schema.
+    for index in range(result.frame_count):
         segments = {}
-        if frame is not None:
-            for name, quaternion in frame.segment_rotations_world.items():
-                segment = bundle.skeleton.segments[name]
-                origin = frame.landmarks.get(segment.frame_definition.origin_point_name)
-                if origin is None or not np.isfinite(origin).all() or not np.isfinite(quaternion).all():
-                    continue
-                q = RotationQuaternion.from_array(array=quaternion)
-                local = bundle.skeleton.landmarks[segment.frame_definition.primary_point_name].local_position.array * fit.segment_scales[name]
-                direction = q.rotate_vector(vector=local)
-                connected_origin = connected[name].array if name in connected else None
-                segments[name] = dict(origin=origin.tolist(), end=(origin + direction).tolist(),
-                    connected_origin=connected_origin.tolist() if connected_origin is not None else None,
-                    connected_end=(connected_origin + direction).tolist() if connected_origin is not None else None,
-                    axes=q.to_rotation_matrix().T.tolist(),
-                    shift_mm=float(np.linalg.norm(connected_origin - origin)) if connected_origin is not None else None)
-                coverage[name] += name in connected
+        for column in np.flatnonzero(present[index]):
+            available = connected.segment_present[index, column]
+            segments[segment_names[column]] = dict(origin=origins[index, column].tolist(), end=ends[index, column].tolist(),
+                connected_origin=connected.segment_origins[index, column].tolist() if available else None,
+                connected_end=connected_ends[index, column].tolist() if available else None,
+                axes=matrices[index, column].T.tolist(), shift_mm=float(shifts[index, column]) if available else None)
         frames.append(dict(number=loaded.points.frames[index], time=loaded.points.timestamps_s[index],
-                           shoulder_keypoints={n: points[n].tolist() for n in ('left_shoulder', 'right_shoulder') if n in points},
-                           points={n:p.tolist() for n,p in mapped.items() if np.isfinite(p).all()}, segments=segments))
+            shoulder_keypoints={name: loaded.points.values[index, column].tolist() for name, column in shoulder_columns.items()
+                                if np.isfinite(loaded.points.values[index, column]).all()},
+            points={landmark_names[column]: mapped_tensor.data_values[index, column].tolist()
+                    for column in np.flatnonzero(mapped_present[index])}, segments=segments))
     if file_digest(path) != before:
         raise RuntimeError("Source changed during review generation; discard output")
     return dict(frames=frames, coverage=coverage, parents=dict(bundle.rest_pose.parents),

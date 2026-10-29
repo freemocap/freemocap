@@ -156,4 +156,4 @@ def test_completed_samples_do_not_vote_in_person_scale():
     result = fit(completed, support)
     assert result.scale_fit is not None and baseline.scale_fit is not None
     assert result.scale_fit.fitted_scale == baseline.scale_fit.fitted_scale
-    assert all(frame is not None for frame in result.frames)
+    assert result.channel_tensor("MAPPED_KEYPOINTS_3D").companion_values("entry_presence").any(axis=(1, 2)).all()

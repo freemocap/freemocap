@@ -17,16 +17,23 @@ This is SciPy's positive-w policy including its exact half-turn tie break
 """
     if not rotations:
         return {}
-    values = np.stack(tuple(rotations.values())).astype(np.float64, copy=True)
-    if values.shape != (len(rotations), 4) or not np.isfinite(values).all():
+    values = canonical_quaternion_array(np.stack(tuple(rotations.values())))
+    return dict(zip(rotations, values, strict=True))
+
+
+def canonical_quaternion_array(rotations: np.ndarray) -> np.ndarray:
+    """Apply the same output convention to any batch of declared wxyz values."""
+    values = np.array(rotations, dtype=np.float64, copy=True)
+    components = ("w", "x", "y", "z")
+    if values.ndim < 1 or values.shape[-1] != len(components) or not np.isfinite(values).all():
         raise ValueError("Rotation outputs must be finite wxyz quaternions")
-    if not np.allclose(np.linalg.norm(values, axis=1), 1, atol=1e-8, rtol=0):
+    if not np.allclose(np.linalg.norm(values, axis=-1), 1, atol=1e-8, rtol=0):
         raise ValueError("Rotation outputs must be unit quaternions")
-    first_nonzero = np.argmax(values != 0, axis=1)
-    flip = values[np.arange(len(values)), first_nonzero] < 0
+    first_nonzero = np.argmax(values != 0, axis=-1)
+    flip = np.take_along_axis(values, first_nonzero[..., None], axis=-1)[..., 0] < 0
     values[flip] *= -1
     values[values == 0] = 0.0  # One representation of signed zero as well.
-    return dict(zip(rotations, values, strict=True))
+    return values
 
 
 def canonical_joint_angles(
@@ -39,14 +46,22 @@ does not remove Euler singularities or guarantee time-series continuity.
 """
     if not angles:
         return {}
-    values = np.asarray(tuple(angles.values()), dtype=np.float64).copy()
-    if values.shape != (len(angles), 3) or not np.isfinite(values).all():
+    values = canonical_joint_angle_array(np.asarray(tuple(angles.values()), dtype=np.float64))
+    return {name: tuple(row) for name, row in zip(angles, values, strict=True)}
+
+
+def canonical_joint_angle_array(angles: np.ndarray) -> np.ndarray:
+    """Canonicalize batches of Euler triples with the scalar path's convention."""
+    values = np.array(angles, dtype=np.float64, copy=True)
+    euler_components = ("first_angle", "middle_angle", "last_angle")
+    if values.ndim < 1 or values.shape[-1] != len(euler_components) or not np.isfinite(values).all():
         raise ValueError("Joint-angle outputs must be finite Euler triples")
-    outer = values[:, (0, 2)].copy()
+    outer_indices = (0, len(euler_components) - 1)
+    outer = values[..., outer_indices].copy()
     outside = (outer <= -np.pi) | (outer > np.pi)
     outer[outside] = (outer[outside] + np.pi) % (2 * np.pi) - np.pi
     endpoint = np.abs(np.abs(outer) - np.pi) <= ANGLE_ENDPOINT_TOLERANCE
     outer[endpoint] = np.pi
     outer[outer == 0] = 0.0
-    values[:, (0, 2)] = outer
-    return {name: tuple(row) for name, row in zip(angles, values, strict=True)}
+    values[..., outer_indices] = outer
+    return values

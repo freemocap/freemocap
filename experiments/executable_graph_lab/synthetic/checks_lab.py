@@ -20,6 +20,19 @@ def wait_for(run, predicate, timeout=6):
 
 
 class GraphTests(unittest.TestCase):
+    def test_explicit_video_inputs_and_overview_titles(self):
+        plan = compile_graph({})
+        nodes = {n.id: n for n in plan.nodes}
+        self.assertEqual(nodes['recording'].outputs[0].data_type, 'video_file_list')
+        self.assertEqual({n.id for n in plan.nodes if any(b.source == 'recording' for b in n.inputs)},
+                         {'timing', 'decode', 'annotation_decode'})
+        self.assertFalse(nodes['publication'].inputs)
+        self.assertFalse(nodes['calibration_load'].inputs)
+        self.assertTrue(all(n.overview_label for n in plan.nodes))
+        validate_payload('video_file_list', {'videos': [{'camera_id': 0, 'path': 'cam0.mp4', 'frame_count': 30, 'frame_rate_hz': 30.0}]})
+        with self.assertRaises(ValueError):
+            validate_payload('video_file_list', {'recording_id': 'vague'})
+
     def test_payload_contract_rejects_wrong_fields_and_cpu_fallback(self):
         config = dict(family='RTMPose', pose_model='fixture:pose', person_model='fixture:person',
                       requested_provider='CUDAExecutionProvider', allow_cpu_fallback=False)
@@ -220,9 +233,9 @@ class GraphTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cycle"): compile_graph({}, nodes)
         nodes = list(p.nodes)
         index = next(i for i, n in enumerate(nodes) if n.id=='decode')
-        nodes[index] = replace(nodes[index], inputs=(Binding("recording", "recording", "wrong", "broadcast"), *nodes[index].inputs[1:]))
+        nodes[index] = replace(nodes[index], inputs=(Binding("videos", "recording", "wrong", "broadcast"), *nodes[index].inputs[1:]))
         with self.assertRaisesRegex(ValueError, "port type"): compile_graph({}, nodes)
-        nodes[index] = replace(nodes[index], inputs=(Binding("recording", "recording", "recording_context", "same_key"), *nodes[index].inputs[1:]))
+        nodes[index] = replace(nodes[index], inputs=(Binding("videos", "recording", "video_file_list", "same_key"), *nodes[index].inputs[1:]))
         with self.assertRaisesRegex(ValueError, "key binding"): compile_graph({}, nodes)
 
     def test_required_optional_and_named_output_contracts(self):

@@ -107,6 +107,9 @@ class ServerUrls {
             // Ffmpeg endpoints
             ffmpegDetect: `${baseUrl}/freemocap/ffmpeg/detect`,
 
+            // ONNX endpoints
+            onnxExecutionProviders: `${baseUrl}/freemocap/onnx/execution_providers`,
+
             // WebSocket
             websocket: this.getWebSocketUrl(),
         };

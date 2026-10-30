@@ -206,7 +206,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             <div
               ref={panel3Ref}
               data-panel="panel3"
-              className="bg-secondary p-2 br-1"
+              className="bg-secondary p-2 br-1 pos-rel z-10"
             >
               <MOCAPDetectorSettings open={true} onClose={() => {}} />
             </div>

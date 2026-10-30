@@ -2,7 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
+import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
 import { useMocap } from '@/hooks/useMocap';
+import { useExecutionProviderOptions } from '@/hooks/useExecutionProviderOptions';
 import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS, RTMPoseModelName } from '@/store/slices/mocap';
 
 interface MOCAPDetectorSettingsProps {
@@ -25,6 +27,7 @@ const MOCAPDetectorSettings: React.FC<
         detectorType,
         rtmPoseModelName,
         rtmPoseConfidenceThreshold,
+        executionProvider,
         mediapipeModelComplexity,
         mediapipeDetectionConfidence,
         mediapipePresenceConfidence,
@@ -32,11 +35,13 @@ const MOCAPDetectorSettings: React.FC<
         setDetectorType,
         setRtmPoseModelName,
         setRtmPoseConfidenceThreshold,
+        setExecutionProvider,
         setMediapipeModelComplexity,
         setMediapipeDetectionConfidence,
         setMediapipePresenceConfidence,
         setMediapipeTrackingConfidence,
     } = useMocap();
+    const executionProviderOptions = useExecutionProviderOptions(executionProvider);
 
 
     useEffect(() => {
@@ -104,6 +109,19 @@ const MOCAPDetectorSettings: React.FC<
                                     }
                                 />
                             </div>
+                        </div>
+                        {/* Execution provider */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Execution provider</span>
+                            <NameDropdownSelector
+                                key={executionProvider ?? "auto"}
+                                DropdownclassName="z-111"
+                                options={executionProviderOptions.map(({ label }) => label)}
+                                initialValue={executionProviderOptions.find(({ value }) => value === executionProvider)?.label ?? "Auto"}
+                                onChange={(label) => setExecutionProvider(
+                                    executionProviderOptions.find((option) => option.label === label)?.value ?? null
+                                )}
+                            />
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Confidence threshold</span>

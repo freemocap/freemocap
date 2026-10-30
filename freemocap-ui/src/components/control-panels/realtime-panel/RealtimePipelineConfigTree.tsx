@@ -2,11 +2,13 @@ import React, {useCallback} from "react";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
 import {useMocap} from "@/hooks/useMocap";
+import {useExecutionProviderOptions} from "@/hooks/useExecutionProviderOptions";
 import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
-import {DetectorType, EXECUTION_PROVIDERS, ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS, RealtimeFilterConfig} from "@/store/slices/mocap";
+import {DetectorType, ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS, RealtimeFilterConfig} from "@/store/slices/mocap";
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {pipelineConfigUpdated, resetSkeletonFitter} from "@/store/slices/realtime";
 import ValueSelector from "@/components/ui-components/ValueSelector";
+import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import {selectCalibrationDirectoryInfo} from "@/store/slices/calibration/calibration-slice";
 
 export type PipelineContext = "realtime" | "posthoc";
@@ -94,6 +96,8 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         context === "realtime"
             ? (inferenceNodeConfig?.execution_provider ?? null)
             : (posthocExecutionProvider ?? null);
+
+    const executionProviderOptions = useExecutionProviderOptions(activeExecutionProvider);
 
     const handleSetExecutionProvider = useCallback((provider: ExecutionProviderName | null) => {
         if (context === "realtime") {
@@ -252,19 +256,17 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                             </p>
                         )}
                         {activeDetectorType === "rtmpose" && (
-                            <div className="flex flex-row gap-1 items-center justify-content-space-between flex-wrap">
+                            <div className="flex flex-row gap-1 items-center justify-content-space-between flex-wrap pos-rel z-10">
                                 <span className="text-sm">Execution provider</span>
-                                <div className="flex flex-row gap-1 flex-wrap">
-                                    {EXECUTION_PROVIDERS.map(({ label, value }) => (
-                                        <button
-                                            key={label}
-                                            className={`button sm br-1 ${activeExecutionProvider === value ? "primary accent" : "quaternary"}`}
-                                            onClick={() => handleSetExecutionProvider(value)}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
+                                <NameDropdownSelector
+                                    key={activeExecutionProvider ?? "auto"}
+                                    DropdownclassName="z-111"
+                                    options={executionProviderOptions.map(({label}) => label)}
+                                    initialValue={executionProviderOptions.find(({value}) => value === activeExecutionProvider)?.label ?? "Auto"}
+                                    onChange={(label) => handleSetExecutionProvider(
+                                        executionProviderOptions.find((option) => option.label === label)?.value ?? null
+                                    )}
+                                />
                             </div>
                         )}
 

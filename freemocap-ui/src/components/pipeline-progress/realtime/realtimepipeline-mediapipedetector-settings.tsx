@@ -3,8 +3,10 @@ import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import IconButton from '@/components/ui-components/IconButton';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
+import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
 import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
-import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
+import { useExecutionProviderOptions } from '@/hooks/useExecutionProviderOptions';
+import { DetectorType, ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
 import { CameraNodeConfig } from '@/store/slices/realtime/realtime-types';
 
 interface RTPSkeletonSetupProps {
@@ -21,6 +23,19 @@ const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }
 const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) => {
     const modalRef = useRef<HTMLDivElement>(null);
     const { pipelineConfig, cameraNodeConfig, applyOrUpdatePipelineConfig } = useRealtimePipelineSync();
+
+    const executionProvider = pipelineConfig.skeleton_inference_node_config?.execution_provider ?? null;
+    const executionProviderOptions = useExecutionProviderOptions(executionProvider);
+
+    const handleExecutionProviderChange = useCallback(
+        (provider: ExecutionProviderName | null) => {
+            applyOrUpdatePipelineConfig({
+                ...pipelineConfig,
+                skeleton_inference_node_config: { ...pipelineConfig.skeleton_inference_node_config, execution_provider: provider },
+            });
+        },
+        [applyOrUpdatePipelineConfig, pipelineConfig]
+    );
 
     const detectorType: DetectorType = cameraNodeConfig.detector_type ?? "rtmpose";
 
@@ -107,6 +122,20 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                                     onChange={(value) => handleCameraNodeUpdate({ rtmpose_model_name: value as any })}
                                 />
                             </div>
+                        </div>
+
+                        {/* Execution provider */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Execution provider</span>
+                            <NameDropdownSelector
+                                key={executionProvider ?? "auto"}
+                                DropdownclassName="z-111"
+                                options={executionProviderOptions.map(({ label }) => label)}
+                                initialValue={executionProviderOptions.find(({ value }) => value === executionProvider)?.label ?? "Auto"}
+                                onChange={(label) => handleExecutionProviderChange(
+                                    executionProviderOptions.find((option) => option.label === label)?.value ?? null
+                                )}
+                            />
                         </div>
 
                         {/* Confidence threshold */}

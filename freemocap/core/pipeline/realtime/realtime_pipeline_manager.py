@@ -17,7 +17,7 @@ import multiprocessing
 import multiprocessing.synchronize
 from dataclasses import dataclass, field
 
-from skellycam.core.camera_group.camera_group import CameraGroup
+from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString
 
@@ -53,7 +53,7 @@ class RealtimePipelineManager(PipelineManagerABC):
     def create_pipeline(
         self,
         *,
-        camera_group: CameraGroup,
+        camera_group: CaptureGroup,
         pipeline_config: RealtimePipelineConfig,
         realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
@@ -74,6 +74,8 @@ class RealtimePipelineManager(PipelineManagerABC):
                         f"for camera group [{pipeline.camera_group_id}]"
                     )
                     pipeline.update_config(new_config=pipeline_config)
+                    if camera_group is not pipeline.camera_group:
+                        camera_group.close_transport()
                     return pipeline
 
             pipeline = RealtimePipeline.create(

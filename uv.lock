@@ -23,6 +23,8 @@ overrides = [
     { name = "mediapipe", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'", specifier = "==0.10.33" },
     { name = "numpy", specifier = ">=2.3.4,<2.5" },
     { name = "pandas", specifier = ">=2.2.2,<3" },
+    { name = "skellylogs", editable = "../utils/skellylogs" },
+    { name = "skellypings", editable = "../utils/skellypings" },
 ]
 excludes = ["opencv-python"]
 
@@ -798,6 +800,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f5/08/8eea9d4b8302028f3abb2c0813953f7aec26d33b7a8960ed760e65ff29fa/idna-3.20.tar.gz", hash = "sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44", size = 216463, upload-time = "2026-09-17T14:11:04.752Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl", hash = "sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c", size = 69583, upload-time = "2026-09-17T14:11:03.168Z" },
+]
+
+[[package]]
+name = "imageio-ffmpeg"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/ee/e3e0753f1054da1f115ee5d113307ed58faf4e31fa90d5d31739db15d125/imageio_ffmpeg-0.7.0.tar.gz", hash = "sha256:eec1f8b9bd873a2f179c994c653d5970ad560e245faf1a777e971933228b829a", size = 26037, upload-time = "2026-10-28T08:50:00.328Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/ef/e006996ba8735c1605b05fc931b7b49297cbdf11603259701bd0d62e17e1/imageio_ffmpeg-0.7.0-py3-none-macosx_10_9_intel.macosx_10_9_x86_64.whl", hash = "sha256:fafa399433b571e8963471487cd7a7bb3ee7b532af42e6342145add6379f479b", size = 24933149, upload-time = "2026-10-28T08:48:39.709Z" },
+    { url = "https://files.pythonhosted.org/packages/24/d3/be06b86c75acc49113aaf869b8c3d1e721ee01e1d1d7fa12cfc7d9708ea3/imageio_ffmpeg-0.7.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:5cb5c37d3c19aa8e7cd95b9f4833e6a3d9fd33e4b1d126a42995b14aef9fef02", size = 21114068, upload-time = "2026-10-28T08:49:58.132Z" },
+    { url = "https://files.pythonhosted.org/packages/04/96/15fe7ef562f7494c358cbd9b521d2da82d7a331b5513703756166478bd5f/imageio_ffmpeg-0.7.0-py3-none-manylinux2014_x86_64.whl", hash = "sha256:4e1f36bef7bedd4bc5dc25f60a8345d88f57133fa1e754f09b411ac61b854408", size = 29498414, upload-time = "2026-10-28T08:49:37.544Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/55/1d50cdd78d862a30c2ce44f01cea387f77b364b21fa2fecf1590258b215b/imageio_ffmpeg-0.7.0-py3-none-win_amd64.whl", hash = "sha256:7a22b45f60321d4172bdf2bc61f716bce4c81b85727bd59c7c7e371055a6a440", size = 31247004, upload-time = "2026-10-28T08:49:09.115Z" },
 ]
 
 [[package]]
@@ -2404,6 +2418,7 @@ dependencies = [
     { name = "cv2-enumerate-cameras" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "imageio-ffmpeg" },
     { name = "msgspec" },
     { name = "numpy" },
     { name = "numpydantic" },
@@ -2415,6 +2430,7 @@ dependencies = [
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "setproctitle" },
+    { name = "skellycam-rust" },
     { name = "skellylogs" },
     { name = "skellypings" },
     { name = "sounddevice" },
@@ -2431,6 +2447,7 @@ requires-dist = [
     { name = "cv2-enumerate-cameras", specifier = ">=1.2.2" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "httpx", specifier = ">=0.27.2" },
+    { name = "imageio-ffmpeg", specifier = ">=0.6,<0.8" },
     { name = "msgspec", specifier = ">=0.19" },
     { name = "numpy" },
     { name = "numpydantic", specifier = ">=1.6.9" },
@@ -2441,8 +2458,9 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.*" },
     { name = "scipy", specifier = ">=1.11.4" },
     { name = "setproctitle", specifier = "==1.3.3" },
-    { name = "skellylogs", editable = "../utils/skellylogs" },
-    { name = "skellypings", editable = "../utils/skellypings" },
+    { name = "skellycam-rust", directory = "../skellycam/skellycam-rust" },
+    { name = "skellylogs", git = "https://github.com/freemocap/skellylogs?rev=33a3611932ce3d43e54cefb2051171d565137445" },
+    { name = "skellypings", git = "https://github.com/freemocap/skellypings?rev=2fedf21356758569ccab069967f127a804f5241d" },
     { name = "sounddevice", specifier = ">=0.4.6" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tzlocal", specifier = ">=5.2" },
@@ -2453,6 +2471,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bumpver" },
+    { name = "maturin", specifier = ">=1.9,<2" },
     { name = "pip-tools" },
     { name = "poethepoet", specifier = ">=0.32.0" },
     { name = "pyinstaller", specifier = ">=6.15.0" },
@@ -2460,6 +2479,11 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.24.0" },
     { name = "ruff", specifier = ">=0.9.0" },
 ]
+
+[[package]]
+name = "skellycam-rust"
+version = "0.1.0"
+source = { directory = "../skellycam/skellycam-rust" }
 
 [[package]]
 name = "skellyforge"

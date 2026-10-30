@@ -16,10 +16,13 @@ import {
 } from "@/store";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {useTranslation} from 'react-i18next';
+import {cameraBackendSelected} from '@/store/slices/cameras/cameras-slice';
+import {CameraBackend} from '@/store/slices/cameras/cameras-types';
 
 
 export const CameraConfigTreeView: React.FC = () => {
     const dispatch = useAppDispatch();
+    const backend = useAppSelector(state => state.cameras.backend);
     const {t} = useTranslation();
     const {isConnected} = useServer();
 
@@ -37,6 +40,15 @@ export const CameraConfigTreeView: React.FC = () => {
 
     return (
         <div className="camera-config-sidebar-panel flex flex-col flex-1 bg-middark br-2 p-1 min-h-0 order-1">
+            <label className="flex items-center gap-1 p-1">
+                Camera backend
+                <select id="camera-backend" value={backend} disabled={isLoading || connectedCameras.length > 0}
+                        title="Close cameras before choosing a different backend"
+                        onChange={event => dispatch(cameraBackendSelected(event.target.value as CameraBackend))}>
+                    <option value="python">Python / OpenCV</option>
+                    <option value="rust">Rust / OpenPNP</option>
+                </select>
+            </label>
             {/* Header */}
             <div className="camera-group-header flex flex-row flex-wrap items-center gap-1 p-1 pos-rel z-2">
                 <p className="flex flex-row text md text-gray">{cameras.length} {t('cameras')}</p>

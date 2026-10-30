@@ -29,7 +29,7 @@ export const detectCameras = createAsyncThunk<
     { state: RootState }
 >(
     'cameras/detect',
-    async (request = { filterVirtual: true }) => {
+    async (request = { filterVirtual: true }, {getState}) => {
         const params = new URLSearchParams();
         if (request.filterVirtual !== undefined) {
             params.set('filter_virtual', String(request.filterVirtual));
@@ -67,6 +67,12 @@ export const detectCameras = createAsyncThunk<
         }
         savePersistedCameraSettings(prunedPersisted);
 
+        // The initial APP_STATE can arrive before detection finishes. Preserve
+        // its live-camera state instead of waiting for another server change.
+        const liveConfigs = new Map(getState().connection.cameraGroups
+            .filter(group => group.alive)
+            .flatMap(group => Object.entries(group.configs)));
+
         return data.cameras.map((serverCamera): Camera => {
             const cameraId = serverCamera.camera_id;
             const saved = prunedPersisted[cameraId];
@@ -92,10 +98,10 @@ export const detectCameras = createAsyncThunk<
                 id: cameraId,
                 name: serverCamera.name,
                 index: serverCamera.index,
-                actualConfig: defaultConfig,
+                actualConfig: (liveConfigs.get(cameraId) as CameraConfig | undefined) ?? defaultConfig,
                 desiredConfig,
                 hasConfigMismatch: false,
-                connectionStatus: 'available',
+                connectionStatus: liveConfigs.has(cameraId) ? 'connected' : 'available',
                 selected,
                 realtimeEnabled,
                 deviceInfo: {
@@ -126,7 +132,7 @@ export const camerasConnectOrUpdate = createAsyncThunk<
             c => c.exposure_mode === 'RECOMMEND'
         );
 
-        const request: CamerasConnectOrUpdateRequest = { camera_configs: cameraConfigs };
+        const request: CamerasConnectOrUpdateRequest = { camera_configs: cameraConfigs, backend: state.cameras.backend };
 
         // Optimistically flip RECOMMEND → MANUAL before the request goes out so
         // the UI clears immediately and the listener won't queue another call.

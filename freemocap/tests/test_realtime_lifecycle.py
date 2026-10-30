@@ -15,7 +15,7 @@ def node():
 
 @pytest.mark.parametrize("failure_stage", ["camera", "aggregation"])
 def test_construction_failure_releases_owned_resources(failure_stage):
-    group = Mock(spec=module.CameraGroup)
+    group = Mock(spec=module.CaptureGroup)
     group.id = "group"
     group.ipc = SimpleNamespace(global_kill_flag=Mock())
     group.configs = {"a": Mock(), "b": Mock()}
@@ -42,7 +42,8 @@ def test_construction_failure_releases_owned_resources(failure_stage):
     pubsub.close.assert_called_once()
     registry.shutdown_all.assert_not_called()
     assert not service.method_calls
-    assert all(call[0].startswith("shm.") for call in group.method_calls)
+    group.close_transport.assert_called_once()
+    assert all(call[0].startswith("shm.") or call[0] == "close_transport" for call in group.method_calls)
 
 
 def test_partial_start_failure_releases_nodes_without_stopping_shared_owners():

@@ -3,6 +3,7 @@ import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {
     areConfigsEqual,
     CameraConfig,
+    CameraBackend,
     CamerasState,
     createDefaultCameraConfig,
     extractConfigSettings,
@@ -28,6 +29,7 @@ function persistAllCameraSettings(state: CamerasState): void {
 }
 
 const initialState: CamerasState = {
+    backend: 'python',
     cameras: [],
     isPaused: false,
     isLoading: false,
@@ -40,6 +42,11 @@ export const cameraSlice = createSlice({
     name: 'cameras',
     initialState,
     reducers: {
+        cameraBackendSelected: (state, action: PayloadAction<CameraBackend>) => {
+            if (!state.isLoading && !state.cameras.some(camera => camera.connectionStatus === 'connected')) {
+                state.backend = action.payload;
+            }
+        },
         // ========== Selection ==========
         cameraSelectionToggled: (state, action: PayloadAction<string>) => {
             const camera = state.cameras.find(cam => cam.id === action.payload);
@@ -207,6 +214,8 @@ export const cameraSlice = createSlice({
             // ========== Server state snapshot (authoritative) ==========
             // Reconcile observed connection + pause state from the pushed snapshot.
             .addCase(serverStateReceived, (state, action) => {
+                const group = Object.values(action.payload.state.camera_groups)[0];
+                if (group) state.backend = group.backend ?? 'python';
                 const groups = Object.values(action.payload.state.camera_groups);
                 const connectedIds = new Set<string>();
                 let anyPaused = false;
@@ -237,6 +246,7 @@ export const cameraSlice = createSlice({
 });
 
 export const {
+    cameraBackendSelected,
     cameraSelectionToggled,
     cameraRealtimeToggled,
     cameraDesiredConfigUpdated,

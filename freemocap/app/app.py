@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
+from skellycam.core.camera_group.camera_group_manager import close_native_camera_groups
 from starlette.responses import FileResponse
 
 import freemocap
@@ -381,12 +382,15 @@ async def app_lifespan(
         raise
     finally:
         logger.api("FreeMoCap API shutting down...")
-        app.state.global_kill_flag.value = True
         try:
             try:
-                get_freemocap_app().close()
+                await close_native_camera_groups()
             finally:
-                shutdown_telemetry()
+                app.state.global_kill_flag.value = True
+                try:
+                    get_freemocap_app().close()
+                finally:
+                    shutdown_telemetry()
         except Exception as error:
             if app.state.fatal_error is None:
                 app.state.fatal_error = error

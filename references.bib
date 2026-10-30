@@ -372,3 +372,22 @@
   claim = {Manual popovers render in the browser top layer without making the page modal.},
   note = {Reviewed concepts and showPopover/hidePopover behavior for shared tooltip surfaces.}
 }
+
+@misc{skellycamRustCapture2026,
+  title = {SkellyCam selectable camera capture and native frame snapshots},
+  author = {{FreeMoCap contributors}},
+  url = {https://github.com/freemocap/skellycam/tree/6cb170f2d8013617051623c844c567d3dfeae1f2},
+  urldate = {2026-10-30},
+  review = {source-code},
+  claim = {Python groups expose shared memory while Rust groups expose owned frame snapshots; core adapts these to its worker transport.},
+  note = {Inspected the local committed camera managers, frame metadata, and shared-memory implementation.}
+}
+
+@misc{uvDependencyOverrides,
+  title = {uv dependency resolution and overrides},
+  author = {{Astral contributors}},
+  url = {https://docs.astral.sh/uv/concepts/resolution/},
+  urldate = {2026-10-30},
+  review = {full-text},
+  claim = {Global overrides replace transitive requirements, allowing core to consistently select its already-declared shared utility sources.}
+}

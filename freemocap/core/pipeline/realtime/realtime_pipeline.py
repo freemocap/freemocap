@@ -18,7 +18,7 @@ from queue import Empty
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
-from skellycam.core.camera_group.camera_group import CameraGroup
+from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
@@ -61,7 +61,7 @@ class RealtimePipelineState(BaseModel):
 @dataclass
 class RealtimePipeline:
     id: PipelineIdString
-    camera_group: CameraGroup
+    camera_group: CaptureGroup
     config: RealtimePipelineConfig
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: RealtimeAggregatorNode
@@ -148,6 +148,8 @@ class RealtimePipeline:
 
     @property
     def alive(self) -> bool:
+        if self.camera_group.error is not None:
+            return False
         if not self.started:
             return False
         nodes_alive = (
@@ -166,6 +168,8 @@ class RealtimePipeline:
 
     @property
     def failure(self) -> str | None:
+        if self.camera_group.error is not None:
+            return self.camera_group.error
         nodes = [*self.camera_nodes.values(), self.aggregation_node]
         if self.skeleton_inference_node is not None:
             nodes.append(self.skeleton_inference_node)
@@ -187,7 +191,7 @@ class RealtimePipeline:
     def create(
             cls,
             *,
-            camera_group: CameraGroup,
+            camera_group: CaptureGroup,
             worker_registry: WorkerRegistry,
             pipeline_config: RealtimePipelineConfig,
             inference_service: InferenceService,
@@ -313,6 +317,8 @@ class RealtimePipeline:
                 _shutdown_pipeline_nodes(ipc=ipc, nodes=created_nodes, pubsub=pubsub)
             except Exception:
                 logger.exception("Cleanup after realtime pipeline construction failure also failed")
+            finally:
+                camera_group.close_transport()
             raise
 
     def start(self) -> None:
@@ -367,7 +373,10 @@ class RealtimePipeline:
         if self.charuco_recorder_node is not None:
             nodes.append(self.charuco_recorder_node)
         nodes.append(self.aggregation_node)
-        _shutdown_pipeline_nodes(ipc=self.ipc, nodes=nodes, pubsub=self.pubsub)
+        try:
+            _shutdown_pipeline_nodes(ipc=self.ipc, nodes=nodes, pubsub=self.pubsub)
+        finally:
+            self.camera_group.close_transport()
 
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
         """Keep inference subscribed while paused; create its worker before enabling it."""

@@ -66,6 +66,17 @@ async def test_empty_manager_accepts_initial_cursor(server: WebsocketServer) -> 
     assert server._camera_frame_cursors == {}
 
 
+async def test_processing_cursor_is_independent_of_capture_cursor(server: WebsocketServer) -> None:
+    server._relay._last_sent_frame_number = 10000
+    server._pipeline_source_ids = ("old",)
+    server._pipeline_frame_cursor = 500
+    server._app.realtime_pipeline_manager = SimpleNamespace(pipelines={"new": object()})
+    server._app.get_latest_aggregator_outputs = Mock(return_value=[])
+    server._app.wait_for_realtime_result = AsyncMock()
+    assert await server._await_next_frame() is None
+    assert [call.kwargs["if_newer_than"] for call in server._app.get_latest_aggregator_outputs.call_args_list] == [-1, -1]
+
+
 @pytest.mark.parametrize("fails", [False, True])
 async def test_connection_exit_joins_tasks_without_stopping_app(
     server: WebsocketServer, monkeypatch: pytest.MonkeyPatch, fails: bool,

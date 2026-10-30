@@ -616,6 +616,7 @@ class FramerateMessage:
 @dataclass(frozen=True, slots=True)
 class CameraGroupSnapshot:
     id: CameraGroupIdString = ""
+    backend: str = "python"
     configs: dict[str, Any] = field(default_factory=dict)
     cameras: dict[CameraIdString, Any] = field(default_factory=dict)
     alive: bool = False
@@ -641,6 +642,7 @@ class AppStateSnapshot:
         camera_groups = {
             CameraGroupIdString(group_id): CameraGroupSnapshot(
                 id=CameraGroupIdString(group.get("id", group_id)),
+                backend=str(group.get("backend", "python")),
                 configs=dict(group.get("configs", {})),
                 cameras=dict(group.get("cameras", {})),
                 alive=bool(group.get("alive", False)),

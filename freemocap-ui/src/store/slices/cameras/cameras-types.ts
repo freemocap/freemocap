@@ -90,7 +90,10 @@ export interface Camera {
 }
 
 // ==================== Store State ====================
+export type CameraBackend = 'python' | 'rust';
+
 export interface CamerasState {
+    backend: CameraBackend;
     cameras: Camera[];
     isPaused: boolean;
     isLoading: boolean;
@@ -115,6 +118,7 @@ export interface DetectCamerasResponse {
 }
 
 export interface CamerasConnectOrUpdateRequest {
+    backend: CameraBackend;
     camera_configs: Record<string, CameraConfig>;
 }
 

@@ -1,5 +1,6 @@
 /** One camera group as reported in the server's pushed APP_STATE snapshot. */
 export interface CameraGroupSnapshot {
+    backend?: 'python' | 'rust';
     id: string;
     configs: Record<string, unknown>;
     cameras: Record<string, unknown>;

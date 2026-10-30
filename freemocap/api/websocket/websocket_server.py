@@ -89,6 +89,8 @@ class WebsocketServer:
         self._display_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
         self._last_framerate_send_time: float = 0.0
         self._camera_frame_cursors: dict[CameraGroupIdString, int] = {}
+        self._pipeline_source_ids: tuple[str, ...] = ()
+        self._pipeline_frame_cursor = -1
 
         # ── Standard-stream send path ────────────────────────────────────
         # One writer (the serializer owns the send lock).
@@ -314,16 +316,20 @@ class WebsocketServer:
         aggregator output (lockstep, newest-wins); with no pipeline it serves
         camera images directly (the frame's image field).
         """
-        if not self._app.realtime_pipeline_manager.pipelines:
+        pipeline_ids = tuple(sorted(self._app.realtime_pipeline_manager.pipelines))
+        if pipeline_ids != self._pipeline_source_ids:
+            self._pipeline_source_ids = pipeline_ids
+            self._pipeline_frame_cursor = -1
+        if not pipeline_ids:
             return await self._await_camera_only_frame()
 
         outputs = self._app.get_latest_aggregator_outputs(
-            if_newer_than=self._relay.last_sent_frame_number,
+            if_newer_than=self._pipeline_frame_cursor,
         )
         if not outputs:
             await self._app.wait_for_realtime_result(timeout=0.5)
             outputs = self._app.get_latest_aggregator_outputs(
-                if_newer_than=self._relay.last_sent_frame_number,
+                if_newer_than=self._pipeline_frame_cursor,
             )
         if not outputs:
             # Pipeline live but no new solver output — keep waiting; the
@@ -351,6 +357,7 @@ class WebsocketServer:
         if payload is None:
             return None
         image_bytes, mf_timestamp = payload
+        self._pipeline_frame_cursor = newest.frame_number
 
         self._record_framerate(
             camera_group_id=newest.camera_group_id,

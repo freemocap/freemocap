@@ -254,6 +254,7 @@ export const AppStateMessageSchema = z.object({
     camera_groups: z.record(
       z.string(),
       z.object({
+        backend: z.enum(['python', 'rust']).optional(),
         id: z.string(),
         configs: z.record(z.string(), z.unknown()),
         cameras: z.record(z.string(), z.unknown()),

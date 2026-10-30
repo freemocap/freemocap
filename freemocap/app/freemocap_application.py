@@ -12,7 +12,9 @@ from multiprocessing.sharedctypes import Synchronized
 
 from fastapi import FastAPI
 from skellycam.core.camera.config.camera_config import CameraConfigs
-from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
+from skellycam.core.camera_group.camera_group_manager import get_or_create_camera_group_manager
+from skellycam.core.camera_group.camera_backend_manager import CameraBackendManager
+from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString
@@ -43,7 +45,7 @@ class FreemocapApplication:
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
     sync_job_manager: SyncJobManager
-    camera_group_manager: CameraGroupManager
+    camera_group_manager: CameraBackendManager
 
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
@@ -107,18 +109,27 @@ class FreemocapApplication:
             realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
 
-        for pipeline in self.realtime_pipeline_manager.pipelines.values():
+        for pipeline in list(self.realtime_pipeline_manager.pipelines.values()):
+            if not pipeline.alive:
+                self.realtime_pipeline_manager.stop_pipeline(pipeline_id=pipeline.id)
+                continue
             pipeline.update_config(new_config=pipeline_config)
             return pipeline
 
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
             camera_configs=camera_configs,
+            backend=self.camera_group_manager.backend,
         )
-        pipeline = self.realtime_pipeline_manager.create_pipeline(
-            camera_group=camera_group,
-            pipeline_config=pipeline_config,
-            realtime_camera_ids=realtime_camera_ids,
-        )
+        capture = CaptureGroup(camera_group, self.global_kill_flag)
+        try:
+            pipeline = self.realtime_pipeline_manager.create_pipeline(
+                camera_group=capture,
+                pipeline_config=pipeline_config,
+                realtime_camera_ids=realtime_camera_ids,
+            )
+        except BaseException:
+            capture.close_transport()
+            raise
         return pipeline
 
     # ------------------------------------------------------------------

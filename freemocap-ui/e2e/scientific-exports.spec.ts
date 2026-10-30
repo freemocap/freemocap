@@ -13,7 +13,9 @@ test('scientific exports select channels, reject unavailable selections, retry a
             import Settings from './src/components/mocap-setup/mocap-scientific-settings';
             import {serverUrls} from './src/constants/server-urls';
             serverUrls.setHost(location.hostname); serverUrls.setPort(Number(location.port));
-            function Panel(){const c=useSelector(s=>s.mocap.config); return <><Settings path="C:/recording" processing={false}/>
+            function Panel(){const c=useSelector(s=>s.mocap.config); const [run, setRun]=React.useState(3); return <>
+              <label>Processing source run<select value={run} onChange={e=>setRun(Number(e.target.value))}><option value="0">0</option><option value="3">3</option></select></label>
+              <Settings path="C:/recording" processing={false} sourceRunId={run}/>
               <output style={{display:'none'}} data-testid="preferences">{JSON.stringify({formats:c.scientificExportFormats, data:c.scientificExportData, after:c.scientificExportAfterProcessing, tall:c.exportTallCsv})}</output></>}
             createRoot(document.getElementById('root')).render(<Provider store={store}><Panel/></Provider>);
         `}});
@@ -54,6 +56,15 @@ test('scientific exports select channels, reject unavailable selections, retry a
     try {
         await page.goto(`http://127.0.0.1:${(server.address() as any).port}`);
         const save = page.getByRole('button',{name:'Export saved result',exact:true});
+        const npy = page.getByRole('checkbox', {name:'NumPy NPY arrays (optional)', exact:true});
+        const npz = page.getByRole('checkbox', {name:'NumPy NPZ archive', exact:true});
+        await expect(npy).not.toBeChecked();
+        await expect(npz).not.toBeChecked();
+        await expect(page.getByLabel('Export selected formats after processing')).not.toBeChecked();
+        await expect(page.getByText('NPZ packages the dataset in one archive.', {exact:false})).toBeVisible();
+        await expect(page.getByText('multiple array files and dataset.json in npy/', {exact:false})).toBeVisible();
+        await expect(page.getByText('one shared .frames', {exact:false})).toHaveCount(0);
+        await expect(page.getByRole('checkbox', {name:'2D keypoints - camera observations', exact:true})).toBeVisible();
         await expect(page.getByText('No saved result yet.', {exact:false}).first()).toBeVisible();
         await expect(page.getByRole('alert')).toHaveCount(0);
         await expect(save).toBeDisabled();
@@ -65,12 +76,16 @@ test('scientific exports select channels, reject unavailable selections, retry a
         await expect(page.getByRole('alert')).toContainText('Could not read saved result');
         previewState = 'ready';
         await page.getByRole('button', {name:'Reload saved results', exact:true}).click();
-        await expect(page.getByLabel('Scientific export run')).toHaveValue('3');
+        await expect(page.getByLabel('Processing source run')).toHaveValue('3');
         await expect(page.getByRole('alert')).toHaveCount(0);
         await page.getByText('Tall CSV diagnostic export', {exact:true}).click();
         await expect(page.getByLabel('Wide CSV',{exact:true})).not.toBeChecked();
         await page.getByLabel('Wide CSV',{exact:true}).check();
         await expect(save).toBeEnabled();
+        await npy.check();
+        await expect(page.getByTestId('preferences')).toContainText('"formats":["wide_csv","npy"]');
+        await expect(page.getByText('At least', {exact:false})).toHaveCount(0);
+        await npy.uncheck();
         const raw=page.getByRole('checkbox',{name:'3D keypoints - raw triangulated',exact:true});
         const landmarks=page.getByRole('checkbox',{name:'3D landmarks',exact:true});
         await expect(raw).not.toBeChecked();
@@ -79,18 +94,18 @@ test('scientific exports select channels, reject unavailable selections, retry a
         await landmarks.uncheck();
         await expect(save).toBeDisabled();
         await landmarks.check();
-        await page.getByLabel('Scientific export run').selectOption('0');
+        await page.getByLabel('Processing source run').selectOption('0');
         await expect(page.getByRole('alert')).toContainText('unavailable');
         await expect(save).toBeDisabled();
-        await page.getByLabel('Scientific export run').selectOption('3');
-        await page.getByLabel('Keep this export', {exact:false}).check();
+        await page.getByLabel('Processing source run').selectOption('3');
         await page.getByLabel('Export selected formats after processing').check();
         await save.click();
         await expect(page.getByRole('alert')).toContainText('Disk full');
-        expect(submitted).toEqual({recording_path:'C:/recording',run_id:3,expected_revision:'snapshot',formats:['wide_csv'],data:['LANDMARKS_3D'],keep:true});
-        mode='complete'; await page.getByLabel('NumPy NPZ package', {exact:true}).check(); await save.click();
+        expect(submitted).toEqual({recording_path:'C:/recording',run_id:3,expected_revision:'snapshot',formats:['wide_csv'],data:['LANDMARKS_3D'],keep:false});
+        mode='complete'; await npz.check(); await save.click();
         await expect(page.getByText('Saved and validated 1 file.',{exact:false})).toBeVisible();
         expect(submitted.formats).toEqual(['wide_csv', 'npz']);
+        await expect(npy).not.toBeChecked();
         await expect(page.getByTestId('preferences')).toContainText('"after":true');
         await expect(page.getByTestId('preferences')).toContainText('"tall":false');
         await page.screenshot({path:'../.test-artifacts/wide-csv/panel.png',fullPage:true});
@@ -98,5 +113,11 @@ test('scientific exports select channels, reject unavailable selections, retry a
         await expect(page.getByRole('button',{name:'Cancel export'})).toBeEnabled();
         await page.getByRole('button',{name:'Cancel export'}).click();
         await expect(page.getByText('Export cancelled', {exact:false})).toBeVisible();
-    } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));}
+    } finally {
+        await page.close();
+        await new Promise<void>(resolve => {
+            server.close(() => resolve());
+            server.closeAllConnections();
+        });
+    }
 });

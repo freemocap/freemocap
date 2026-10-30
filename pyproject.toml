@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pyarrow>=25.0.1",
+    "polars>=2.0,<3",
+    "plotly>=6,<7",
     "filelock>=3.0",
     "PyYAML>=6.0",
     #    "aniposelib>=0.7.0",
@@ -90,7 +92,6 @@ packages = ["freemocap"]
       "skellylogs",
       "skellypings",
       "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
-      "pandas>=2.2.2,<3",  # pandas<2.2.2 wheels are built against the NumPy 1.x C ABI and crash importing against NumPy 2.x; <3 avoids the major-version jump
       "mediapipe==0.10.33; sys_platform != 'darwin' or platform_machine != 'x86_64'",
   ]
 

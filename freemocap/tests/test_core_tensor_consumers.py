@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 from skellytracker.core.data_primitives.keypoints import Keypoints
-from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from freemocap.core.pipeline.realtime.camera_node import _filter_image_keypoints
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.core.tasks.mocap.realtime_filtering.one_euro_filter import OneEuroFilter1D
@@ -79,6 +79,7 @@ def test_live_tensor_outputs_own_arrays_and_reuse_prepared_geometry(monkeypatch)
     assert state.pose_geometry is geometry and state.pose_outputs is outputs
     np.testing.assert_array_equal(first.landmarks.data_values, retained)
     for channel in (first.landmarks, first.segment_rotations_world, first.segment_lengths):
+        assert type(channel) is ChannelValues
         assert not channel.data_values.flags.writeable
         assert not channel.entry_present.flags.writeable
         with pytest.raises(ValueError):

@@ -14,8 +14,8 @@ import numpy as np
 from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
 
-from freemocap.core.data_tensors import (
-    AxisDefinition, CompanionTensor, DataTensor, SampleTimeline, ScientificProvenance,
+from skellyforge.core.data_tensors import (
+    AxisDefinition, CompanionTensor, DataTensor, SampleTiming, ScientificProvenance,
     SourceIdentity, TensorLayout, TimeSeries,
 )
 from freemocap.core.recording.exports.arrays import available_channels, ordered_arrays
@@ -98,7 +98,7 @@ class ForgeTensorTests(unittest.TestCase):
                         recovered = geometry.recover(positions=positions, landmark_present=present)
                         identity = SourceIdentity(source_id=source, sensor_group=item[0].sensor_group,
                                                   model_id=model_id)
-                        timeline = SampleTimeline(timeline_id=f"{source}:reference_samples",
+                        timeline = SampleTiming(timeline_id=f"{source}:reference_samples",
                             clock_id=f"{item[0].sensor_group}:recording_relative", source_identity=identity,
                             sample_ids=arrays.frames[selected], timestamps_s=arrays.timestamps[selected])
                     axes = (timeline.sample_axis, AxisDefinition("entity_identity", geometry.segment_names))
@@ -122,7 +122,7 @@ class ForgeTensorTests(unittest.TestCase):
                         np.testing.assert_array_equal(selected_frame.data_tensor.data_values, values[2:3])
                         np.testing.assert_array_equal(selected_frame.data_tensor.companion_values("solver_status"),
                                                       recovered.status[2:3])
-                        self.assertEqual(selected_frame.sample_timeline.sample_ids.tolist(), timeline.sample_ids[2:3].tolist())
+                        self.assertEqual(selected_frame.sample_timing.sample_ids.tolist(), timeline.sample_ids[2:3].tolist())
                     # PoseSolution objects remain scientific metadata, never a dense numeric payload.
                     with self.assertRaisesRegex(ValueError, "scalar boolean or numeric"):
                         TensorLayout(axes=axes, dtype=recovered.solutions.dtype)

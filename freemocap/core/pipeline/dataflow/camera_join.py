@@ -49,6 +49,15 @@ class CameraFrameJoin:
         A valid empty detection is delivered exactly like any other observation.
         Caller must validate/store the payload before announcing its key here.
         """
+        self.validate_receive(key)
+        self._seen[key.camera].add(key.frame)
+        if all(key.frame in self._seen[camera] for camera in self.cameras):
+            return tuple(CameraFrameKey(self.execution, self.sensor_group, camera, key.frame)
+                         for camera in self.cameras)
+        return None
+
+    def validate_receive(self, key: CameraFrameKey) -> None:
+        """Check admission before the caller writes its numerical payload."""
         if (key.execution, key.sensor_group) != (self.execution, self.sensor_group):
             raise ValueError("Foreign execution or sensor group")
         if key.camera not in self._seen or key.frame not in self.frames:
@@ -57,11 +66,6 @@ class CameraFrameJoin:
             raise ValueError("Data received after terminal producer outcome")
         if key.frame in self._seen[key.camera]:
             raise ValueError("Duplicate camera/frame result")
-        self._seen[key.camera].add(key.frame)
-        if all(key.frame in self._seen[camera] for camera in self.cameras):
-            return tuple(CameraFrameKey(self.execution, self.sensor_group, camera, key.frame)
-                         for camera in self.cameras)
-        return None
 
     def finish(self, camera: str, outcome: ProducerOutcome, *, execution: str, sensor_group: str) -> None:
         if (execution, sensor_group) != (self.execution, self.sensor_group):

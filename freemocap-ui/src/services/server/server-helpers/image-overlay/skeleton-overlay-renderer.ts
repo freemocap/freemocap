@@ -8,14 +8,22 @@
 import {
     BaseOverlayRenderer,
     DrawStyle,
-    Point2D,
-} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
-import type {
-    BoxOverlay,
-    SkeletonObservation,
-    SkeletonPoint,
-} from "@/services/server/server-helpers/image-overlay/skeleton-types";
 
+} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
+import type {SkeletonObservation} from './skeleton-types';
+import {OverlayLayer, type OverlayFrame} from '../../transport/frame-types';
+import {snapshotEqual} from '../../transport/snapshot-equality';
+
+interface PreparedOverlay {
+    layer: OverlayLayer;
+    names: readonly string[];
+    columns: readonly string[];
+    connections: readonly (readonly [string, string])[];
+    styles: DrawStyle[];
+    edges: Int32Array;
+    edgeStyles: DrawStyle[];
+    offsets: number[];
+}
 // Classification used for colour routing. Kept deliberately loose — any name
 // containing "left" / "right" is treated as a side, otherwise center.
 type Side = 'left' | 'right' | 'center';
@@ -140,90 +148,89 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         return this.createBitmap(sourceBitmap);
     }
 
+    private readonly preparedLayers: PreparedOverlay[] = [];
+    private layerIndex = 0;
+
+    private prepareLayer(values: OverlayFrame, connections: readonly (readonly [string, string])[] = []): PreparedOverlay {
+        const position = this.layerIndex++;
+        const previous = this.preparedLayers[position];
+        if (values.data.length !== values.names.length * values.columns.length)
+            throw new Error('Camera overlay values do not match their declared layout');
+        if (previous && previous.layer === values.layer && snapshotEqual(previous.names, values.names) && snapshotEqual(previous.columns, values.columns)
+            && snapshotEqual(previous.connections, connections)) return previous;
+        if (new Set(values.columns).size !== values.columns.length) throw new Error('Camera overlay components must be unique');
+        const components = values.layer === OverlayLayer.BOXES ? ['x1', 'y1', 'x2', 'y2', 'confidence', 'detector_ran'] : ['x', 'y', 'visibility'];
+        const offsets = components.map(component => values.columns.indexOf(component));
+        if (offsets.some(offset => offset < 0)) throw new Error('Camera overlay is missing required components');
+        const styles = values.names.map(name => this.styleFor(name));
+        const rowsByName = new Map(values.names.map((name, row) => [name, row]));
+        const edges = new Int32Array(connections.length * 2), edgeStyles: DrawStyle[] = [];
+        connections.forEach(([first, second], index) => {
+            edges[index * 2] = rowsByName.get(first) ?? -1;
+            edges[index * 2 + 1] = rowsByName.get(second) ?? -1;
+            const firstStyle = this.styleFor(first);
+            edgeStyles.push(firstStyle === this.bodyStyleCenter ? this.styleFor(second) : firstStyle);
+        });
+        return this.preparedLayers[position] = {layer: values.layer, names: values.names, columns: values.columns, connections, styles, edges, edgeStyles, offsets};
+    }
+
     private drawSkeletonOverlay(observation: SkeletonObservation): void {
         this.ctx.save();
-
-        const { scaleX, scaleY } = this;
-
-        // Tracker keypoint detections — small dots, no connections.
-        const pointMap = new Map<string, Point2D>();
-        for (const p of observation.points) {
-            pointMap.set(p.name, {
-                x: p.x * scaleX,
-                y: p.y * scaleY,
-                id: p.name,
-                visibility: p.visibility,
-            });
-        }
-        this.drawAllPoints(pointMap);
-
-        // Segment-origin landmarks — larger dots with the segment skeleton
-        // connections drawn between them.
-        const landmarks = observation.landmarks ?? [];
-        const landmarkMap = new Map<string, Point2D>();
-        for (const p of landmarks) {
-            landmarkMap.set(p.name, {
-                x: p.x * scaleX,
-                y: p.y * scaleY,
-                id: p.name,
-                visibility: p.visibility,
-            });
-        }
-        if (landmarkMap.size > 0) {
-            this.drawConnections(landmarkMap, observation.connections ?? []);
-            this.drawLandmarkPoints(landmarkMap);
-        }
-
-        // The detector crops the keypoints were measured inside.
-        this.drawBoxes(observation);
-
-        this.drawStats(observation);
-
-        this.ctx.restore();
-    }
-
-    private drawBoxes(obs: SkeletonObservation): void {
-        for (const box of obs.boxes ?? []) {
-            this.drawBox(box);
+        try {
+            this.layerIndex = 0;
+            let keypointCount = 0, landmarkCount = 0;
+            for (const values of observation.pointLayers) keypointCount += this.drawPointLayer(values, false);
+            for (const layer of observation.landmarkLayers) landmarkCount += this.drawPointLayer(layer.values, true, layer.connections);
+            for (const values of observation.boxLayers) this.drawBoxLayer(values);
+            this.preparedLayers.length = this.layerIndex;
+            this.drawStats(observation, keypointCount, landmarkCount);
+        } finally {
+            this.ctx.restore();
         }
     }
 
-    private drawBox(box: BoxOverlay): void {
-        // A stage that detected nothing this frame is a NaN row, not a missing one.
-        if (!isFinite(box.x1) || !isFinite(box.y1)
-            || !isFinite(box.x2) || !isFinite(box.y2)) return;
-
-        const { scaleX, scaleY } = this;
-        const x1 = box.x1 * scaleX;
-        const y1 = box.y1 * scaleY;
-        const w = box.x2 * scaleX - x1;
-        const h = box.y2 * scaleY - y1;
-        if (w <= 0 || h <= 0) return;
-
-        // green = the object detector ran this frame, orange = the box was carried
-        // forward from the tracked keypoints. Green on every frame means the redetect
-        // policy is firing constantly, which is a frame-rate bug you can see.
-        const color = box.fromDetector ? '#00FF00' : '#FF8C00';
-        const label = isFinite(box.confidence)
-            ? `${box.name} ${box.confidence.toFixed(2)}`
-            : box.name;
-
-        this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 1.5;
-        this.ctx.strokeRect(x1, y1, w, h);
-
-        // Label at top-left of the box.
-        this.drawText(
-            label,
-            x1,
-            Math.max(y1 - 4, 12),
-            10,
-            color,
-            this.TEXT_STROKE,
-            2,
-        );
+    private drawPointLayer(values: OverlayFrame, landmarks: boolean, connections: readonly (readonly [string, string])[] = []): number {
+        const prepared = this.prepareLayer(values, connections);
+        const {data, names, columns} = values, stride = columns.length;
+        const [xOffset, yOffset] = prepared.offsets;
+        for (let edge = 0; edge < prepared.edgeStyles.length; edge++) {
+            const first = prepared.edges[edge * 2], second = prepared.edges[edge * 2 + 1];
+            if (first < 0 || second < 0) continue;
+            const x1 = data[first * stride + xOffset] * this.scaleX, y1 = data[first * stride + yOffset] * this.scaleY;
+            const x2 = data[second * stride + xOffset] * this.scaleX, y2 = data[second * stride + yOffset] * this.scaleY;
+            if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) continue;
+            const style = prepared.edgeStyles[edge];
+            this.ctx.strokeStyle = style.lineColor; this.ctx.lineWidth = style.lineWidth;
+            this.ctx.beginPath(); this.ctx.moveTo(x1, y1); this.ctx.lineTo(x2, y2); this.ctx.stroke();
+        }
+        let finiteCount = 0;
+        for (let row = 0; row < names.length; row++) {
+            const x = data[row * stride + xOffset] * this.scaleX, y = data[row * stride + yOffset] * this.scaleY;
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            finiteCount++;
+            const style = prepared.styles[row];
+            this.ctx.beginPath(); this.ctx.arc(x, y, style.pointRadius, 0, Math.PI * 2);
+            if (landmarks) {this.ctx.strokeStyle = style.pointColor; this.ctx.lineWidth = 2; this.ctx.stroke();}
+            else {this.ctx.fillStyle = style.pointColor; this.ctx.fill();}
+        }
+        return finiteCount;
     }
 
+    private drawBoxLayer(values: OverlayFrame): void {
+        const prepared = this.prepareLayer(values), stride = values.columns.length;
+        const [left, top, right, bottom, confidenceOffset, detectorOffset] = prepared.offsets;
+        for (let row = 0; row < values.names.length; row++) {
+            const offset = row * stride, data = values.data;
+            const x1 = data[offset + left] * this.scaleX, y1 = data[offset + top] * this.scaleY;
+            const x2 = data[offset + right] * this.scaleX, y2 = data[offset + bottom] * this.scaleY;
+            if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2) || x2 <= x1 || y2 <= y1) continue;
+            const color = data[offset + detectorOffset] >= 0.5 ? '#00FF00' : '#FF8C00';
+            const confidence = data[offset + confidenceOffset], name = values.names[row];
+            const label = Number.isFinite(confidence) ? `${name} ${confidence.toFixed(2)}` : name;
+            this.ctx.strokeStyle = color; this.ctx.lineWidth = 1.5; this.ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            this.drawText(label, x1, Math.max(y1 - 4, 12), 10, color, this.TEXT_STROKE, 2);
+        }
+    }
     private styleFor(name: string): DrawStyle {
         if (classifyFace(name)) return this.faceStyle;
         const hand = classifyHand(name);
@@ -235,59 +242,10 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         return this.bodyStyleCenter;
     }
 
-    private drawConnections(
-        pointMap: Map<string, Point2D>,
-        connections: [string, string][],
-    ): void {
-        for (const [a, b] of connections) {
-            const start = pointMap.get(a);
-            const end = pointMap.get(b);
-            if (!start || !end || !this.isValidPoint(start) || !this.isValidPoint(end)) continue;
-
-            // Segment color picked from endpoint classification — if either
-            // endpoint is hand/face/side the line takes that colour.
-            const style = this.styleFor(a) === this.bodyStyleCenter ? this.styleFor(b) : this.styleFor(a);
-
-            this.ctx.strokeStyle = style.lineColor;
-            this.ctx.lineWidth = style.lineWidth;
-            this.ctx.beginPath();
-            this.ctx.moveTo(start.x, start.y);
-            this.ctx.lineTo(end.x, end.y);
-            this.ctx.stroke();
-        }
-    }
-
-    /** The landmark markers: open circles (stroke only, nothing in the middle),
-     *  colored like their segment and slightly larger than the keypoint dot, so
-     *  a zero-error reprojection puts the dot inside the circle. */
-    private drawLandmarkPoints(pointMap: Map<string, Point2D>): void {
-        const buckets = new Map<DrawStyle, Point2D[]>();
-        for (const point of pointMap.values()) {
-            const style = this.styleFor(point.id as string);
-            const list = buckets.get(style);
-            if (list) list.push(point);
-            else buckets.set(style, [point]);
-        }
-        for (const [style, points] of buckets) {
-            this.drawPoints(points, {
-                ...style,
-                pointRadius: style.pointRadius,
-                fillPoint: false,
-                pointColor: style.pointColor,
-                pointStroke: style.pointColor,
-            });
-        }
-    }
-
     /** The always-on stats block — a vertical column: a filled dot =
      *  "N keypoints", an open circle = "N landmarks", then the frame number.
      *  Stacked so it reads cleanly and fits narrow (portrait) camera feeds. */
-    private drawStats(observation: SkeletonObservation): void {
-        const finite = (points: SkeletonPoint[]): number =>
-            points.reduce((n, p) => n + (Number.isFinite(p.x) && Number.isFinite(p.y) ? 1 : 0), 0);
-        const kp = finite(observation.points);
-        const lm = finite(observation.landmarks ?? []);
-
+    private drawStats(observation: SkeletonObservation, kp: number, lm: number): void {
         const fontSize = 11;
         const lineHeight = 16;
         const pad = 8;
@@ -329,17 +287,4 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         });
     }
 
-    private drawAllPoints(pointMap: Map<string, Point2D>): void {
-        // Bucket by style so we can call drawPoints with one style per batch.
-        const buckets = new Map<DrawStyle, Point2D[]>();
-        for (const point of pointMap.values()) {
-            const style = this.styleFor(point.id as string);
-            const list = buckets.get(style);
-            if (list) list.push(point);
-            else buckets.set(style, [point]);
-        }
-        for (const [style, points] of buckets) {
-            this.drawPoints(points, {...style, drawStroke: false});
-        }
-    }
 }

@@ -20,8 +20,8 @@ import {
     ConnectionState,
     WebSocketConnection,
 } from "@/services/server/server-helpers/websocket-connection";
-import { decodeMessage } from "./cbor-codec";
-import { resolveFrameChannels } from "./frame-resolution";
+import { MessageDecoder } from "./cbor-codec";
+import { FrameResolver } from "./frame-resolution";
 import type {
     AppStateMessage,
     CalibratedCamera,
@@ -74,6 +74,8 @@ export interface DiagnosticsFrame {frameNumber: number; values: FrameMessage['di
 export type DiagnosticsCallback = (frame: DiagnosticsFrame | null) => void;
 
 export class TransportService {
+    private readonly decoder = new MessageDecoder();
+    private readonly frameResolver = new FrameResolver();
     private diagnosticsLatest: DiagnosticsFrame | null = null;
     private diagnosticsSubscribers = new Set<DiagnosticsCallback>();
 
@@ -134,7 +136,7 @@ export class TransportService {
     }
 
     private dispatchBytes(buf: ArrayBuffer): void {
-        const message = decodeMessage(new Uint8Array(buf));
+        const message = this.decoder.decode(new Uint8Array(buf));
         if (message === null) {
             // Unknown kind / unsupported version — fail soft (inbound data).
             console.warn("[TransportService] skipped an unknown or unsupported message");
@@ -163,7 +165,7 @@ export class TransportService {
         this.diagnosticsLatest = {frameNumber: frame.frame_number, values: frame.diagnostics};
         fanOut(this.diagnosticsSubscribers, this.diagnosticsLatest);
         this.updateStaticModel(frame);
-        const resolved = resolveFrameChannels(frame);
+        const resolved = this.frameResolver.resolve({...frame, models: this.modelsLatest!, convention: this.conventionLatest!, cameras: this.camerasLatest!});
 
         this.keypointsLatest = resolved.keypoints ?? {names: [], data: new Float32Array()};
         fanOut(this.keypointsSubscribers, this.keypointsLatest);
@@ -321,6 +323,8 @@ export class TransportService {
 
     /** Reset caches on disconnect. */
     reset(): void {
+        this.decoder.reset();
+        this.frameResolver.reset();
         this.diagnosticsLatest = null;
         fanOut(this.diagnosticsSubscribers, null);
         this.keypointsLatest = null;

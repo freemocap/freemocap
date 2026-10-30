@@ -1,15 +1,13 @@
 """Load an explicit saved point stream, scientific model and fit without media access."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from contextlib import nullcontext
 from enum import StrEnum
 
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterReport
 
 import numpy as np
 from numpy.typing import NDArray
-import pyarrow as pa
-import pyarrow.compute as pc
-import pyarrow.parquet as pq
 
 from freemocap.core.reconstruction.recording_reconstruction import (
     RecordingReconstructionInput,
@@ -20,9 +18,10 @@ from freemocap.core.recording.result_processing.input_signatures import (
     definition_signature,
     point_array_signature,
 )
-from freemocap.core.recording.sample_encoding.arrow_schema import SampleValidator
 from freemocap.core.recording.data_descriptors.recording_descriptor import Channel, RecordingMetadata
-from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata, recording_batches
+from freemocap.core.recording.parquet_storage.recording_view import RecordingView, recording_view
+from freemocap.core.recording.parquet_storage.channel_arrays import ChannelArrays, read_channel_arrays
+from freemocap.core.recording.parquet_storage.channel_selection import ChannelSelection
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
@@ -57,20 +56,42 @@ class SavedReconstructionRequest:
 
 @dataclass(frozen=True, slots=True)
 class SavedPointSeries:
+    """Convenience access over shared channel arrays; values are never duplicated."""
     channel: Channel
     frames: tuple[int, ...]
     timestamps_s: tuple[float, ...]
     values: NDArray[np.float64]
+    present: NDArray[np.bool_] | None = None
+    channel_arrays: ChannelArrays = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        # Computed channels describe every declared cell, even when its value is NaN.
+        # Broadcast the constant presence flag instead of allocating a full mask.
+        presence = np.broadcast_to(np.array(True), self.values.shape) if self.present is None else self.present
+        arrays = ChannelArrays(_channel_selection(self.channel), self.channel.names,
+            tuple(self.channel.components), tuple(self.channel.components.values()),
+            np.asarray(self.frames, dtype=np.int64), np.asarray(self.timestamps_s, dtype=np.float64), self.values, presence)
+        object.__setattr__(self, 'present', presence)
+        object.__setattr__(self, 'channel_arrays', arrays)
+
+    @classmethod
+    def from_arrays(cls, *, channel: Channel, arrays: ChannelArrays) -> "SavedPointSeries":
+        # The assembler already owns axis arrays: keep those arrays as well as values.
+        instance = object.__new__(cls)
+        for name, value in (('channel', channel), ('frames', tuple(arrays.frames.tolist())),
+                            ('timestamps_s', tuple(arrays.timestamps.tolist())), ('values', arrays.values),
+                            ('present', arrays.present), ('channel_arrays', arrays)):
+            object.__setattr__(instance, name, value)
+        return instance
 
     def signature(self) -> str:
-        return definition_signature(
-            dict(
-                channel=self.channel,
-                frames=self.frames,
-                timestamps_s=self.timestamps_s,
-                values=point_array_signature(self.values),
-            )
-        )
+        return definition_signature(dict(channel=self.channel, frames=self.frames,
+            timestamps_s=self.timestamps_s, values=point_array_signature(self.values)))
+
+
+def _channel_selection(channel: Channel) -> ChannelSelection:
+    return ChannelSelection(sensor_group=channel.sensor_group, source=channel.source,
+                            reference_frame=channel.reference_frame, channel=str(channel.kind))
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,14 +104,17 @@ class SavedReconstruction:
 
 def read_saved_reconstruction(
     request: SavedReconstructionRequest,
+    *, view: RecordingView | None = None,
 ) -> SavedReconstruction:
     """Load the explicitly selected raw or filtered input stream without filtering it again.
 
     The fit must describe these exact numeric inputs and scientific model. Returned fingerprints
     identify the selection; worker-level completion reuse requires stage-planner validation.
     """
-    with recording_write_lock(structure=request.structure):
-        metadata = read_metadata(path=request.structure.data_parquet_path)
+    with recording_write_lock(structure=request.structure), (
+        recording_view(request.structure.data_parquet_path) if view is None else nullcontext(view)
+    ) as current_view:
+        metadata = current_view.metadata
         if metadata.recording_id != request.structure.recording_name:
             raise ValueError("Recording identity does not match its directory")
         run = metadata.runs[request.run_id]
@@ -144,17 +168,24 @@ def read_saved_reconstruction(
             raise ValueError(
                 "Saved points and fit must use the same reference and spatial units"
             )
-        points = _read_points(request=request, metadata=metadata, channel=channel)
+        points = read_saved_channel(structure=request.structure, run_id=request.run_id,
+            metadata=metadata, channel=channel, view=current_view)
+        # Storage retains authored component order. Spatial geometry explicitly
+        # requires XYZ, so gather once only when that order differs.
+        spatial_components = (SampleComponent.X, SampleComponent.Y, SampleComponent.Z)
+        component_names = tuple(channel.components)
+        spatial_values = points.values if component_names == spatial_components else np.take(
+            points.values, [component_names.index(component) for component in spatial_components], axis=-1)
         measured_support = None
         processing = run.processing.get(request.sensor_group, {}).get('filtering')
         if request.point_policy == SavedPointPolicy.FILTERED and processing is not None:
             report = PosthocFilterReport.model_validate(processing)
             if report.gap_filling is not None:
-                measured_support = report.gap_filling.measured_support(points.values)
+                measured_support = report.gap_filling.measured_support(spatial_values)
         numerical_input = RecordingReconstructionInput(
             bundles=(model.to_bundle(),),
             keypoint_names=channel.names,
-            keypoints_3d=points.values,
+            keypoints_3d=spatial_values,
             measured_support=measured_support,
             compute_center_of_mass=request.compute_center_of_mass,
             timing=PosthocTimingReport(),
@@ -187,87 +218,30 @@ def read_saved_reconstruction(
         )
 
 
-def _read_points(
-    *,
-    request: SavedReconstructionRequest,
-    metadata: RecordingMetadata,
-    channel: Channel,
-) -> SavedPointSeries:
-    return read_saved_channel(structure=request.structure, run_id=request.run_id,
-        metadata=metadata, channel=channel)
-
-
 def read_saved_channel(*, structure: RecordingStructure, run_id: int,
-                       metadata: RecordingMetadata, channel: Channel) -> SavedPointSeries:
-    """Read a complete named channel, preserving its declared component order and nulls.
+                       metadata: RecordingMetadata, channel: Channel,
+                       view: RecordingView | None = None) -> SavedPointSeries:
+    """Read a complete channel in authored order into owned read-only arrays.
 
-    The caller holds the recording lock so multiple channels share one snapshot.
+    A caller-owned view shares one open file across related channel reads. The
+    caller still holds the recording lock. Returned numerical storage survives
+    view closure; the complete output is resident, while decoding is batched.
     """
+    if view is None:
+        with recording_view(structure.data_parquet_path) as current_view:
+            return read_saved_channel(structure=structure, run_id=run_id,
+                metadata=metadata, channel=channel, view=current_view)
+    if metadata is not view.metadata and metadata != view.metadata:
+        raise ValueError('Recording metadata changed before the channel read')
+    if metadata.recording_id != structure.recording_name:
+        raise ValueError('Recording identity does not match its directory')
     run = metadata.runs[run_id]
-    count = run.sensor_groups[channel.sensor_group].sample_count
-    if count < 1:
-        raise ValueError("Saved reconstruction requires a nonempty point stream")
-    selected_metadata = metadata.model_copy(
-        update={
-            "runs": {run_id: run.model_copy(update={"channels": (channel,)})}
-        }
-    )
-    validator = SampleValidator(metadata=selected_metadata)
-    values = np.full((count, len(channel.names), len(channel.components)), np.nan, dtype=np.float64)
-    frame_indices: dict[int, int] = {}
-    timestamps: dict[int, float] = {}
-    names = pa.array(channel.names)
-    components = pa.array(tuple(channel.components))
-    with pq.ParquetFile(structure.data_parquet_path) as parquet:
-        for batch in recording_batches(parquet):
-            mask = pc.and_(
-                pc.equal(batch.column("run_id"), run_id),
-                pc.equal(batch.column("sensor_group"), channel.sensor_group),
-            )
-            mask = pc.and_(mask, pc.equal(batch.column("source"), channel.source))
-            mask = pc.and_(mask, pc.equal(batch.column("channel"), channel.kind))
-            mask = pc.and_(
-                mask, pc.equal(batch.column("reference_frame"), channel.reference_frame)
-                if channel.reference_frame is not None else pc.is_null(batch.column("reference_frame"))
-            )
-            selected = batch.filter(mask).replace_schema_metadata(None)
-            if not selected.num_rows:
-                continue
-            validator.accept(batch=selected)
-            # Keep scalar data in Arrow/NumPy. Only frame identities need Python
-            # bookkeeping; the validator above still checks every trajectory.
-            batch_frames = selected.column("frame_number").to_numpy()
-            batch_timestamps = selected.column("timestamp_s").to_numpy()
-            unique_frames, first, inverse = np.unique(batch_frames, return_index=True, return_inverse=True)
-            frame_times = batch_timestamps[first]
-            if not np.all(batch_timestamps == frame_times[inverse]):
-                raise ValueError("Point components disagree on the frame timestamp")
-            destination_frames = np.empty(len(unique_frames), dtype=np.int64)
-            for index, (frame, timestamp) in enumerate(zip(unique_frames.tolist(), frame_times.tolist(), strict=True)):
-                if frame not in frame_indices:
-                    if len(frame_indices) == count:
-                        raise ValueError(
-                            "Point stream exceeds the declared frame count"
-                        )
-                    frame_indices[frame] = len(frame_indices)
-                    timestamps[frame] = timestamp
-                elif timestamps[frame] != timestamp:
-                    raise ValueError("Point components disagree on the frame timestamp")
-                destination_frames[index] = frame_indices[frame]
-            name_indices = pc.index_in(selected.column("name"), value_set=names).to_numpy()
-            component_indices = pc.index_in(selected.column("component"), value_set=components).to_numpy()
-            values[destination_frames[inverse], name_indices, component_indices] = (
-                selected.column("value").to_numpy(zero_copy_only=False)
-            )
-    validator.finish()
-    frames = tuple(sorted(frame_indices))
-    if len(frames) != count:
-        raise ValueError("Point stream does not cover the declared frame grid")
-    ordered = values[[frame_indices[frame] for frame in frames]]
-    ordered.flags.writeable = False
-    return SavedPointSeries(
-        channel=channel,
-        frames=frames,
-        timestamps_s=tuple(timestamps[frame] for frame in frames),
-        values=ordered,
-    )
+    if channel not in run.channels:
+        raise ValueError('Saved channel is not declared in the selected run')
+    if run.sensor_groups[channel.sensor_group].sample_count < 1:
+        raise ValueError('Saved reconstruction requires a nonempty point stream')
+    with read_channel_arrays(view, run_id, _channel_selection(channel), channel,
+                             require_complete=True) as arrays:
+        for array in (arrays.values, arrays.present, arrays.frames, arrays.timestamps):
+            array.flags.writeable = False
+        return SavedPointSeries.from_arrays(channel=channel, arrays=arrays)

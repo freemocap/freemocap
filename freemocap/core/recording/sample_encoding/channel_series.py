@@ -9,8 +9,8 @@ import pyarrow as pa
 
 from freemocap.core.recording.sample_encoding.arrow_schema import SAMPLE_SCHEMA
 from freemocap.core.recording.data_descriptors.recording_descriptor import Channel
-from freemocap.core.data_tensors.layout_definitions import SourceIdentity
-from freemocap.core.data_tensors.sample_timeline import SampleTimeline
+from skellyforge.core.data_tensors.layout_definitions import SourceIdentity
+from skellyforge.core.data_tensors.sample_timing import SampleTiming
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,28 +19,28 @@ class SeriesSampling:
     timestamps_s: tuple[float, ...]
     run_id: int
     batch_size: int = 65536
-    sample_timeline: SampleTimeline = field(init=False, repr=False, compare=False)
+    sample_timing: SampleTiming = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if self.run_id < 0 or self.batch_size < 1:
             raise ValueError("Positive batch size and nonnegative run ID required")
-        object.__setattr__(self, "sample_timeline", SampleTimeline(
+        object.__setattr__(self, "sample_timing", SampleTiming(
             timeline_id=f"run:{self.run_id}:samples", clock_id="recording_relative",
             source_identity=SourceIdentity(source_id=f"run:{self.run_id}"),
             sample_ids=self.frame_numbers, timestamps_s=self.timestamps_s,
         ))
 
     @classmethod
-    def from_timeline(cls, *, sample_timeline: SampleTimeline, run_id: int, batch_size: int = 65536) -> "SeriesSampling":
+    def from_timeline(cls, *, sample_timing: SampleTiming, run_id: int, batch_size: int = 65536) -> "SeriesSampling":
         """Reuse already validated timing across every channel in a publication."""
         if run_id < 0 or batch_size < 1:
             raise ValueError("Positive batch size and nonnegative run ID required")
         result = object.__new__(cls)
-        object.__setattr__(result, "frame_numbers", sample_timeline.sample_axis.identifiers)
-        object.__setattr__(result, "timestamps_s", tuple(sample_timeline.timestamps_s))
+        object.__setattr__(result, "frame_numbers", sample_timing.sample_axis.identifiers)
+        object.__setattr__(result, "timestamps_s", tuple(sample_timing.timestamps_s))
         object.__setattr__(result, "run_id", run_id)
         object.__setattr__(result, "batch_size", batch_size)
-        object.__setattr__(result, "sample_timeline", sample_timeline)
+        object.__setattr__(result, "sample_timing", sample_timing)
         return result
 
 
@@ -71,7 +71,7 @@ class ChannelSeries:
         channel_layout = self.channel.tensor_layout()
         series_layout = replace(
             channel_layout,
-            axes=(sampling.sample_timeline.sample_axis, *channel_layout.axes),
+            axes=(sampling.sample_timing.sample_axis, *channel_layout.axes),
         )
         series_layout.validate_array(self.values)
         # Construct bounded columns directly. A Python dictionary per scalar is
@@ -79,8 +79,8 @@ class ChannelSeries:
         components = tuple(self.channel.components)
         component_count = len(components)
         values_per_frame = len(self.channel.names) * component_count
-        frame_numbers = sampling.sample_timeline.sample_ids
-        timestamps = sampling.sample_timeline.timestamps_s
+        frame_numbers = sampling.sample_timing.sample_ids
+        timestamps = sampling.sample_timing.timestamps_s
         names = pa.array(self.channel.names, type=pa.string())
         component_names = pa.array(components, type=pa.string())
         units = pa.array(tuple(self.channel.components.values()), type=pa.string())

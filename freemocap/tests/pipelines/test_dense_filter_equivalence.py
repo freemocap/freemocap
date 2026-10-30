@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from freemocap.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.data_tensors.channel_values import ChannelValues
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.core.tasks.mocap.realtime_filtering.one_euro_filter import OneEuroFilter1D
 

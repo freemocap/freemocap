@@ -10,7 +10,7 @@ from __future__ import annotations
 
 
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.data_tensors.channel_values import ChannelValues
 from freemocap.core.skeletons.skeleton_reconstruction import JointValues
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle

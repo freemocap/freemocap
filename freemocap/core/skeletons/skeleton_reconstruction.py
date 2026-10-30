@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from collections.abc import Mapping, Iterator
 from functools import lru_cache
-from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 
 import numpy as np
 from skellyforge.core.skeleton.pose.rigid_body_diagnostics import RigidBodyResidual

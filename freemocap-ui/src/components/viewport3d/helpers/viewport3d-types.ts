@@ -88,13 +88,20 @@ export const EMPTY_STATS: ViewportStats = {
 // Inspection (hover / click-to-pin a named point or bone).
 // ---------------------------------------------------------------------------
 
-/** The three inspectable entity kinds in the 3D viewport. */
+/** Inspectable entity kinds in the 3D viewport. */
 export type InspectionKind = "keypoint" | "mapped keypoint" | "landmark" | "segment";
 
 /** A hovered or pinned inspectable entity. */
-export interface InspectionTarget {
-    kind: InspectionKind;
-    name: string;
+export type InspectionTarget =
+    | {kind: "keypoint"; name: string}
+    | {kind: Exclude<InspectionKind, "keypoint">; name: string; modelId: string; instanceId: number};
+
+/** Compare semantic identity, independent of the current renderer slot. */
+export function sameInspectionTarget(left: InspectionTarget | null, right: InspectionTarget | null): boolean {
+    if (left === right) return true;
+    if (!left || !right || left.kind !== right.kind || left.name !== right.name) return false;
+    if (left.kind === "keypoint" || right.kind === "keypoint") return left.kind === right.kind;
+    return left.modelId === right.modelId && left.instanceId === right.instanceId;
 }
 
 

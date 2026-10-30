@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from freemocap.core.pipeline.posthoc.task_snapshot import TaskRegistrySnapshot
 from freemocap.core.diagnostics.pipeline_diagnostics import PipelineDiagnostics
 from freemocap.core.types.channel_kind import ChannelKind
-from freemocap.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
+from skellyforge.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
 from skellycam.core.types.type_overloads import (
     CameraGroupIdString,
     CameraIdString,

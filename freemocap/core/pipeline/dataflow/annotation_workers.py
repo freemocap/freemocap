@@ -14,6 +14,7 @@ from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.core import TrackerConfig
 from skellytracker.core.data_primitives.observation import Observation
+from freemocap.core.tracking.observation_series import ObservationSeries, RecordingObservationSeries
 
 from freemocap.core.pipeline.performance_report import PerformanceReport
 from freemocap.core.pipeline.posthoc.annotation_input import AnnotationInput
@@ -29,7 +30,7 @@ class CameraAnnotationJob:
     camera_id: str
     video: VideoMetadata
     tracker_config: TrackerConfig
-    observations: tuple[Observation, ...]
+    observations: tuple[Observation, ...] | ObservationSeries | RecordingObservationSeries
     run_id: int = 0
 
 
@@ -47,9 +48,13 @@ def write_camera_annotation(job: CameraAnnotationJob, *, cancelled: Callable[[],
         output = AnnotationVideoOutput(AnnotationOutputRequest(recording_path=job.recording_path,
             pipeline_id=job.execution_id, video=job.video, input_mode=AnnotationInput.RAW,
             performance=performance, camera_id=job.camera_id, run_id=job.run_id))
-        for observation in job.observations:
+        for index in range(len(job.observations)):
+            observation = (job.observations.annotation_frame(index) if isinstance(job.observations, (ObservationSeries, RecordingObservationSeries))
+                           else job.observations[index])
             if cancelled():
                 raise CancelledError("Annotation cancelled")
+            if int(reader.get(cv2.CAP_PROP_POS_FRAMES)) != observation.frame_number:
+                reader.set(cv2.CAP_PROP_POS_FRAMES, observation.frame_number)
             ok, image = reader.read()
             if not ok:
                 raise ValueError("Annotation video ended before observations")

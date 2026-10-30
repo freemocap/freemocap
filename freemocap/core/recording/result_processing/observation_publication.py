@@ -1,8 +1,8 @@
 """Publish posthoc observations with SkellyCam timing into the canonical store."""
 
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
-from freemocap.core.data_tensors.sample_timeline import SampleTimeline
-from freemocap.core.data_tensors.layout_definitions import SourceIdentity
+from skellyforge.core.data_tensors.sample_timing import SampleTiming
+from skellyforge.core.data_tensors.layout_definitions import SourceIdentity
 from collections.abc import Iterator
 from dataclasses import replace
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
@@ -42,8 +42,10 @@ from freemocap.core.recording.sample_encoding.observation_samples import (
     TimedObservation,
     box_batches,
     observation_batches,
-    timing_batches,
+    timing_series_batches,
+    box_series_batches,
 )
+from freemocap.core.tracking.observation_series import ObservationFrames, RecordingObservationSeries
 from freemocap.core.recording.parquet_storage.checkpoint_publication import publish_checkpoint
 from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
@@ -173,12 +175,12 @@ def publish_posthoc_observations(
     if entries:
         run = run.model_copy(update={"processing": set_stage_provenance(run.processing, request.group.name, entries)})
 
-    synchronized_timeline = SampleTimeline(
+    synchronized_timeline = SampleTiming(
         timeline_id=f"{request.group.name}:synchronized", clock_id=f"{request.group.name}:recording_relative",
         source_identity=SourceIdentity(source_id=group_source, sensor_group=request.group.name),
         sample_ids=frame_numbers, timestamps_s=synchronized,
     )
-    synchronized_sampling = SeriesSampling.from_timeline(sample_timeline=synchronized_timeline, run_id=target_run_id)
+    synchronized_sampling = SeriesSampling.from_timeline(sample_timing=synchronized_timeline, run_id=target_run_id)
 
     def batches(*, include_observations: bool = True) -> Iterator[pa.RecordBatch]:
         for series in diagnostics:
@@ -204,33 +206,24 @@ def publish_posthoc_observations(
                 run_id=target_run_id,
                 batch_size=65536,
             )
+            camera_timeline = SampleTiming(
+                timeline_id=f"{request.group.name}:{camera}", clock_id=f"camera:{camera}",
+                source_identity=SourceIdentity(source_id=camera, sensor_group=request.group.name, camera_id=camera),
+                sample_ids=frame_numbers, timestamps_s=camera_times[camera])
+            camera_sampling = SeriesSampling.from_timeline(sample_timing=camera_timeline, run_id=target_run_id)
             box_channel = camera_channels[camera].boxes
             if box_channel is not None:
-                yield from box_batches(
-                    samples=(
-                        TimedObservation(
-                            observation=frame[camera], capture_timestamp_s=timestamp
-                        )
-                        for frame, timestamp in zip(
-                            request.group.frames, camera_times[camera], strict=True
-                        )
-                    ),
-                    channel=box_channel,
-                    run_id=target_run_id,
-                    batch_size=65536,
-                )
-            yield from timing_batches(
-                samples=zip(frame_numbers, camera_times[camera], strict=True),
-                channel=camera_channels[camera].capture,
-                run_id=target_run_id,
-                batch_size=65536,
-            )
-        yield from timing_batches(
-            samples=zip(frame_numbers, synchronized, strict=True),
-            channel=group_channel,
-            run_id=target_run_id,
-            batch_size=65536,
-        )
+                camera_series = (request.group.frames.camera_series[camera]
+                                 if isinstance(request.group.frames, ObservationFrames) else None)
+                if isinstance(camera_series, RecordingObservationSeries):
+                    yield from box_series_batches(series=camera_series, sampling=camera_sampling, channel=box_channel)
+                else:
+                    yield from box_batches(
+                        samples=(TimedObservation(observation=frame[camera], capture_timestamp_s=timestamp)
+                                 for frame, timestamp in zip(request.group.frames, camera_times[camera], strict=True)),
+                        channel=box_channel, run_id=target_run_id, batch_size=65536)
+            yield from timing_series_batches(sampling=camera_sampling, channel=camera_channels[camera].capture)
+        yield from timing_series_batches(sampling=synchronized_sampling, channel=group_channel)
 
     structure = RecordingStructure(
         base_directory=Path(request.recording.recording_directory),

@@ -62,6 +62,48 @@ def validate_filter_timing(*, timestamps_s: NDArray[np.float64], config: Posthoc
     return rate
 
 
+def _interpolate_trajectories(*, target_times: NDArray[np.float64], source_times: NDArray[np.float64],
+                            values: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Apply one linear interpolation plan across every trajectory/component.
+
+    Values have time as their first axis. Preserve exact source knots, including
+    endpoints, rather than evaluating a slope at those positions.
+    """
+    right = np.searchsorted(source_times, target_times, side="left")
+    right = np.clip(right, 1, len(source_times) - 1)
+    left = right - 1
+    expansion = (slice(None),) + (None,) * (values.ndim - 1)
+    slopes = (values[right] - values[left]) / (source_times[right] - source_times[left])[expansion]
+    result = values[left] + slopes * (target_times - source_times[left])[expansion]
+    exact_left = target_times == source_times[left]
+    exact_right = target_times == source_times[right]
+    result[exact_left] = values[left[exact_left]]
+    result[exact_right] = values[right[exact_right]]
+    return result
+
+
+def _compatible_runs(valid: NDArray[np.bool_], time_breaks: NDArray[np.int64], pad_length: int):
+    """Group complete valid intervals, without scanning each point in Python."""
+    starts = valid.copy()
+    starts[1:] &= ~valid[:-1]
+    stops = valid.copy()
+    stops[:-1] &= ~valid[1:]
+    starts[time_breaks] = valid[time_breaks]
+    stops[time_breaks - 1] = valid[time_breaks - 1]
+    point_indices, start_indices = np.nonzero(starts.T)
+    _, stop_indices = np.nonzero(stops.T)
+    stop_indices = stop_indices + 1
+    eligible = stop_indices - start_indices > pad_length
+    short_runs = int(np.count_nonzero(~eligible))
+    intervals = np.column_stack((start_indices[eligible], stop_indices[eligible]))
+    unique_intervals, group_indices = np.unique(intervals, axis=0, return_inverse=True)
+    order = np.argsort(group_indices, kind="stable")
+    points = point_indices[eligible][order]
+    counts = np.bincount(group_indices, minlength=len(unique_intervals))
+    boundaries = np.concatenate(([0], np.cumsum(counts)))
+    return unique_intervals, points, boundaries, short_runs
+
+
 def filter_recording_points(
     *, points: NDArray[np.float64], timestamps_s: NDArray[np.float64], config: PosthocFilterConfig,
 ) -> FilteredRecording:
@@ -86,34 +128,28 @@ def filter_recording_points(
     # Match the SOS forward/backward filter's odd-padding length for a Butterworth design.
     pad_length = 3 * (config.order + 1)
     output = points.copy()
-    filtered_runs = 0
-    short_runs = 0
     time_breaks = np.flatnonzero(intervals > 1.5 * interval) + 1
-    for point_index in range(points.shape[1]):
-        boundaries = np.unique(np.concatenate((
-            [0, len(timestamps_s)], np.flatnonzero(np.diff(valid[:, point_index])) + 1, time_breaks,
-        )))
-        for start, stop in zip(boundaries[:-1], boundaries[1:], strict=True):
-            if not valid[start, point_index]:
-                continue
-            if stop - start <= pad_length:
-                short_runs += 1
-                continue
-            times = timestamps_s[start:stop]
-            values = points[start:stop, point_index]
-            # Filter on a uniform grid within measured support, then return to observed times.
-            count = max(stop - start, int(np.ceil((times[-1] - times[0]) * rate)) + 1)
-            grid = np.linspace(times[0], times[-1], num=count)
-            grid_rate = (count - 1) / float(times[-1] - times[0])
-            uniform = np.column_stack([np.interp(x=grid, xp=times, fp=values[:, axis]) for axis in range(3)])
+    run_intervals, point_indices, boundaries, short_runs = _compatible_runs(valid, time_breaks, pad_length)
+    coefficients = {}
+    for group_index, (start, stop) in enumerate(run_intervals):
+        selected_points = point_indices[boundaries[group_index]:boundaries[group_index + 1]]
+        times = timestamps_s[start:stop]
+        values = points[start:stop, selected_points]
+        # Every point in this group has exactly the same measured support and
+        # clock. Interpolate/filter their dense time x point x component tensor.
+        count = max(stop - start, int(np.ceil((times[-1] - times[0]) * rate)) + 1)
+        grid = np.linspace(times[0], times[-1], num=count)
+        grid_rate = (count - 1) / float(times[-1] - times[0])
+        uniform = _interpolate_trajectories(target_times=grid, source_times=times, values=values)
+        sections = coefficients.get(grid_rate)
+        if sections is None:
             sections = butter(N=config.order, Wn=config.cutoff, fs=grid_rate, btype="lowpass", output="sos")
-            filtered = sosfiltfilt(sos=sections, x=uniform, axis=0, padlen=pad_length)
-            if not np.isfinite(filtered).all():
-                raise ValueError("Butterworth filtering produced nonfinite coordinates")
-            output[start:stop, point_index] = np.column_stack([
-                np.interp(x=times, xp=grid, fp=filtered[:, axis]) for axis in range(3)
-            ])
-            filtered_runs += 1
+            coefficients[grid_rate] = sections
+        filtered = sosfiltfilt(sos=sections, x=uniform, axis=0, padlen=pad_length)
+        if not np.isfinite(filtered).all():
+            raise ValueError("Butterworth filtering produced nonfinite coordinates")
+        output[start:stop, selected_points] = _interpolate_trajectories(
+            target_times=times, source_times=grid, values=filtered)
     return FilteredRecording(points=output, report=PosthocFilterReport(
-        config=config, sampling_rate_hz=rate, filtered_runs=filtered_runs, preserved_short_runs=short_runs,
+        config=config, sampling_rate_hz=rate, filtered_runs=len(point_indices), preserved_short_runs=short_runs,
     ))

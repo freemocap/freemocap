@@ -81,20 +81,15 @@ def triangulate_observation_buffers(
         triangulation_config = TriangulationConfig()
 
     first_buffer = next(iter(observation_buffers.values()))
-    frame_numbers = tuple(observation.frame_number for observation in first_buffer.observations)
+    frame_numbers = first_buffer.frame_numbers
     if not frame_numbers:
         raise ValueError("Cannot triangulate an empty recording")
     for buffer in observation_buffers.values():
-        if tuple(observation.frame_number for observation in buffer.observations) != frame_numbers:
+        if buffer.frame_numbers != frame_numbers:
             raise ValueError("Camera observation frame numbers must match exactly")
-    first_observation = first_buffer.observations[0]
     if stage_name is not None:
-        stage_keypoints = first_observation.stages[stage_name].keypoints
-        prefixed_names: tuple[str, ...] = tuple(
-            stage_keypoints.names[:n_points]
-            if n_points is not None
-            else stage_keypoints.names
-        )
+        stage_names = first_buffer.stage_point_names(stage_name)
+        prefixed_names = stage_names[:n_points] if n_points is not None else stage_names
         data2d_by_camera: dict[CameraIdString, np.ndarray] = {
             camera_id: buffer.to_stage_array(stage_name, n_points)[..., :2]
             for camera_id, buffer in observation_buffers.items()
@@ -219,7 +214,7 @@ def reconstruct_skeletons_with_fits(
     t0 = time.perf_counter()
     from skellytracker.core.io.prepared_tracker_mapping import PreparedTrackerMapping
     from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
-    from freemocap.core.data_tensors import AxisDefinition, CompanionTensor, DataTensor
+    from skellyforge.core.data_tensors import AxisDefinition, CompanionTensor, DataTensor
     empty_frames = ~np.isfinite(request.keypoints_3d).all(axis=-1).any(axis=-1)
     sample_axis = AxisDefinition("sample_position", range(request.frame_count))
     results = {}

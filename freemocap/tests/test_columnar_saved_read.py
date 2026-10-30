@@ -13,7 +13,10 @@ from freemocap.core.recording.sample_encoding.channel_series import ChannelSerie
 from freemocap.core.recording.result_processing.saved_reconstruction import read_saved_channel
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.core.recording.parquet_storage.parquet_reader import recording_batches
-from freemocap.core.recording.sample_encoding.arrow_schema import SampleValidator
+from freemocap.core.recording.sample_encoding.arrow_schema import SampleValidator, DESCRIPTOR_KEY
+from freemocap.core.recording.parquet_storage.recording_view import recording_view
+from freemocap.core.recording.parquet_storage.channel_arrays import ChannelArrays, read_channel_arrays
+from freemocap.core.recording.parquet_storage.channel_selection import ChannelSelection
 from unittest.mock import patch
 
 
@@ -35,6 +38,7 @@ class ColumnarSavedReadTests(unittest.TestCase):
         self.values[2,1,2] = -0.0
         self.batch = list(ChannelSeries(channel=self.channel, values=self.values).batches(SeriesSampling(
             frame_numbers=(3,8,14), timestamps_s=(.1,.2,.3), run_id=0)))[0]
+        self.batch = self.batch.replace_schema_metadata({DESCRIPTOR_KEY: self.metadata.model_dump_json().encode()})
 
     def read(self, batch, row_group_size):
         pq.write_table(pa.Table.from_batches([batch]), self.structure.data_parquet_path,
@@ -56,12 +60,62 @@ class ColumnarSavedReadTests(unittest.TestCase):
 
     def test_invalid_and_incomplete_streams_fail_before_returning_data(self):
         for column, index, value in (("timestamp_s",1,.11), ("name",0,"unknown"),
-            ("component",0,"unknown"), ("value",0,float("inf")), ("frame_number",12,15)):
+            ("component",0,"unknown"), ("units",0,"wrong"), ("value",0,float("inf")), ("frame_number",12,15)):
             rows=self.batch.to_pylist(); rows[index][column]=value
             with self.subTest(column=column), self.assertRaises(ValueError):
                 self.read(pa.RecordBatch.from_pylist(rows,schema=self.batch.schema), 5)
         with self.assertRaises(ValueError):
             self.read(self.batch.slice(0,17), 5)
+        with self.assertRaises(ValueError):
+            self.read(pa.RecordBatch.from_pylist(self.batch.to_pylist() + self.batch.slice(0,1).to_pylist(),
+                                                schema=self.batch.schema), 5)
+
+    def test_shared_view_arrays_survive_closure_without_aliasing_later_reads(self):
+        self.read(self.batch, 7)
+        with recording_view(self.structure.data_parquet_path) as view:
+            with patch.object(pq.ParquetFile, '__init__', side_effect=AssertionError('Unexpected reopen')):
+                saved = read_saved_channel(structure=self.structure, run_id=0,
+                    metadata=self.metadata, channel=self.channel, view=view)
+                later = read_saved_channel(structure=self.structure, run_id=0,
+                    metadata=self.metadata, channel=self.channel, view=view)
+        self.assertIsInstance(saved.channel_arrays, ChannelArrays)
+        self.assertIs(saved.values, saved.channel_arrays.values)
+        self.assertFalse(np.shares_memory(saved.values, later.values))
+        np.testing.assert_array_equal(saved.values, self.values)
+        self.assertTrue(saved.present.all())
+        self.assertTrue(np.isnan(saved.values[1,0,1]))  # Recorded null remains present.
+        for array in (saved.values, saved.present, saved.channel_arrays.frames, saved.channel_arrays.timestamps):
+            self.assertFalse(array.flags.writeable)
+        self.assertEqual(saved.channel_arrays.components, ('z','x','y'))
+
+    def test_shared_assembly_distinguishes_null_from_absence_and_strict_read_rejects_gap(self):
+        sparse = self.batch.slice(0,17)
+        pq.write_table(pa.Table.from_batches([sparse]), self.structure.data_parquet_path, row_group_size=5)
+        context = ChannelSelection(sensor_group='group', source='tracker', reference_frame='world', channel='RAW_KEYPOINTS_3D')
+        with recording_view(self.structure.data_parquet_path) as view:
+            with read_channel_arrays(view, 0, context, self.channel) as arrays:
+                self.assertTrue(arrays.present[1,0,1])
+                self.assertTrue(np.isnan(arrays.values[1,0,1]))
+                self.assertFalse(arrays.present[2,1,2])
+                self.assertTrue(np.isnan(arrays.values[2,1,2]))
+            with self.assertRaises(ValueError):
+                read_saved_channel(structure=self.structure, run_id=0,
+                    metadata=self.metadata, channel=self.channel, view=view)
+
+    def test_saved_reader_uses_declared_component_count_and_order(self):
+        components = {name: '1' for name in ('fifth', 'second', 'first', 'fourth', 'third')}
+        channel = self.channel.model_copy(update={'components': components})
+        run = self.metadata.runs[0].model_copy(update={'channels': (channel,)})
+        metadata = self.metadata.model_copy(update={'runs': {0: run}})
+        values = np.arange(30, dtype=np.float64).reshape(3,2,5)
+        values[1,1,4] = np.nan
+        batches = [batch.replace_schema_metadata({DESCRIPTOR_KEY: metadata.model_dump_json().encode()})
+            for batch in ChannelSeries(channel=channel, values=values).batches(SeriesSampling(
+                frame_numbers=(3,8,14), timestamps_s=(.1,.2,.3), run_id=0))]
+        pq.write_table(pa.Table.from_batches(batches), self.structure.data_parquet_path, row_group_size=7)
+        saved = read_saved_channel(structure=self.structure, run_id=0, metadata=metadata, channel=channel)
+        np.testing.assert_array_equal(saved.values, values)
+        self.assertEqual(saved.channel_arrays.components, tuple(components))
 
     def test_writer_row_groups_keep_columnar_validation_and_bound_large_external_groups(self):
         count = 11000

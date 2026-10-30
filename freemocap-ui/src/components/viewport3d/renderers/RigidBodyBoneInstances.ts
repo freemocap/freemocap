@@ -1,24 +1,7 @@
-// RigidBodyBoneInstances.ts
-//
-// Pure, unit-testable functions that turn a ModelDefinition (the model that
-// rides every frame) into a per-bone instance map, and compute the per-frame
-// instance matrix. No THREE render loop here; the React component consumes
-// these. The four FMC-SR §9 defects are fixed up front:
-//   D5  — index segments by their model-declared NAMES, never by hierarchy
-//         edges (a name→index map is built once, per segment name).
-//   D6  — the cross-section comes from a RADIUS parameter, independent of a
-//         segment's length (a 1mm segment has the same radius as a 500mm one).
-//   D14 — build-time name→index resolution: every name resolves ONCE when the
-//         model arrives, never per-frame.
-//   D15 — per-instance color set ONCE at build (never in the hot path).
-//
-// The bone's direction is its PRIMARY AXIS: the axis from the segment origin to
-// its distal point (where the child connects, or the tip for a leaf). It is a
-// signed basis axis ("x"/"y"/"z"/"-x"/… ) or a normalized 3-vector. There is no
-// fixed slot mapping — the unit geometry's +Z is rotated onto the
-// segment's actual primary-axis direction.
+// Shared bone styles and the existing pure matrix implementation.
+// Prepared renderer math is checked against this implementation.
 
-import type { ModelDefinition, PrimaryAxis } from "@/services/server/transport/message-contract";
+import type { PrimaryAxis } from "@/services/server/transport/message-contract";
 
 export type BoneSide = "left" | "right" | "center" | "left_hand" | "right_hand";
 
@@ -40,39 +23,6 @@ export const REGION_CROSS_SECTION: Readonly<Record<BoneRegion, number>> = {
     face: 2.25,
     foot: 3.75,
 };
-
-/** A single rigid body segment, resolved once at model time. */
-export interface BoneInstance {
-    /** Stable instance-slot index into the InstancedMesh (name → index, D5/D14). */
-    instanceIdx: number;
-    /** The child segment's model-declared name. */
-    name: string;
-    /** Color side, from the segment name prefix. */
-    side: BoneSide;
-}
-
-export type BoneNameToIndex = ReadonlyMap<string, number>;
-
-export interface BoneInstanceTable {
-    /** index-by-name (D5/D14) — the authoritative segment-name → slot map. */
-    nameToIndex: BoneNameToIndex;
-    /** name → instance index (alias; kept 1:1 with nameToIndex). */
-    byName: ReadonlyMap<string, number>;
-    /** Ordered instance descriptors (slot-stable). */
-    instances: readonly BoneInstance[];
-    /** name → rest length as a FRACTION OF BODY HEIGHT, resolved ONCE at model time.
-     *  The model is dimensionless; multiply by the frame's fitted `bodyHeightMm` for
-     *  millimetres, or prefer the per-frame SEGMENT_LENGTHS channel, which carries the
-     *  fitted length of every segment. */
-    byNameLengthProportion: ReadonlyMap<string, number>;
-    /** name → primary axis (the bone's origin→distal direction). */
-    byNamePrimaryAxis: ReadonlyMap<string, PrimaryAxis>;
-    /** name → rest-frame orientation [w, x, y, z]: the rotation mapping the
-     *  segment's LOCAL frame to its world T-pose. Composed before ROTATIONS_WORLD. */
-    byNameRestOrientation: ReadonlyMap<string, readonly [number, number, number, number]>;
-    /** name → transverse cross-section radius (mm), sized by region. */
-    byNameCrossSection: ReadonlyMap<string, number>;
-}
 
 /** Fallback rest length (mm) for a segment whose size is not known at all — no fitted
  *  length on the wire and no body height to scale its proportion by. */
@@ -207,52 +157,6 @@ function rotationOntoPrimaryAxis(axis: PrimaryAxis): number[] {
 }
 
 /**
- * Build a per-instance table from a ModelDefinition (D5: names, not hierarchy
- * edges, are the index key). Instance ordering follows the model's segment
- * order — which is also the channel row order, so a segment's instance slot IS
- * its row index into the frame's segment/rotation channel data.
- */
-export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
-    const segments = model.segments;
-    if (segments.length === 0) {
-        return {
-            nameToIndex: new Map(),
-            byName: new Map(),
-            instances: [],
-            byNameLengthProportion: new Map(),
-            byNamePrimaryAxis: new Map(),
-            byNameRestOrientation: new Map(),
-            byNameCrossSection: new Map(),
-        };
-    }
-
-    const nameToIndex = new Map<string, number>();
-    const byName = new Map<string, number>();
-    const instances: BoneInstance[] = [];
-    const byNameLengthProportion = new Map<string, number>();
-    const byNamePrimaryAxis = new Map<string, PrimaryAxis>();
-    const byNameRestOrientation = new Map<string, readonly [number, number, number, number]>();
-    const byNameCrossSection = new Map<string, number>();
-
-    segments.forEach((segment, i) => {
-        nameToIndex.set(segment.name, i);
-        byName.set(segment.name, i);
-        instances.push({ instanceIdx: i, name: segment.name, side: classifyBone(segment.name) });
-        byNameLengthProportion.set(
-            segment.name,
-            Number.isFinite(segment.length_proportion) && segment.length_proportion > 0
-                ? segment.length_proportion
-                : 0,
-        );
-        byNamePrimaryAxis.set(segment.name, segment.primary_axis);
-        byNameRestOrientation.set(segment.name, segment.rest_orientation);
-        byNameCrossSection.set(segment.name, REGION_CROSS_SECTION[classifyRegion(segment.name)]);
-    });
-
-    return { nameToIndex, byName, instances, byNameLengthProportion, byNamePrimaryAxis, byNameRestOrientation, byNameCrossSection };
-}
-
-/**
  * Per-frame instance transform (pure — the only per-frame math, unit-tested).
  *
  * Composition: world = R_world · Q · S, where
@@ -263,7 +167,7 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
  *
  * @param origin          proximal joint (segment origin), mm
  * @param quatWXYZ        world-frame quaternion [w, x, y, z] (ROTATIONS_WORLD)
- * @param _restOrientation unused (kept for the legacy call signature)
+ * @param _restOrientation unused (kept for the existing call signature)
  * @param primaryAxis     the segment's primary axis (signed axis or 3-vector)
  * @param length          segment length; NaN/0 hides the instance
  * @param crossSection    transverse radius (mm) — same for 1 mm and 500 mm bones

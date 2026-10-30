@@ -1,118 +1,148 @@
 # Scientific exports
 
-In **Open Mocap Processing Ã¢â€ â€™ Exports**, choose data separately from formats.
-All exports are optional. **3D landmarks** is the sole default data selection.
-Raw triangulated 3D keypoints, filtered 3D keypoints, per-camera 2D keypoints and
-rigid-body segment poses start unchecked. Joint-angle export is deferred.
-Formats are independent **Wide CSV**, **NPY**, **NPZ**, and **Jupyter Notebook Explorer** checkboxes, initially
-off. Export saved results or enable export after processing with the same choices.
-The UI shows the expected minimum file count before writing.
+In **Open Mocap Processing > Exports**, select data independently of formats.
+**3D landmarks** is the default data selection; all export formats are optional.
+Wide CSV, NPY, NPZ and Notebook Explorer reuse saved processing results without
+rerunning detection, geometry or filtering. Model predictions are not independent
+empirical measurements of every landmark.
 
-Both raw and filtered keypoints use existing saved channels. Segment poses combine
-saved segment origins and world WXYZ quaternions, on an identical frame grid and
-name order, into `(frames, segments, 7)` with components `x,y,z,qw,qx,qy,qz`.
-No new joint-angle calculations, geometry processing or resampling are introduced.
-Data is separated by model/source and coordinate reference. The calibration board
-and human model therefore have separate landmark tables when both are recorded.
+## Recording runs and output paths
 
-## Layout and metadata
-
-Default exports replace selected CSV files in `exports/csv/` and NPY arrays in
-`exports/npy/`. NPZ and the compact inventory remain directly in `exports/`. Other formats retain
-their original source identity. Explicit retention writes into `exports/run-<id>/`
-and adds `.run-<id>` to filenames. Existing retained formats are not overwritten;
-additional formats must use the same source revision. No export allocates a run.
+Normal processing overwrites the selected run, with run 0 as the default. Creating
+a new run is an explicit processing choice owned by `RunSaveSession`; exporting
+never allocates another run. Run 0 normally publishes under `exports/`. Nonzero
+runs and explicit `keep=True` exports use `exports/run-<id>/` and run-qualified
+filenames. Existing kept formats are not overwritten; adding formats requires the
+same source revision.
 
 ```text
 recording/
     recording_data.parquet
     recording_recording_info.json
+    recording.explorer.ipynb                 # optional
     exports/
         csv/recording.3d_landmarks--standard_human.csv
-        npy/recording.3d_landmarks--standard_human.npy
-        npy/recording.frames.npy
-        npy/recording.timestamps.npy
+        npy/dataset.json
+        npy/channel_000000_values.npy
+        npy/channel_000000_companion_000000.npy
+        npy/timing_000000_sample_ids.npy
+        npy/timing_000000_timestamps_s.npy
+        recording.npz                       # optional
         recording_recording_info.json
-        recording.npz                         # when selected
-        run-0/
-            csv/recording.run-0.3d_landmarks--standard_human.csv
-            npy/recording.run-0.3d_landmarks--standard_human.npy
-            recording.run-0_recording_info.json
+        run-1/                              # an explicitly selected nonzero run
+            npy/dataset.json
+            recording.run-1.npz
+            recording.run-1_recording_info.json
 ```
 
-Filenames use readable data/source labels. Camera exports include the tracker source followed by the existing video
-basename. Scientific labels put dimensionality first: `2d_overlay`,
-`3d_keypoints_raw`, `3d_keypoints_filtered`, `3d_landmarks`, and
-`3d_segment_poses`. CSV/NPY filenames and NPZ member keys use the same labels.
-These names do not change canonical Parquet channel identifiers or retention rules. Only filesystem-invalid characters are replaced; collisions get a
-stable numeric suffix. Exact source/reference identities remain in metadata.
-Hashes are internal provenance fields, never filename identifiers.
+Normal NPY replacement uses the same run-local `npy/` directory. The recovery
+journal removes only obsolete, previously managed NPY members whose hashes still
+match. Edited or unrelated files are preserved and stop replacement when they
+would make the dataset inventory ambiguous. Unselected formats remain unchanged.
+CSV publication replaces selected table paths and updates its inventory; older
+unselected CSV files may remain on disk. The inventory identifies active outputs.
 
-Root recording-info JSON preserves existing capture/unknown fields and adds a
-compact `processed` section: source Parquet hash, selected run, per-run clocks,
-camera names, reference frames, ordered names/components/units and links to export
-inventories. Parquet still owns full scientific definitions and measurements.
-Publication and saved-result export refresh this companion. A failure is reported;
-previously published Parquet remains usable. No diagnostic YAML is generated.
+## Scientific arrays and display tables
 
-Each export set has a compact `*_recording_info.json` inventory with per-file hash,
-source revision/run, ordering, array shapes, timing bounds, units and reference
-frames. It does not copy the complete Parquet descriptor or repeat a dictionary
-for every scalar column. Existing version-1/2 inventories remain readable; replacing
-an older wide export retires only its verified, exporter-owned obsolete files.
-Unknown files are preserved. Existing user recordings are not bulk migrated.
+Parquet is the primary durable recording. SkellyForge owns the reusable
+`RecordingDataset`, `TimeSeries`, `DataTensor`, `SampleTiming` and NumPy format.
+See [the implemented NumPy contract](../../../../../skellyforge/skellyforge/core/data_tensors/NUMPY_FORMAT.md)
+for the complete `skellyforge.numpy_dataset` version-1 schema.
 
-## CSV and NumPy values
+NPY and NPZ preserve the selected tensor representation: dtype, logical values,
+axes and their authored identities, component units, coordinate references,
+provenance, explicit companions and definition documents. Component counts come
+from layouts. A time series identifies its sample axis and its own timing entry;
+channels may have different sample counts, IDs and timestamps. Static fits have
+no fake frame axis. Declared independent clocks remain separate. The saved Core
+adapter scopes clock IDs to recorded groups/runs without inventing hardware clock
+identities or changing timestamps.
 
-CSV has one row per recorded frame, with `frame_number,timestamp_s` then named
-values. Headers preserve readable names, for example `body.nose.x`, without
-URL escaping. The final period separates the component for current scientific
-products. Exact axis identity and order remain in metadata; CSV quoting handles
-commas and quotes. Units correspond to
-the ordered component list in metadata. Files split at 500,000 rows or 1,024 value
-columns, with part suffixes only when splitting is necessary.
+Selecting `SEGMENT_POSES` writes native `SEGMENT_ORIGINS` and `ROTATIONS_WORLD`
+tensors to NumPy. NumPy keeps the saved `visibility` component label. CSV and
+notebook display projections retain canonical spatial component order, the
+`confidence` alias for visibility, and combined origins/world quaternions with
+named `qw,qx,qy,qz` columns. These projections do not redefine runtime storage.
 
-CSV uses UTF-8 with BOM and float64 round-trip precision. `NaN` is a recorded null;
-an empty field is an absent scalar row. Frames are sorted; timestamps are saved
-values. No invented frames, interpolation, filtering or unit conversion occurs.
+`entry_presence` from saved Parquet means a component row exists, including a
+recorded null. Values may therefore be NaN while presence is true. It is not a
+quality score or independent scientific-validity declaration. Explicit runtime
+`value_validity`, confidence and evidence arrays are preserved when supplied;
+the saved schema's absent quality information is not fabricated. Selected model
+fits include static scales/lengths, measured/voting support, model definitions and
+input signatures. Solver/hydration execution statuses and caches are excluded.
 
-NPY writes one values array per selected data context, plus one shared
-`<recording>.frames.npy` and `<recording>.timestamps.npy` for the export set.
-Retained sets use the run-qualified prefix. Every measurement array must have the
-same frame count, frame numbers and timestamps (allowing only four float64
-representable steps of arithmetic roundoff). The shared timestamps come from the
-first selected context; metadata records the maximum difference from that vector. The writer checks all three before
-publication and rejects incompatible selections without changing previous exports.
-It does not pad, truncate, interpolate or resample to make arrays match.
+CSV uses UTF-8 with BOM and round-trip float64 precision. Dynamic tables begin
+with `frame_number,timestamp_s`; static tables omit those columns. An empty field
+means an absent entry, while `NaN` means a recorded null. Quoting handles names
+containing commas, periods and quotes. Large tables split at 500,000 rows or 1,024
+value columns; the inventory records their slices. No export interpolates,
+resamples, pads coordinates or changes units.
 
-Names, components and units live in the compact export inventory. Spatial arrays
-have shape `(frames, names, 3)`; segment poses have seven components. Unavailable
-values are NaN, whether the original Parquet entry was absent or explicitly null.
-Use `np.isfinite(values)` to test usable values; no presence mask is exported.
-Read with `numpy.load(path, allow_pickle=False)`.
+## Dataset metadata and standalone loading
 
-NPZ packages those same values arrays and one shared timing pair into one archive,
-plus `recording_info.json` inside it. Keys are `<readable-data-source>.values`,
-`frames` and `timestamps`. Metadata's `numpy_timeline` identifies the shared files,
-archive keys, frame count and completeness check. Read arrays with
-`numpy.load(path, allow_pickle=False)` and embedded JSON with
-`zipfile.ZipFile(path).read('recording_info.json')`. No object arrays or pickle.
+NPY consists of `dataset.json` and flat numeric `.npy` files, plus an optional
+README. NPZ contains the same manifest and arrays as ZIP members. Neither uses
+object arrays or pickle. Follow each channel's `values_file`, declared axes and
+`timing_ref`; follow companion names and layouts independently. An NPZ dataset
+contains `dataset.json`, not the former `recording_info.json`/shared-timestamp
+format. Older unversioned NumPy exports are not accepted by the new loader.
 
-The archive embeds its actual source hash/run and interpretation metadata.
+The outer export inventory records artifact hashes, run and source revision.
+Its snapshots contain separate `numpy_datasets['npy']` and `['npz']` descriptors,
+including each format's path, selected contexts and value origin. A retained
+unselected format can refer to an older selection or source hash. Its descriptor
+is retained only while artifacts of that format/source remain. Embedded dataset
+metadata is authoritative for its own contents.
 
-Every written table/array is reloaded and checked for exact saved values, dtype,
-shape and missingness before publication. One context is processed at a time;
-large source arrays use temporary disk storage. NPZ members are streamed, avoiding
-an in-memory collection of all selected arrays.
+```python
+from pathlib import Path
+from skellyforge.core.data_tensors import RecordingDataset
 
-Jobs return progress, cancellation, retry and paths. Session-local job status does
-not survive server restart; publication inventories/journals do. Failed exports
-preserve numerical results but fail completion of the requested pipeline outputs.
-The shared journal/recovery commands below apply to all three scientific formats.
+dataset = RecordingDataset.load_numpy(Path('exports/npy'))  # or an NPZ file
+series = dataset.time_series[0]
+values = series.data_tensor.data_values
+sample_ids = series.sample_timing.sample_ids
+timestamps_s = series.sample_timing.timestamps_s
+# Standalone saves require a fresh destination.
+dataset.save_numpy(Path('analysis_copy.npz'), format='npz')
+```
+
+The loader returns owned immutable objects with no open file lifetime. Standalone
+save/load needs neither FreeMoCap nor the original Parquet. Plain NumPy users can
+read `dataset.json` with `json` and arrays with `numpy.load(..., allow_pickle=False)`;
+NPZ members are readable through `zipfile.ZipFile.open`. Generated guides contain
+executable examples. Plain NPY consumers may explicitly choose memory mapping.
+
+## Core export API and bounded memory
+
+`export_scientific(structure=..., request=..., runtime_dataset=None)` uses the
+existing selected-run, revision, cancellation and recoverable publication path.
+Without runtime data, Core reads selected Parquet channels and admits one borrowed
+scientific tensor at a time. If NPY and NPZ are both selected, both writers consume
+that tensor before its reader storage is released. NumPy-only export does not
+construct CSV projections or concatenate pose components.
+
+The optional `runtime_dataset` is an already selected immutable Forge
+`RecordingDataset`. Core checks recording/run identity, selected channels,
+source identities, declared axes and units, then writes its NumPy arrays without
+reading numerical Parquet rows. Metadata and source-hash reads still occur.
+Runtime datasets support NPY/NPZ only; CSV/notebook must be exported separately
+from saved results to avoid mixing potentially different values. The inventory
+labels this origin explicitly: runtime values are round-trip validated, not
+claimed numerically equal to Parquet. Core does not retain full recordings merely
+to make runtime export possible.
+
+Forge verifies each array immediately after writing, while the source is still
+available, including dtype, shape, values, NaN positions and signed zeros. Its
+writer retains metadata/timing rather than channel values. CSV remains a bounded
+batch conversion. Timings report `npy_write_and_verify` and `npz_write_and_verify`
+together, alongside array assembly and CSV write/validation. Publication failures
+leave a recoverable journal; cancellation before publication preserves old output.
 
 ## Tall CSV diagnostics
 
-In **Open Mocap Processing Ã¢â€ â€™ Exports**, **Save tall CSV after processing** is
+In **Open Mocap Processing > Exports**, **Save tall CSV after processing** is
 off by default for new preferences. It applies to full processing
 and saved-stage reprocessing. **Export tall CSV now** exports the selected saved
 run without reprocessing and displays the saved file paths. Reload saved results
@@ -153,7 +183,7 @@ Dynamic fields exactly match Parquet, in its saved row order:
 timestamp_s,sensor_group,frame_number,source,reference_frame,channel,name,component,value,units,run_id
 ```
 
-Static fields omit timestamp/frame number. Static measurements include authored
+Static fields omit timestamp/frame number. Static fitted values include authored
 static channels and views of the frozen scale fit. CSV uses UTF-8 with BOM, normal
 quoting, round-trip float64 precision, and empty fields for nulls. Text labels are
 literal recorded strings; import identity columns as text in spreadsheet software.
@@ -193,30 +223,37 @@ upstream processing; see [reference acceptance](../../../tests/reference_recordi
 
 ### Quality components
 
-2D overlays export the saved `visibility` component as `confidence`, in CSV
-headers and the component labels for NPY/NPZ. Its saved values and dimensionless
-units are unchanged. `source_components` records the original Parquet labels.
-This is the detector score, not a calibrated probability or spatial error.
-Reprojection-error aggregation and landmark-position residuals remain separate
-follow-up work; neither is currently appended to 3D export arrays.
+2D CSV/notebook projections label the saved `visibility` score as `confidence`.
+NumPy keeps the authored `visibility` label and its values/units. The detector
+score is not a calibrated probability or spatial error. Reprojection errors and
+landmark residuals are not appended as invented components.
 
 ## Student guides and Notebook Explorer
 
 Scientific exports create static `README.md` tutorials in the export directory
 and selected `csv/` and `npy/` folders. They explain provenance, coordinates,
 array axes, missing values, metadata, and loading/plotting with Matplotlib.
-Existing READMEs are preserved, including student annotations. Tutorials are
+Normal exports refresh only byte-identical recognized older generated guides.
+Annotated or unknown READMEs are preserved. Kept exports preserve every existing
+guide; missing guides can still be created. Tutorials are
 published with the export transaction but are not scientific data artifacts.
 
 The optional `<recording>.explorer.ipynb` is saved in the recording folder beside
 the Parquet file, rather than under `exports/`. Kept exports and nonzero runs use
 `<recording>.run-<id>.explorer.ipynb` in that same recording folder.
 It recreates the V1 notebook workflow
-for V2 Parquet. It uses the selected run and data products, with Pandas tables,
+for V2 Parquet. It uses the selected run and data products, with Polars column selection,
 ordered NumPy arrays, interactive coordinate plots, and playable 3D points. It requires no CSV/NPY
 export and does not rerun processing. Notebook generation requires no Jupyter
-or Pandas installation; execution in an analysis environment requires Python
-3.11+, Jupyter (or VS Code notebooks), pandas, pyarrow, numpy and plotly.
+installation; execution in an analysis environment requires Python
+3.11+, Jupyter (or VS Code notebooks), polars>=2,<3, numpy and plotly>=6,<7.
+Polars and Plotly are direct core dependencies, so the notebook execution test
+runs in the normal development environment. Numerical assembly uses NumPy arrays
+in declared frame/name/component order, including a separate row-presence tensor.
+Use Polars for tabular queries and reductions; retain NumPy tensors and Arrow
+batches for their existing numerical and serialization roles.
+Parquet filters and column selection use a lazy scan [@polarsParquetScan]; CSV
+examples project selected columns and preserve null versus NaN [@polarsCsvScan].
 There are no automatic installation cells.
 
 The notebook uses a relative Parquet path and checks its SHA-256 before reading.

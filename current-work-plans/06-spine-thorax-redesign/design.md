@@ -120,7 +120,8 @@ breaks.
    entries like clavicle/upper_arm/foot orientations unchanged)
 4. Tracker mappings: scaffold offset entries for `chest_center`,
    `neck_center` (+ head_center as direct mean-of-ears); regenerate ratios
-   with `scripts/generate_tracker_mapping_ratios.py`
+   with `python -m freemocap.tools.generate_tracker_mapping_ratios <mapping.yaml>`
+   from Core (prints proposed corrections without rewriting the mapping)
 5. `center_of_mass.yaml` + `segment_mapping.py` renamed coverage (`chest` →
    `thoracic`, `lumbar_spine` → `sacrolumbar`)
 6. Test revisions: rest-pose origin constants, joint counts, freemocap chest gate

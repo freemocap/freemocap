@@ -2,21 +2,16 @@
 from collections.abc import Callable
 from concurrent.futures import CancelledError
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-import tempfile
 
 import numpy as np
-import pyarrow as pa
-import pyarrow.compute as pc
 
 from freemocap.core.recording.parquet_storage.parquet_reader import read_static_channels
 from freemocap.core.recording.parquet_storage.recording_view import RecordingView
-from freemocap.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
-from freemocap.core.data_tensors.data_tensor import CompanionTensor, DataTensor, ScientificProvenance
-from freemocap.core.data_tensors.sample_timeline import SampleTimeline
-from freemocap.core.data_tensors.time_series import TimeSeries
+from freemocap.core.recording.parquet_storage.selected_batches import ChannelQuery, selected_batches
+from freemocap.core.recording.parquet_storage.channel_arrays import ChannelArrays, read_channel_arrays
 
 
 from freemocap.core.recording.exports.requests import ChannelSelection, ScientificExportRequest
@@ -74,111 +69,16 @@ def check_cancelled(cancelled):
 
 
 def channel_batches(view, run_id, context, cancelled, *, columns=None):
-    filters = (('run_id', run_id), ('sensor_group', context.sensor_group), ('source', context.source),
-               ('channel', context.channel), ('reference_frame', context.reference_frame))
-    if columns is not None:
-        columns = list(dict.fromkeys((*columns, *(field for field, _ in filters))))
-    # Saved files contain many different channels. Skip a row group only when
-    # its statistics prove it cannot match; missing statistics always fall back
-    # to decoding and filtering. Keep the caller's open snapshot throughout.
-    row_groups = []
-    schema = view.parquet.schema_arrow
-    filter_columns = tuple((schema.get_field_index(field), value) for field, value in filters)
-    for index in range(view.parquet.num_row_groups):
-        check_cancelled(cancelled)
-        group = view.parquet.metadata.row_group(index)
-        excluded = False
-        for column_index, value in filter_columns:
-            statistics = group.column(column_index).statistics
-            if statistics is None:
-                continue
-            if value is None:
-                excluded = statistics.null_count == 0
-            else:
-                excluded = (statistics.null_count == group.num_rows or
-                            (statistics.has_min_max and not statistics.min <= value <= statistics.max))
-            if excluded:
-                break
-        if not excluded:
-            row_groups.append(index)
-    for batch in view.parquet.iter_batches(batch_size=65536, columns=columns, row_groups=row_groups):
-        check_cancelled(cancelled)
-        mask = pc.equal(batch.column('run_id'), run_id)
-        for field, value in filters[1:]:
-            column = batch.column(field)
-            mask = pc.and_(mask, pc.is_null(column) if value is None else pc.fill_null(pc.equal(column, value), False))
-        result = batch.filter(mask)
-        if result.num_rows:
-            yield result
-
-
-@dataclass
-class ChannelArrays:
-    context: ChannelSelection
-    names: tuple[str, ...]
-    components: tuple[str, ...]
-    units: tuple[str, ...]
-    frames: np.ndarray
-    timestamps: np.ndarray
-    values: np.ndarray
-    present: np.ndarray
-    source_components: tuple[str, ...] | None = None
-
-    def to_data_tensor(
-        self, *, scientific_provenance: ScientificProvenance,
-        source_identity: SourceIdentity | None = None,
-    ) -> DataTensor:
-        """Bind saved channel identities without copying its numerical buffers.
-
-        The returned borrowed arrays have the same lifetime as ordered_arrays.
-        Callers publishing beyond that context must take an owned copy.
-        """
-        if source_identity is None:
-            source_identity = SourceIdentity(source_id=self.context.source, sensor_group=self.context.sensor_group)
-        if (source_identity.source_id != self.context.source
-                or source_identity.sensor_group != self.context.sensor_group):
-            raise ValueError("Tensor source identity disagrees with the saved channel")
-        entity_axes = (
-            AxisDefinition("entity_identity", self.names),
-            AxisDefinition("component_identity", self.components if self.source_components is None else self.source_components),
-        )
-        tensor_axes = entity_axes if self.context.static else (AxisDefinition("sample_identity", self.frames), *entity_axes)
-        layout = TensorLayout(axes=tensor_axes, dtype=self.values.dtype, component_units=self.units,
-            reference_id=self.context.reference_frame, source_identity=source_identity, channel_kind=self.context.channel)
-        presence = CompanionTensor(metadata_name="entry_presence", data_values=self.present,
-                                   tensor_layout=TensorLayout(axes=tensor_axes, dtype=bool))
-        return DataTensor(data_values=self.values, tensor_layout=layout,
-                          scientific_provenance=scientific_provenance, companion_tensors=(presence,))
-
-    def to_time_series(
-        self, *, sample_timeline: SampleTimeline, scientific_provenance: ScientificProvenance,
-        source_identity: SourceIdentity | None = None,
-    ) -> TimeSeries:
-        """Bind exact saved sampling; matching counts alone do not establish timing."""
-        if self.context.static:
-            raise ValueError("Static fits have no sample timeline")
-        if (not np.array_equal(self.frames, sample_timeline.sample_ids)
-                or not np.array_equal(self.timestamps, sample_timeline.timestamps_s)):
-            raise ValueError("Sample timeline differs from saved channel IDs or timestamps")
-        return TimeSeries(data_tensor=self.to_data_tensor(scientific_provenance=scientific_provenance,
-                          source_identity=source_identity), sample_timeline=sample_timeline)
-
-    def descriptor(self):
-        return dict(context=self.context.model_dump(mode='json'), names=self.names,
-            components=self.components, source_components=self.source_components or self.components,
-            units=self.units, shape=list(self.values.shape),
-            axes=['names', 'components'] if self.context.static else ['frames', 'names', 'components'],
-            missing_values='NaN; present distinguishes recorded null from absent row')
+    query = ChannelQuery(run_id=run_id, sensor_group=context.sensor_group,
+        source=context.source, channel_kind=context.channel, reference_frame=context.reference_frame)
+    yield from selected_batches(view, (query,),
+        columns=None if columns is None else tuple(columns), cancelled=cancelled)
 
 
 @contextmanager
 def ordered_arrays(view: RecordingView, run_id: int, item, *, scratch: Path,
                    cancelled: Callable[[], bool] | None = None):
-    """At most one channel resident; large value/presence arrays are disk backed.
-
-    Frames are the sorted union observed in this context, never inferred from FPS.
-    A completely absent frame has no invented timestamp. Names follow the descriptor.
-    """
+    """Export projection over shared arrays; canonical labels stay export-owned."""
     context, channel, static_values = item
     if context.channel == 'SEGMENT_POSES':
         with ordered_arrays(view, run_id, static_values[0], scratch=scratch, cancelled=cancelled) as positions:
@@ -194,82 +94,13 @@ def ordered_arrays(view: RecordingView, run_id: int, item, *, scratch: Path,
         components = ('x', 'y', 'z')
     elif set(components) == {'w', 'x', 'y', 'z'}:
         components = ('w', 'x', 'y', 'z')
-    frame_parts, time_parts = [], []
-    if not context.static:
-        for batch in channel_batches(view, run_id, context, cancelled, columns=('frame_number', 'timestamp_s')):
-            frame_column = batch.column('frame_number')
-            batch_frames = frame_column.to_numpy(zero_copy_only=False)
-            batch_times = batch.column('timestamp_s').to_numpy(zero_copy_only=False)
-            if frame_column.null_count or np.any(batch_frames < 0) or not np.all(np.isfinite(batch_times)):
-                raise ValueError('Invalid frame/time in export source')
-            unique_frames, reverse_first, reverse_inverse = np.unique(batch_frames[::-1], return_index=True, return_inverse=True)
-            last = len(batch_frames) - 1 - reverse_first
-            if np.any(batch_times != batch_times[last][reverse_inverse[::-1]]):
-                raise ValueError('Conflicting timestamps within a channel frame')
-            frame_parts.append(unique_frames)
-            time_parts.append(batch_times[last])
-    if frame_parts:
-        all_frames, all_times = np.concatenate(frame_parts), np.concatenate(time_parts)
-        frames, reverse_first, reverse_inverse = np.unique(all_frames[::-1], return_index=True, return_inverse=True)
-        times = all_times[len(all_frames) - 1 - reverse_first]
-        if np.any(all_times != times[reverse_inverse[::-1]]):
-            raise ValueError('Conflicting timestamps within a channel frame')
-    else:
-        frames, times = np.empty(0, dtype=np.int64), np.empty(0, dtype=np.float64)
-    if len(times) > 1 and np.any(np.diff(times) <= 0):
-        raise ValueError('Channel timestamps must increase with frame numbers')
-    shape = (len(channel.names), len(components))
-    if not context.static:
-        shape = (len(frames), *shape)
-    with tempfile.TemporaryDirectory(prefix='arrays-', dir=scratch) as temporary:
-        disk = int(np.prod(shape)) * 9 > MAX_RESIDENT_ARRAY_BYTES
-        def allocate(name, dtype, fill):
-            array = (np.lib.format.open_memmap(Path(temporary) / name, mode='w+', dtype=dtype, shape=shape)
-                     if disk else np.empty(shape, dtype=dtype))
-            array.fill(fill)
-            return array
-        values, present = allocate('values.npy', np.float64, np.nan), allocate('present.npy', bool, False)
-        try:
-            names = {name: i for i, name in enumerate(channel.names)}
-            axes = {name: i for i, name in enumerate(components)}
-            if context.static:
-                for name, row in static_values.items():
-                    for component, value in row.items():
-                        values[names[name], axes[component]] = value
-                present.fill(True)
-            else:
-                declared_names = pa.array(channel.names, type=pa.string())
-                declared_components = pa.array(components, type=pa.string())
-                declared_units = pa.array([channel.components[c] for c in components], type=pa.string())
-                flat_values, flat_present = values.reshape(-1), present.reshape(-1)
-                for batch in channel_batches(view, run_id, context, cancelled):
-                    name_indices = pc.index_in(batch.column('name'), value_set=declared_names)
-                    axis_indices = pc.index_in(batch.column('component'), value_set=declared_components)
-                    if name_indices.null_count or axis_indices.null_count:
-                        raise ValueError('Undeclared name/component or incorrect units in export source')
-                    units_match = pc.fill_null(pc.equal(batch.column('units'), pc.take(declared_units, axis_indices)), False)
-                    if not pc.all(units_match).as_py():
-                        raise ValueError('Undeclared name/component or incorrect units in export source')
-                    frame_indices = np.searchsorted(frames, batch.column('frame_number').to_numpy(zero_copy_only=False))
-                    offsets = ((frame_indices * len(channel.names) + name_indices.to_numpy()) * len(components)
-                               + axis_indices.to_numpy())
-                    if np.unique(offsets).size != offsets.size or np.any(flat_present[offsets]):
-                        raise ValueError('Duplicate sample/component in export source')
-                    value_column = batch.column('value')
-                    batch_values = value_column.to_numpy(zero_copy_only=False)
-                    if np.any(~np.isfinite(batch_values) & ~value_column.is_null().to_numpy(zero_copy_only=False)):
-                        raise ValueError('Export source requires finite numbers or nulls')
-                    flat_present[offsets] = True
-                    flat_values[offsets] = batch_values
-            check_cancelled(cancelled)
-            exported_components = tuple(
-                'confidence' if context.channel == 'OVERLAY_2D' and c == 'visibility' else c
-                for c in components)
-            if len(set(exported_components)) != len(exported_components):
-                raise ValueError('Export component aliases must be unique')
-            yield ChannelArrays(context, channel.names, exported_components, tuple(channel.components[c] for c in components),
-                                frames, times, values, present, source_components=components)
-        finally:
-            for array in (values, present):
-                if isinstance(array, np.memmap):
-                    array._mmap.close()
+    def read_batches(*, columns=None):
+        return channel_batches(view, run_id, context, cancelled, columns=columns)
+    with read_channel_arrays(view, run_id, context, channel, components=components,
+            static_values=static_values, scratch=scratch, max_resident_bytes=MAX_RESIDENT_ARRAY_BYTES,
+            read_batches=read_batches, cancelled=cancelled) as result:
+        exported_components = tuple('confidence' if context.channel == 'OVERLAY_2D' and c == 'visibility' else c
+                                    for c in components)
+        if len(set(exported_components)) != len(exported_components):
+            raise ValueError('Export component aliases must be unique')
+        yield replace(result, components=exported_components)

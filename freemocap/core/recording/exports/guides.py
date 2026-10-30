@@ -1,77 +1,102 @@
-"""Static student-facing guides, staged with scientific exports."""
+"""Executable student guides for scientific arrays, tables and runtime objects."""
+import hashlib
 from pathlib import Path
+from textwrap import indent
+
 from freemocap.core.recording.exports.publication import artifact_path
+
+
+_CHANNEL_READ = """channel = next(item for item in manifest['channels']
+               if item['storage_kind'] == 'time_series'
+               and item['tensor_layout']['channel_kind'] == 'LANDMARKS_3D')
+layout = channel['tensor_layout']
+timing = next(item for item in manifest['timings'] if item['timing_key'] == channel['timing_ref'])
+values = read_array(channel['values_file'])
+frames = read_array(timing['sample_ids_file'])
+times = read_array(timing['timestamps_s_file'])
+axis_names = [axis['axis_name'] for axis in layout['axes']]
+entity_axis = axis_names.index('entity_identity')
+component_axis = axis_names.index('component_identity')
+names = layout['axes'][entity_axis]['identifiers']
+components = layout['axes'][component_axis]['identifiers']
+name, component_name = names[0], components[0]  # choose declared names here
+indices = [slice(None)] * values.ndim
+indices[entity_axis] = names.index(name)
+indices[component_axis] = components.index(component_name)
+trajectory_values = values[tuple(indices)]
+for companion in channel['companion_tensors']:
+    if companion['metadata_name'] in ('entry_presence', 'value_validity'):
+        selected_mask = read_array(companion['values_file'])[tuple(indices)]
+        trajectory_values = np.where(selected_mask, trajectory_values, np.nan)
+assert trajectory_values.shape == times.shape == frames.shape
+"""
+
+_PLOT_CHANNEL = """if not len(times):
+    raise ValueError('The selected channel has no samples')
+plt.plot(times - times[0], trajectory_values)
+plt.xlabel('Elapsed time (s)')
+plt.ylabel(component_name + ' (' + layout['component_units'][components.index(component_name)] + ')')
+plt.title(name)
+plt.show()
+"""
 
 OVERVIEW = """# Exploring FreeMoCap data
 
-These files are analysis-friendly views of a saved processing run. They originate
-from camera videos, detector measurements, calibrated triangulation, trajectory
-processing, and model-based reconstruction. Parquet in the recording folder is
-the canonical scientific result; exports do not rerun those computations.
+Parquet is the primary durable recording. CSV, NPY and NPZ expose selected
+scientific outputs without rerunning detection or reconstruction. Detector estimates,
+triangulated positions and model predictions have different meanings; reconstructed
+landmarks are not independent empirical measurements of every anatomical location.
 
-## What the data represents
+## Choose a representation
 
-| Label | Origin | Components per point or segment |
-| --- | --- | --- |
-| 2d_overlay | Detector observations in a particular camera image | x, y, confidence |
-| 3d_keypoints_raw | Triangulated detector points, before trajectory filtering | x, y, z |
-| 3d_keypoints_filtered | Saved processed trajectories; filtering may have been disabled | x, y, z |
-| 3d_landmarks | Landmarks reconstructed using the selected anatomical/object model | x, y, z |
-| 3d_segment_poses | Reconstructed segment origins and world orientations | x, y, z, qw, qx, qy, qz |
+- `csv/` contains wide spreadsheet tables. Spatial columns use canonical coordinate
+  order; overlays call the saved visibility score `confidence`. Segment-pose tables
+  combine segment origins and world quaternion components for convenience.
+- `npy/` contains `dataset.json` and ordinary numerical `.npy` files. The manifest
+  declares each tensor's axes, component names, units, source and timing reference.
+- NPZ packages the same dataset manifest and numerical files into one archive.
+  NumPy preserves authored component labels, including `visibility`; segment poses
+  remain the runtime `SEGMENT_ORIGINS` and `ROTATIONS_WORLD` channels.
 
-Raw means before trajectory filtering, not before coordinate alignment. Landmarks
-are model outputs, not independent measurements of every anatomical location.
-2D confidence is the saved detector score (called visibility in Parquet), not
-spatial error or a calibrated probability. No reprojection-error or landmark-residual
-component is currently appended to these arrays. Joint-angle export is deferred.
+The component count comes from each declared layout. Channel sample counts, frame
+IDs and timestamps can differ. Follow each channel's `timing_ref`; never substitute
+another channel's timestamps because the lengths happen to match. Static fitted
+scales and lengths have no invented frame axis. Their measured/voting support arrays
+identify which segments supplied fitting evidence.
 
-## Names, coordinates, and provenance
+`entry_presence` distinguishes an absent entry from a recorded null. A present row
+can still contain NaN. Presence is not a confidence score or proof of scientific
+validity. Optional `value_validity` and quality/evidence companions have their own
+names and declared layouts. Saved Parquet currently provides row presence, not an
+independent validity mask; the export does not invent one. Keep unavailable values
+as missing, rather than replacing them with zero.
 
-Names group dimension, data type, processing state, and source; camera files also
-include the video basename. `body.nose` is a point in the detector's body stage,
-not the tracker name. A tracking stream can currently include ChArUco as well as
-human points; producer separation is not yet complete.
+Use the recorded units and reference definitions. Calibrated spatial positions
+usually use millimeters; planar results may use pixels. World orientation uses
+WXYZ quaternions. No export aligns, filters, synchronizes or resamples values.
 
-2D coordinates use image pixels. Calibrated 3D positions normally use millimeters
-and the saved Blender basis (+X right, +Y forward, +Z up). Single-camera planar
-outputs use pixels, not millimeters. Always inspect the reference frame and
-component units. Quaternions are dimensionless WXYZ, not Euler angles or degrees.
-Alignment can use a body anchor when no floor is found; Z=0 is not guaranteed to
-be the physical floor. Exporting does not alter units, align, or resample data.
+## Recording runs and published files
 
-The recording-root `*_recording_info.json` describes the recording. The file with
-that suffix here is an export inventory: it links each artifact to its source
-hash, run, exact names, components, units, and reference frame. It is the dictionary
-for interpreting array axes. Keep it with the exported files when sharing them.
-The JSON inside NPZ describes that archive's own snapshot.
+Normal processing overwrites the selected run (run 0 by default). Creating a new
+run is an explicit processing choice; exporting does not allocate runs. Run 0
+normally uses `exports/`; nonzero runs and explicitly kept exports use `run-<id>/`.
+Repeating a normal NPY export replaces that run's managed `npy/` dataset, including
+obsolete managed arrays. Unrelated or edited files are protected. CSV's current
+inventory names its selected tables; older unselected CSV files may remain on disk.
 
-## Layout and reuse
+The outer `*_recording_info.json` inventory records hashes, source revision and
+run. Each snapshot's `numpy_datasets` describes NPY and NPZ separately, including
+paths, selection and whether values came from a caller-supplied runtime dataset.
+An unselected format can retain an older selection or source revision. Use its
+own descriptor. Inside NPY/NPZ, `dataset.json` is sufficient to interpret that
+scientific dataset without the original Parquet or the outer export inventory.
 
-`csv/` contains wide tables; `npy/` contains NumPy arrays and shared timing.
-An NPZ contains the arrays together in one package. Only selected formats/data
-are produced. Each format folder has a loading tutorial below it. All data choices
-are optional; 3D landmarks is the default data selection.
+## Load an NPZ with plain NumPy
 
-Normal exports replace the selected format's prior managed files. Switching
-trackers does not automatically retain the old exports. Explicitly kept exports
-use `run-<id>/` and run-qualified names. Unselected formats may belong to an older
-snapshot: use each artifact's metadata, not folder modification time, as provenance.
-
-## Notebook Explorer
-
-An optional `.ipynb` in the recording folder provides a guided NumPy/Pandas/Plotly
-view of the selected Parquet channels. Open it in JupyterLab or VS Code, with its folder as the working
-directory. It requires pandas, pyarrow, numpy, and plotly in your analysis
-environment; it does not install anything or process videos. Keep the recording
-folder layout intact. The notebook verifies its source hash before loading data;
-a retained notebook alone does not archive the underlying Parquet file. Save an
-edited notebook under a new name to preserve your analysis when regenerating.
-
-## Load an NPZ and plot a landmark
-
-Run from this export folder in an environment with NumPy and Matplotlib. Change
-the archive path and landmark name for your recording. This example requires a
-3D-landmark export; selecting fewer data products means fewer available channels.
+Run this example from the export directory with NumPy and Matplotlib available.
+Select an archive containing a LANDMARKS_3D channel; replace the first declared
+entity/component below to plot another trajectory. No FreeMoCap or SkellyForge
+import is required.
 
 ```python
 from pathlib import Path
@@ -80,62 +105,62 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-archive_path = next(Path('.').glob('*.npz'))  # choose explicitly if there are several
-with ZipFile(archive_path) as zipped:
-    metadata = json.loads(zipped.read('recording_info.json'))
-channel = next(c for c in metadata['channels'].values()
-               if c['context']['channel'] == 'LANDMARKS_3D')
-with np.load(archive_path, allow_pickle=False) as archive:
-    values = archive[channel['numpy_key'] + '.values']
-    times = archive['timestamps']
-    frames = archive['frames']
-print(channel['names'])
-name = channel['names'][0]  # replace with a name from the printed list
-j = channel['names'].index(name)
-k = channel['components'].index('x')
-assert len(values) == len(times) == len(frames)
-plt.plot(times - times[0], values[:, j, k])
-plt.xlabel('Elapsed time (s)')
-plt.ylabel('X position (' + channel['units'][k] + ')')
-plt.title(name)
-plt.show()
-```
+archive_path = next(Path('.').glob('*.npz'))  # choose explicitly when several exist
+with ZipFile(archive_path) as archive:
+    manifest = json.loads(archive.read('dataset.json'))
+    def read_array(filename):
+        with archive.open(filename) as member:
+            return np.load(member, allow_pickle=False)
+""" + indent(_CHANNEL_READ, '    ') + _PLOT_CHANNEL + """```
 
-NaNs become gaps in the plot. Do not turn missing points into zeros: that invents
-positions. Use actual timestamps rather than assuming a frame rate.
+NaNs create gaps in the plot. Use actual timestamps when calculating derivatives.
+See `npy/README.md` for standalone NPY loading and Forge runtime-object helpers.
+
+## Notebook Explorer
+
+The optional notebook beside the recording Parquet explores the selected display
+products through Polars and NumPy, with Plotly coordinate plots and 3D playback.
+It checks the source hash and uses that channel's saved timing. It does not add
+NumPy's static fits to the trajectory selector. Execution needs numpy,
+polars>=2,<3 and plotly>=6,<7; there are no installation cells. Keep the recording
+layout intact, and save edited notebooks under another name before regenerating.
 """
 
 CSV = """# Reading wide CSV tables
 
-Run the example from this `csv` folder. Each row is a saved frame, beginning with
+Run the example from this `csv` folder. Dynamic tables have one row per saved frame, beginning with
 `frame_number` and `timestamp_s`. Remaining columns are `point.component`, for
 example `body.nose.x` or `pelvis.qw`. Names can contain periods: the last period
 separates the component in current scientific exports. Ordinary CSV quoting handles
 commas and quotes; there is no URL decoding step.
 
-Columns follow the recorded name/component order. Large tables can be split into
+Names follow the recorded order. Spatial CSV components use canonical XYZ or WXYZ order; combined segment-pose tables append quaternion components. Other components follow their declared order. Large tables can be split into
 row or column parts: one part is not the complete channel. Use `frame_slice` and
 `value_column_slice` in the parent export inventory to identify the parts. Join
 column parts by frame_number and verify their timestamps; concatenate row parts
 in frame order. Never concatenate unrelated camera or model tables.
 
+Static fit tables contain one row of named values and no frame or timestamp columns.
+
 An empty field means the source entry was absent; `NaN` means an explicitly missing
-value. Pandas normally reads both as NaN, which is convenient for analysis but loses
-that distinction. Use `keep_default_na=False` if you need the original text.
+value. Polars preserves empty numeric fields as null and explicit `NaN` as NaN.
+Inspect them with `is_null()` and `is_nan()` before converting to NumPy for plotting.
 2D tables contain pixel x/y and dimensionless confidence; 3D position units are
 in the parent inventory. See the parent README for provenance and coordinates.
 
 ```python
 from pathlib import Path
-import pandas as pd
+import polars as pl
 import matplotlib.pyplot as plt
 
 path = next(Path('.').glob('*.3d_landmarks--*.csv'))  # choose your table explicitly
-# utf-8-sig also handles the Unicode byte-order mark used for spreadsheet tools.
-table = pd.read_csv(path, encoding='utf-8-sig')
-print(table.columns.tolist())
-column = next(c for c in table.columns if c.endswith('.x'))
-plt.plot(table['timestamp_s'] - table['timestamp_s'].iloc[0], table[column])
+# Polars reads the UTF-8 byte-order mark used by the spreadsheet export.
+csv_query = pl.scan_csv(path)
+print(csv_query.collect_schema().names())
+column = next(c for c in csv_query.collect_schema().names() if c.endswith('.x'))
+table = csv_query.select(pl.col('timestamp_s').cast(pl.Float64),
+                         pl.col(column).cast(pl.Float64)).collect()
+plt.plot(table['timestamp_s'].to_numpy() - table['timestamp_s'][0], table[column].to_numpy())
 plt.xlabel('Elapsed time (s)')
 plt.ylabel('X position (recorded units; see export inventory)')
 plt.title(column)
@@ -143,27 +168,30 @@ plt.show()
 ```
 
 This plots one coordinate of one landmark, not the full skeleton. To inspect
-missing values, use `table[column].isna()`. Choose a different named column to
+missing values, use `table[column].is_null()` and `table[column].is_nan()`. Choose a different named column to
 compare landmarks or coordinates. Do not plot confidence as if it were distance.
 """
 
-NPY = """# Reading NumPy arrays
+NPY = """# Reading NumPy datasets
 
-Each measurement file has axes `(frames, names, components)`. 3D points use XYZ,
-2D points use XY/confidence, and segment poses use XYZ/QW/QX/QY/QZ. The ordering
-of names and components is in the parent export inventory; never assume that
-point index 0 means the same landmark for different detectors.
+This folder is a standalone scientific dataset: `dataset.json` describes its
+numerical `.npy` files. Channels compose dense values, explicit axes, provenance
+and companion arrays. A time series additionally identifies its sample axis and
+an entry in the timing registry. Other channels are static tensors. No common
+frame count, fixed component width or hardware clock synchronization is assumed.
 
-One shared `.frames.npy` (integer frame identifiers) and `.timestamps.npy` (seconds)
-serve this export set. Measurement arrays are float64. Every selected measurement
-array must share the frame grid; export checks counts, frame IDs and timestamps.
-The first array index is a row index, not necessarily the recorded frame number.
-Missing coordinates are NaN. There are no `.present.npy` arrays. Use
-`np.isfinite(values[..., :3]).all(axis=-1)` for complete XYZ points, or `:2` for XY.
-Confidence zero is a score, not automatically a valid coordinate or a missing flag.
+Names and components follow the runtime layout, including `visibility` for
+saved detector scores. Origins and world rotations remain separate channels.
+Each layout supplies units and coordinate references. Definition documents carry
+selected model, reference and scientific source settings. Execution status and
+solver caches are excluded. Use companions to preserve missingness and evidence;
+finite values alone are not an independent validity or quality declaration.
 
-Run this example from `npy/`, with NumPy and Matplotlib available. It selects a
-landmark array through metadata, so its names, units, and timing stay associated.
+## Load and plot with plain NumPy
+
+Run from this `npy/` folder with NumPy and Matplotlib installed. This example
+selects a landmark time series and its own sample IDs and timestamps. Optional
+memory mapping is available for plain NPY users; close those maps when finished.
 
 ```python
 from pathlib import Path
@@ -171,41 +199,55 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-root = Path('..')
-metadata_path = next(root.glob('*_recording_info.json'))
-manifest = json.loads(metadata_path.read_text(encoding='utf-8'))
-for artifact in manifest['artifacts'].values():
-    if artifact['format'] != 'npy' or artifact['details']['role'] != 'values':
-        continue
-    snapshot = manifest['snapshots'][artifact['source_sha256']]
-    channel = snapshot['channels'][artifact['details']['context_key']]
-    if channel['context']['channel'] == 'LANDMARKS_3D':
-        break
-else:
-    raise ValueError('Export 3D landmarks as NPY first')
-values = np.load(root / artifact['filename'], allow_pickle=False)
-times = np.load(root / snapshot['numpy_timeline']['timestamps_file'], allow_pickle=False)
-frames = np.load(root / snapshot['numpy_timeline']['frames_file'], allow_pickle=False)
-assert values.shape[0] == len(times) == len(frames)
-print(channel['names'], channel['components'])
-name = channel['names'][0]  # select a landmark by its recorded name
-j = channel['names'].index(name)
-k = channel['components'].index('x')
-plt.plot(times - times[0], values[:, j, k])
-plt.xlabel('Elapsed time (s)')
-plt.ylabel('X position (' + channel['units'][k] + ')')
-plt.title(name)
-plt.show()
+directory = Path('.')
+manifest = json.loads((directory / 'dataset.json').read_text(encoding='utf-8'))
+def read_array(filename):
+    return np.load(directory / filename, allow_pickle=False)
+""" + _CHANNEL_READ + _PLOT_CHANNEL + """```
+
+## Load the same runtime objects with SkellyForge
+
+With SkellyForge installed, its loader validates the manifest and returns owned,
+immutable arrays in the same `RecordingDataset`, `TimeSeries` and `DataTensor`
+objects used by the application. It accepts this NPY directory or an NPZ archive.
+Neither loading nor saving needs FreeMoCap, SkellyTracker or the original Parquet.
+Use a fresh destination for a standalone save; the helper does not overwrite files.
+
+```python
+from pathlib import Path
+from skellyforge.core.data_tensors import RecordingDataset
+
+dataset = RecordingDataset.load_numpy(Path('.'))  # an NPZ path works here too
+series = next(item for item in dataset.time_series
+              if item.data_tensor.tensor_layout.channel_kind == 'LANDMARKS_3D')
+values = series.data_tensor.data_values
+frames = series.sample_timing.sample_ids
+times = series.sample_timing.timestamps_s
+layout = series.data_tensor.tensor_layout
+# This explicit copy destination must not already exist.
+dataset.save_numpy(Path('../analysis_copy.npz'), format='npz')
+restored = RecordingDataset.load_numpy(Path('../analysis_copy.npz'))
+assert restored.channel_identities == dataset.channel_identities
 ```
 
-Keep timestamps in seconds when differentiating positions into velocities.
-Consider missing samples and noise before computing derivatives; this example
-only plots saved positions. NPZ contains the same arrays in a zip package; see
-the parent README for a loading example.
+FreeMoCap's saved-result export still reads selected Parquet channels to assemble
+these objects. Its `runtime_dataset` entry point can write already selected runtime
+arrays directly for NPY/NPZ. Wide CSV and notebooks continue to use saved results.
 """
 
+# Exact previously generated guides, in Windows and LF encodings. Unknown or
+# annotated documents are never overwritten by automatic guide refresh.
+PREVIOUS_GUIDE_HASHES = {
+    'README.md': {'ca700e942eb671851c74c3ed68b23eb1b746b3568d152ce1a0e9e08fd1a57313',
+                  '26c3a86c02c3687a186cef151d350c07d3728840edcb765b6b30fd31c95c5de6'},
+    'csv/README.md': {'b39b6ba813ff036a8c82d958ed1f2f4fb65b0625f822df85d34bd6985b2ffe36',
+                      '7a59bdde48c36eb450c79743a6f1661f94b68d5c0258fb5ef4a30e5ffae575e3'},
+    'npy/README.md': {'1667b502b5806a6105706e8af78144d6cef71e37af9d0ab3a542af4451b872e9',
+                      '1557ecb8543e6700dac41c82c2e5a7d10d4cde35e837b1d7e83a182067eb0515'},
+}
 
-def stage_guides(directory: Path, staging: Path, formats) -> tuple[str, ...]:
+
+def stage_guides(directory: Path, staging: Path, formats, *, keep=False) -> tuple[str, ...]:
     guides = {'README.md': OVERVIEW}
     if 'wide_csv' in formats:
         guides['csv/README.md'] = CSV
@@ -213,8 +255,8 @@ def stage_guides(directory: Path, staging: Path, formats) -> tuple[str, ...]:
         guides['npy/README.md'] = NPY
     written = []
     for name, content in guides.items():
-        # Preserve existing tutorials, including a student's annotations.
-        if artifact_path(directory, name).exists():
+        existing = artifact_path(directory, name)
+        if existing.exists() and (keep or hashlib.sha256(existing.read_bytes()).hexdigest() not in PREVIOUS_GUIDE_HASHES[name]):
             continue
         path = artifact_path(staging, name)
         path.parent.mkdir(parents=True, exist_ok=True)

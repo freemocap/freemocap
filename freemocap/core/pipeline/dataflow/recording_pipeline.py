@@ -31,7 +31,8 @@ from freemocap.core.pipeline.performance_report import PerformanceReport
 from freemocap.core.reconstruction.posthoc_filtering import prepare_recording_points
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.posthoc_reconstruction import fit_skeletons_for_recording, reconstruct_skeletons_with_fits
-from freemocap.core.tracking.observation_arrays import collected_point_names
+from freemocap.core.tracking.observation_arrays import recording_point_names, recording_stage_names
+from freemocap.core.tracking.observation_series import ObservationFrames
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
 from freemocap.core.reconstruction.recording_reconstruction import RecordingReconstructionInput
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
@@ -239,11 +240,10 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
         return ObservationRecordingRequest(recording=recording,
             group=ObservationGroup(name=sources.sensor_group, frames=collection.frames, videos=videos),
             tracker=TrackerRecordingDefinition(name=tracker_source,
-                point_names=collected_point_names(observation for frame in collection.frames for observation in frame.values()),
+                point_names=recording_point_names(collection.frames),
                 configuration=definition),
             detector=DetectorRecordingDefinition(name="object_detector:yolox-m",
-                box_names=tuple(dict.fromkeys(stage.name for frame in collection.frames for observation in frame.values()
-                                              for stage in observation.stages.values())), configuration=definition)
+                box_names=recording_stage_names(collection.frames), configuration=definition)
                 if config.detector_type == "rtmpose" else None,
             models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
             camera_geometry=(), spatial_series=(), filtering=None, reprojection=None, reconstructions=(),
@@ -326,7 +326,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                     raise ValueError(f"Camera did not complete: {source.camera_id}")
                 job = CameraAnnotationJob(recording_path=Path(recording.full_recording_path),
                     execution_id=execution_id, run_id=run_session.target_run_id, camera_id=source.camera_id, video=source.video_metadata,
-                    tracker_config=tracker_config, observations=tuple(frame[source.camera_id] for frame in collection.frames))
+                    tracker_config=tracker_config, observations=(collection.frames.camera_series[source.camera_id] if isinstance(collection.frames, ObservationFrames)
+                        else tuple(frame[source.camera_id] for frame in collection.frames)))
                 if annotation_service is not None:
                     return annotation_service.run_job(job, cancelled=lambda: bool(shutdown_flag.value))
                 return write_camera_annotation(job, cancelled=lambda: bool(shutdown_flag.value), performance=performance)

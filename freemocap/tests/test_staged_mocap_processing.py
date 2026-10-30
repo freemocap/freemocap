@@ -115,7 +115,7 @@ def test_completed_tracking_and_triangulation_survive_reconstruction_failure(tmp
     structure = processing.recording_structure(str(info.full_recording_path))
     saved = read_saved_observations(structure=structure, run_id=0, sensor_group=camera_group_name(['cam']))
     for original, restored in zip(frames, saved.frames, strict=True):
-        np.testing.assert_array_equal(original['cam'].to_keypoints().xyz[:, :2], restored['cam'].to_keypoints().xyz[:, :2])
+        np.testing.assert_array_equal(original['cam'].to_keypoints().xyz[:, :2], saved.frames.camera_series['cam'].tracker_coordinates(restored['cam'].sample_index)[:, :2])
     assert saved.timing.synchronized.timestamps_s == (0., 1 / 30, 2 / 30)
     # Resume through the actual worker, with detector startup forbidden and no video file.
     from freemocap.core.pipeline.posthoc import mocap_pipeline

@@ -7,8 +7,8 @@ import numpy as np
 import pyarrow as pa
 import unittest
 from beartype.roar import BeartypeCallHintParamViolation
-from freemocap.core.data_tensors.layout_definitions import SourceIdentity
-from freemocap.core.data_tensors.sample_timeline import SampleTimeline
+from skellyforge.core.data_tensors.layout_definitions import SourceIdentity
+from skellyforge.core.data_tensors.sample_timing import SampleTiming
 
 from freemocap.core.recording.data_descriptors.recording_descriptor import Channel
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
@@ -30,9 +30,9 @@ def channel_definition() -> Channel:
 
 class ChannelLayoutIntegrationTests(unittest.TestCase):
     def test_channel_publication_reuses_validated_timeline(self):
-        timeline = SampleTimeline(timeline_id="camera_group:synchronized", clock_id="recording_clock",
+        timeline = SampleTiming(timeline_id="camera_group:synchronized", clock_id="recording_clock",
             source_identity=SourceIdentity(source_id="camera_group"), sample_ids=(17, 23), timestamps_s=(0.25, 0.8))
-        sampling = SeriesSampling.from_timeline(sample_timeline=timeline, run_id=0)
+        sampling = SeriesSampling.from_timeline(sample_timing=timeline, run_id=0)
         channel = channel_definition()
         values = np.ones((timeline.sample_count, *channel.tensor_layout().shape), dtype=np.float64)
         cached_axis = timeline.sample_axis
@@ -40,8 +40,8 @@ class ChannelLayoutIntegrationTests(unittest.TestCase):
             table = pa.Table.from_batches(list(ChannelSeries(channel=channel, values=values).batches(sampling)))
             self.assertEqual(table.column("frame_number")[0].as_py(), 17)
             self.assertEqual(table.column("timestamp_s")[-1].as_py(), 0.8)
-            self.assertIs(sampling.sample_timeline, timeline)
-            self.assertIs(sampling.sample_timeline.sample_axis, cached_axis)
+            self.assertIs(sampling.sample_timing, timeline)
+            self.assertIs(sampling.sample_timing.sample_axis, cached_axis)
 
     def test_camera_layout_requires_matching_source_and_rejects_cross_camera_selection(self):
         values = np.zeros((1, 1), dtype="<f4")

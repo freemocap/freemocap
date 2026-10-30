@@ -1,256 +1,73 @@
-// SegmentAxesRenderer.tsx
-//
-// Per-segment orientation triads: three short lines (x red, y green, z blue)
-// at each segment's world origin, rotated by the segment's ROTATIONS_WORLD
-// quaternion. This is the same diagnostic the skellyforge viewer ships —
-// it shows which way each rigid body's local frame actually points, which is
-// the fastest way to spot a roll or convention bug.
-//
-// It draws EVERY model in the frame, each occupying a contiguous block of segment slots
-// in the shared buffer — so a tracked person and a tracked charuco board both show their
-// frames without one overwriting the other.
-//
-// Cost profile: ONE LineSegments draw call for every model at once. Positions are written
-// into a preallocated buffer per dirty frame (61 segments × 3 axes = 183 short vectors of
-// arithmetic) and colors are static vertex attributes set once — no allocations, no
-// material churn, nothing to GC.
-
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import {
-    BufferAttribute,
-    BufferGeometry,
-    LineBasicMaterial,
-    LineSegments,
-    Quaternion,
-    Vector3,
-} from "three";
+import { BufferAttribute, BufferGeometry, LineBasicMaterial } from "three";
 import { useKeypointsSource, useModelDefinitionsById } from "../KeypointsSourceContext";
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
-import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { AXIS_HEX, hexToRgb01 } from "../helpers/layer-colors";
+import { finitePoint, XYZ_OFFSETS, prepareModels, preparedModelsMatch, type PreparedModel } from "./prepared-models";
+import { writeRotation } from "./prepared-bones";
 
-const MAX_SEGMENTS = 256;
-const VERTICES_PER_SEGMENT = 6; // 3 axes × 2 endpoints
-const FLOATS_PER_SEGMENT = VERTICES_PER_SEGMENT * 3;
-
-// Vertex-color RGB per axis index (0=x, 1=y, 2=z), from the shared layer palette.
-// Kept just under the bloom pass threshold so they stay crisp.
-const AXIS_COLORS: readonly (readonly [number, number, number])[] = AXIS_HEX.map(hexToRgb01);
-
-// Axis length scales with each segment's rest length so a phalanx gets a
-// stubby triad and a thigh gets a long one, clamped to stay legible.
-const AXIS_LENGTH_FRACTION = 0.3;
-const MIN_AXIS_LENGTH_MM = 7.5;
-const MAX_AXIS_LENGTH_MM = 50;
-
-/** One model's triads: where its block of segment slots starts, and how long each of its
- *  arms should be. */
-interface SegmentAxisBlock {
-    modelId: string;
-    baseSlot: number;
-    segmentCount: number;
-    /** Per-segment triad arm length in mm. */
-    axisLengthsMm: Float32Array;
-}
-
-// Module-level scratch (zero per-frame allocation).
-const _quaternion = new Quaternion();
-const _axis = new Vector3();
-
-/** One block of triads per model, sized from each segment's own size.
- *
- *  A model is dimensionless, so its `length_proportion` only becomes a length once it is
- *  multiplied by that model's fitted scale. Until a fit exists there is no size to scale
- *  by, and every axis takes the same nominal length — which is the honest picture, not a
- *  guess at how big the thing might be. Recomputed whenever a fitted scale changes.
- */
-function buildAxisBlocks(
-    models: ResolvedModelFrame[],
-    definitionsById: Map<string, ModelDefinition>,
-): SegmentAxisBlock[] {
-    const blocks: SegmentAxisBlock[] = [];
-    let nextSlot = 0;
-    for (const entry of models) {
-        const definition = definitionsById.get(entry.modelId);
-        if (!definition) continue;
-        const segmentCount = Math.min(definition.segments.length, MAX_SEGMENTS - nextSlot);
-        if (segmentCount <= 0) break;
-        const fittedScaleMm = entry.fittedScaleMm;
-        const axisLengthsMm = new Float32Array(segmentCount);
-        for (let i = 0; i < segmentCount; i++) {
-            const proportion = definition.segments[i].length_proportion;
-            const lengthMm =
-                fittedScaleMm != null && fittedScaleMm > 0 &&
-                Number.isFinite(proportion) && proportion > 0
-                    ? proportion * fittedScaleMm
-                    : null;
-            const scaled = lengthMm !== null ? lengthMm * AXIS_LENGTH_FRACTION : 50;
-            axisLengthsMm[i] = Math.min(Math.max(scaled, MIN_AXIS_LENGTH_MM), MAX_AXIS_LENGTH_MM);
-        }
-        blocks.push({ modelId: entry.modelId, baseSlot: nextSlot, segmentCount, axisLengthsMm });
-        nextSlot += segmentCount;
-    }
-    return blocks;
-}
-
-/** What a rebuild depends on: which models, and each one's fitted scale (the arm lengths
- *  are proportional to it).
- *
- *  The scale is quantised to the millimetre. A live fit moves in the last decimal place
- *  every single frame, so comparing it raw rebuilds every block on every frame to produce
- *  visually identical triads. */
-function axisBlockSignature(models: ResolvedModelFrame[]): string {
-    return models
-        .map((m) => `${m.modelId}:${m.fittedScaleMm == null ? "?" : Math.round(m.fittedScaleMm)}`)
-        .join("|");
-}
-
+const AXIS_COLORS = AXIS_HEX.map(hexToRgb01);
+interface PreparedAxes {model: PreparedModel; baseSlot: number; scale: number | null; lengths: Float32Array}
 export function SegmentAxesRenderer() {
-    const { subscribeToModelFrames } = useKeypointsSource();
-    const definitionsById = useModelDefinitionsById();
-    const lineRef = useRef<LineSegments>(null);
-    const modelFramesRef = useRef<ResolvedModelFrame[] | null>(null);
-    const blocksRef = useRef<SegmentAxisBlock[]>([]);
-    const signatureRef = useRef<string>("");
+    const {subscribeToModelFrames} = useKeypointsSource();
+    const definitions = useModelDefinitionsById();
+    const framesRef = useRef<ResolvedModelFrame[]>([]);
+    const layoutRef = useRef<PreparedModel[] | null>(null);
+    const axesRef = useRef<PreparedAxes[]>([]);
     const dirtyRef = useRef(false);
-
-    // Fixed-capacity buffers: positions rewritten per frame, colors written once.
-    const geometry = useMemo(() => {
-        const geometry = new BufferGeometry();
-        const positions = new Float32Array(MAX_SEGMENTS * FLOATS_PER_SEGMENT);
-        const colors = new Float32Array(MAX_SEGMENTS * FLOATS_PER_SEGMENT);
-        for (let segmentIdx = 0; segmentIdx < MAX_SEGMENTS; segmentIdx++) {
-            for (let axisIdx = 0; axisIdx < 3; axisIdx++) {
-                const color = AXIS_COLORS[axisIdx];
-                const base = (segmentIdx * 3 + axisIdx) * 6;
-                // Both endpoints of each axis share its color.
-                for (let endpoint = 0; endpoint < 2; endpoint++) {
-                    const offset = base + endpoint * 3;
-                    colors[offset] = color[0];
-                    colors[offset + 1] = color[1];
-                    colors[offset + 2] = color[2];
+    const rotation = useMemo(() => new Float64Array(9), []);
+    const geometry = useMemo(() => new BufferGeometry(), []);
+    const material = useMemo(() => new LineBasicMaterial({vertexColors: true}), []);
+    useEffect(() => () => {geometry.dispose(); material.dispose();}, [geometry, material]);
+    useEffect(() => subscribeToModelFrames(frames => {framesRef.current = frames; dirtyRef.current = true;}), [subscribeToModelFrames]);
+    useFrame(() => {
+        const frames = framesRef.current;
+        if (!layoutRef.current || !preparedModelsMatch(layoutRef.current, frames, definitions.current)) {
+            layoutRef.current = prepareModels(frames, definitions.current);
+            let count = 0;
+            axesRef.current = layoutRef.current.map(model => {
+                const lengths = new Float32Array(model.definition?.segments.length ?? 0);
+                const axes = {model, baseSlot: count, scale: Number.NaN, lengths}; count += lengths.length; return axes;
+            });
+            const colors = new Float32Array(count * 18);
+            for (let i = 0; i < count; i++) for (let axis = 0; axis < 3; axis++) {
+                colors.set(AXIS_COLORS[axis], i * 18 + axis * 6); colors.set(AXIS_COLORS[axis], i * 18 + axis * 6 + 3);
+            }
+            geometry.dispose();
+            geometry.setAttribute("position", new BufferAttribute(new Float32Array(count * 18), 3));
+            geometry.setAttribute("color", new BufferAttribute(colors, 3));
+            geometry.setDrawRange(0, count * 6);
+            dirtyRef.current = true;
+        }
+        if (!dirtyRef.current) return;
+        const positions = geometry.attributes.position.array as Float32Array;
+        for (const axes of axesRef.current) {
+            const {model, lengths, baseSlot} = axes, frame = frames[model.frameIndex];
+            const scale = frame.fittedScaleMm == null ? null : Math.round(frame.fittedScaleMm);
+            if (axes.scale !== scale) {
+                axes.scale = scale;
+                for (let i = 0; i < lengths.length; i++) {
+                    const proportion = model.definition!.segments[i].length_proportion;
+                    const length = frame.fittedScaleMm != null && frame.fittedScaleMm > 0 && Number.isFinite(proportion) && proportion > 0
+                        ? proportion * frame.fittedScaleMm * 0.3 : 50;
+                    lengths[i] = Math.min(Math.max(length, 7.5), 50);
+                }
+            }
+            const origins = frame.segmentOrigins?.data, quats = frame.rotations?.worldQuaternions; const stride = frame.segmentOrigins?.stride ?? 3, coordinates = frame.segmentOrigins?.coordinateOffsets ?? XYZ_OFFSETS;
+            for (let i = 0; i < lengths.length; i++) {
+                const o = model.originRows[i] * stride, q = model.rotationRows[i] * 4, base = (baseSlot + i) * 18;
+                if (!finitePoint(origins, o, coordinates) || !finitePoint(quats, q) || !Number.isFinite(quats?.[q + 3])) {
+                    positions.fill(0, base, base + 18); continue;
+                }
+                writeRotation(rotation, quats![q], quats![q + 1], quats![q + 2], quats![q + 3]);
+                for (let axis = 0; axis < 3; axis++) for (let coordinate = 0; coordinate < 3; coordinate++) {
+                    positions[base + axis * 6 + coordinate] = origins![o + coordinates[coordinate]];
+                    positions[base + axis * 6 + 3 + coordinate] = origins![o + coordinates[coordinate]] + rotation[coordinate * 3 + axis] * lengths[i];
                 }
             }
         }
-        geometry.setAttribute("position", new BufferAttribute(positions, 3));
-        geometry.setAttribute("color", new BufferAttribute(colors, 3));
-        return geometry;
-    }, []);
-
-    const material = useMemo(
-        () => new LineBasicMaterial({ vertexColors: true }),
-        [],
-    );
-
-    useEffect(
-        () => () => {
-            geometry.dispose();
-            material.dispose();
-        },
-        [geometry, material],
-    );
-
-    const applyBlocks = useCallback(() => {
-        const blocks = blocksRef.current;
-        const drawnSlots = blocks.reduce((total, b) => total + b.segmentCount, 0);
-        geometry.setDrawRange(0, drawnSlots * VERTICES_PER_SEGMENT);
-    }, [geometry]);
-
-    useEffect(() => {
-        return subscribeToModelFrames((models) => {
-            modelFramesRef.current = models;
-            // The arm lengths depend on each model's fitted scale as well as on its
-            // segments, so the signature carries both — a rebuild is 61 float multiplies
-            // and only happens on the frames where the fit actually moved.
-            const signature = `${axisBlockSignature(models)}#${definitionsById.current.size}`;
-            if (signature !== signatureRef.current) {
-                signatureRef.current = signature;
-                blocksRef.current = buildAxisBlocks(models, definitionsById.current);
-                applyBlocks();
-            }
-            dirtyRef.current = true;
-        });
-    }, [subscribeToModelFrames, applyBlocks, definitionsById]);
-
-    useFrame(() => {
-        const line = lineRef.current;
-        const models = modelFramesRef.current;
-        if (!line || !models || !dirtyRef.current) return;
-
-        const positionAttribute = geometry.getAttribute("position") as BufferAttribute;
-        const positions = positionAttribute.array as Float32Array;
-        const frameByModelId = new Map(models.map((m) => [m.modelId, m]));
-
-        for (const block of blocksRef.current) {
-        const entry = frameByModelId.get(block.modelId);
-        const origins = entry?.segmentOrigins ?? null;
-        const rotations = entry?.rotations ?? null;
-
-        for (let localIdx = 0; localIdx < block.segmentCount; localIdx++) {
-            const segmentIdx = block.baseSlot + localIdx;
-            const originOffset = localIdx * 3;
-            const quaternionOffset = localIdx * 4;
-            const ox = origins?.data[originOffset] ?? Number.NaN;
-            const oy = origins?.data[originOffset + 1] ?? Number.NaN;
-            const oz = origins?.data[originOffset + 2] ?? Number.NaN;
-            const qw = rotations?.worldQuaternions[quaternionOffset] ?? Number.NaN;
-            const qx = rotations?.worldQuaternions[quaternionOffset + 1] ?? Number.NaN;
-            const qy = rotations?.worldQuaternions[quaternionOffset + 2] ?? Number.NaN;
-            const qz = rotations?.worldQuaternions[quaternionOffset + 3] ?? Number.NaN;
-
-            const finiteOrigin =
-                Number.isFinite(ox) && Number.isFinite(oy) && Number.isFinite(oz);
-            const finiteQuaternion =
-                Number.isFinite(qw) && Number.isFinite(qx) && Number.isFinite(qy) && Number.isFinite(qz);
-
-            if (!finiteOrigin || !finiteQuaternion) {
-                // Collapse the triad to a degenerate point - invisible, no branchy hide logic.
-                collapseSegment(positions, segmentIdx);
-                continue;
-            }
-
-            // three.js Quaternion.set is (x, y, z, w) — VECTOR first. The wire
-            // carries scalar-first [w, x, y, z], so the components are swapped
-            // here on purpose; passing them straight through scrambles the
-            // rotation into something that looks like untracked axes.
-            _quaternion.set(qx, qy, qz, qw);
-            const armLength = block.axisLengthsMm[localIdx];
-            const segmentBase = segmentIdx * FLOATS_PER_SEGMENT;
-
-            for (let axisIdx = 0; axisIdx < 3; axisIdx++) {
-                _axis.set(
-                    axisIdx === 0 ? 1 : 0,
-                    axisIdx === 1 ? 1 : 0,
-                    axisIdx === 2 ? 1 : 0,
-                ).applyQuaternion(_quaternion);
-
-                const writeBase = segmentBase + axisIdx * 6;
-                positions[writeBase] = ox;
-                positions[writeBase + 1] = oy;
-                positions[writeBase + 2] = oz;
-                positions[writeBase + 3] = ox + _axis.x * armLength;
-                positions[writeBase + 4] = oy + _axis.y * armLength;
-                positions[writeBase + 5] = oz + _axis.z * armLength;
-            }
-        }
-        }
-
-        positionAttribute.needsUpdate = true;
-        dirtyRef.current = false;
+        geometry.attributes.position.needsUpdate = true; dirtyRef.current = false;
     });
-
-    return (
-        <lineSegments ref={lineRef} geometry={geometry} material={material} frustumCulled={false} />
-    );
-}
-
-/** Zero out one segment's six vertices so nothing draws for it. */
-function collapseSegment(positions: Float32Array, segmentIdx: number): void {
-    const base = segmentIdx * FLOATS_PER_SEGMENT;
-    for (let fill = 0; fill < FLOATS_PER_SEGMENT; fill += 3) {
-        positions[base + fill] = 0;
-        positions[base + fill + 1] = 0;
-        positions[base + fill + 2] = 0;
-    }
+    return <lineSegments geometry={geometry} material={material} frustumCulled={false}/>;
 }

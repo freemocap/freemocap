@@ -34,7 +34,7 @@ from freemocap.pubsub.pubsub_topics import (
 )
 
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.data_tensors.channel_values import ChannelValues
 from skellytracker.core.data_primitives.keypoints import Keypoints
 
 from skellytracker.core.data_primitives.observation import Observation

@@ -141,23 +141,49 @@ def finish_publication(directory: Path) -> None:
             pending.unlink()
         else:
             os.replace(pending, target)
-    # Saved files outside this publication remain on disk. Dependency changes,
-    # selection changes and older journals' "remove" lists are not deletion authority.
+    # Same-run NumPy replacement removes only previously managed, unchanged
+    # payloads explicitly named in the new journal. Older generic remove lists
+    # remain non-authoritative; CSV and unrelated user files remain untouched.
+    if data.get('version') == 2:
+        published_names = {entry['filename'] for entry in data['files']}
+        for entry in data.get('obsolete_numpy', []):
+            name = ExportArtifact.safe_filename(entry['filename'])
+            if not name.startswith('npy/') or name == 'npy/README.md' or name in published_names:
+                raise ValueError('Invalid obsolete NumPy publication member')
+            target = artifact_path(directory, name)
+            if target.exists():
+                if not target.is_file() or digest(target) != entry['sha256']:
+                    raise ValueError(f'Obsolete NumPy export was edited; preserving it: {name}')
+                target.unlink()
     journal.unlink()
     remove_staging(directory, staging)
 
 
 def publish(directory: Path, staging: Path, manifest_name: str,
-            manifest: ExportManifest, filenames: tuple[str, ...], keep: bool) -> None:
+            manifest: ExportManifest, filenames: tuple[str, ...], keep: bool,
+            *, obsolete_numpy: tuple[ExportArtifact, ...] = ()) -> None:
+    removals = []
+    for artifact in obsolete_numpy:
+        name = artifact.filename
+        if (keep or artifact.format != 'npy' or artifact.location != 'exports'
+                or not name.startswith('npy/') or name == 'npy/README.md'
+                or name in manifest.artifacts or name in filenames):
+            raise ValueError('Only obsolete managed NumPy files can be replaced')
+        target = artifact_path(directory, name)
+        if not target.is_file() or digest(target) != artifact.sha256:
+            raise ValueError(f'Obsolete NumPy export was edited; preserving it: {name}')
+        removals.append(dict(filename=name, sha256=artifact.sha256))
     for name in (*filenames, manifest_name):
         artifact = manifest.artifacts.get(name)
         published_artifact_path(directory, name, artifact.location if artifact else 'exports')
         artifact_path(staging, name)
     write_json(staging / manifest_name, manifest.model_dump(mode='json'))
-    files = [dict(filename=name, sha256=digest(staging / name), no_clobber=keep,
+    # Managed payloads already have a validated content hash. Preserve that
+    # expectation; finish_publication independently rereads each pending file.
+    files = [dict(filename=name, sha256=manifest.artifacts[name].sha256 if name in manifest.artifacts else digest(staging / name), no_clobber=keep,
                   location=manifest.artifacts[name].location if name in manifest.artifacts else 'exports')
              for name in filenames]
     files.append(dict(filename=manifest_name, sha256=digest(staging / manifest_name), no_clobber=False))
-    write_json(staging / 'journal.json', dict(version=1, staging=staging.name, files=files))
+    write_json(staging / 'journal.json', dict(version=2, staging=staging.name, files=files, obsolete_numpy=removals))
     os.replace(staging / 'journal.json', directory / '.publication.json')
     finish_publication(directory)

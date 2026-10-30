@@ -28,7 +28,8 @@ from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import logging
 import numpy as np
-from freemocap.core.tracking.observation_arrays import collected_point_names
+from freemocap.core.tracking.observation_arrays import recording_point_names, recording_stage_names
+from freemocap.core.tracking.observation_series import ObservationFrames  # noqa: TC001 - runtime type checking
 from skellyforge.core.biomechanics.alignment_definition import AlignmentDefinition
 from freemocap.core.reconstruction.mocap_alignment import MocapAlignmentRequest, align_mocap_recording
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
@@ -57,7 +58,7 @@ from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
 from freemocap.core.skeletons.standard_human_skeleton import (
     build_standard_human_bundle,
 )
-from freemocap.core.tracking.observation_buffer import ObservationBuffer
+from freemocap.core.tracking.observation_buffer import recording_observation_buffers
 from freemocap.core.recording.result_processing.observation_publication import publish_posthoc_observations
 from freemocap.core.recording.result_processing.provenance import ProvenanceContext
 from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
@@ -81,7 +82,7 @@ def _keypoint_model_name(task_config: PosthocMocapPipelineConfig) -> str:
 
 def run_posthoc_mocap_task(
         *,
-        frame_observations: list[dict[CameraIdString, Observation]],
+        frame_observations: list[dict[CameraIdString, Observation]] | ObservationFrames,
         recording_info: RecordingInfo,
         video_metadata: dict[CameraIdString, VideoMetadata],
         task_config: PosthocMocapPipelineConfig,
@@ -123,10 +124,9 @@ def run_posthoc_mocap_task(
         models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles), recording=recording_info,
         group=ObservationGroup(name=group_name, frames=frame_observations, videos=video_metadata),
         tracker=TrackerRecordingDefinition(name=keypoint_source, configuration=task_config.model_dump(mode='json'),
-            point_names=collected_point_names(obs for frame in frame_observations for obs in frame.values())),
+            point_names=recording_point_names(frame_observations)),
         detector=DetectorRecordingDefinition(name=detector_source, configuration=task_config.model_dump(mode='json'),
-            box_names=tuple(dict.fromkeys(stage.name for frame in frame_observations for obs in frame.values()
-                for stage in obs.stages.values()))) if detector_source else None,
+            box_names=recording_stage_names(frame_observations)) if detector_source else None,
         base_run_id=task_config.base_run_id, reuse_observations=saved_timing is not None,
         resolved_timing=saved_timing,
         provenance_context=ProvenanceContext.create(),
@@ -141,13 +141,7 @@ def run_posthoc_mocap_task(
     # ---- Build observation buffers ----
     _reporter.report(stage=MocapStage.BUILDING_RECORDERS, detail="Building observation buffers")
 
-    observation_recorders: dict[CameraIdString, ObservationBuffer] = {
-        cam_id: ObservationBuffer() for cam_id in camera_ids
-    }
-
-    for frame_idx, frame_obs in enumerate(frame_observations):
-        for cam_id, obs in frame_obs.items():
-            observation_recorders[cam_id].add_observation(obs)
+    observation_recorders = recording_observation_buffers(frame_observations, tuple(camera_ids))
 
     # ---- Get calibration path: not needed for single-camera (planar projection fallback) ----
     recording_folder = Path(recording_info.full_recording_path)

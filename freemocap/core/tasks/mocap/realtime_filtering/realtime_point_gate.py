@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from collections.abc import Mapping
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 
 @dataclass(frozen=True)
 class GateResult:

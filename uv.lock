@@ -22,7 +22,6 @@ supported-markers = [
 overrides = [
     { name = "mediapipe", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'", specifier = "==0.10.33" },
     { name = "numpy", specifier = ">=2.3.4,<2.5" },
-    { name = "pandas", specifier = ">=2.2.2,<3" },
     { name = "skellylogs", editable = "../utils/skellylogs" },
     { name = "skellypings", editable = "../utils/skellypings" },
 ]
@@ -655,6 +654,8 @@ dependencies = [
     { name = "numba" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },
+    { name = "plotly" },
+    { name = "polars" },
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pyinstaller" },
@@ -714,6 +715,8 @@ requires-dist = [
     { name = "numba", specifier = ">=0.65.1" },
     { name = "numpydantic", specifier = ">=1.6.7" },
     { name = "opencv-contrib-python" },
+    { name = "plotly", specifier = ">=6,<7" },
+    { name = "polars", specifier = ">=2.0,<3" },
     { name = "pyarrow", specifier = ">=25.0.1" },
     { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pyinstaller", specifier = ">=6.11.0" },
@@ -1635,6 +1638,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/80/a8/66d45abadff219e36e2a824181b8f6a67e7ed4572934d6252c71c29d5731/platformdirs-4.13.0.tar.gz", hash = "sha256:1aa0b0d3f224c1f07c295121e312a5a24a180d6ae5a8425ea1784b3e3863e9c0", size = 61094, upload-time = "2026-10-11T02:05:24.109Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8d/15/1633010b26e88e872c93b67c0b6c5e174fb74cb6fb5c1472b4d51d4a8f22/platformdirs-4.13.0-py3-none-any.whl", hash = "sha256:3dbcf4cd708f21cf876c4eaa90e58412bc4f033d87143f41b1493ff77c25b7e1", size = 32724, upload-time = "2026-10-11T02:05:22.776Z" },
+]
+
+[[package]]
+name = "plotly"
+version = "6.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "narwhals" },
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/96/07/795c79dbce40c39bece88e69d049babbd23ffa95b5d117f248db8ea03abb/plotly-6.9.0.tar.gz", hash = "sha256:967ad33e8c704fed051800d11d985eb206a9c795c14206b30a6f463ed9c67d0d", size = 6919903, upload-time = "2026-07-09T14:55:59.982Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/18/d8544811ab076f876c4892b3714f5b0dad335e1dc33aef826df431b8325d/plotly-6.9.0-py3-none-any.whl", hash = "sha256:36bebe2f1bb13884774fe61689c329071446f6ce4a8927fb1f0d6fb24f581236", size = 9909646, upload-time = "2026-07-09T14:55:55.421Z" },
 ]
 
 [[package]]

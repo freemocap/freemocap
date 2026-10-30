@@ -13,7 +13,7 @@ from skellyforge.core.skeleton.pose.scale_tensor import ScaleTensor
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit, scale_voting_segment_names
 from skellyforge.core.skeleton.pose.rigid_body_diagnostics import ResidualBatchGeometry
 
-from freemocap.core.data_tensors import (
+from skellyforge.core.data_tensors import (
     AxisDefinition, CompanionTensor, DataTensor, ScientificProvenance, SourceIdentity, TensorLayout,
 )
 from freemocap.core.skeletons.rotation_output import canonical_joint_angle_array, canonical_quaternion_array

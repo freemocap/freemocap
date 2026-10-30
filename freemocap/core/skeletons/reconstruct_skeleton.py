@@ -1,8 +1,8 @@
 """Reconstruct one sample with the same prepared tensor calculations as recordings."""
 from collections.abc import Mapping
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues
-from freemocap.core.data_tensors.data_tensor import _immutable_values
+from skellyforge.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.data_tensors.data_tensor import _immutable_values
 from freemocap.core.reconstruction.recording_pose_outputs import RecordingPoseOutputs
 from freemocap.core.skeletons.reconstruction_state import SkeletonReconstructionState, FrozenModelScale
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction, ResidualValues, JointValues

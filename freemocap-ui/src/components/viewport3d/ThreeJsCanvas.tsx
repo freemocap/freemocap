@@ -18,6 +18,7 @@ import {
 } from "@/store/slices/calibration/calibration-slice";
 import {useReferenceFrameForwarder} from './hooks/useReferenceFrameForwarder';
 import { type InspectionTarget, type ViewportStats } from "./helpers/viewport3d-types";
+import {ViewportFrameSender} from './viewport-frame-transfer';
 
 Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -243,12 +244,6 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
     return () => { VIEWPORT_WORKER.postMessage({type: "presentationReset"}); };
   }, [isLive]);
 
-  useEffect(() => {
-    return subscribeToKeypoints((frame) => {
-      VIEWPORT_WORKER.postMessage({ type: "keypoints", data: frame });
-    });
-  }, [subscribeToKeypoints]);
-
   // The STATIC model definitions, forwarded only when they change. Large and unchanging
   // between `model_sequence` bumps — 61 segments + 124 landmarks + 60 connections for the
   // human alone — so posting them per frame structured-clones all of that thirty times a
@@ -261,16 +256,19 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
     });
   }, [getModels, subscribeToModels]);
 
-  // The per-frame numbers for every tracked model — origins, landmarks, rotations, fitted
-  // lengths, derived points. The viewport runs in a Web Worker, so a channel that is not
-  // forwarded here silently does not exist over there: the bones drew at a millimetre for
-  // exactly that reason when the fitted lengths were missing, and the model is dimensionless
-  // so there is no size to fall back to.
+  // Transfer owned frame-sized buffers; source views can belong to an entire recording.
+  // Returned buffers are reused only after the worker releases its presentation values.
   useEffect(() => {
-    return subscribeToModelFrames((models) => {
-      VIEWPORT_WORKER.postMessage({ type: "modelFrames", data: models });
-    });
-  }, [subscribeToModelFrames]);
+    const sender = new ViewportFrameSender((message, transfer) => VIEWPORT_WORKER.postMessage(message, transfer ?? []));
+    const receive = (event: MessageEvent) => sender.receive(event.data);
+    VIEWPORT_WORKER.addEventListener('message', receive);
+    const stopPoints = subscribeToKeypoints(frame => sender.sendKeypoints(frame));
+    const stopModels = subscribeToModelFrames(models => sender.sendModels(models));
+    return () => {
+      stopPoints(); stopModels(); sender.dispose();
+      VIEWPORT_WORKER.removeEventListener('message', receive);
+    };
+  }, [isLive, subscribeToKeypoints, subscribeToModelFrames]);
 
   useEffect(() => {
     VIEWPORT_WORKER.postMessage({

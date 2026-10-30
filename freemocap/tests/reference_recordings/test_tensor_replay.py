@@ -19,9 +19,10 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from skellylogs.handlers.websocket_log_queue_handler import create_websocket_log_queue
 
-from freemocap.core.data_tensors import SourceIdentity
+from skellyforge.core.data_tensors import SourceIdentity
 from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
+from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import RealtimeAggregatorNodeConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
@@ -81,6 +82,7 @@ class TensorReplayTests(unittest.TestCase):
         service = InferenceService(worker_registry=registry)
         manager = RealtimePipelineManager(worker_registry=registry, inference_service=service)
         group = None
+        capture = None
         memory_names = []
         try:
             registry.start_heartbeat()
@@ -91,8 +93,10 @@ class TensorReplayTests(unittest.TestCase):
                     memory_names.extend((element.shm_name, element.shm_valid_name, element.first_written_shm_name))
             self.assertEqual(group.frame_count, 222)
             self.assertEqual(len(group.camera_ids), 3)
+            capture = CaptureGroup(group, flag)
+            self.assertIs(capture.shm, group.shm)
             service.start()
-            pipeline = manager.create_pipeline(camera_group=group, pipeline_config=config)
+            pipeline = manager.create_pipeline(camera_group=capture, pipeline_config=config)
             driven = drive_realtime_lockstep(pipeline=pipeline, mock_group=group,
                                              num_frames=group.frame_count, per_frame_timeout=120.0)
             self.assertEqual([output.frame_number for output in driven.outputs], list(range(group.frame_count)))
@@ -157,6 +161,8 @@ class TensorReplayTests(unittest.TestCase):
                     try:
                         registry.shutdown_all()
                     finally:
+                        if capture is not None:
+                            capture.close_transport()
                         if group is not None:
                             group.close()
             self.assertFalse(registry.alive_workers, "Realtime workers survived shutdown")

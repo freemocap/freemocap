@@ -1,20 +1,9 @@
 """Serializable export selections, independent of readers and application configuration."""
-import hashlib
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class ChannelSelection(BaseModel):
-    model_config = ConfigDict(extra='forbid', frozen=True)
-    sensor_group: str
-    source: str
-    reference_frame: str | None
-    channel: str
-    static: bool = False
-
-    @property
-    def key(self) -> str:
-        return hashlib.sha256(self.model_dump_json().encode()).hexdigest()[:24]
+from freemocap.core.recording.parquet_storage.channel_selection import ChannelSelection
 
 
 class ScientificExportOptions(BaseModel):

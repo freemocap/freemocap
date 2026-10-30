@@ -6,8 +6,10 @@ Example (output must be a new directory, outside the source recording)::
         --recording PATH_TO_RECORDING --output .test-artifacts/export-benchmark
 
 Repeat on the same saved Parquet before/after a change; pass the earlier exports
-folder with --compare-exports to check CSV/NPY bytes and NPZ measurement members.
-Recording copying and parity checks are excluded from the reported export time.
+folder with --compare-exports to check CSV/NPY bytes and NPZ scientific dataset members.
+Compare only exports using the same format contract; older unversioned NumPy
+inventories cannot match the versioned dataset byte-for-byte. Recording copying
+and parity checks are excluded from the reported export time.
 """
 import argparse
 import hashlib
@@ -45,13 +47,13 @@ def compare_exports(actual: Path, expected: Path, recording_name: str) -> dict:
                     if member == 'recording_info.json':
                         continue  # Export date and source revision are intentionally different.
                     if hashlib.sha256(left.read(member)).digest() != hashlib.sha256(right.read(member)).digest():
-                        raise AssertionError(f'NPZ measurement changed: {member}')
+                        raise AssertionError(f'NPZ scientific dataset member changed: {member}')
                     checked_members += 1
         else:
             if digest(actual / name) != digest(expected / name):
                 raise AssertionError(f'Export bytes changed: {name}')
             checked_files += 1
-    return dict(exact_file_payloads=checked_files, exact_npz_measurement_members=checked_members)
+    return dict(exact_file_payloads=checked_files, exact_npz_dataset_members=checked_members)
 
 
 def main():

@@ -18,6 +18,8 @@ from freemocap.core.recording.exports.publication import digest, verified_manife
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.tools.datasets.workflow import checked_ready
+from skellyforge.core.data_tensors import read_numpy_dataset
+from freemocap.tests.numpy_export_assertions import display_projection
 
 
 @pytest.mark.e2e
@@ -26,7 +28,7 @@ def test_reference_wide_csv_values_and_metadata(tmp_path, name):
     configured = os.environ.get('FREEMOCAP_PROVENANCE_PREPARED_ROOT')
     if not configured:
         pytest.skip('Set FREEMOCAP_PROVENANCE_PREPARED_ROOT to standard reference outputs')
-    ready = checked_ready(Path(configured) / name)
+    ready = checked_ready(Path(configured) / name, require_complete=False, check_exports=False)
     assert ready is not None
     source = Path(ready['recording']) / f'{name}_data.parquet'
     before = digest(source)
@@ -49,9 +51,14 @@ def test_reference_wide_csv_values_and_metadata(tmp_path, name):
     elapsed = time.monotonic() - started
     manifest = verified_manifest(result.manifest_path)
     contexts = manifest.snapshots[result.source_sha256]['channels']
+    numpy_dataset = read_numpy_dataset(result.manifest_path.parent / 'npy')
+    archived_dataset = read_numpy_dataset(next(path for path in result.files if path.suffix == '.npz'))
+    assert numpy_dataset.channel_identities == archived_dataset.channel_identities
     with recording_view(structure.data_parquet_path) as view:
         declarations = {context.key: (channel, values) for context, channel, values in scientific_channels(view.metadata.runs[result.run_id])}
-        assert set(contexts) == set(declarations)
+        csv_contexts = {artifact.details['context_key'] for artifact in manifest.artifacts.values() if artifact.format == 'wide_csv'}
+        assert csv_contexts == set(declarations)
+        assert set(declarations).issubset(contexts)
         for artifact in manifest.artifacts.values():
             if artifact.format != 'wide_csv':
                 continue
@@ -91,17 +98,16 @@ def test_reference_wide_csv_values_and_metadata(tmp_path, name):
                     assert float(row[1]) == timestamp
                     assert channel.components[source_component] == unit
                     assert row[column_index] == 'NaN' if value is None else float(row[column_index]) == value
-            npy_artifacts = {a.details['role']: result.manifest_path.parent / a.filename for a in manifest.artifacts.values()
-                             if a.format == 'npy' and a.details['context_key'] in (None, context_key)}
-            arrays = {role: np.load(path, allow_pickle=False) for role, path in npy_artifacts.items()}
-            with np.load(next(path for path in result.files if path.suffix == '.npz'), allow_pickle=False) as archive:
-                for role, values in arrays.items():
-                    np.testing.assert_array_equal(values, archive[f"{contexts[context_key]['numpy_key']}.values" if role == "values" else role])
+            projected = display_projection(numpy_dataset, context.model_dump(mode='json'))
+            archived = display_projection(archived_dataset, context.model_dump(mode='json'))
+            arrays = dict(values=projected.values, present=projected.present, frames=projected.frames, timestamps=projected.timestamps)
+            for role, values in arrays.items():
+                np.testing.assert_array_equal(values, getattr(archived, role))
             assert arrays['values'].shape == tuple(contexts[context_key]['shape'])
             for row in parsed:
                 i = list(arrays['frames']).index(int(row[0]))
                 expected_time = arrays['timestamps'][i]
-                assert abs(float(row[1]) - expected_time) <= 4 * np.spacing(max(abs(float(row[1])), abs(expected_time)))
+                assert float(row[1]) == expected_time
                 for column, value in zip(mapping, row[2:], strict=True):
                     j = contexts[context_key]['names'].index(column['name'])
                     k = contexts[context_key]['components'].index(column['component'])

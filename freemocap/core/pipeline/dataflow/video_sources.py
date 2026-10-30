@@ -38,6 +38,7 @@ class RecordingVideoSources:
     sensor_group: str
     camera_sources: tuple[CameraVideoSource, ...]
     group_timing: RecordingTiming
+    saved_frame_numbers: tuple[int, ...] | None = None
 
     def __post_init__(self) -> None:
         cameras = tuple(source.camera_id for source in self.camera_sources)
@@ -46,6 +47,19 @@ class RecordingVideoSources:
         counts = {source.video_metadata.frame_count for source in self.camera_sources}
         if len(counts) != 1 or next(iter(counts)) <= 0:
             raise ValueError("Recording sources require equal positive frame counts")
+        if self.saved_frame_numbers is not None:
+            frames = self.saved_frame_numbers
+            if not frames or any(a >= b for a, b in zip(frames, frames[1:])) or frames[0] < 0:
+                raise ValueError('Saved source frame numbers must strictly increase')
+            for source in self.camera_sources:
+                video = source.video_metadata
+                if frames[0] != video.start_frame or frames[-1] + 1 != video.end_frame:
+                    raise ValueError('Saved frame identities differ from video bounds')
+                if len(source.camera_timing.timestamps_s) != len(frames):
+                    raise ValueError('Saved camera timing must cover declared samples')
+            if len(self.group_timing.timestamps_s) != len(frames):
+                raise ValueError('Saved group timing must cover declared samples')
+            return
         for source in self.camera_sources:
             video = source.video_metadata
             if video.start_frame != 0 or video.end_frame != video.frame_count:

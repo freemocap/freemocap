@@ -5,8 +5,6 @@ import json
 import logging
 from time import perf_counter
 from itertools import islice
-from contextlib import ExitStack
-from zipfile import ZipFile, ZIP_DEFLATED
 import os
 import re
 from pathlib import Path
@@ -20,6 +18,7 @@ from freemocap.core.recording.exports.arrays import ScientificExportRequest, res
 from freemocap.core.recording.exports.publication import ExportArtifact, ExportManifest, digest, verified_manifest, publish, remove_staging, published_artifact_path
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 
+from freemocap.core.recording.exports.numpy_exports import preflight_numpy_directory, stage_numpy_exports
 from freemocap.core.recording.exports.guides import stage_guides
 from freemocap.core.recording.exports.notebook import write_notebook
 
@@ -134,23 +133,11 @@ def validate_table(path, arrays, columns, bounds, cancelled):
             raise ValueError('Wide CSV contains unexpected rows')
 
 
-def validate_array(actual, expected):
-    if actual.dtype != expected.dtype or actual.shape != expected.shape or not np.array_equal(actual, expected, equal_nan=True):
-        raise ValueError('NumPy values, shape or dtype changed during export')
-    if np.issubdtype(actual.dtype, np.floating) and not np.array_equal(np.signbit(actual), np.signbit(expected)):
-        raise ValueError('NumPy floating point signs changed during export')
-
-
-def matching_timestamps(left, right):
-    """Allow float64 arithmetic roundoff, never a sampling/time alignment tolerance."""
-    return left.shape == right.shape and bool(np.all(
-        np.abs(left - right) <= 4 * np.spacing(np.maximum(np.abs(left), np.abs(right)))))
-
-
-def _export_scientific(*, structure, request: ScientificExportRequest, cancelled=None, progress=None):
+def _export_scientific(*, structure, request: ScientificExportRequest, cancelled=None, progress=None, runtime_dataset=None):
     started = perf_counter()
-    timings = dict(array_assembly=0.0, csv_write=0.0, csv_validation=0.0,
-                   npy_write=0.0, npy_validation=0.0, npz_write=0.0, npz_validation=0.0)
+    timings = dict(array_assembly=0.0, csv_write=0.0, csv_validation=0.0)
+    if runtime_dataset is not None and set(request.formats) - {'npy', 'npz'}:
+        raise ValueError('Runtime dataset exports support only NPY/NPZ; export saved CSV/notebooks separately')
     check_cancelled(cancelled)
     with recording_view(structure.data_parquet_path) as view:
         run_id, selected = resolve_selection(view, request)
@@ -174,6 +161,8 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
             legacy_path = directory / f'{prefix}.wide.metadata.json'
             previous_path = manifest_path if manifest_path.exists() else legacy_path
             previous = verified_manifest(previous_path) if previous_path.exists() else None
+            if 'npy' in request.formats:
+                preflight_numpy_directory(directory, previous)
             if request.keep and previous is not None:
                 if any(a.source_sha256 != source_hash or a.source_revision != view.revision or a.run_id != run_id for a in previous.artifacts.values()):
                     raise ValueError('Retained export is bound to another source revision')
@@ -182,137 +171,93 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
             staging = Path(tempfile.mkdtemp(prefix='.staging-', dir=directory))
             try:
                 artifacts, descriptions = {}, {}
-                shared_frames, shared_timestamps = None, None
-                timestamp_roundoff = 0.0
-                numpy_requested = bool(set(request.formats) & {"npy", "npz"})
-                with ExitStack() as stack:
-                    archive_name = f'{prefix}.npz'
-                    archive = stack.enter_context(ZipFile(staging / archive_name, 'w', compression=ZIP_DEFLATED)) if 'npz' in request.formats else None
-                    export_started = datetime.now(timezone.utc).isoformat()
-                    for index, item in enumerate(selected):
-                        context = item[0]
-                        if progress:
-                            progress(index, len(selected), f'Exporting {context.channel} ({context.source})')
-                        step_started = perf_counter()
-                        with ordered_arrays(view, run_id, item, scratch=staging, cancelled=cancelled) as arrays:
-                            timings["array_assembly"] += perf_counter() - step_started
-                            first_timeline = shared_frames is None
-                            if numpy_requested or request.wide_csv is None:
-                                if context.static or len(arrays.values) != len(arrays.frames):
-                                    raise ValueError('Export completeness check failed: every measurement array must have a frame axis')
-                                if first_timeline:
-                                    shared_frames, shared_timestamps = arrays.frames.copy(), arrays.timestamps.copy()
-                                elif not np.array_equal(shared_frames, arrays.frames) or not matching_timestamps(shared_timestamps, arrays.timestamps):
-                                    raise ValueError('Export completeness check failed: selected arrays must have identical frame counts, frame numbers and timestamps')
-                                if len(arrays.timestamps):
-                                    timestamp_roundoff = max(timestamp_roundoff, float(np.max(np.abs(shared_timestamps - arrays.timestamps))))
-                            descriptions[context.key] = arrays.descriptor()
-                            descriptions[context.key]['missing_values'] = 'NumPy: NaN for unavailable values; CSV: empty for absent entries, NaN for recorded null'
-                            stem = f'{prefix}.{names[context.key]}'
-                            descriptions[context.key]['numpy_key'] = names[context.key]
-                            descriptions[context.key]['timing'] = dict(frame_count=len(arrays.frames),
-                                first_frame=int(arrays.frames[0]) if len(arrays.frames) else None,
-                                last_frame=int(arrays.frames[-1]) if len(arrays.frames) else None,
-                                first_timestamp_s=float(arrays.timestamps[0]) if len(arrays.timestamps) else None,
-                                last_timestamp_s=float(arrays.timestamps[-1]) if len(arrays.timestamps) else None)
-                            outputs = dict(values=arrays.values)
-                            if first_timeline:
-                                outputs.update(frames=arrays.frames, timestamps=arrays.timestamps)
-                            for role, value in outputs.items():
-                                check_cancelled(cancelled)
-                                if 'npy' in request.formats:
-                                    filename = f'npy/{stem}.npy' if role == "values" else f'npy/{prefix}.{role}.npy'
-                                    (staging / 'npy').mkdir(exist_ok=True)
-                                    step_started = perf_counter()
-                                    np.save(staging / filename, value, allow_pickle=False)
-                                    timings["npy_write"] += perf_counter() - step_started
-                                    step_started = perf_counter()
-                                    loaded = np.load(staging / filename, allow_pickle=False)
-                                    validate_array(loaded, value)
-                                    timings["npy_validation"] += perf_counter() - step_started
-                                    artifacts[filename] = ExportArtifact(filename=filename, sha256=digest(staging / filename),
-                                        rows=len(value), columns=(), source_sha256=source_hash, source_revision=view.revision,
-                                        run_id=run_id, format='npy', details=dict(context_key=context.key if role == "values" else None, role=role,
-                                            shape=list(value.shape), dtype=str(value.dtype), validation='reload_exact', validator_version=1))
-                                if archive is not None:
-                                    key = f'{names[context.key]}.values.npy' if role == 'values' else f'{role}.npy'
-                                    step_started = perf_counter()
-                                    with archive.open(key, 'w', force_zip64=True) as stream:
-                                        np.lib.format.write_array(stream, value, allow_pickle=False)
-                                    timings["npz_write"] += perf_counter() - step_started
-                                    step_started = perf_counter()
-                                    # Reload the individual member before releasing this channel's arrays.
-                                    with archive.open(key) as stream:
-                                        validate_array(np.lib.format.read_array(stream, allow_pickle=False), value)
-                                    timings["npz_validation"] += perf_counter() - step_started
-                            if 'wide_csv' not in request.formats:
-                                continue
-                            mapping = [(name, component) for name in arrays.names for component in arrays.components]
-                            total_rows = 1 if context.static else len(arrays.frames)
-                            for row_start in range(0, max(1, total_rows), MAX_ROWS):
-                                row_stop = min(row_start + MAX_ROWS, total_rows)
-                                for first in range(0, len(mapping), MAX_VALUE_COLUMNS):
-                                    last = min(first + MAX_VALUE_COLUMNS, len(mapping))
-                                    clock_headers = [] if context.static else ['frame_number', 'timestamp_s']
-                                    columns = clock_headers + [header(*pair) for pair in mapping[first:last]]
-                                    if len(set(columns)) != len(columns):
-                                        raise ValueError('CSV name/component pairs produce duplicate headers')
-                                    parts = (f'.rows-{row_start // MAX_ROWS + 1}' if total_rows > MAX_ROWS else '')
-                                    parts += (f'.columns-{first // MAX_VALUE_COLUMNS + 1}' if len(mapping) > MAX_VALUE_COLUMNS else '')
-                                    name = f'csv/{stem}{parts}.csv'
-                                    path = staging / name
-                                    path.parent.mkdir(exist_ok=True)
-                                    bounds = (row_start, row_stop, first, last)
-                                    step_started = perf_counter()
-                                    with path.open('w', encoding='utf-8-sig', newline='') as stream:
-                                        writer = csv.writer(stream)
-                                        writer.writerow(columns)
-                                        for row in rows_for(arrays, *bounds):
-                                            check_cancelled(cancelled)
-                                            writer.writerow(row)
-                                        stream.flush()
-                                        os.fsync(stream.fileno())
-                                    timings["csv_write"] += perf_counter() - step_started
-                                    step_started = perf_counter()
-                                    validate_table(path, arrays, columns, bounds, cancelled)
-                                    timings["csv_validation"] += perf_counter() - step_started
-                                    artifacts[name] = ExportArtifact(filename=name, sha256=digest(path), rows=row_stop-row_start,
-                                        columns=tuple(columns), source_sha256=source_hash, source_revision=view.revision, run_id=run_id,
-                                        format='static_wide_csv' if context.static else 'wide_csv',
-                                        details=dict(context_key=context.key, frame_slice=[row_start, row_stop],
-                                            value_column_slice=[first, last],
-                                            validation='reload_exact_float64', validator_version=1))
-                    snapshot = dict(revision=view.revision, exported_at=export_started,
-                        recording_id=view.metadata.recording_id, run_id=run_id, source_sha256=source_hash,
-                        source_file=structure.data_parquet_path.name,
-                        conventions=dict(quaternion_order="wxyz", segment_pose="saved origin and world orientation",
-                            missing_values="NumPy: NaN for unavailable values; CSV: empty for absent entries, NaN for recorded null"),
-                        reference_frames={key: value for key, value in view.metadata.runs[run_id].reference_frames.items()
-                                          if key in {item[0].reference_frame for item in selected}},
-                        channels=descriptions, selection=request.model_dump(mode='json'))
-                    if numpy_requested:
-                        snapshot['numpy_timeline'] = dict(frame_count=len(shared_frames),
-                            frames_file=f'npy/{prefix}.frames.npy', timestamps_file=f'npy/{prefix}.timestamps.npy',
-                            npz_frames_key='frames', npz_timestamps_key='timestamps', validation='all_selected_frame_axes_equal',
-                            timestamp_roundoff_limit='4 float64 ULPs', maximum_timestamp_difference_s=timestamp_roundoff)
-                    if archive is not None:
-                        archive.writestr('recording_info.json', json.dumps(snapshot, ensure_ascii=False, allow_nan=False))
-                if 'npz' in request.formats:
-                    with np.load(staging / archive_name, allow_pickle=False) as loaded:
-                        expected_keys = {f'{names[item[0].key]}.values' for item in selected} | {'frames', 'timestamps'}
-                        if set(loaded.files) != expected_keys | {'recording_info.json'}:
-                            raise ValueError('NPZ archive inventory mismatch')
-                    artifacts[archive_name] = ExportArtifact(filename=archive_name, sha256=digest(staging / archive_name),
-                        rows=len(selected), columns=(), source_sha256=source_hash, source_revision=view.revision,
-                        run_id=run_id, format='npz', details=dict(context_keys=[item[0].key for item in selected],
-                            validation='reload_exact', validator_version=1))
+                numpy_requested = bool(set(request.formats) & {'npy', 'npz'})
+                numpy_metadata, numpy_descriptions = None, {}
+                export_started = datetime.now(timezone.utc).isoformat()
+                if numpy_requested:
+                    artifacts, numpy_descriptions, numpy_metadata = stage_numpy_exports(
+                        view=view, run_id=run_id, selected=selected, formats=request.formats,
+                        staging=staging, directory=directory, prefix=prefix, source_hash=source_hash,
+                        timings=timings, runtime_dataset=runtime_dataset, cancelled=cancelled, progress=progress)
+                # NumPy-only exports never assemble the CSV projection or a shared frame grid.
+                projection_items = selected if set(request.formats) & {'wide_csv', 'notebook'} else ()
+                for index, item in enumerate(projection_items):
+                    context = item[0]
+                    if progress:
+                        progress(index, len(selected), f'Exporting {context.channel} ({context.source})')
+                    step_started = perf_counter()
+                    with ordered_arrays(view, run_id, item, scratch=staging, cancelled=cancelled) as arrays:
+                        timings['array_assembly'] += perf_counter() - step_started
+                        descriptions[context.key] = arrays.descriptor()
+                        descriptions[context.key]['missing_values'] = 'CSV: empty for absent entries, NaN for recorded null'
+                        stem = f'{prefix}.{names[context.key]}'
+                        descriptions[context.key]['timing'] = dict(frame_count=len(arrays.frames),
+                            first_frame=int(arrays.frames[0]) if len(arrays.frames) else None,
+                            last_frame=int(arrays.frames[-1]) if len(arrays.frames) else None,
+                            first_timestamp_s=float(arrays.timestamps[0]) if len(arrays.timestamps) else None,
+                            last_timestamp_s=float(arrays.timestamps[-1]) if len(arrays.timestamps) else None)
+                        if 'wide_csv' not in request.formats:
+                            continue
+                        mapping = [(name, component) for name in arrays.names for component in arrays.components]
+                        total_rows = 1 if context.static else len(arrays.frames)
+                        for row_start in range(0, max(1, total_rows), MAX_ROWS):
+                            row_stop = min(row_start + MAX_ROWS, total_rows)
+                            for first in range(0, len(mapping), MAX_VALUE_COLUMNS):
+                                last = min(first + MAX_VALUE_COLUMNS, len(mapping))
+                                clock_headers = [] if context.static else ['frame_number', 'timestamp_s']
+                                columns = clock_headers + [header(*pair) for pair in mapping[first:last]]
+                                if len(set(columns)) != len(columns):
+                                    raise ValueError('CSV name/component pairs produce duplicate headers')
+                                parts = (f'.rows-{row_start // MAX_ROWS + 1}' if total_rows > MAX_ROWS else '')
+                                parts += (f'.columns-{first // MAX_VALUE_COLUMNS + 1}' if len(mapping) > MAX_VALUE_COLUMNS else '')
+                                name = f'csv/{stem}{parts}.csv'
+                                path = staging / name
+                                path.parent.mkdir(exist_ok=True)
+                                bounds = (row_start, row_stop, first, last)
+                                step_started = perf_counter()
+                                with path.open('w', encoding='utf-8-sig', newline='') as stream:
+                                    writer = csv.writer(stream)
+                                    writer.writerow(columns)
+                                    for row in rows_for(arrays, *bounds):
+                                        check_cancelled(cancelled)
+                                        writer.writerow(row)
+                                    stream.flush()
+                                    os.fsync(stream.fileno())
+                                timings["csv_write"] += perf_counter() - step_started
+                                step_started = perf_counter()
+                                validate_table(path, arrays, columns, bounds, cancelled)
+                                timings["csv_validation"] += perf_counter() - step_started
+                                artifacts[name] = ExportArtifact(filename=name, sha256=digest(path), rows=row_stop-row_start,
+                                    columns=tuple(columns), source_sha256=source_hash, source_revision=view.revision, run_id=run_id,
+                                    format='static_wide_csv' if context.static else 'wide_csv',
+                                    details=dict(context_key=context.key, frame_slice=[row_start, row_stop],
+                                        value_column_slice=[first, last],
+                                        validation='reload_exact_float64', validator_version=1))
+                for context_key, description in numpy_descriptions.items():
+                    if context_key in descriptions:
+                        descriptions[context_key]['numpy_channel'] = description['numpy_channel']
+                    else:
+                        descriptions[context_key] = description
+                snapshot = dict(revision=view.revision, exported_at=export_started,
+                    recording_id=view.metadata.recording_id, run_id=run_id, source_sha256=source_hash,
+                    source_file=structure.data_parquet_path.name,
+                    conventions=dict(quaternion_order="wxyz", segment_pose="saved origin and world orientation",
+                        missing_values="NumPy: declared companion tensors; CSV: empty for absent entries, NaN for recorded null"),
+                    reference_frames={key: value for key, value in view.metadata.runs[run_id].reference_frames.items()
+                                      if key in {item[0].reference_frame for item in selected}},
+                    channels=descriptions, selection=request.model_dump(mode='json'))
+                if numpy_metadata is not None:
+                    snapshot['numpy_datasets'] = numpy_metadata
                 if 'notebook' in request.formats:
                     notebook_name = f'{prefix}.explorer.ipynb'
                     notebook_target = published_artifact_path(directory, notebook_name, 'recording')
                     prior_notebook = previous.artifacts.get(notebook_name) if previous else None
                     if notebook_target.exists() and (prior_notebook is None or prior_notebook.location != 'recording'):
                         raise FileExistsError(f'Notebook already exists outside this export: {notebook_target}')
-                    write_notebook(staging / notebook_name, snapshot=snapshot)
+                    # Portable notebook projections contain only requested display
+                    # products, not NumPy's additional native/static channels.
+                    notebook_snapshot = dict(snapshot, channels={item[0].key: descriptions[item[0].key] for item in selected})
+                    write_notebook(staging / notebook_name, snapshot=notebook_snapshot)
                     artifacts[notebook_name] = ExportArtifact(filename=notebook_name, location='recording',
                         sha256=digest(staging / notebook_name), rows=0, columns=(),
                         source_sha256=source_hash, source_revision=view.revision, run_id=run_id,
@@ -328,21 +273,28 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                 existing = snapshots.get(source_hash, {})
                 snapshot['channels'] = {**existing.get('channels', {}), **snapshot['channels']}
                 snapshot['reference_frames'] = {**existing.get('reference_frames', {}), **snapshot['reference_frames']}
-                if not numpy_requested and 'numpy_timeline' in existing:
-                    snapshot['numpy_timeline'] = existing['numpy_timeline']
+                if 'numpy_datasets' in existing:
+                    snapshot['numpy_datasets'] = {**existing['numpy_datasets'], **snapshot.get('numpy_datasets', {})}
                 snapshots[source_hash] = snapshot
                 for key, description in snapshots.items():
                     needed = {context for a in artifacts.values() if a.source_sha256 == key
                               for context in ([a.details['context_key']] if 'context_key' in a.details else a.details.get('context_keys', []))}
                     description['channels'] = {k: v for k, v in description.get('channels', {}).items() if k in needed}
+                    if 'numpy_datasets' in description:
+                        retained_formats = {a.format for a in artifacts.values() if a.source_sha256 == key}
+                        description['numpy_datasets'] = {kind: dataset for kind, dataset in description['numpy_datasets'].items()
+                            if kind in retained_formats}
                 snapshots = {key: value for key, value in snapshots.items() if key in {a.source_sha256 for a in artifacts.values()}}
                 manifest = ExportManifest(version=4 if any(a.location == 'recording' for a in artifacts.values()) else 3,
                     artifacts=artifacts, snapshots=snapshots,
                     csv=dict(encoding='utf-8-sig', delimiter=',', absent='empty field', null='NaN',
                              float_precision='round-trip float64', column_order='descriptor names, explicit components'))
                 check_cancelled(cancelled)
-                guides = stage_guides(directory, staging, request.formats)
-                publish(directory, staging, manifest_name, manifest, (*generated, *guides), request.keep)
+                guides = stage_guides(directory, staging, request.formats, keep=request.keep)
+                obsolete_numpy = tuple(artifact for name, artifact in previous.artifacts.items()
+                    if artifact.format == 'npy' and name not in artifacts) if previous and 'npy' in request.formats else ()
+                publish(directory, staging, manifest_name, manifest, (*generated, *guides), request.keep,
+                        obsolete_numpy=obsolete_numpy)
                 if progress:
                     progress(len(selected), len(selected), 'Selected exports saved and validated')
                 elapsed = perf_counter() - started
@@ -358,8 +310,8 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                     remove_staging(directory, staging)
 
 
-def export_scientific(*, structure, request: ScientificExportRequest, cancelled=None, progress=None):
-    result = _export_scientific(structure=structure, request=request, cancelled=cancelled, progress=progress)
+def export_scientific(*, structure, request: ScientificExportRequest, cancelled=None, progress=None, runtime_dataset=None):
+    result = _export_scientific(structure=structure, request=request, cancelled=cancelled, progress=progress, runtime_dataset=runtime_dataset)
     from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
     from freemocap.core.recording.recording_info import write_recording_info
     with recording_write_lock(structure=structure):

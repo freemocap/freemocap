@@ -42,7 +42,7 @@ import type {
     ModelDefinition,
     ProgressMessage,
 } from "@/services/server/transport/message-contract";
-import type {SkeletonObservation} from "@/services/server/server-helpers/image-overlay";
+import {appendOverlay, type SkeletonObservation} from "@/services/server/server-helpers/image-overlay";
 
 // Compare two already-sorted string arrays without allocating
 function sortedArraysEqual(a: string[], b: string[]): boolean {
@@ -130,45 +130,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 frame_number: overlay.frameNumber,
                 image_width: dims?.[0] ?? 0,
                 image_height: dims?.[1] ?? 0,
-                points: [],
+                pointLayers: [], landmarkLayers: [], boxLayers: [],
             };
             // Appended, not assigned: several detectors overlay the SAME camera in one
             // frame (a pose detector and a charuco detector), and assigning let whichever
             // arrived last erase the other. Rows are name-keyed, so the union is lossless.
-            if (overlay.layer === OverlayLayer.BOXES) {
-                // Wider rows than the point layers — the detector crop plus its provenance.
-                const stride = overlay.stride ?? 6;
-                const boxes = overlay.names.map((name, i) => ({
-                    name,
-                    x1: overlay.data[i * stride],
-                    y1: overlay.data[i * stride + 1],
-                    x2: overlay.data[i * stride + 2],
-                    y2: overlay.data[i * stride + 3],
-                    confidence: overlay.data[i * stride + 4],
-                    fromDetector: overlay.data[i * stride + 5] >= 0.5,
-                }));
-                observation.boxes = [...(observation.boxes ?? []), ...boxes];
-            } else {
-                const points = overlay.names.map((name, i) => ({
-                    name,
-                    x: overlay.data[i * 3],
-                    y: overlay.data[i * 3 + 1],
-                    z: 0,
-                    visibility: overlay.data[i * 3 + 2],
-                }));
-                if (overlay.layer === OverlayLayer.DETECTIONS) {
-                    observation.points = [...observation.points, ...points];
-                } else {
-                    observation.landmarks = [...(observation.landmarks ?? []), ...points];
-                    // This overlay's OWN model's segment edges. Reading models[0] drew a
-                    // board reprojection wearing the human model's connection list.
-                    const overlayModel = modelsRef.current?.find((m) => m.model_id === overlay.modelId);
-                    observation.connections = [
-                        ...(observation.connections ?? []),
-                        ...(overlayModel?.connections ?? []),
-                    ];
-                }
-            }
+            const overlayModel = overlay.layer === OverlayLayer.REPROJECTIONS
+                ? modelsRef.current?.find((model) => model.model_id === overlay.modelId) : undefined;
+            appendOverlay(observation, overlay, overlayModel?.connections);
             frameOverlays.set(overlay.cameraId, observation);
             pendingOverlaysRef.current.set(overlay.frameNumber, frameOverlays);
         }));
@@ -462,4 +431,3 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 function handleProgress(message: ProgressMessage): void {
     applyTaskSnapshot(message.snapshot, store.getState().pipelines, store.dispatch);
 }
-

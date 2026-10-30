@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from freemocap.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.data_tensors.channel_values import ChannelValues
 
 from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 

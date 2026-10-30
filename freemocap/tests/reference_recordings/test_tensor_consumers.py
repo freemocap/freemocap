@@ -14,13 +14,16 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
-from freemocap.core.data_tensors.data_tensor import ScientificProvenance
-from freemocap.core.data_tensors.layout_definitions import SourceIdentity
-from freemocap.core.data_tensors.sample_timeline import SampleTimeline
-from freemocap.core.data_tensors.recording_dataset import DefinitionDocument, RecordingDataset
+from skellyforge.core.data_tensors.data_tensor import ScientificProvenance
+from skellyforge.core.data_tensors.layout_definitions import SourceIdentity
+from skellyforge.core.data_tensors.sample_timing import SampleTiming
+from skellyforge.core.data_tensors.recording_dataset import DefinitionDocument, RecordingDataset
 from freemocap.core.recording.exports.arrays import available_channels, ordered_arrays
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
+from freemocap.core.recording.playback_queries import playback_manifest
 from freemocap.tests.reference_paths import prepared_root
 from freemocap.tools.datasets.catalog import TEST_DATA
 from freemocap.tools.datasets.preparation import file_digest, validate_parquet
@@ -44,6 +47,28 @@ class TensorConsumerTests(unittest.TestCase):
     def tearDownClass(cls):
         if file_digest(cls.structure.data_parquet_path) != cls.original_digest:
             raise AssertionError("Tensor consumer changed the reference Parquet")
+
+    def test_playback_manifest_preserves_every_saved_native_clock(self):
+        manifest = playback_manifest(self.structure.data_parquet_path)
+        # Independent projected Arrow read, without the manifest's selection/grouping helper.
+        table = pq.read_table(self.structure.data_parquet_path, columns=[
+            "run_id", "sensor_group", "source", "channel", "component", "frame_number", "timestamp_s",
+        ])
+        clocks = table.filter(pc.and_(pc.equal(table["channel"], "TIMESTAMPS"),
+                                     pc.equal(table["component"], "timestamp_s")))
+        checked = 0
+        for run in manifest.runs:
+            for timeline in run.timelines:
+                selected = clocks.filter(pc.and_(pc.equal(clocks["run_id"], run.run_id), pc.and_(
+                    pc.equal(clocks["sensor_group"], timeline.sensor_group),
+                    pc.equal(clocks["source"], timeline.source),
+                )))
+                frames, first = np.unique(selected["frame_number"].to_numpy(), return_index=True)
+                np.testing.assert_array_equal(timeline.frame_numbers, frames)
+                np.testing.assert_array_equal(timeline.timestamps_s, selected["timestamp_s"].to_numpy()[first])
+                self.assertEqual(len(frames), 222)
+                checked += 1
+        self.assertGreaterEqual(checked, 3)
 
     def test_saved_channels_bind_values_presence_identities_and_times_without_copying(self):
         checked = set()
@@ -69,19 +94,19 @@ class TensorConsumerTests(unittest.TestCase):
                     if context.static:
                         self.assertEqual(len(tensor.tensor_layout.axes), 2)
                     else:
-                        timeline = SampleTimeline(timeline_id=f"{context.source}:{context.channel}",
+                        timeline = SampleTiming(timeline_id=f"{context.source}:{context.channel}",
                             clock_id=f"{context.sensor_group}:recording_relative",
                             source_identity=SourceIdentity(source_id=context.source, sensor_group=context.sensor_group),
                             sample_ids=arrays.frames, timestamps_s=arrays.timestamps)
-                        series = arrays.to_time_series(sample_timeline=timeline, scientific_provenance=provenance)
-                        self.assertIs(series.sample_timeline, timeline)
+                        series = arrays.to_time_series(sample_timing=timeline, scientific_provenance=provenance)
+                        self.assertIs(series.sample_timing, timeline)
                         self.assertEqual(timeline.sample_count, 222)
                         np.testing.assert_array_equal(series.data_tensor.data_values, arrays.values)
-                        shifted = SampleTimeline(timeline_id=timeline.timeline_id, clock_id=timeline.clock_id,
+                        shifted = SampleTiming(timeline_id=timeline.timeline_id, clock_id=timeline.clock_id,
                             source_identity=timeline.source_identity, sample_ids=arrays.frames,
                             timestamps_s=arrays.timestamps + 0.01)
                         with self.assertRaisesRegex(ValueError, "timestamps"):
-                            arrays.to_time_series(sample_timeline=shifted, scientific_provenance=provenance)
+                            arrays.to_time_series(sample_timing=shifted, scientific_provenance=provenance)
                     checked.add(context.channel)
         self.assertEqual(checked, required)
 
@@ -93,17 +118,17 @@ class TensorConsumerTests(unittest.TestCase):
             with patch("freemocap.core.recording.exports.arrays.MAX_RESIDENT_ARRAY_BYTES", 0):
                 with ordered_arrays(view, run_id, item, scratch=Path(temporary)) as arrays:
                     self.assertIsInstance(arrays.values, np.memmap)
-                    timeline = SampleTimeline(timeline_id="landmark_samples", clock_id="recording_clock",
+                    timeline = SampleTiming(timeline_id="landmark_samples", clock_id="recording_clock",
                         source_identity=SourceIdentity(source_id=arrays.context.source),
                         sample_ids=arrays.frames, timestamps_s=arrays.timestamps)
-                    borrowed = arrays.to_time_series(sample_timeline=timeline,
+                    borrowed = arrays.to_time_series(sample_timing=timeline,
                         scientific_provenance=ScientificProvenance(meaning="model_landmarks", operation_id="parquet_read"))
                     published = borrowed.immutable_copy()
                     expected_frame = arrays.values[7:8].copy()
         selected = published.frame_view(7)
         np.testing.assert_array_equal(selected.data_tensor.data_values, expected_frame)
         self.assertTrue(np.shares_memory(selected.data_tensor.data_values, published.data_tensor.data_values))
-        self.assertEqual(selected.sample_timeline.sample_ids.tolist(), [7])
+        self.assertEqual(selected.sample_timing.sample_ids.tolist(), [7])
         with self.assertRaises(ValueError):
             selected.data_tensor.data_values.flags.writeable = True
 
@@ -132,11 +157,11 @@ class TensorConsumerTests(unittest.TestCase):
                     # Different camera/source streams retain separate timing identities.
                     timing_key = (context.sensor_group, context.source, context.reference_frame)
                     if timing_key not in timelines:
-                        timelines[timing_key] = SampleTimeline(timeline_id=json.dumps(timing_key),
+                        timelines[timing_key] = SampleTiming(timeline_id=json.dumps(timing_key),
                             clock_id=f"{context.sensor_group}:recording_relative",
                             source_identity=SourceIdentity(source_id=context.source, sensor_group=context.sensor_group),
                             sample_ids=arrays.frames, timestamps_s=arrays.timestamps)
-                    series_items.append(arrays.to_time_series(sample_timeline=timelines[timing_key],
+                    series_items.append(arrays.to_time_series(sample_timing=timelines[timing_key],
                         scientific_provenance=provenance).immutable_copy())
             dataset = RecordingDataset(recording_id=self.recording.name, run_id=run_id,
                 time_series=tuple(series_items), static_tensors=tuple(static_items), definition_documents=definitions)
@@ -147,7 +172,7 @@ class TensorConsumerTests(unittest.TestCase):
         for actual, original in zip(dataset.time_series, series_items, strict=True):
             self.assertIs(actual, original)
             self.assertEqual(actual.sample_count, 222)
-            self.assertIs(actual.sample_timeline, timelines[(actual.data_tensor.tensor_layout.source_identity.sensor_group,
+            self.assertIs(actual.sample_timing, timelines[(actual.data_tensor.tensor_layout.source_identity.sensor_group,
                                                            actual.data_tensor.tensor_layout.source_identity.source_id,
                                                            actual.data_tensor.tensor_layout.reference_id)])
         for actual, original in zip(dataset.static_tensors, static_items, strict=True):

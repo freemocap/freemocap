@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useThree } from "@react-three/fiber";
 import { InstancedMesh, Raycaster, Vector2 } from "three";
 import { useViewportState } from "../scene/ViewportStateContext";
-import type { InspectionKind } from "../helpers/viewport3d-types";
+import { sameInspectionTarget, type InspectionTarget } from "../helpers/viewport3d-types";
 import { getPickingEntries } from "./PickingRegistry";
 
 /** A press that travels further than this before release is a drag, not a click. */
@@ -22,13 +22,13 @@ export function ViewportPicker() {
 
     const raycaster = useMemo(() => new Raycaster(), []);
     const pointer = useMemo(() => new Vector2(), []);
-    const lastHoverRef = useRef<{ kind: InspectionKind; name: string } | null>(null);
+    const lastHoverRef = useRef<InspectionTarget | null>(null);
     const pressRef = useRef<{ x: number; y: number } | null>(null);
 
     useEffect(() => {
         const canvas = gl.domElement;
 
-        const pick = (clientX: number, clientY: number): { kind: InspectionKind; name: string } | null => {
+        const pick = (clientX: number, clientY: number): InspectionTarget | null => {
             if (!size.width || !size.height) return null;
             pointer.x = (clientX / size.width) * 2 - 1;
             pointer.y = -(clientY / size.height) * 2 + 1;
@@ -51,8 +51,8 @@ export function ViewportPicker() {
             for (const hit of hits) {
                 const entry = entries.get(hit.object as InstancedMesh);
                 if (!entry) continue;
-                const name = entry.instanceIdToName.get(hit.instanceId ?? -1);
-                if (name) return { kind: entry.kind, name };
+                const target = entry.instanceTargets.get(hit.instanceId ?? -1);
+                if (target) return target;
             }
             return null;
         };
@@ -61,7 +61,7 @@ export function ViewportPicker() {
             const { clientX, clientY } = e as unknown as { clientX: number; clientY: number };
             const t = pick(clientX, clientY);
             if (t) {
-                if (!lastHoverRef.current || lastHoverRef.current.kind !== t.kind || lastHoverRef.current.name !== t.name) {
+                if (!sameInspectionTarget(lastHoverRef.current, t)) {
                     lastHoverRef.current = t;
                     setHovered(t);
                 }

@@ -24,6 +24,8 @@ import { KeypointsSourceProvider } from "./KeypointsSourceContext";
 import { ViewportStateProvider, useViewportState } from "./scene/ViewportStateContext";
 import { ThreeJsScene } from "./ThreeJsScene";
 import { fitCameraToPoints } from "./scene/SceneCamera";
+import {ViewportFrameReceiver} from './viewport-frame-transfer';
+import {referencedFrameBuffers} from './viewport-frame-codec';
 
 console.log("[viewport3d worker] module loaded");
 
@@ -155,7 +157,18 @@ async function resizeRoot(width: number, height: number, top: number, left: numb
 // Message router (single handler — no dual-listener kludge)
 // ---------------------------------------------------------------------------
 
+const frameReceiver = new ViewportFrameReceiver(
+    (message, transfer) => (self as unknown as Worker).postMessage(message, transfer ?? []),
+    (stream, frame) => workerDataStore.dispatch(stream, frame),
+    () => referencedFrameBuffers(workerDataStore.getLatestKeypoints(), workerDataStore.getLatestModelFrames()),
+    () => workerDataStore.dispatch('frameReset', null),
+);
+// Expiry can release a held live frame even when no new messages arrive.
+workerDataStore.subscribeToKeypoints(() => frameReceiver.scheduleRelease());
+workerDataStore.subscribeToModelFrames(() => frameReceiver.scheduleRelease());
+
 self.addEventListener("message", (event: MessageEvent) => {
+    if (frameReceiver.receive(event.data)) return;
     const msg = event.data as { type?: string; data?: unknown; payload?: unknown };
     const type = msg?.type;
     if (!type) return;
@@ -177,6 +190,7 @@ self.addEventListener("message", (event: MessageEvent) => {
             break;
         }
         case "teardown": {
+            frameReceiver.reset();
             workerDataStore.dispatch("presentationReset", null);
             if (root) {
                 console.log("[viewport3d worker] tearing down root");

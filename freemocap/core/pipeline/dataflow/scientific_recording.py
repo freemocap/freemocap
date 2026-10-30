@@ -35,7 +35,8 @@ from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import ReprojectionDiagnostics, NamedReprojectionDiagnostics
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
-from freemocap.core.tracking.observation_buffer import ObservationBuffer
+from freemocap.core.tracking.observation_buffer import ObservationBuffer, recording_observation_buffers
+from freemocap.core.tracking.observation_series import ObservationFrame, ObservationFrames, RecordingObservationSeries
 from freemocap.core.tracking.observation_arrays import observation_point_names
 from freemocap.core.types.channel_kind import ChannelKind
 
@@ -59,11 +60,41 @@ class ObservationCollection:
         self.frame_count = sources.camera_sources[0].video_metadata.frame_count
         self.join = CameraFrameJoin(execution=execution_id, sensor_group=sources.sensor_group,
                                     cameras=self.cameras, frames=range(self.frame_count))
-        self.frames: list[dict[str, Observation]] = [{} for _ in range(self.frame_count)]
+        self.frames = ObservationFrames({source.camera_id: RecordingObservationSeries(
+            camera_id=source.camera_id, image_size=(source.video_metadata.height, source.video_metadata.width),
+            frame_numbers=tuple(range(self.frame_count)), timestamps_s=source.camera_timing.timestamps_s)
+            for source in sources.camera_sources})
         self.outcomes: list[VideoSourceFinished] = []
         self._sources = {source.camera_id: source for source in sources.camera_sources}
 
+    @classmethod
+    def from_saved(cls, *, sources: RecordingVideoSources, frames: ObservationFrames):
+        cameras = tuple(source.camera_id for source in sources.camera_sources)
+        declared_frames = (sources.saved_frame_numbers if sources.saved_frame_numbers is not None
+                           else tuple(range(sources.camera_sources[0].video_metadata.frame_count)))
+        if declared_frames != frames.frame_numbers:
+            raise ValueError('Saved observation frame IDs differ from source declarations')
+        if set(cameras) != set(frames.camera_series):
+            raise ValueError('Saved observation cameras differ from source declarations')
+        for source in sources.camera_sources:
+            series = frames.camera_series[source.camera_id]
+            if (series.camera_id != source.camera_id or series.channel_arrays.context.sensor_group != sources.sensor_group
+                    or series.image_size != (source.video_metadata.height, source.video_metadata.width)
+                    or tuple(series.channel_arrays.timestamps) != source.camera_timing.timestamps_s):
+                raise ValueError('Saved observation identity or timing differs from source declarations')
+        instance = object.__new__(cls)
+        instance.sources, instance.cameras = sources, cameras
+        instance.frame_count, instance.frames = len(frames), frames
+        instance.join = None
+        instance._sources = {source.camera_id: source for source in sources.camera_sources}
+        instance.outcomes = [VideoSourceFinished(execution_id='saved-observations', sensor_group=sources.sensor_group,
+            camera_id=camera, outcome=ProducerOutcome.SUCCEEDED, loaded_frames=len(frames), error_message=None)
+            for camera in cameras]
+        return instance
+
     def accept(self, event: TrackedCameraFrame | VideoSourceFinished) -> int | None:
+        if self.join is None:
+            raise ValueError("Saved observation collections cannot accept tracking events")
         if isinstance(event, VideoSourceFinished):
             if event.outcome == ProducerOutcome.SUCCEEDED and event.loaded_frames != self.frame_count:
                 raise ValueError("Successful source must cover the full recording")
@@ -81,21 +112,24 @@ class ObservationCollection:
         if event.timestamp_s != source.camera_timing.timestamps_s[key.frame]:
             raise ValueError("Observation timestamp differs from the declared camera timeline")
         observation_point_names(event.observation)  # Validates identity without assembling numerical arrays.
+        self.join.validate_receive(key)
+        self.frames.camera_series[key.camera].store(key.frame, event.observation)
         ready = self.join.receive(key)
-        self.frames[key.frame][key.camera] = deepcopy(event.observation)
         return key.frame if ready is not None else None
 
     def require_complete(self) -> None:
-        if not self.join.complete:
+        if self.join is None:
+            if not isinstance(self.frames, ObservationFrames) or len(self.frames) != self.frame_count:
+                raise ValueError('Saved observations must retain complete declared coverage')
+            return
+        if not self.join.complete or not all(series.delivered.all() for series in self.frames.camera_series.values()):
             raise ValueError("Scientific save requires complete successful coverage from every declared camera")
+        self.frames.finalize()
 
 
-def observation_buffers(frames: list[dict[str, Observation]], cameras: tuple[str, ...]) -> dict[str, ObservationBuffer]:
-    buffers = {camera: ObservationBuffer() for camera in cameras}
-    for frame in frames:
-        for camera in cameras:
-            buffers[camera].add_observation(frame[camera])
-    return buffers
+def observation_buffers(frames: list[dict[str, Observation | ObservationFrame]] | ObservationFrames,
+                        cameras: tuple[str, ...]) -> dict[str, ObservationBuffer]:
+    return recording_observation_buffers(frames, cameras)
 
 
 class FrameTriangulation:
@@ -219,6 +253,7 @@ class CompletedScientificRecording:
             reprojection=NamedReprojectionDiagnostics(source_ids=result.sources,
                 point_names=result.diagnostic_point_names, values=result.reconstruction.diagnostics),
             provenance_context=ProvenanceContext.create(),
+            reuse_observations=self.observations.join is None,
         )
         return publish_posthoc_observations(request)
 

@@ -1,8 +1,7 @@
 """Exercise generated tutorials and the notebook through scientific publication.
 
-Run with unittest; notebook execution additionally needs pandas and plotly in the test environment.
+Run with unittest; notebook execution uses the core Polars and Plotly dependencies.
 """
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -24,6 +23,8 @@ from freemocap.core.recording.exports.requests import ScientificExportRequest
 from freemocap.core.recording.exports.wide_csv import export_scientific
 from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
+from skellyforge.core.data_tensors import read_numpy_dataset
+from freemocap.tests.numpy_export_assertions import display_projection
 
 
 @contextmanager
@@ -43,7 +44,7 @@ class AnimationBoundsTests(unittest.TestCase):
         import ast
         from freemocap.core.recording.exports.notebook import ANIMATION
 
-        # Execute the actual generated scene setup without optional Plotly/Pandas.
+        # Execute the generated scene setup independently of plotting imports.
         body = next(node for node in ast.parse(ANIMATION).body if isinstance(node, ast.If)).orelse
         start = next(i for i, node in enumerate(body) if isinstance(node, ast.Assign)
                      and any(isinstance(t, ast.Name) and t.id == 'scene' for t in node.targets))
@@ -197,16 +198,45 @@ class ExplorerExportTests(unittest.TestCase):
         result = self.export(('npy', 'npz', 'wide_csv'))
         root = result.manifest_path.parent
         for folder in (root, root / 'npy'):
-            code = re.search(r'```python\n(.*?)```', (folder / 'README.md').read_text(), re.S).group(1)
+            codes = re.findall(r'```python\n(.*?)```', (folder / 'README.md').read_text(), re.S)
             with in_directory(folder):
                 scope = {}
-                exec(compile(code, 'README.md', 'exec'), scope)
-                self.assertEqual(scope['values'].shape, (2, 1, 3))
-                np.testing.assert_array_equal(scope['frames'], [10, 42])
+                for code in codes:
+                    exec(compile(code, 'README.md', 'exec'), scope)
+                    self.assertEqual(scope['values'].shape, (2, 1, 3))
+                    np.testing.assert_array_equal(scope['frames'], [10, 42])
         self.assertTrue((root / 'csv' / 'README.md').is_file())
+        import matplotlib
+        matplotlib.use('Agg')
+        from unittest.mock import patch
+        csv_code = re.search(r'```python\n(.*?)```', (root / 'csv' / 'README.md').read_text(), re.S).group(1)
+        with in_directory(root / 'csv'), patch('matplotlib.pyplot.show'):
+            scope = {}
+            exec(compile(csv_code, 'csv/README.md', 'exec'), scope)
+            self.assertEqual(scope['table'].height, 2)
+            self.assertEqual(scope['table'].width, 2)
 
-    @unittest.skipUnless(importlib.util.find_spec('pandas') and importlib.util.find_spec('plotly'),
-                         'Notebook execution requires pandas and plotly')
+    def test_generated_guide_refresh_preserves_annotations_and_kept_exports(self):
+        import hashlib
+        from freemocap.core.recording.exports.guides import NPY, PREVIOUS_GUIDE_HASHES
+        previous = (Path(__file__).parent / 'fixtures' / 'previous_numpy_guide.md').read_bytes()
+        result = self.export(('npy',))
+        guide_path = result.manifest_path.parent / 'npy/README.md'
+        for contents in (previous, previous.replace(b'\n', b'\r\n')):
+            self.assertIn(hashlib.sha256(contents).hexdigest(), PREVIOUS_GUIDE_HASHES['npy/README.md'])
+            guide_path.write_bytes(contents)
+            self.export(('npy',))
+            self.assertEqual(guide_path.read_text(encoding='utf-8'), NPY)
+        annotated = previous + b'\nMy experimental notes\n'
+        guide_path.write_bytes(annotated)
+        self.export(('npy',))
+        self.assertEqual(guide_path.read_bytes(), annotated)
+        kept_guide = self.structure.exports_dir / 'run-0/npy/README.md'
+        kept_guide.parent.mkdir(parents=True)
+        kept_guide.write_bytes(previous)
+        self.export(('npy',), keep=True, run_id=0)
+        self.assertEqual(kept_guide.read_bytes(), previous)
+
     def test_notebook_matches_exported_arrays_and_rejects_changed_source(self):
         result = self.export(('notebook', 'npz'))
         notebook_path = next(p for p in result.files if p.suffix == '.ipynb')
@@ -219,19 +249,26 @@ class ExplorerExportTests(unittest.TestCase):
             patch('plotly.graph_objects.Figure.show').start()
             for code in codes[:3]:
                 exec(code, scope)
-            with np.load(next(p for p in result.files if p.suffix == '.npz'), allow_pickle=False) as archive:
-                for index, channel in enumerate(scope['CHANNELS']):
-                    exec(codes[3].replace('channel_index = 0', f'channel_index = {index}'), scope)
-                    exec(codes[4], scope)
-                    np.testing.assert_array_equal(scope['values'], archive[channel['numpy_key'] + '.values'])
-                    for code in codes[5:]:
-                        exec(code, scope)
-                    coordinates = [axis for axis in ('x', 'y', 'z') if axis in channel['components']]
-                    self.assertEqual(len(scope['fig'].data), len(coordinates))
-                    np.testing.assert_array_equal(scope['fig'].data[0].x, [0, .862])
-                    if 'z' in coordinates:
-                        self.assertEqual([f.name for f in scope['animation'].frames], ['10', '42'])
-                        self.assertEqual(scope['animation'].layout.scene.xaxis.title.text, 'X (mm)')
+            dataset = read_numpy_dataset(next(p for p in result.files if p.suffix == '.npz'))
+            self.assertEqual({channel['context']['channel'] for channel in scope['CHANNELS']},
+                             {'LANDMARKS_3D', 'OVERLAY_2D', 'SEGMENT_POSES'})
+            self.assertEqual(len(dataset.time_series), 4)
+            for index, channel in enumerate(scope['CHANNELS']):
+                exec(codes[3].replace('channel_index = 0', f'channel_index = {index}'), scope)
+                exec(codes[4], scope)
+                projected = display_projection(dataset, channel['context'])
+                np.testing.assert_array_equal(scope['values'], projected.values)
+                np.testing.assert_array_equal(scope['present'], projected.present)
+                np.testing.assert_array_equal(scope['frame_numbers'], projected.frames)
+                np.testing.assert_array_equal(scope['times'].to_numpy(), projected.timestamps)
+                for code in codes[5:]:
+                    exec(code, scope)
+                coordinates = [axis for axis in ('x', 'y', 'z') if axis in channel['components']]
+                self.assertEqual(len(scope['fig'].data), len(coordinates))
+                np.testing.assert_array_equal(scope['fig'].data[0].x, [0, .862])
+                if 'z' in coordinates:
+                    self.assertEqual([f.name for f in scope['animation'].frames], ['10', '42'])
+                    self.assertEqual(scope['animation'].layout.scene.xaxis.title.text, 'X (mm)')
             self.structure.data_parquet_path.write_bytes(b'changed source')
             with self.assertRaisesRegex(ValueError, 'recording changed'):
                 exec(codes[2], scope)

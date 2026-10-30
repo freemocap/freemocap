@@ -1,168 +1,71 @@
 import { useEffect, useMemo, useRef } from "react";
-import {
-    BufferAttribute,
-    BufferGeometry,
-    LineBasicMaterial,
-    LineSegments,
-    Points,
-    PointsMaterial,
-} from "three";
+import { BufferAttribute, BufferGeometry, LineBasicMaterial, PointsMaterial } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import type { Point3d } from "../helpers/viewport3d-types";
-import type { KeypointsFrame } from "../KeypointsSourceContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
-import {FACE_CONTOUR_GROUPS} from "@/components/viewport3d/helpers/face-contours";
-import { useKeypointsSource } from "../KeypointsSourceContext";
+import { FACE_CONTOUR_GROUPS } from "../helpers/face-contours";
+import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
+import { finitePoint, sameNames } from "./prepared-models";
 
-const MAX_FACE_POINTS = 512;
-const DOT_SIZE = 2; // PointsMaterial sizeAttenuation=false → pixels
-
-/**
- * Renders face mesh as small dots (THREE.Points) + contour line segments.
- * THREE.Points avoids per-instance matrix work of InstancedMesh — just writes
- * x/y/z directly into a Float32Array, which is a 10-20x speedup for 468 points.
- */
+/** Face points and contours read the source array directly through prepared row indices. */
 export function FaceRenderer() {
-    const { subscribeToKeypoints } = useKeypointsSource();
-    const { statsRef } = useViewportState();
-    const { invalidate } = useThree();
-
-    const dotsRef = useRef<Points>(null);
-    const linesRef = useRef<LineSegments>(null);
-
-    const pointsRef = useRef<Map<string, Point3d>>(new Map());
-    const nameToIdx = useRef<Map<string, number>>(new Map());
-    const nextIdx = useRef(0);
+    const {subscribeToKeypoints} = useKeypointsSource();
+    const {statsRef} = useViewportState();
+    const {invalidate} = useThree();
+    const frameRef = useRef<KeypointsFrame | null>(null);
+    const namesRef = useRef<readonly string[] | undefined>(undefined);
+    const rowsRef = useRef(new Int32Array());
+    const contoursRef = useRef(new Int32Array());
     const dirtyRef = useRef(false);
-    // MediaPipe-style face contour data uses face.{group}_{index} naming
-    // (e.g. face.lips_61). RTMPose uses face_0000 which doesn't match.
-    // Skip the contour line loop unless we've seen face.* data.
-    const hasContourDataRef = useRef(false);
-
     const dotGeo = useMemo(() => {
-        const g = new BufferGeometry();
-        g.setAttribute("position", new BufferAttribute(new Float32Array(MAX_FACE_POINTS * 3).fill(1e5), 3));
-        return g;
+        const g = new BufferGeometry(); g.setAttribute("position", new BufferAttribute(new Float32Array(512 * 3).fill(1e5), 3)); return g;
     }, []);
-
-    const dotMat = useMemo(() => new PointsMaterial({
-        color: COLORS.face,
-        size: DOT_SIZE,
-        sizeAttenuation: false,
-    }), []);
-
-    const lineMat = useMemo(() => new LineBasicMaterial({
-        color: COLORS.face,
-        transparent: true,
-        opacity: 0.7,
-    }), []);
-
     const lineGeo = useMemo(() => {
         const g = new BufferGeometry();
-        const n = FACE_CONTOUR_GROUPS.reduce((acc, g) => acc + g.connections.length, 0);
-        const pos = new Float32Array(n * 6).fill(1e5);
-        g.setAttribute("position", new BufferAttribute(pos, 3));
-        return g;
+        const count = FACE_CONTOUR_GROUPS.reduce((sum, group) => sum + group.connections.length, 0);
+        g.setAttribute("position", new BufferAttribute(new Float32Array(count * 6).fill(1e5), 3)); return g;
     }, []);
-
-    useEffect(() => () => {
-        dotGeo.dispose();
-        dotMat.dispose();
-        lineMat.dispose();
-        lineGeo.dispose();
-    }, [dotGeo, dotMat, lineMat, lineGeo]);
-
-    useEffect(() => {
-        return subscribeToKeypoints((frame: KeypointsFrame) => {
-            const face = pointsRef.current;
-            face.clear();
-            const { pointNames, interleaved } = frame;
-            let hasContourNames = false;
-            for (let i = 0; i < pointNames.length; i++) {
-                // Match both face_0000 (RTMPose) and face.lips_61 (MediaPipe)
-                // — consistent with classifyPointName() in skeleton-config.ts
-                if (!/^face[._]/.test(pointNames[i])) continue;
-                // The keypoints frame is 3-interleaved xyz (frame-resolution
-                // re-packs KEYPOINTS_3D — no 4th column here).
-                const off = i * 3;
-                const x = interleaved[off];
-                const y = interleaved[off + 1];
-                const z = interleaved[off + 2];
-                if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
-                face.set(pointNames[i], { x, y, z });
-                // MediaPipe-style face.{group}_{index} → contour line data present
-                if (pointNames[i].startsWith("face.")) hasContourNames = true;
-            }
-            if (hasContourNames) hasContourDataRef.current = true;
-            dirtyRef.current = true;
-
-            for (const name of face.keys()) {
-                if (!nameToIdx.current.has(name) && nextIdx.current < MAX_FACE_POINTS) {
-                    nameToIdx.current.set(name, nextIdx.current++);
-                }
-            }
-
-            invalidate();
-        });
-    }, [subscribeToKeypoints, invalidate]);
-
+    const dotMat = useMemo(() => new PointsMaterial({color: COLORS.face, size: 2, sizeAttenuation: false}), []);
+    const lineMat = useMemo(() => new LineBasicMaterial({color: COLORS.face, transparent: true, opacity: 0.7}), []);
+    useEffect(() => () => {dotGeo.dispose(); lineGeo.dispose(); dotMat.dispose(); lineMat.dispose();}, [dotGeo, lineGeo, dotMat, lineMat]);
+    useEffect(() => subscribeToKeypoints(frame => {frameRef.current = frame; dirtyRef.current = true; invalidate();}), [subscribeToKeypoints, invalidate]);
     useFrame(() => {
-        if (!dirtyRef.current) return;
-        const t0 = performance.now();
-
-        const pts = pointsRef.current;
-        const dotPositions = dotGeo.attributes.position.array as Float32Array;
-        let count = 0;
-
-        for (const [name, idx] of nameToIdx.current) {
-            const pt = pts.get(name);
-            const base = idx * 3;
-            if (pt) {
-                dotPositions[base]     = pt.x;
-                dotPositions[base + 1] = pt.y;
-                dotPositions[base + 2] = pt.z;
-                count++;
-            } else {
-                dotPositions[base] = dotPositions[base + 1] = dotPositions[base + 2] = 1e5;
+        const frame = frameRef.current;
+        if (!frame || !dirtyRef.current) return;
+        if (!sameNames(namesRef.current, frame.pointNames)) {
+            namesRef.current = frame.pointNames;
+            const indices = new Map(frame.pointNames.map((name, index) => [name, index]));
+            rowsRef.current = Int32Array.from(frame.pointNames.flatMap((name, index) => /^face[._]/.test(name) ? [index] : []));
+            contoursRef.current = Int32Array.from(FACE_CONTOUR_GROUPS.flatMap(group => group.connections.flatMap(([a, b]) => {
+                const start = indices.get(`${group.prefix}_${a}`), end = indices.get(`${group.prefix}_${b}`);
+                return start !== undefined && end !== undefined ? [start, end] : [];
+            })));
+            lineGeo.setDrawRange(0, contoursRef.current.length);
+            if (rowsRef.current.length > dotGeo.attributes.position.count) {
+                dotGeo.dispose();
+                dotGeo.setAttribute("position", new BufferAttribute(new Float32Array(rowsRef.current.length * 3), 3));
             }
+            dotGeo.setDrawRange(0, rowsRef.current.length);
+        }
+        const data = frame.interleaved, dots = dotGeo.attributes.position.array as Float32Array;
+        let count = 0;
+        for (let i = 0; i < rowsRef.current.length; i++) {
+            const offset = rowsRef.current[i] * 3, base = i * 3;
+            if (finitePoint(data, offset)) {
+                dots[base] = data[offset]; dots[base + 1] = data[offset + 1]; dots[base + 2] = data[offset + 2]; count++;
+            } else dots.fill(1e5, base, base + 3);
+        }
+        const lines = lineGeo.attributes.position.array as Float32Array;
+        for (let i = 0; i < contoursRef.current.length / 2; i++) {
+            const a = contoursRef.current[i * 2] * 3, b = contoursRef.current[i * 2 + 1] * 3, base = i * 6;
+            if (finitePoint(data, a) && finitePoint(data, b)) {
+                lines[base] = data[a]; lines[base + 1] = data[a + 1]; lines[base + 2] = data[a + 2];
+                lines[base + 3] = data[b]; lines[base + 4] = data[b + 1]; lines[base + 5] = data[b + 2];
+            } else lines.fill(1e5, base, base + 6);
         }
         dotGeo.attributes.position.needsUpdate = true;
-        dotGeo.setDrawRange(0, nextIdx.current);
-
-        // Update line segments — only when MediaPipe-style face contour data
-        // (face.lips_61 etc.) exists. RTMPose face_0000 names don't match
-        // the contour group prefixes, so this is dead work otherwise.
-        if (hasContourDataRef.current) {
-            const linePositions = lineGeo.attributes.position.array as Float32Array;
-            let i = 0;
-            for (const group of FACE_CONTOUR_GROUPS) {
-                for (const [ai, bi] of group.connections) {
-                    const a = pts.get(`${group.prefix}_${ai}`);
-                    const b = pts.get(`${group.prefix}_${bi}`);
-                    const base = i * 6;
-                    if (a && b) {
-                        linePositions[base] = a.x; linePositions[base+1] = a.y; linePositions[base+2] = a.z;
-                        linePositions[base+3] = b.x; linePositions[base+4] = b.y; linePositions[base+5] = b.z;
-                    } else {
-                        for (let j = 0; j < 6; j++) linePositions[base + j] = 1e5;
-                    }
-                    i++;
-                }
-            }
-            lineGeo.attributes.position.needsUpdate = true;
-        }
-
-        dirtyRef.current = false;
-        statsRef.current.face = count;
-        const elapsed = performance.now() - t0;
-        if (elapsed > 8) console.warn(`FaceRenderer useFrame: ${elapsed.toFixed(1)}ms`);
+        if (contoursRef.current.length) lineGeo.attributes.position.needsUpdate = true;
+        dirtyRef.current = false; statsRef.current.face = count;
     });
-
-    return (
-        <>
-            <points ref={dotsRef} geometry={dotGeo} material={dotMat} frustumCulled={false} />
-            <lineSegments ref={linesRef} geometry={lineGeo} material={lineMat} frustumCulled={false} />
-        </>
-    );
+    return <><points geometry={dotGeo} material={dotMat} frustumCulled={false}/><lineSegments geometry={lineGeo} material={lineMat} frustumCulled={false}/></>;
 }

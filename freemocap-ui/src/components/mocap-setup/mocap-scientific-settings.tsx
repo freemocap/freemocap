@@ -37,14 +37,11 @@ export default function MocapScientificSettings({path, processing, sourceRunId}:
         {key:'LANDMARKS_3D', label:'3D landmarks'},
         {key:'KEYPOINTS_3D', label:'3D keypoints - filtered'},
         {key:'RAW_KEYPOINTS_3D', label:'3D keypoints - raw triangulated'},
-        {key:'OVERLAY_2D', label:'2D keypoints - one file per camera'},
+        {key:'OVERLAY_2D', label:'2D keypoints - camera observations'},
         {key:'SEGMENT_POSES', label:'Rigid-body segments - positions and world quaternions'},
     ];
     const unavailable = data.some(kind => !available.some(a => a.selection.channel === kind));
     const validSelection = data.length > 0 && !unavailable;
-    const selected = available.filter(a => data.includes(a.selection.channel as ScientificExportData));
-    const minimumFiles = (formats.includes('notebook') ? 1 : 0) + (formats.includes('npz') ? 1 : 0) + (formats.includes('npy') ? selected.length + 2 : 0)
-        + (formats.includes('wide_csv') ? selected.reduce((n, c) => n + Math.ceil(c.names*c.components.length/1024), 0) : 0);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -114,10 +111,13 @@ export default function MocapScientificSettings({path, processing, sourceRunId}:
         <p className="settings-note">Choose the data to export, then its file formats. Export saved results without repeating processing.</p>
         <fieldset disabled={busy || processing}>
             <legend>Formats</legend>
-            {(['wide_csv', 'npy', 'npz', 'notebook'] as ScientificExportFormat[]).map(format => <label key={format}>
+            {(['wide_csv', 'npz', 'npy', 'notebook'] as ScientificExportFormat[]).map(format => <label key={format}>
                 <input type="checkbox" checked={formats.includes(format)} onChange={e => dispatch(scientificExportFormatsUpdated(
                     e.target.checked ? [...formats, format] : formats.filter(f => f !== format)))}/>
-                {{wide_csv:'Wide CSV', npy:'NumPy NPY', npz:'NumPy NPZ package', notebook:'Jupyter Notebook Explorer'}[format]}</label>)}
+                {{wide_csv:'Wide CSV', npy:'NumPy NPY arrays (optional)', npz:'NumPy NPZ archive', notebook:'Jupyter Notebook Explorer'}[format]}</label>)}
+            <p className="settings-note">NPZ packages the dataset in one archive. NPY is an optional secondary output:
+                multiple array files and dataset.json in npy/, for direct NumPy access or memory mapping.
+                Load either format with SkellyForge.</p>
             <label><input type="checkbox" checked={config.scientificExportAfterProcessing ?? false}
                 onChange={e => dispatch(scientificExportAfterProcessingUpdated(e.target.checked))}/> Export selected formats after processing</label>
             <p className="settings-note">Export saved Run {run}, selected under Processing stages.
@@ -129,9 +129,11 @@ export default function MocapScientificSettings({path, processing, sourceRunId}:
             </div>
             {unavailable && selection && <p role="alert">Some selected data is unavailable in this run. Update the selection.</p>}
             {data.length === 0 && <p role="alert">Select at least one data type.</p>}
-            {formats.includes('notebook') && <p className="settings-note">Notebook Explorer reads the selected Parquet data with Pandas and Matplotlib in Jupyter or VS Code. Keep it with the recording; save your edited analysis under a new filename.</p>}
-            {selection && validSelection && formats.length > 0 && <p>At least {minimumFiles} data files and one compact export metadata file.
-                {formats.includes('npy') && ' NPY files go in npy/: each measurement file contains values; one shared .frames file contains frame numbers and one shared .timestamps file contains seconds; unavailable values are NaN. CSV files go in csv/.'}</p>}
+            {formats.includes('notebook') && <p className="settings-note">Notebook Explorer reads the selected Parquet data with Polars and plots it with Plotly in Jupyter or VS Code. Keep it with the recording; save your edited analysis under a new filename.</p>}
+            {formats.some(format => format === 'npy' || format === 'npz') && <p className="settings-note">
+                Each channel keeps its values, timestamps, names, units, and available quality information.
+                Fitted scales and lengths are stored without a time axis.</p>}
+            {formats.includes('wide_csv') && <p className="settings-note">Wide CSV files go in csv/.</p>}
             <button type="button" onClick={() => void save()} disabled={!selection || !validSelection || !formats.length}>Export saved result</button>
             <button type="button" onClick={() => setRefresh(r => r + 1)} disabled={!path}>Reload saved results</button>
         </fieldset>

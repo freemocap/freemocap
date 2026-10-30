@@ -31,7 +31,7 @@ from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from skellyforge.core.biomechanics.ground_reference import (
     GRAVITY_ACCELERATION,
     extrapolated_center_of_mass,

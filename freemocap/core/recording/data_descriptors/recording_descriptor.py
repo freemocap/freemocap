@@ -6,7 +6,7 @@ import math
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-from freemocap.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
+from skellyforge.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.types.channel_kind import ChannelKind

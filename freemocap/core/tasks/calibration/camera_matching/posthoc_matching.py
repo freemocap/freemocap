@@ -1,6 +1,8 @@
 """Resolve recorded observation sources onto unchanged calibration camera models."""
 
 from dataclasses import dataclass
+from freemocap.core.tracking.observation_series import ObservationFrames
+from freemocap.core.tracking.observation_arrays import ambiguous_instances
 
 import numpy as np
 from skellytracker.core.data_primitives.observation import Observation
@@ -27,7 +29,7 @@ def require_processing_assignment(*, result: CameraMatchingResult, config: Camer
 
 @dataclass(frozen=True, slots=True)
 class PosthocMatchingRequest:
-    frames: list[dict[str, Observation]]
+    frames: list[dict[str, Observation]] | ObservationFrames
     videos: dict[str, VideoMetadata]
     cameras: tuple[CameraModel, ...]
     config: CameraMatchingConfig
@@ -52,7 +54,7 @@ class PosthocMatchingRequest:
         pixels = sample_recorded_observations(layout=layout, frames=sampled, maximum_frames=max(2, sample_count))
         # A detector-local instance ordering cannot establish cross-view identity.
         for frame_index, frame in enumerate(sampled):
-            if any(len(stage.bounding_boxes) > 1 for observation in frame.values() for stage in observation.stages.values()):
+            if any(ambiguous_instances(observation) for observation in frame.values()):
                 pixels[:, frame_index] = np.nan
         return match_camera_geometry(request=CameraMatchingRequest(
             source_ids=source_ids, image_sizes=layout.image_sizes, cameras=self.cameras,

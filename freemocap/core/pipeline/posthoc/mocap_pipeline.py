@@ -91,26 +91,24 @@ def _run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
             return
         if request.config.start_stage != 'observations':
             from freemocap.core.pipeline.posthoc.saved_stage_processing import (
-                recording_structure, run_saved_numerical_stages, select_group,
+                recording_structure, run_saved_numerical_stages,
             )
             structure = recording_structure(str(request.recording.full_recording_path))
             if request.config.start_stage != 'triangulation':
                 run_saved_numerical_stages(structure=structure, config=request.config,
                     reporter=TaskProgressReporter(callback=request.report), cancelled=lambda: not request.ipc.should_continue)
             else:
-                from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
                 from freemocap.core.recording.result_processing.saved_observations import read_saved_observations
-                metadata = read_metadata(path=structure.data_parquet_path)
-                group = select_group(metadata.runs[request.config.base_run_id], request.config.sensor_group)
                 request.report(AggregatorPhase.SETTING_UP, 'Loading saved 2D tracking; skipping detection', 0.0)
-                saved = read_saved_observations(structure=structure, run_id=request.config.base_run_id, sensor_group=group)
+                saved = read_saved_observations(structure=structure, run_id=request.config.base_run_id, sensor_group=request.config.sensor_group)
+                group = saved.sensor_group
                 # Reused detections retain the detector and board that actually produced them.
                 current = request.config
                 config = saved.config.model_copy(update={name: getattr(current, name) for name in (
                     'start_stage', 'base_run_id', 'sensor_group', 'calibration_toml_path', 'camera_matching',
                     'triangulation_config', 'filter_config', 'body_alignment')})
                 config = config.model_copy(update={'sensor_group': group})
-                board = config.charuco_board if any('charuco' in obs.stages for obs in saved.frames[0].values()) else None
+                board = config.charuco_board if 'charuco' in saved.frames.stage_names else None
                 run_posthoc_mocap_task(frame_observations=saved.frames, recording_info=request.recording,
                     video_metadata=saved.videos, task_config=config, selected_board=board,
                     reporter=TaskProgressReporter(callback=request.report), cancelled=lambda: not request.ipc.should_continue,

@@ -363,6 +363,26 @@
  note = {Reviewed openExternal; OS handoff does not establish that the destination opened the folder.}
 }
 
+@misc{polarsParquetScan,
+  title = {Parquet - Polars user guide},
+  author = {{Polars contributors}},
+  url = {https://docs.pola.rs/user-guide/io/parquet/},
+  urldate = {2026-10-30},
+  review = {excerpt},
+  claim = {Lazy Parquet scans support predicate and projection pushdown before collecting selected data.},
+  note = {Reviewed read and scan guidance for the portable export notebook; performance remains workload dependent.}
+}
+
+@misc{polarsCsvScan,
+  title = {polars.scan_csv API reference},
+  author = {{Polars contributors}},
+  url = {https://docs.pola.rs/api/python/stable/reference/api/polars.scan_csv.html},
+  urldate = {2026-10-30},
+  review = {excerpt},
+  claim = {Lazy CSV scans support projected columns, schema overrides and explicit null tokens.},
+  note = {Reviewed parameter and lazy scan documentation for timestamp reduction and generated CSV examples.}
+}
+
 @misc{mdnPopoverAPI,
   title = {Popover API},
   author = {{MDN contributors}},

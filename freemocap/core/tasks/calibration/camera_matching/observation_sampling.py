@@ -1,7 +1,8 @@
 """Bounded matching samples built from explicitly associated observation points."""
 
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from freemocap.core.tracking.observation_series import ObservationFrame
 from dataclasses import dataclass
 
 import numpy as np
@@ -12,7 +13,7 @@ from freemocap.core.tracking.observation_arrays import (
 )
 
 
-def select_matching_point_names(*, frames: list[dict[str, Observation]], minimum_visibility: float) -> tuple[str, ...]:
+def select_matching_point_names(*, frames: Sequence[Mapping[str, Observation | ObservationFrame]], minimum_visibility: float) -> tuple[str, ...]:
     """Prefer confidently observed cross-view points within the matching budget."""
     names = collected_point_names(observation for frame in frames for observation in frame.values())
     scores = np.zeros(len(names), dtype=np.float64)
@@ -55,7 +56,7 @@ class MatchingSampleLayout:
         if len(self.image_sizes) != len(self.source_ids) or any(min(size) <= 0 for size in self.image_sizes):
             raise ValueError("Each matching source requires positive (width, height)")
 
-    def extract(self, *, observations: Mapping[str, Observation]) -> NDArray[np.float64]:
+    def extract(self, *, observations: Mapping[str, Observation | ObservationFrame]) -> NDArray[np.float64]:
         if set(observations) != set(self.source_ids):
             raise ValueError("Matching observation sources differ from sample layout")
         if len({observation.frame_number for observation in observations.values()}) != 1:
@@ -88,7 +89,7 @@ class MatchingSampleWindow:
         self._last_sample_time = float("-inf")
         self._last_seen_time = float("-inf")
 
-    def append(self, *, observations: Mapping[str, Observation], elapsed_seconds: float) -> bool:
+    def append(self, *, observations: Mapping[str, Observation | ObservationFrame], elapsed_seconds: float) -> bool:
         if not np.isfinite(elapsed_seconds) or elapsed_seconds < self._last_seen_time:
             raise ValueError("Matching sample time must be finite and monotonic")
         self._last_seen_time = elapsed_seconds
@@ -108,7 +109,7 @@ class MatchingSampleWindow:
 
 
 def sample_recorded_observations(
-    *, layout: MatchingSampleLayout, frames: list[dict[str, Observation]], maximum_frames: int,
+    *, layout: MatchingSampleLayout, frames: Sequence[Mapping[str, Observation | ObservationFrame]], maximum_frames: int,
 ) -> NDArray[np.float64]:
     """Evenly sample recorded observations without decoding images or rerunning inference."""
     if maximum_frames < 2:

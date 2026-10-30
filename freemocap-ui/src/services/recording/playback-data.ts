@@ -15,7 +15,7 @@ export enum RecordingComponent {W = 'w', X = 'x', Y = 'y', Z = 'z'}
 const POSITION_COMPONENTS = [RecordingComponent.X, RecordingComponent.Y, RecordingComponent.Z];
 const ROTATION_COMPONENTS = [RecordingComponent.W, ...POSITION_COMPONENTS];
 
-export interface ChannelLayout {names: readonly string[]; components: readonly RecordingComponent[]}
+export interface ChannelLayout {names: readonly string[]; components: readonly string[]}
 
 export const RecordingChannelSchema = z.object({
     sensor_group: z.string(), source: z.string(), reference_frame: z.string().nullable(),
@@ -67,87 +67,181 @@ export function sampleAtTime(timestamps: readonly number[], time: number): numbe
     return left - 1;
 }
 
-export function channelFrame(data: PlaybackChannelData, time: number): Float32Array | null {
+/** Display projections borrow stable views; the Float64 recording remains untouched. */
+export interface PreparedChannelFrame {
+    names: readonly string[];
+    components: readonly string[];
+    read: (time: number) => Float32Array | null;
+}
+const preparedChannels = new WeakMap<PlaybackChannelData, PreparedChannelFrame[]>();
+const sameNames = (left: readonly string[], right: readonly string[]): boolean =>
+    left === right || left.length === right.length && left.every((name, index) => name === right[index]);
+
+export function prepareChannelFrame(data: PlaybackChannelData, layout?: ChannelLayout): PreparedChannelFrame {
+    const sourceComponents = Object.keys(data.channel.components);
+    const names = layout?.names ?? data.channel.names;
+    const components = layout?.components ?? sourceComponents;
+    const cached = preparedChannels.get(data)?.find(item => sameNames(item.names, names) && sameNames(item.components, components));
+    if (cached) return cached;
     if (data.timestamps_s.length !== data.frame_numbers.length) throw new Error('Invalid recording timestamp array length');
-    const index = sampleAtTime(data.timestamps_s, time);
-    if (index < 0) return null;
-    const stride = data.channel.names.length * Object.keys(data.channel.components).length;
+    const stride = data.channel.names.length * sourceComponents.length;
     if (data.values.length !== data.frame_numbers.length * stride) throw new Error('Invalid recording channel array length');
-    return Float32Array.from(data.values.slice(index * stride, (index + 1) * stride), value => value ?? NaN);
+    const componentIndices = components.map(component => sourceComponents.indexOf(component));
+    const nameIndices = names.map(name => data.channel.names.indexOf(name));
+    if (sourceComponents.length !== components.length || componentIndices.includes(-1) ||
+        data.channel.names.length !== names.length || nameIndices.includes(-1) ||
+        new Set(names).size !== names.length || new Set(components).size !== components.length) {
+        throw new Error('Recording channel does not match the requested renderer layout');
+    }
+    const offsets = Uint32Array.from(nameIndices.flatMap(name => componentIndices.map(component => name * sourceComponents.length + component)));
+    const ordered = offsets.every((offset, index) => offset === index);
+    const values = ordered ? new Float32Array(data.values) : new Float32Array(data.values.length);
+    if (!ordered) {
+        for (let base = 0; base < values.length; base += stride) {
+            for (let column = 0; column < stride; column++) values[base + column] = data.values[base + offsets[column]];
+        }
+    }
+    let previousIndex = -1;
+    let previousView: Float32Array | null = null;
+    const prepared: PreparedChannelFrame = {names, components, read: time => {
+        const index = sampleAtTime(data.timestamps_s, time);
+        if (index < 0) return null;
+        if (index !== previousIndex) {previousIndex = index; previousView = values.subarray(index * stride, (index + 1) * stride);}
+        return previousView;
+    }};
+    const variants = preparedChannels.get(data);
+    if (variants) variants.push(prepared); else preparedChannels.set(data, [prepared]);
+    return prepared;
+}
+
+export function channelFrame(data: PlaybackChannelData, time: number): Float32Array | null {
+    return prepareChannelFrame(data).read(time);
 }
 
 export function orderedChannelFrame(data: PlaybackChannelData, time: number, layout: ChannelLayout): Float32Array | null {
-    const components = Object.keys(data.channel.components);
-    const componentIndices = layout.components.map(component => components.indexOf(component));
-    const nameIndices = layout.names.map(name => data.channel.names.indexOf(name));
-    if (components.length !== layout.components.length || componentIndices.includes(-1) ||
-        data.channel.names.length !== layout.names.length || nameIndices.includes(-1)) {
-        throw new Error('Recording channel does not match the requested renderer layout');
-    }
-    const frame = channelFrame(data, time);
-    if (!frame) return null;
-    return Float32Array.from(nameIndices.flatMap(name => componentIndices.map(component =>
-        frame[name * components.length + component])));
+    return prepareChannelFrame(data, layout).read(time);
 }
 
-/** Every original tracker stream in the selected sensor group, in declared xyz order. */
+function preparePoints(item: PlaybackChannelData | undefined, names?: readonly string[]): (time: number) => PointsFrame | null {
+    if (!item) return () => null;
+    const prepared = prepareChannelFrame(item, {names: names ?? item.channel.names, components: POSITION_COMPONENTS});
+    let previous: PointsFrame | null = null;
+    return time => {
+        const data = prepared.read(time);
+        if (!data) return null;
+        if (previous?.data !== data) previous = {names: prepared.names, data};
+        return previous;
+    };
+}
+
+const preparedKeypoints = new WeakMap<PlaybackChannelData[], Map<string, (time: number) => PointsFrame | null>>();
+/** A merged multi-source result is borrowed until the next read; individual channel views are stable. */
+export function prepareRecordedKeypoints(channels: PlaybackChannelData[], group: string): (time: number) => PointsFrame | null {
+    let groups = preparedKeypoints.get(channels);
+    if (!groups) {groups = new Map(); preparedKeypoints.set(channels, groups);}
+    const cached = groups.get(group);
+    if (cached) return cached;
+    const readers = channels.filter(item => item.channel.sensor_group === group && item.channel.kind === RecordingChannelKind.RawPoints)
+        .map(item => preparePoints(item));
+    let active: Array<PointsFrame | null> = [];
+    let merged: PointsFrame | null = null;
+    const read = readers.length === 1 ? readers[0] : (time: number): PointsFrame | null => {
+        const frames = readers.map(reader => reader(time));
+        const layoutChanged = frames.length !== active.length || frames.some((frame, index) => frame?.names !== active[index]?.names);
+        if (layoutChanged) {
+            const names = frames.flatMap(frame => frame?.names ?? []);
+            merged = names.length ? {names, data: new Float32Array(names.length * POSITION_COMPONENTS.length)} : null;
+        }
+        if (merged) {
+            let offset = 0;
+            for (let index = 0; index < frames.length; index++) {
+                const frame = frames[index];
+                if (!frame) continue;
+                if (layoutChanged || frame !== active[index]) merged.data.set(frame.data, offset);
+                offset += frame.data.length;
+            }
+        }
+        active = frames;
+        return merged;
+    };
+    groups.set(group, read);
+    return read;
+}
+
+/** Every original tracker stream in the selected sensor group, in declared XYZ order. */
 export function recordedKeypoints(channels: PlaybackChannelData[], group: string, time: number): PointsFrame | null {
-    const names: string[] = [];
-    const values: number[] = [];
-    for (const item of channels) {
-        if (item.channel.sensor_group !== group || item.channel.kind !== RecordingChannelKind.RawPoints) continue;
-        const data = orderedChannelFrame(item, time, {names: item.channel.names, components: POSITION_COMPONENTS});
-        if (!data) continue;
-        names.push(...item.channel.names);
-        values.push(...data);
+    return prepareRecordedKeypoints(channels, group)(time);
+}
+
+const preparedModels = new WeakMap<PlaybackChannelData[], WeakMap<PlaybackRun, WeakMap<ModelDefinition, Map<string, (time: number) => ResolvedModelFrame>>>>();
+export function prepareRecordedModelFrame(run: PlaybackRun, samples: PlaybackSamples, model: ModelDefinition, group: string): (time: number) => ResolvedModelFrame {
+    let runs = preparedModels.get(samples.channels);
+    if (!runs) {runs = new WeakMap(); preparedModels.set(samples.channels, runs);}
+    let models = runs.get(run);
+    if (!models) {models = new WeakMap(); runs.set(run, models);}
+    let groups = models.get(model);
+    if (!groups) {groups = new Map(); models.set(model, groups);}
+    const cached = groups.get(group);
+    if (cached) return cached;
+    const byKind = new Map<RecordingChannelKind, PlaybackChannelData>();
+    for (const item of samples.channels) {
+        if (run.model_sources[item.channel.source] !== model.model_id || item.channel.sensor_group !== group) continue;
+        const kind = item.channel.kind as RecordingChannelKind;
+        if (byKind.has(kind)) throw new Error(`Ambiguous recording reference frame for ${kind}`);
+        byKind.set(kind, item);
     }
-    return names.length ? {names, data: Float32Array.from(values)} : null;
+    const segmentNames = model.segments.map(segment => segment.name);
+    const landmarkNames = model.landmarks.map(landmark => landmark.name);
+    const mapped = preparePoints(byKind.get(RecordingChannelKind.MappedKeypoints), landmarkNames);
+    const landmarks = preparePoints(byKind.get(RecordingChannelKind.Landmarks), landmarkNames);
+    const origins = preparePoints(byKind.get(RecordingChannelKind.Origins), segmentNames);
+    const derived = preparePoints(byKind.get(RecordingChannelKind.Derived));
+    const centerIndex = byKind.get(RecordingChannelKind.Derived)?.channel.names.indexOf('center_of_mass') ?? -1;
+    let previousDerived: Float32Array | null = null;
+    let previousCenter: [number, number, number] | null = null;
+    const staticChannel = (kind: RecordingChannelKind): RecordingStaticChannel | undefined => run.static_channels.find(item =>
+        run.model_sources[item.channel.source] === model.model_id && item.channel.sensor_group === group && item.channel.kind === kind);
+    const scale = staticChannel(RecordingChannelKind.Scale);
+    const lengths = staticChannel(RecordingChannelKind.Lengths);
+    const fittedScaleMm = scale ? Math.fround(scale.values[scale.channel.names[0]][Object.keys(scale.channel.components)[0]]) : null;
+    const segmentLengths = lengths ? {names: segmentNames, data: Float32Array.from(segmentNames.map(name => {
+        const value = lengths.values[name]?.[Object.keys(lengths.channel.components)[0]];
+        if (value === undefined) throw new Error('Missing declared segment length');
+        return value;
+    })), fittedScaleMm} : null;
+    const world = byKind.get(RecordingChannelKind.WorldRotations), local = byKind.get(RecordingChannelKind.LocalRotations);
+    const worldReader = world ? prepareChannelFrame(world, {names: segmentNames, components: ROTATION_COMPONENTS}) : null;
+    const localReader = local && world ? prepareChannelFrame(local, {names: segmentNames, components: ROTATION_COMPONENTS}) : null;
+    const unavailableLocal = new Float32Array(segmentNames.length * ROTATION_COMPONENTS.length).fill(NaN);
+    let previous: ResolvedModelFrame | null = null;
+    const read = (time: number): ResolvedModelFrame => {
+        const mappedKeypoints = mapped(time), landmarkPoints = landmarks(time), segmentOrigins = origins(time);
+        const worldData = worldReader?.read(time) ?? null;
+        const localData = worldData ? localReader?.read(time) ?? unavailableLocal : null;
+        const derivedPoints = derived(time);
+        let centerOfMass: [number, number, number] | null = null;
+        if (derivedPoints && centerIndex >= 0) {
+            const values = derivedPoints.data;
+            if (values !== previousDerived) {
+                const offset = centerIndex * POSITION_COMPONENTS.length;
+                const x = values[offset], y = values[offset + 1], z = values[offset + 2];
+                previousCenter = Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) ? [x, y, z] : null;
+                previousDerived = values;
+            }
+            centerOfMass = previousCenter;
+        }
+        if (previous && previous.mappedKeypoints === mappedKeypoints && previous.landmarks === landmarkPoints &&
+            previous.segmentOrigins === segmentOrigins && (previous.rotations?.worldQuaternions ?? null) === worldData &&
+            (previous.rotations?.localQuaternions ?? null) === localData && previous.derived.centerOfMass === centerOfMass) return previous;
+        previous = {modelId: model.model_id, instanceId: 0, fittedScaleMm, mappedKeypoints, landmarks: landmarkPoints, segmentOrigins,
+            rotations: worldData ? {boneNames: segmentNames, worldQuaternions: worldData, localQuaternions: localData!} : null,
+            segmentLengths, derived: {centerOfMass, xcom: null}};
+        return previous;
+    };
+    groups.set(group, read);
+    return read;
 }
 
 export function recordedModelFrame(run: PlaybackRun, samples: PlaybackSamples, model: ModelDefinition, group: string, time: number): ResolvedModelFrame {
-    const find = (kind: RecordingChannelKind): PlaybackChannelData | undefined => {
-        const matches = samples.channels.filter(item => run.model_sources[item.channel.source] === model.model_id &&
-            item.channel.sensor_group === group && item.channel.kind === kind);
-        if (matches.length > 1) throw new Error(`Ambiguous recording reference frame for ${kind}`);
-        return matches[0];
-    };
-    const segmentNames = model.segments.map(segment => segment.name);
-    const landmarkNames = model.landmarks.map(landmark => landmark.name);
-    const points = (kind: RecordingChannelKind): PointsFrame | null => {
-        const item = find(kind);
-        if (!item) return null;
-        const names = kind === RecordingChannelKind.Origins ? segmentNames
-            : (kind === RecordingChannelKind.Landmarks || kind === RecordingChannelKind.MappedKeypoints) ? landmarkNames : item.channel.names;
-        const data = orderedChannelFrame(item, time, {names, components: POSITION_COMPONENTS});
-        return data ? {names, data} : null;
-    };
-    const staticChannel = (kind: RecordingChannelKind): RecordingStaticChannel | undefined => run.static_channels.find(item =>
-        run.model_sources[item.channel.source] === model.model_id && item.channel.sensor_group === group && item.channel.kind === kind);
-    const scalarValues = (item: RecordingStaticChannel): Float32Array => Float32Array.from(item.channel.names.map(name =>
-        item.values[name][Object.keys(item.channel.components)[0]]));
-    const scale = staticChannel(RecordingChannelKind.Scale);
-    const lengths = staticChannel(RecordingChannelKind.Lengths);
-    const world = find(RecordingChannelKind.WorldRotations), local = find(RecordingChannelKind.LocalRotations);
-    const worldData = world ? orderedChannelFrame(world, time,
-        {names: segmentNames, components: ROTATION_COMPONENTS}) : null;
-    const localData = local && world ? orderedChannelFrame(local, time,
-        {names: segmentNames, components: ROTATION_COMPONENTS}) : null;
-    const derived = points(RecordingChannelKind.Derived);
-    const comIndex = derived?.names.indexOf('center_of_mass') ?? -1;
-    const com = derived && comIndex >= 0 ? Array.from(derived.data.slice(comIndex * 3, comIndex * 3 + 3)) : null;
-    const fittedScaleMm = scale ? scalarValues(scale)[0] : null;
-    return {
-        modelId: model.model_id, instanceId: 0, fittedScaleMm,
-        mappedKeypoints: points(RecordingChannelKind.MappedKeypoints),
-        landmarks: points(RecordingChannelKind.Landmarks), segmentOrigins: points(RecordingChannelKind.Origins),
-        rotations: world && worldData ? {boneNames: segmentNames, worldQuaternions: worldData,
-            localQuaternions: localData ?? new Float32Array(worldData.length).fill(NaN)} : null,
-        segmentLengths: lengths ? {names: segmentNames,
-            data: Float32Array.from(segmentNames.map(name => {
-                const value = lengths.values[name]?.[Object.keys(lengths.channel.components)[0]];
-                if (value === undefined) throw new Error('Missing declared segment length');
-                return value;
-            })), fittedScaleMm} : null,
-        derived: {centerOfMass: com?.every(Number.isFinite) ? [com[0], com[1], com[2]] : null, xcom: null},
-    };
+    return prepareRecordedModelFrame(run, samples, model, group)(time);
 }

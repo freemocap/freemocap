@@ -30,7 +30,7 @@ from skellyforge.core.skeleton.pose.model_scale_fitting import (
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
 from skellyforge.core.skeleton.pose.pose_tensor import PoseTensor  # noqa: TC002 - runtime protocol admission
 from skellyforge.core.skeleton.pose.scale_tensor import ScaleTensor
-from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from skellyforge.core.skeleton.skeleton_pose import SkeletonPose  # noqa: TC002 - runtime type checking
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle  # noqa: TC001 - runtime type checking

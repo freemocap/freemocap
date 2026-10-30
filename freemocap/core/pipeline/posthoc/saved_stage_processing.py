@@ -21,6 +21,7 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import RunDe
 from freemocap.core.recording.parquet_storage.checkpoint_publication import publish_checkpoint
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
+from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.core.recording.result_processing.input_signatures import definition_signature
 from freemocap.core.recording.result_processing.saved_reconstruction import SavedPointSeries, read_saved_channel
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
@@ -91,20 +92,21 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
 
     with recording_write_lock(structure=structure):
         check_cancelled()
-        metadata = read_metadata(path=structure.data_parquet_path)
-        if metadata.recording_id != structure.recording_name:
-            raise ValueError('Recording identity does not match its directory')
-        base = metadata.runs[config.base_run_id]
-        group = select_group(base, config.sensor_group)
-        start = ProcessingStage(config.start_stage)
-        provenance = ProvenanceContext.create()
-        defaults = PosthocMocapPipelineConfig().model_dump(mode='json')
-        kind = ChannelKind.RAW_KEYPOINTS_3D if start == ProcessingStage.FILTERING else ChannelKind.KEYPOINTS_3D
-        channels = [c for c in base.channels if c.sensor_group == group and c.kind == kind]
-        if len(channels) != 1:
-            raise ValueError(f'Reprocessing requires one saved {kind} channel; rerun the preceding stage')
-        points = read_saved_channel(structure=structure, run_id=config.base_run_id,
-            metadata=metadata, channel=channels[0])
+        with recording_view(structure.data_parquet_path) as view:
+            metadata = view.metadata
+            if metadata.recording_id != structure.recording_name:
+                raise ValueError('Recording identity does not match its directory')
+            base = metadata.runs[config.base_run_id]
+            group = select_group(base, config.sensor_group)
+            start = ProcessingStage(config.start_stage)
+            provenance = ProvenanceContext.create()
+            defaults = PosthocMocapPipelineConfig().model_dump(mode='json')
+            kind = ChannelKind.RAW_KEYPOINTS_3D if start == ProcessingStage.FILTERING else ChannelKind.KEYPOINTS_3D
+            channels = [c for c in base.channels if c.sensor_group == group and c.kind == kind]
+            if len(channels) != 1:
+                raise ValueError(f'Reprocessing requires one saved {kind} channel; rerun the preceding stage')
+            points = read_saved_channel(structure=structure, run_id=config.base_run_id,
+                metadata=metadata, channel=channels[0], view=view)
         if tuple(points.channel.components) != ('x', 'y', 'z'):
             raise ValueError('Saved spatial points must declare xyz components in order')
         reference = SpatialReference.model_validate(base.reference_frames[points.channel.reference_frame])

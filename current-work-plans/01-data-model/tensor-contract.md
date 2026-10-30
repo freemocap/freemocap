@@ -11,11 +11,67 @@ declared component ordering. Instance identity is a nonnegative integer defaulti
 to zero. Current timestamp production stays unchanged; this task does not redesign
 clocks, resampling, transport timing or compatibility modes.
 
-`freemocap/core/data_tensors/` implements `AxisDefinition`, `SourceIdentity`,
-`TensorLayout`, `AxisSelection`, `SampleTimeline`, `CompanionTensor`, `DataTensor`,
+`skellyforge/core/data_tensors/` implements `AxisDefinition`, `SourceIdentity`,
+`TensorLayout`, `AxisSelection`, `SampleTiming`, `CompanionTensor`, `DataTensor`,
 `TimeSeries` and `RecordingDataset`. Selections are bound to their complete
 declared layout; contiguous selections expose views, while other selections
-gather into a new array.
+gather into a new array. FreeMoCap imports these types from SkellyForge; the
+duplicate Core implementations and generic contract tests have been removed.
+`TimeSeries.sample_timing` and `RecordingDataset.sample_timings` replace the
+former `sample_timeline` and `sample_timelines` attribute names without changing
+sample identifiers, clock metadata or timestamps.
+
+### Global 4 ownership and export decisions — 2026-10-30
+
+SkellyForge owns reusable tensor definitions and their numerical contract tests.
+FreeMoCap owns cross-project adapters and recording publication. The owner has
+authorized integration through the existing editable dependencies without a
+commit/push pause for this task. SkellyTracker remains unchanged.
+
+The public NumPy dataset represents scientific output: numerical values, declared
+axes and identities, original timing, applicable quality/evidence arrays, units,
+reference definitions and model definitions. Solver/hydration execution status
+and caches are excluded from this public dataset. The generic tensor classes may
+still carry such execution metadata internally; export eligibility does not
+require removing it from runtime computations.
+
+NPY/NPZ must round-trip the selected scientific dataset. They are not required to
+reproduce every internal object or exactly mirror Parquet's representation.
+Parquet remains the durable recording, and the existing saved-data reader remains
+a valid source for constructing runtime datasets. This decision does not authorize
+a Parquet schema or companion-publication change. In particular, saved row presence
+must not be mislabeled as reconstructed-value validity; the adapter must preserve
+the meaning of each declared mask rather than claim an unavailable round trip.
+
+### Implemented NumPy boundary
+
+SkellyForge's `NumpyDatasetWriter` writes selected scientific channels as they
+arrive; `RecordingDataset.save_numpy()` and `load_numpy()` provide the complete
+dataset interface. Both NPY and NPZ contain `dataset.json` plus plain numerical
+arrays, loaded without pickle. The manifest binds each channel to its own timing,
+axes, source identity, units, reference definitions and scientific companions.
+Static fitted values have no sample axis. The versioned format is specified in
+SkellyForge's `core/data_tensors/NUMPY_FORMAT.md`.
+
+Core's `exports/numpy_dataset.py` adapts saved channels without copying their
+values. `exports/numpy_exports.py` feeds both requested writers while each channel
+is available, then releases its values before reading the next channel. A supplied
+`runtime_dataset` bypasses numerical Parquet reads for NPY/NPZ; this route does not
+claim numerical equality with Parquet. Normal saved-recording exports still read
+their selected Parquet channels. Neither route changes the source recording.
+
+`SEGMENT_POSES` selects the existing `SEGMENT_ORIGINS` and `ROTATIONS_WORLD` NumPy
+channels. NumPy preserves authored component ordering and `visibility`; combined
+poses and the `confidence` alias belong to CSV/notebook presentation. Selected
+model definitions, fitted scales/lengths and their measured/voting evidence are
+included. No unavailable validity mask or solver execution status is invented.
+
+The existing run ID controls output location and overwrite behavior. Repeated
+NPY exports replace the same run's `npy/` dataset; there are no per-export
+generation directories. Obsolete managed NPY members are removed only through
+hash-checked, recoverable publication. Edited and unrelated files are protected.
+Each output format has its own `numpy_datasets` descriptor in the outer inventory,
+so updating one format does not relabel another format's selection or source.
 
 `DataTensor` initially borrows numerical arrays. `immutable_copy()` publishes
 independent, protected values and companion arrays; `mutable_copy()` makes an
@@ -154,7 +210,12 @@ It does not mean preserving Python class identity, caches, memory addresses,
 arbitrary strides, or aliasing. No Python object arrays or pickle in exports.
 NPZ is a packaged recording dataset, not the incremental runtime working store.
 
-## Proposed memory objects
+## Historical memory proposals — superseded
+
+The following proposal records the earlier discussion, not the implemented API.
+Its `MeasurementTensor`, `SampleTimeline`, and fixed component counts must not
+guide new code. Use the approved decisions above and SkellyForge's
+`core/data_tensors/NUMPY_FORMAT.md` for the current tensor and NumPy contracts.
 
 ### Naming convention
 
@@ -461,22 +522,84 @@ These are specified tests, not tests already implemented or run:
 
 ## Sequential implementation plan
 
-Global 1 and Global 2 implementation and validation are complete. Global 3 is
-next; internal acceptance cases above are not additional checklist tasks.
+Global 1 through Global 4 implementation and validation are complete. The owner
+approved the six-step completion checklist below for Globals 5–7. Step 1 is
+complete along with steps 2 and 3, including the retained-instance capacity
+regression. Global 5 is complete; renderer work is next.
 
 - [x] **Global 1 — Define FreeMoCap’s tensor contract:** establish layouts, identities, components, availability, ownership and independent timelines.
 - [x] **Global 2 — Replace observation flattening and pose-object conversions with tensor interfaces.**
-- [ ] **Global 3 — Unify Parquet saving and loading:** connect runtime tensors directly to recording publication and selective saved-data readers.
-- [ ] **Global 4 — Make NumPy exports match runtime tensors:** preserve layouts, companion arrays and timelines in NPY/NPZ; produce wide CSV through batched conversion.
-- [ ] **Global 5 — Fix playback startup and frame delivery:** replace scalar-object Parquet decoding and repeated frame conversions/copies.
-- [ ] **Global 6 — Fix the Three.js rendering path:** replace numerical dictionaries and repeated geometry repacking with prepared arrays and batched GPU updates. **Trails remain outside this scope.**
-- [ ] **Global 7 — Finish downstream integration and prove the result:** validate remaining consumers and measure correctness, playback readiness, processing/export time and memory.
+- [x] **Global 3 — Unify Parquet saving and loading:** connect runtime tensors directly to recording publication and selective saved-data readers.
+- [x] **Global 4 — Make NumPy exports match runtime tensors:** preserve layouts, companion arrays and timelines in NPY/NPZ; produce wide CSV through batched conversion.
+- [x] **Global 5 — Fix playback startup and frame delivery:** replace scalar-object Parquet decoding and repeated frame conversions/copies.
+- [x] **Global 6 — Fix the Three.js rendering path:** replace numerical dictionaries and repeated geometry repacking with prepared arrays and batched GPU updates. **Trails remain outside this scope.**
+- [x] **Global 7 — Finish downstream integration and prove the result:** validate remaining consumers and measure correctness, playback readiness, processing/export time and memory.
+
+### Approved completion checklist for Globals 5–7 — 2026-10-30
+
+Execute sequentially with one sub-agent at a time, integration review and
+reference-data validation. Reproduce this entire six-item checklist in chat
+after each completed step and continue automatically. Preserve approved wording
+and order. Existing timestamps, independent clocks, run selection, and export
+behavior remain requirements. Trails and SkellyTracker edits are out of scope.
+Git mutations remain human-owned; preserve existing uncommitted work.
+
+- [x] **1. Measure the existing playback and rendering paths:** use the reference recording to establish correctness checks and baseline download/decode time, time until playback is ready, frame-update cost, and memory usage.
+- [x] **2. Replace scalar-object assembly in `decodePlaybackParquet`:** assemble column batches directly into dense recording arrays, with tests proving preservation of channel identities, component ordering, timestamps, missing values, and malformed-data rejection.
+- [x] **3. Replace repeated frame preparation and worker copies:** update `playback-data`, `RecordingPlaybackProvider`, and `ThreeJsCanvas` to use prepared layouts and reusable or borrowed numerical arrays, with tested buffer ownership across playback, seeking, recording changes, and worker delivery.
+- [x] **4. Replace renderer repacking with prepared arrays and batched GPU updates:** update the keypoint, model-connection, and rigid-body rendering paths, verifying live/playback parity, missing-data visibility, picking, and coordinate transforms.
+- [x] **5. Verify downstream recording consumers and fix integration failures:** exercise saved-data replay, camera overlays, NumPy loaders, CSV/notebook consumers, and the playback browser tests against reference data, documenting any remaining conversion boundaries.
+- [x] **6. Repeat the benchmarks and close Globals 5–7:** compare the same workloads against the baseline, investigate regressions, report playback and rendering costs alongside processing and separate NPZ/NPY export costs, and update the saved completion checklist with results and limitations.
+
+All six completion steps and Globals 1–7 are complete. Final measurements,
+correctness evidence and limitations are recorded in `tensor-contract-audit.md`.
+Playback readiness improved on the reference workload; repeated export costs
+were higher than the earlier Global 4 measurements under observed concurrent
+host activity. No export speedup or peak-memory reduction is claimed. Source
+changes remain unstaged for human review; no Git state was mutated.
+
+### Approved tensor cleanup continuation — 2026-10-30
+
+The previous seven-stage checklist is complete; the follow-up audit identified
+the additional work below. The owner approved all six steps, executed linearly
+with one sub-agent at a time and reference-data validation. Reprint this entire
+checklist after every completed step. Cross-repository changes in Core and Forge
+are authorized without commit/push pauses. SkellyTracker edits are not authorized;
+Git mutations remain prohibited. Preserve self-describing messages, timing,
+buffer ownership and exact scientific values.
+
+- [x] **1. Remove repeated WebSocket preparation:** reuse unchanged model, camera, and coordinate definitions; replace temporary coordinate arrays with safely reusable storage; test repeated messages, changed layouts, reconnects, and live freshness.
+- [x] **2. Replace fresh observation retention with recording tensors:** populate preallocated numerical arrays in `ObservationCollection` and adapt `ObservationBuffer` consumers, verifying fresh/saved processing parity against reference data.
+- [x] **3. Replace timestamp and bounding-box row assembly:** publish Arrow columns from dense arrays and verify ordinary publication uses columnar validation without weakening malformed-data rejection.
+- [x] **4. Batch compatible filtering work:** reuse filter coefficients and shared time grids, validate missing-data behavior against suitable reference recordings, and measure the result.
+- [x] **5. Preserve instance identity through viewport inspection:** carry model and subject identifiers from picking into displayed values and test overlapping names across instances.
+- [x] **6. Remove the remaining Forge-to-Tracker authoring dependency:** relocate cross-project mapping tooling into Core and verify Forge’s independence and the resulting integration.
+
+All six continuation steps are complete. Per-step validation, reference-data
+comparisons, measured improvements and remaining out-of-scope collectors are
+recorded in `tensor-contract-audit.md`. Changes remain unstaged and uncommitted;
+the owner retains all Git actions. No SkellyTracker files were edited.
+
+### Approved Global 4 checklist — 2026-10-30
+
+The owner authorized steps 4.1–4.6 with local editable integration between
+FreeMoCap and SkellyForge, without repository publication pauses. SkellyTracker
+is outside the authorized edit scope. NPY/NPZ preserve selected scientific
+runtime data; parity with Parquet's representation is not required. Temporary
+solver execution state is not public scientific output.
+
+- [x] **4.1 — Audit runtime data and resolve tensor ownership:** identify the scientific arrays and context suitable for NumPy storage, distinguish temporary processing state, and complete the SkellyForge ownership migration.
+- [x] **4.2 — Define the NPY/NPZ recording contract:** specify array names, dtypes, axes, selected companion arrays, independent timing, definitions, and format versioning.
+- [x] **4.3 — Implement NumPy writers and loaders in SkellyForge:** save scientific runtime data and reconstruct equivalent tensor-backed objects without pickle.
+- [x] **4.4 — Connect FreeMoCap’s NumPy exports to those writers:** replace the existing NumPy export implementation with the agreed runtime-data representation.
+- [x] **4.5 — Update wide CSV and analysis consumers:** align CSV generation, export validation, manifests, notebooks, and guides with the agreed formats.
+- [x] **4.6 — Verify NumPy round trips and measure export costs:** test preservation of the selected scientific data and context using reference data and independent-clock fixtures.
 
 One sub-agent per approved task, with integration review and validation before
 starting the next. Core owns integration contracts. Tracker and Forge remain
-independent; neither imports the other or core. Dependency changes require
-separate repository stages, branch preflight and human commit/push confirmation
-before downstream refresh. Agents do not mutate Git state.
+independent; neither imports the other or core. For the approved Global 4 work,
+the owner authorized local integration through the existing editable dependencies
+without commit/push pauses. Agents do not mutate Git state.
 
 Baseline measurement and fixture design are internal work of the affected tasks;
 no speedup is promised without measurements. Completed runtime changes and their

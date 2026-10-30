@@ -17,7 +17,7 @@ from skellyforge.core.math.geometry.transform_math import Transform
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 from skellytracker.core.data_primitives.observation import Observation

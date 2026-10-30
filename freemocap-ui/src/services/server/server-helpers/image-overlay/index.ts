@@ -6,11 +6,7 @@ export * from './overlay-renderer-factory';
 
 
 export {
-    SkeletonPointSchema,
-    SkeletonOverlaySchema,
-    BoxOverlaySchema,
-    type SkeletonPoint,
-    type BoxOverlay,
+    appendOverlay,
     type SkeletonObservation,
 } from './skeleton-types';
 export { SkeletonOverlayRenderer } from './skeleton-overlay-renderer';

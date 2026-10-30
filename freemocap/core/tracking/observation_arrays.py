@@ -11,7 +11,8 @@ import numpy as np
 from skellytracker.core.data_primitives.observation import Observation, StageObservation
 from skellytracker.core.data_primitives.keypoints import Keypoints
 
-from freemocap.core.data_tensors import AxisDefinition
+from skellyforge.core.data_tensors import AxisDefinition
+from freemocap.core.tracking.observation_series import ObservationFrame, ObservationFrames, RecordingObservationSeries
 
 # This is the installed Keypoints schema, not a generic tensor dimension rule.
 TRACKER_COMPONENTS = ("x", "y", "z")
@@ -36,11 +37,13 @@ def _combined_names(stage_names: tuple[tuple[str, ...], ...]) -> tuple[str, ...]
     return AxisDefinition("entity_identity", names).identifiers
 
 
-def observation_point_names(observation: Observation) -> tuple[str, ...]:
+def observation_point_names(observation: Observation | ObservationFrame) -> tuple[str, ...]:
+    if isinstance(observation, ObservationFrame):
+        return observation.camera_series.point_names
     return _combined_names(tuple(names for names, _ in stage_keypoints(observation.stages)))
 
 
-def collected_point_names(observations: Iterable[Observation]) -> tuple[str, ...]:
+def collected_point_names(observations: Iterable[Observation | ObservationFrame]) -> tuple[str, ...]:
     """Merge distinct authored layouts once, preserving first occurrence order."""
     layouts = dict.fromkeys(observation_point_names(observation) for observation in observations)
     return tuple(dict.fromkeys(name for names in layouts for name in names))
@@ -78,7 +81,12 @@ class ObservationArrays:
         return self.coordinate_values[:, :TRACKER_COMPONENTS.index("z")]
 
 
-def observation_arrays(observation: Observation) -> ObservationArrays:
+def observation_arrays(observation: Observation | ObservationFrame) -> ObservationArrays:
+    if isinstance(observation, ObservationFrame):
+        series, index = observation.camera_series, observation.sample_index
+        if isinstance(series, RecordingObservationSeries):
+            return ObservationArrays(series.point_names, series.coordinate_values[index], series.confidence_values[index])
+        return ObservationArrays(series.point_names, series.tracker_coordinates(index), series.confidence_scores(index))
     parts = tuple(stage_keypoints(observation.stages))
     names = _combined_names(tuple(names for names, _ in parts))
     if not parts:
@@ -103,3 +111,35 @@ def aligned_coordinates(points: ObservationArrays, *, point_names: tuple[str, ..
         source, target = source[selected], target[selected]
     result[target] = coordinates[source]
     return result
+
+
+def visible_coordinates(coordinates: np.ndarray, confidence: np.ndarray, *, in_place: bool = False) -> np.ndarray:
+    """Shared live/saved triangulation missingness policy, for any leading axes."""
+    visible = np.isfinite(confidence) & (confidence > 0.0)
+    if in_place:
+        coordinates[~visible] = np.nan
+        return coordinates
+    return np.where(visible[..., None], coordinates, np.nan)
+
+
+def recording_point_names(frames) -> tuple[str, ...]:
+    if isinstance(frames, ObservationFrames):
+        return frames.point_names
+    return collected_point_names(observation for frame in frames for observation in frame.values())
+
+
+def recording_stage_names(frames) -> tuple[str, ...]:
+    if isinstance(frames, ObservationFrames):
+        return frames.stage_names
+    return tuple(dict.fromkeys(stage.name for frame in frames for observation in frame.values()
+                               for stage in observation.stages.values()))
+
+
+def ambiguous_instances(observation: Observation | ObservationFrame) -> bool:
+    # Saved overlay channels have one named prediction per entity, as did the
+    # previous saved reader; no instance assignments are inferred on reload.
+    if isinstance(observation, ObservationFrame):
+        if isinstance(observation.camera_series, RecordingObservationSeries):
+            return bool(np.any(observation.camera_series.box_counts[observation.sample_index] > 1))
+        return False
+    return any(len(stage.bounding_boxes) > 1 for stage in observation.stages.values())

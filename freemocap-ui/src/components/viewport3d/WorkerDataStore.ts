@@ -158,6 +158,10 @@ export const workerDataStore: KeypointsSource & {
                 pointPresentation.clear();
                 modelsChan.dispatch([]);
                 break;
+            case "frameReset":
+                modelPresentation.clear();
+                pointPresentation.clear();
+                break;
             case "keypoints":
                 if (livePresentation) pointPresentation.update([data as KeypointsFrame], () => "points",
                     value => value.interleaved.some(Number.isFinite));

@@ -39,9 +39,12 @@ hiddenimports.extend([
     'scipy.signal',
 ])
 
-# ── pandas (standard hook handles most; _cyutility missed by default hook) ──
-binaries.extend(collect_dynamic_libs('pandas'))
-hiddenimports.append('pandas._libs._cyutility')
+# ── Polars and the native runtime installed for this build ──
+hiddenimports.append('polars')
+for runtime_package in ('_polars_runtime_32', '_polars_runtime_64', '_polars_runtime_compat'):
+    if importlib.util.find_spec(runtime_package) is not None:
+        binaries.extend(collect_dynamic_libs(runtime_package))
+        hiddenimports.extend(collect_submodules(runtime_package))
 
 # ── mediapipe (needs .tflite model files at runtime; only solutions/vision/formats) ──
 import mediapipe

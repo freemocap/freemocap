@@ -1,237 +1,111 @@
-// ModelConnectionRenderer.tsx
-//
-// The ONE connection renderer. Draws every edge of every tracked model this frame:
-//
-//   - SEGMENT edges — parent origin -> child origin, from the model's `connections`
-//     (the rest-pose parent tree), plotted against SEGMENT_ORIGINS.
-//   - LANDMARK edges — from the model's `landmark_connections` groups, plotted against
-//     LANDMARKS_3D. These are the only kind of edge a one-segment model has, which is what
-//     draws a charuco board's grid and its aruco quads.
-//
-// Everything it draws is declared by the model and arrives over the wire, colours included
-// (the backend resolves them from the palette, so swapping the palette recolours every
-// client at once). Nothing here parses a name to recover structure, and nothing is
-// hardcoded per object: the board, the skull outline and the eye lines are all just
-// connection groups.
-//
-// It iterates models rather than reading `models[0]`, so a tracked person and a tracked
-// board draw side by side.
-//
-// Runs ALONGSIDE RigidBodyBoneRenderer (the oriented cylinders); these are the
-// overlay-style joint lines.
-
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { InterleavedBufferAttribute, Vector2 } from "three";
+import { InterleavedBufferAttribute } from "three";
 import { LineSegments2, LineSegmentsGeometry, LineMaterial } from "three-stdlib";
 import { useKeypointsSource, useModelDefinitionsById } from "../KeypointsSourceContext";
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
-import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { BONE_SIDE_COLORS, classifyBone } from "./RigidBodyBoneInstances";
 import { useViewportState } from "../scene/ViewportStateContext";
+import { finitePoint, XYZ_OFFSETS, prepareModels, preparedModelsMatch, type PreparedModel } from "./prepared-models";
 
-const LINE_WIDTH = 2;
-/** Parked far off-screen — an edge whose endpoints are missing this frame. */
 const HIDDEN_COORDINATE = 1e5;
-
-type Rgb = readonly [number, number, number];
-
-/** "#rrggbb" -> normalized rgb. The wire always carries a resolved colour, so a group
- *  that reaches here without one is a backend defect rather than something to guess at. */
-function parseHexColor(hex: string): Rgb {
-    const value = Number.parseInt(hex.replace("#", ""), 16);
-    return [
-        ((value >> 16) & 0xff) / 255,
-        ((value >> 8) & 0xff) / 255,
-        (value & 0xff) / 255,
-    ];
+interface EdgeBatch {
+    frameIndex: number;
+    source: "segmentOrigins" | "landmarks";
+    baseEdge: number;
+    rows: Int32Array;
+    colors: Float32Array;
 }
-
-/** Which array an edge's endpoints index into. */
-type EndpointSource = "segmentOrigins" | "landmarks";
-
-interface PlannedEdge {
-    modelId: string;
-    source: EndpointSource;
-    startIndex: number;
-    endIndex: number;
-    color: Rgb;
-}
-
-/** The complete edge list for a set of models — rebuilt only when the MODELS change, so
- *  the per-frame path is a pure index-and-copy with no name lookups in it. */
-function planEdgesForModels(
-    models: ResolvedModelFrame[],
-    definitionsById: Map<string, ModelDefinition>,
-): PlannedEdge[] {
-    const planned: PlannedEdge[] = [];
-    for (const entry of models) {
-        const definition = definitionsById.get(entry.modelId);
+function prepareEdges(models: PreparedModel[]): EdgeBatch[] {
+    const batches: EdgeBatch[] = [];
+    let baseEdge = 0;
+    for (const model of models) {
+        const definition = model.definition;
         if (!definition) continue;
-        const segmentIndexByName = new Map(definition.segments.map((s, i) => [s.name, i]));
-        const landmarkIndexByName = new Map(definition.landmarks.map((l, i) => [l.name, i]));
-
-        for (const [parent, child] of definition.connections) {
-            const startIndex = segmentIndexByName.get(parent);
-            const endIndex = segmentIndexByName.get(child);
-            if (startIndex === undefined || endIndex === undefined) continue;
-            // The edge IS the child bone hanging off its parent's origin, so the child is
-            // what it represents — which puts a hand's edges in the hand's colour rather
-            // than the forearm's. Reading BONE_SIDE_COLORS rather than keeping a second
-            // palette here keeps the lines and the bone meshes from drifting apart.
-            planned.push({
-                modelId: entry.modelId,
-                source: "segmentOrigins",
-                startIndex,
-                endIndex,
-                color: BONE_SIDE_COLORS[classifyBone(child)],
-            });
-        }
-
-        for (const group of definition.landmark_connections) {
-            const color = parseHexColor(group.color);
-            for (const [start, end] of group.pairs) {
-                const startIndex = landmarkIndexByName.get(start);
-                const endIndex = landmarkIndexByName.get(end);
-                if (startIndex === undefined || endIndex === undefined) continue;
-                planned.push({
-                    modelId: entry.modelId,
-                    source: "landmarks",
-                    startIndex,
-                    endIndex,
-                    color,
-                });
+        const segments = new Map(definition.segments.map((s, i) => [s.name, model.originRows[i]]));
+        const landmarks = new Map(definition.landmarks.map((s, i) => [s.name, model.landmarkRows[i]]));
+        for (const source of ["segmentOrigins", "landmarks"] as const) {
+            const rows: number[] = [], colors: number[] = [];
+            const append = (pairs: readonly (readonly [string, string])[], indices: Map<string, number>, rgb?: readonly number[]) => {
+                for (const [start, end] of pairs) {
+                    const a = indices.get(start), b = indices.get(end);
+                    if (a === undefined || b === undefined) continue;
+                    rows.push(a, b);
+                    const color = rgb ?? BONE_SIDE_COLORS[classifyBone(end)];
+                    colors.push(...color, ...color);
+                }
+            };
+            if (source === "segmentOrigins") append(definition.connections, segments);
+            else for (const group of definition.landmark_connections) {
+                const hex = Number.parseInt(group.color.replace("#", ""), 16);
+                append(group.pairs, landmarks, [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255]);
             }
+            batches.push({frameIndex: model.frameIndex, source, baseEdge, rows: Int32Array.from(rows), colors: Float32Array.from(colors)});
+            baseEdge += rows.length / 2;
         }
     }
-    return planned;
+    return batches;
 }
-
-/** Identity of the MODEL SET — what a replan depends on. A new board size or a second
- *  tracked object changes this; a new frame of the same models does not. */
-function modelSetSignature(models: ResolvedModelFrame[]): string {
-    return models.map((m) => m.modelId).join("|");
-}
-
-function isFinitePoint(data: Float32Array, index: number): boolean {
-    const offset = index * 3;
-    return (
-        Number.isFinite(data[offset]) &&
-        Number.isFinite(data[offset + 1]) &&
-        Number.isFinite(data[offset + 2])
-    );
-}
-
 export function ModelConnectionRenderer() {
-    const { subscribeToModelFrames } = useKeypointsSource();
-    const definitionsById = useModelDefinitionsById();
-    const { statsRef } = useViewportState();
-    const { size } = useThree();
-
-    const [plannedEdges, setPlannedEdges] = useState<PlannedEdge[]>([]);
-    const modelFramesRef = useRef<ResolvedModelFrame[] | null>(null);
-    const signatureRef = useRef<string>("");
+    const {subscribeToModelFrames} = useKeypointsSource();
+    const definitions = useModelDefinitionsById();
+    const {statsRef} = useViewportState();
+    const {size} = useThree();
+    const framesRef = useRef<ResolvedModelFrame[]>([]);
+    const layoutRef = useRef<PreparedModel[] | null>(null);
+    const batchesRef = useRef<EdgeBatch[]>([]);
+    const visibleRef = useRef(new Uint8Array());
     const dirtyRef = useRef(false);
-
-    useEffect(() => {
-        return subscribeToModelFrames((models) => {
-            modelFramesRef.current = models;
-            // Replanned on a change of the MODEL SET or the definitions behind it — never
-            // per frame. `definitionsRevision` is what makes a late-arriving definition
-            // trigger the replan the frame data alone cannot.
-            const signature = `${modelSetSignature(models)}#${definitionsById.current.size}`;
-            if (signature !== signatureRef.current) {
-                signatureRef.current = signature;
-                setPlannedEdges(planEdgesForModels(models, definitionsById.current));
-            }
-            dirtyRef.current = true;
-        });
-    }, [subscribeToModelFrames, definitionsById]);
-
-    // Geometry sized to the edge count (at least one, so LineSegmentsGeometry stays valid).
-    const edgeCount = plannedEdges.length || 1;
     const geometry = useMemo(() => {
-        const created = new LineSegmentsGeometry();
-        created.setPositions(new Float32Array(edgeCount * 2 * 3).fill(HIDDEN_COORDINATE));
-        created.setColors(new Float32Array(edgeCount * 2 * 3).fill(0));
-        return created;
-    }, [edgeCount]);
-    const material = useMemo(
-        () =>
-            new LineMaterial({
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.85,
-                linewidth: LINE_WIDTH,
-                resolution: new Vector2(size.width, size.height),
-            }),
-        [size.width, size.height],
-    );
-    const [lineObject] = useState(() => new LineSegments2());
-
-    useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
-
+        const g = new LineSegmentsGeometry();
+        g.setPositions(new Float32Array(6).fill(HIDDEN_COORDINATE)); g.setColors(new Float32Array(6)); return g;
+    }, []);
+    const material = useMemo(() => new LineMaterial({vertexColors: true, transparent: true, opacity: 0.85, linewidth: 2}), []);
+    const object = useMemo(() => new LineSegments2(geometry, material), [geometry, material]);
+    useEffect(() => {material.resolution.set(size.width, size.height);}, [material, size.width, size.height]);
+    useEffect(() => () => {geometry.dispose(); material.dispose();}, [geometry, material]);
+    useEffect(() => subscribeToModelFrames(frames => {framesRef.current = frames; dirtyRef.current = true;}), [subscribeToModelFrames]);
     useFrame(() => {
+        const frames = framesRef.current;
+        if (!layoutRef.current || !preparedModelsMatch(layoutRef.current, frames, definitions.current)) {
+            layoutRef.current = prepareModels(frames, definitions.current);
+            const batches = prepareEdges(layoutRef.current);
+            batchesRef.current = batches;
+            const count = batches.reduce((sum, batch) => sum + batch.rows.length / 2, 0);
+            // Release replaced GPU attributes on schema changes, including equal-size changes.
+            geometry.dispose();
+            geometry.setPositions(new Float32Array(Math.max(1, count) * 6).fill(HIDDEN_COORDINATE));
+            geometry.setColors(new Float32Array(Math.max(1, count) * 6));
+            geometry.instanceCount = count;
+            visibleRef.current = new Uint8Array(count);
+            dirtyRef.current = true;
+        }
         if (!dirtyRef.current) return;
-        const models = modelFramesRef.current;
-        if (!models) return;
-
-        const positionAttribute = geometry.attributes.instanceStart as InterleavedBufferAttribute;
-        const colorAttribute = geometry.attributes.instanceColorStart as InterleavedBufferAttribute;
-        const positions = positionAttribute.data.array as Float32Array;
-        const colors = colorAttribute.data.array as Float32Array;
-
-        const pointsByModelId = new Map<string, Record<EndpointSource, Float32Array | null>>();
-        for (const entry of models) {
-            pointsByModelId.set(entry.modelId, {
-                segmentOrigins: entry.segmentOrigins?.data ?? null,
-                landmarks: entry.landmarks?.data ?? null,
-            });
-        }
-
-        let drawnCount = 0;
-        for (let i = 0; i < plannedEdges.length; i++) {
-            const edge = plannedEdges[i];
-            const base = i * 6;
-            const points = pointsByModelId.get(edge.modelId)?.[edge.source] ?? null;
-
-            const drawable =
-                points !== null &&
-                isFinitePoint(points, edge.startIndex) &&
-                isFinitePoint(points, edge.endIndex);
-
-            if (!drawable) {
-                for (let j = 0; j < 6; j++) {
-                    positions[base + j] = HIDDEN_COORDINATE;
-                    colors[base + j] = 0;
+        const position = geometry.attributes.instanceStart as InterleavedBufferAttribute;
+        const color = geometry.attributes.instanceColorStart as InterleavedBufferAttribute;
+        const positions = position.data.array as Float32Array, colors = color.data.array as Float32Array;
+        let drawn = 0, colorsChanged = false;
+        for (const batch of batchesRef.current) {
+            const points = frames[batch.frameIndex][batch.source]; const data = points?.data; const stride = points?.stride ?? 3, coordinates = points?.coordinateOffsets ?? XYZ_OFFSETS;
+            for (let i = 0; i < batch.rows.length / 2; i++) {
+                const edge = batch.baseEdge + i, base = edge * 6;
+                const a = batch.rows[i * 2] * stride, b = batch.rows[i * 2 + 1] * stride;
+                const visible = finitePoint(data, a, coordinates) && finitePoint(data, b, coordinates);
+                if (visible) {
+                    positions[base] = data![a + coordinates[0]]; positions[base + 1] = data![a + coordinates[1]]; positions[base + 2] = data![a + coordinates[2]];
+                    positions[base + 3] = data![b + coordinates[0]]; positions[base + 4] = data![b + coordinates[1]]; positions[base + 5] = data![b + coordinates[2]];
+                    drawn++;
+                } else positions.fill(HIDDEN_COORDINATE, base, base + 6);
+                if (visibleRef.current[edge] !== +visible) {
+                    for (let c = 0; c < 6; c++) colors[base + c] = visible ? batch.colors[i * 6 + c] : 0;
+                    visibleRef.current[edge] = +visible; colorsChanged = true;
                 }
-                continue;
             }
-
-            const startOffset = edge.startIndex * 3;
-            const endOffset = edge.endIndex * 3;
-            positions[base] = points![startOffset];
-            positions[base + 1] = points![startOffset + 1];
-            positions[base + 2] = points![startOffset + 2];
-            positions[base + 3] = points![endOffset];
-            positions[base + 4] = points![endOffset + 1];
-            positions[base + 5] = points![endOffset + 2];
-            const [r, g, b] = edge.color;
-            colors[base] = r; colors[base + 1] = g; colors[base + 2] = b;
-            colors[base + 3] = r; colors[base + 4] = g; colors[base + 5] = b;
-            drawnCount++;
         }
-        statsRef.current.boneLines = drawnCount;
-
-        positionAttribute.needsUpdate = true;
-        colorAttribute.needsUpdate = true;
+        position.data.needsUpdate = true;
+        if (colorsChanged) color.data.needsUpdate = true;
+        statsRef.current.boneLines = drawn;
         dirtyRef.current = false;
     });
-
-    return (
-        <primitive object={lineObject} frustumCulled={false}>
-            <primitive object={geometry} attach="geometry" />
-            <primitive object={material} attach="material" />
-        </primitive>
-    );
+    return <primitive object={object} frustumCulled={false}/>;
 }

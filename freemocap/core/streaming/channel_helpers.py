@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 from collections.abc import Mapping  # noqa: TC003 - runtime type checking
-from freemocap.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.data_tensors.channel_values import ChannelValues
 
 import numpy as np
 

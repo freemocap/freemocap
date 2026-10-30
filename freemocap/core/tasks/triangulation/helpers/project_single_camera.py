@@ -9,7 +9,7 @@ path — it sees the same data shapes and doesn't care about the origin.
 """
 
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from numpy.typing import NDArray
 
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult

@@ -3,7 +3,7 @@ import {serverUrls} from '@/constants/server-urls';
 import {KeypointsSourceProvider, type KeypointsSource, type KeypointsFrame, type KeypointsCallback, type ModelsCallback, type ModelFramesCallback} from './KeypointsSourceContext';
 import type {ModelDefinition} from '@/services/server/transport/message-contract';
 import type {ResolvedModelFrame} from '@/services/server/transport/frame-types';
-import {recordedKeypoints, recordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackChannelData, type PlaybackRun} from '@/services/recording/playback-data';
+import {prepareRecordedKeypoints, prepareRecordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackChannelData, type PlaybackRun} from '@/services/recording/playback-data';
 
 import {PlaybackLoadResultSchema} from '@/services/recording/playback-parquet-messages';
 import {RecordingSelectionContext, type RecordingSelection} from './RecordingSelectionContext';
@@ -95,6 +95,15 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
         if (loaded?.manifest !== manifest) return;
         const channels = loaded.runs[run.run_id];
         if (!channels) {setError('Selected recording samples are missing'); return;}
+        let modelReaders: Array<(time: number) => ResolvedModelFrame>;
+        let pointReader: ReturnType<typeof prepareRecordedKeypoints>;
+        try {
+            modelReaders = run.models.map(model => prepareRecordedModelFrame(run, {channels}, model, group));
+            pointReader = prepareRecordedKeypoints(channels, group);
+        } catch (failure) {
+            setError(failure instanceof Error ? failure.message : String(failure));
+            return;
+        }
         let raf = 0;
         let emittedTime = NaN;
         let ready = false;
@@ -118,9 +127,9 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
                     pointSubscribers.current.forEach(callback => callback({pointNames: [], interleaved: new Float32Array()}));
                 }
             } else if (time !== emittedTime) {
-                    state.current.frames = run.models.flatMap(model => sample(`model:${model.model_id}`, time,
-                        () => [recordedModelFrame(run, {channels}, model, group, time)], []));
-                    const points = sample('original keypoints', time, () => recordedKeypoints(channels, group, time), null);
+                    state.current.frames = modelReaders.flatMap((read, index) => sample(`model:${run.models[index].model_id}`, time,
+                        () => [read(time)], []));
+                    const points = sample('original keypoints', time, () => pointReader(time), null);
                     state.current.points = points ? {pointNames: points.names, interleaved: points.data} : null;
                     frameSubscribers.current.forEach(callback => callback(state.current.frames));
                     pointSubscribers.current.forEach(callback => callback(state.current.points ?? {pointNames: [], interleaved: new Float32Array()}));

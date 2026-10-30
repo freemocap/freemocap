@@ -16,7 +16,7 @@ from freemocap.core.recording.sample_encoding.reconstruction_samples import (
     ReconstructionSourceDefinition,
 )
 from freemocap.core.recording.sample_encoding.spatial_points import SpatialReference
-from freemocap.core.data_tensors import AxisDefinition
+from skellyforge.core.data_tensors import AxisDefinition, DataTensor
 from freemocap.core.reconstruction.recording_pose_outputs import reconstruction_tensor
 from freemocap.core.types.channel_kind import ChannelKind
 
@@ -52,6 +52,16 @@ def test_partial_pose_preserves_world_orientation_and_missing_local_rotation() -
     )
     series = {item.channel.kind: item for item in recording.series()}
     for channel_kind, item in series.items():
+        assert type(recording.result.channel_tensor(channel_kind)) is DataTensor
+        assert item.values is recording.result.channel_tensor(channel_kind).data_values
+        assert np.shares_memory(item.values, recording.result.channel_tensor(channel_kind).data_values)
+        # Publication reads the existing channel array and allocates only bounded
+        # Arrow columns; the immutable scientific tensor remains the owner.
+        published = list(item.batches(SeriesSampling(
+            frame_numbers=(7,), timestamps_s=(0.25,), run_id=4, batch_size=5)))
+        assert all(batch.num_rows <= 5 for batch in published)
+        values = pa.Table.from_batches(published).column('value').to_numpy()
+        np.testing.assert_array_equal(values, item.values.reshape(-1))
         assert item.values is recording.result.channel_tensor(channel_kind).data_values
     assert not hasattr(recording.result, "frames")
     assert np.isnan(series[ChannelKind.ROTATIONS_LOCAL].values).all()

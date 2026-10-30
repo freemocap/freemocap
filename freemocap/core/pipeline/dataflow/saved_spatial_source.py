@@ -37,16 +37,17 @@ def load_saved_spatial_source(*, path: Path, config: PosthocMocapPipelineConfig)
     with recording_write_lock(structure=structure):
         with recording_view(structure.data_parquet_path) as view:
             metadata, revision = view.metadata, view.revision
-        base = metadata.runs[config.base_run_id]
-        group = select_group(base, config.sensor_group)
-        kind = ChannelKind.RAW_KEYPOINTS_3D if config.start_stage == 'filtering' else ChannelKind.KEYPOINTS_3D
-        channels = [c for c in base.channels if c.sensor_group == group and c.kind == kind]
-        if len(channels) != 1:
-            raise ValueError(f'Restart requires one complete saved {kind} channel')
-        points = read_saved_channel(structure=structure, metadata=metadata, run_id=config.base_run_id, channel=channels[0])
+            base = metadata.runs[config.base_run_id]
+            group = select_group(base, config.sensor_group)
+            kind = ChannelKind.RAW_KEYPOINTS_3D if config.start_stage == 'filtering' else ChannelKind.KEYPOINTS_3D
+            channels = [c for c in base.channels if c.sensor_group == group and c.kind == kind]
+            if len(channels) != 1:
+                raise ValueError(f'Restart requires one complete saved {kind} channel')
+            points = read_saved_channel(structure=structure, metadata=metadata, run_id=config.base_run_id, channel=channels[0], view=view)
         reference = SpatialReference.model_validate(base.reference_frames[points.channel.reference_frame])
-        if dict(points.channel.components) != dict.fromkeys(('x', 'y', 'z'), reference.units):
-            raise ValueError('Saved 3D points must use xyz components in their declared spatial units')
+        if (tuple(points.channel.components) != ('x', 'y', 'z')
+                or dict(points.channel.components) != dict.fromkeys(('x', 'y', 'z'), reference.units)):
+            raise ValueError('Saved 3D points must declare xyz components in order and use their declared spatial units')
         bundles = tuple(model.to_bundle() for model in base.models.values()
             if model_source_name(model.model_id) not in base.sources
             or base.sources[model_source_name(model.model_id)].definition.get('tracker') == points.channel.source)

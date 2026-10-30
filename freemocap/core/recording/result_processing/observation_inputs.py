@@ -25,6 +25,7 @@ from pydantic import JsonValue
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.timestamps.recording_timing_reader import TimingMethod
 from skellytracker.core.data_primitives.observation import Observation
+from freemocap.core.tracking.observation_series import ObservationFrames
 from freemocap.core.recording.result_processing.provenance import ProvenanceContext
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
@@ -91,17 +92,22 @@ class DetectorRecordingDefinition(Descriptor):
 @dataclass(frozen=True, slots=True)
 class ObservationGroup:
     name: str
-    frames: list[dict[str, Observation]]
+    frames: list[dict[str, Observation]] | ObservationFrames
     videos: dict[str, VideoMetadata]
 
     def __post_init__(self) -> None:
         if not self.frames or not self.videos:
             raise ValueError("Observation ingestion requires frames and cameras")
-        if any(set(frame) != set(self.videos) for frame in self.frames):
+        if isinstance(self.frames, ObservationFrames):
+            if set(self.frames.camera_series) != set(self.videos):
+                raise ValueError("Observation camera set does not match video metadata")
+        elif any(set(frame) != set(self.videos) for frame in self.frames):
             raise ValueError("Observation camera set does not match video metadata")
 
     @property
     def frame_numbers(self) -> tuple[int, ...]:
+        if isinstance(self.frames, ObservationFrames):
+            return self.frames.frame_numbers
         camera = next(iter(self.videos))
         return tuple(frame[camera].frame_number for frame in self.frames)
 

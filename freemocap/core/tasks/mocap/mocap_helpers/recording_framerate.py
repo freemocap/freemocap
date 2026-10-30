@@ -21,7 +21,7 @@ import json
 import logging
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 
 logger = logging.getLogger(__name__)
 
@@ -79,13 +79,19 @@ def _framerate_from_stats_json(recording_path: Path) -> tuple[float, Path] | Non
 
 
 def _median_framerate_from_csv(csv_path: Path) -> float | None:
-    values = pd.read_csv(csv_path, usecols=[_FRAMERATE_COLUMN])[_FRAMERATE_COLUMN].dropna()
-    values = values[values > 0]
-    if len(values) < _MIN_SAMPLES:
+    # Project one numeric column and reduce in Polars [@polarsCsvScan].
+    frame_rate = pl.col(_FRAMERATE_COLUMN)
+    summary = (pl.scan_csv(csv_path, schema_overrides={_FRAMERATE_COLUMN: pl.Float64},
+                          null_values=['NA', 'N/A', 'NULL', 'null', 'None'])
+               .select(frame_rate)
+               .filter(frame_rate.is_not_null() & frame_rate.is_not_nan() & (frame_rate > 0))
+               .select(pl.len().alias('sample_count'), frame_rate.median().alias('median_rate'))
+               .collect())
+    if summary['sample_count'][0] < _MIN_SAMPLES:
         return None
     # Median, not mean: dropped frames produce double-length intervals that would
     # drag a mean downward and understate the true rate.
-    return float(values.median())
+    return float(summary['median_rate'][0])
 
 
 def get_recording_framerate(recording_path: str | Path) -> float | None:

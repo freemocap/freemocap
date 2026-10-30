@@ -6,19 +6,20 @@ from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 import math
 from pathlib import Path
 
-import pyarrow.compute as pc
+import numpy as np
+import pyarrow as pa
 from pydantic import Field, field_serializer, model_validator
 
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionSourceDefinition
 from freemocap.core.recording.data_descriptors.recording_descriptor import (
     Channel,
     Descriptor,
-    RecordingMetadata,
     StaticChannel,
     SourceKind,
 )
 from freemocap.core.recording.result_processing.observation_inputs import CameraRecordingDefinition
 from freemocap.core.recording.parquet_storage.recording_view import RecordingView, recording_view
+from freemocap.core.recording.parquet_storage.selected_batches import ComponentQuery, selected_batches
 from freemocap.core.recording.parquet_storage.parquet_reader import read_static_channels
 from freemocap.core.recording.data_descriptors.sample_conventions import SampleComponent
 from freemocap.core.streaming.message_composer import compose_messages
@@ -83,29 +84,50 @@ class PlaybackManifest(Descriptor):
     runs: tuple[PlaybackRun, ...]
 
 
+def _playback_timelines(view: RecordingView) -> dict[int, list[PlaybackTimeline]]:
+    """Group native clocks in arrays; materialize tuples only for the JSON model."""
+    columns = ("run_id", "sensor_group", "source", "frame_number", "timestamp_s")
+    batches = list(selected_batches(
+        view, (ComponentQuery(ChannelKind.TIMESTAMPS, SampleComponent.TIMESTAMP),), columns=columns,
+    ))
+    if not batches:
+        return {}
+    table = pa.Table.from_batches(batches).select(columns).combine_chunks()
+    groups = table.column("sensor_group").chunk(0).dictionary_encode()
+    sources = table.column("source").chunk(0).dictionary_encode()
+    identities = np.column_stack((table.column("run_id").to_numpy(),
+                                 groups.indices.to_numpy(), sources.indices.to_numpy()))
+    keys, first, inverse = np.unique(identities, axis=0, return_index=True, return_inverse=True)
+    frames = table.column("frame_number").to_numpy()
+    timestamps = table.column("timestamp_s").to_numpy()
+    order = np.lexsort((frames, inverse))
+    sorted_groups, frames, timestamps = inverse[order], frames[order], timestamps[order]
+    duplicate = (sorted_groups[1:] == sorted_groups[:-1]) & (frames[1:] == frames[:-1])
+    if np.any(duplicate & (timestamps[1:] != timestamps[:-1])):
+        raise ValueError("Inconsistent playback timestamps")
+    # Equal duplicates retain their last stored value, including signed zero.
+    keep = np.concatenate((~duplicate, [True]))
+    sorted_groups, frames, timestamps = sorted_groups[keep], frames[keep], timestamps[keep]
+    starts = np.searchsorted(sorted_groups, np.arange(len(keys) + 1))
+    result: dict[int, list[PlaybackTimeline]] = {}
+    # Preserve each identity's first appearance in the file, as the original reader did.
+    for index in np.argsort(first):
+        run_id, group, source = keys[index]
+        if run_id not in view.metadata.runs:
+            continue
+        start, stop = starts[index:index + 2]
+        result.setdefault(int(run_id), []).append(PlaybackTimeline(
+            sensor_group=groups.dictionary[int(group)].as_py(),
+            source=sources.dictionary[int(source)].as_py(),
+            frame_numbers=tuple(frames[start:stop].tolist()),
+            timestamps_s=tuple(timestamps[start:stop].tolist()),
+        ))
+    return result
+
+
 def playback_manifest(path: Path) -> PlaybackManifest:
     with recording_view(path) as view:
-        grids: dict[tuple[int, str, str], dict[int, float]] = {}
-        for batch in view.parquet.iter_batches(batch_size=65536):
-            selected = batch.filter(
-                pc.and_(
-                    pc.equal(batch.column("channel"), ChannelKind.TIMESTAMPS),
-                    pc.equal(batch.column("component"), SampleComponent.TIMESTAMP),
-                )
-            )
-            columns = selected.to_pydict()
-            for run, group, source, frame, timestamp in zip(
-                columns["run_id"],
-                columns["sensor_group"],
-                columns["source"],
-                columns["frame_number"],
-                columns["timestamp_s"],
-                strict=True,
-            ):
-                grid = grids.setdefault((run, group, source), {})
-                if frame in grid and grid[frame] != timestamp:
-                    raise ValueError("Inconsistent playback timestamps")
-                grid[frame] = timestamp
+        timelines_by_run = _playback_timelines(view)
         runs: list[PlaybackRun] = []
         for run_id, run in view.metadata.runs.items():
             composition = compose_messages(
@@ -113,16 +135,7 @@ def playback_manifest(path: Path) -> PlaybackManifest:
                     skeletons=tuple(model.to_bundle() for model in run.models.values())
                 )
             )
-            timelines = tuple(
-                PlaybackTimeline(
-                    sensor_group=group,
-                    source=source,
-                    frame_numbers=tuple(sorted(grid)),
-                    timestamps_s=tuple(grid[frame] for frame in sorted(grid)),
-                )
-                for (saved_run, group, source), grid in grids.items()
-                if saved_run == run_id
-            )
+            timelines = tuple(timelines_by_run.get(run_id, ()))
             media: list[PlaybackMedia] = []
             for timeline in timelines:
                 source = run.sources[timeline.source]

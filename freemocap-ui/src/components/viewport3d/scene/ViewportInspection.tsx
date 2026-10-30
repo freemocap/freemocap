@@ -1,10 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useKeypointsSource, useModelDefinitionsById, type KeypointsSource } from "../KeypointsSourceContext";
+import { useKeypointsSource, useModelDefinitionsById } from "../KeypointsSourceContext";
 import { useViewportState } from "./ViewportStateContext";
 import type { InspectionKind, InspectionTarget } from "../helpers/viewport3d-types";
-import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
-import type { ModelDefinition } from "@/services/server/transport/message-contract";
+import {computeInspectionDetails, type DetailRow, type DetailValue} from "./inspection-details";
 
 /**
  * Hover label + click-to-pin details card for the 3D viewport. The worker does the
@@ -22,39 +21,6 @@ const KIND_LABEL: Record<InspectionKind, string> = {
     segment: "Segment",
 };
 
-/** A labeled row: plain text, or a short vector of numbers with per-component labels. */
-type DetailValue =
-    | { kind: "text"; text: string }
-    | { kind: "numbers"; components: readonly string[]; values: readonly number[] | null; digits: number };
-
-interface DetailRow {
-    label: string;
-    value: DetailValue;
-}
-
-const XYZ = ["x", "y", "z"] as const;
-const WXYZ = ["w", "x", "y", "z"] as const;
-
-const text = (t: string): DetailValue => ({ kind: "text", text: t });
-const scalar = (v: number | null, digits: number): DetailValue => ({
-    kind: "numbers",
-    components: [""],
-    values: v === null ? null : [v],
-    digits,
-});
-const vec3 = (v: ArrayLike<number> | null, digits: number): DetailValue => ({
-    kind: "numbers",
-    components: XYZ,
-    values: v === null ? null : [v[0], v[1], v[2]],
-    digits,
-});
-const quat = (v: ArrayLike<number> | null): DetailValue => ({
-    kind: "numbers",
-    components: WXYZ,
-    values: v === null ? null : [v[0], v[1], v[2], v[3]],
-    digits: 3,
-});
-
 function formatNumber(v: number, digits: number): string {
     return Number.isFinite(v) ? v.toFixed(digits) : "—";
 }
@@ -66,95 +32,6 @@ function valueAsText(value: DetailValue): string {
     return value.components
         .map((c, i) => (c ? `${c}=${formatNumber(values[i], value.digits)}` : formatNumber(values[i], value.digits)))
         .join(", ");
-}
-
-/** "body_height" → "Body height". */
-function humanize(identifier: string): string {
-    const spaced = identifier.replace(/_/g, " ");
-    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-function pointAt(data: ArrayLike<number> | undefined, index: number): number[] | null {
-    if (!data || index < 0) return null;
-    return [data[index * 3], data[index * 3 + 1], data[index * 3 + 2]];
-}
-
-function computeDetails(
-    target: InspectionTarget,
-    source: KeypointsSource,
-    models: ResolvedModelFrame[] | null,
-    definitionsById: Map<string, ModelDefinition>,
-): DetailRow[] {
-    if (target.kind === "keypoint") {
-        const frame = source.getLatestKeypoints?.();
-        const index = frame ? frame.pointNames.indexOf(target.name) : -1;
-        return [{ label: "Position (mm)", value: vec3(pointAt(frame?.interleaved, index), 1) }];
-    }
-
-    // A frame carries several models, so the numbers are read from the one that declares the target.
-    if (target.kind === "landmark" || target.kind === "mapped keypoint") {
-        const entry = models?.find(
-            (m) => definitionsById.get(m.modelId)?.landmarks.some((l) => l.name === target.name),
-        );
-        const points = target.kind === "mapped keypoint" ? entry?.mappedKeypoints : entry?.landmarks;
-        const index = points ? points.names.indexOf(target.name) : -1;
-        const definition = entry ? definitionsById.get(entry.modelId) : undefined;
-        const landmark = definition?.landmarks.find((l) => l.name === target.name);
-        return [
-            { label: "Model", value: text(entry?.modelId ?? "—") },
-            { label: "Position (mm)", value: vec3(pointAt(points?.data, index), 1) },
-            { label: "Rest position (model units)", value: vec3(landmark?.rest_position ?? null, 3) },
-        ];
-    }
-
-    const entry = models?.find(
-        (m) => definitionsById.get(m.modelId)?.segments.some((s) => s.name === target.name),
-    );
-    const definition = entry ? definitionsById.get(entry.modelId) : undefined;
-    const origins = entry?.segmentOrigins ?? null;
-    const rotations = entry?.rotations ?? null;
-    const lengths = entry?.segmentLengths ?? null;
-    const originIndex = origins ? origins.names.indexOf(target.name) : -1;
-    const rotationIndex = rotations ? rotations.boneNames.indexOf(target.name) : -1;
-    const lengthIndex = lengths ? lengths.names.indexOf(target.name) : -1;
-    const segment = definition?.segments.find((s) => s.name === target.name);
-    const scaleReference = humanize(definition?.scale_reference_name ?? "scale reference");
-    const fittedScaleMm = entry?.fittedScaleMm ?? null;
-
-    // A model is dimensionless, so a length in mm always comes from the fit: the segment's
-    // own fitted length where the wire carries one, otherwise its authored proportion times
-    // the model's fitted scale.
-    const lengthMm =
-        lengthIndex >= 0 && lengths
-            ? lengths.data[lengthIndex]
-            : segment && fittedScaleMm !== null
-              ? segment.length_proportion * fittedScaleMm
-              : null;
-
-    return [
-        { label: "Model", value: text(entry?.modelId ?? "—") },
-        { label: "Origin (mm)", value: vec3(pointAt(origins?.data, originIndex), 1) },
-        { label: "Length (mm)", value: scalar(lengthMm, 1) },
-        { label: `Length (× ${scaleReference.toLowerCase()})`, value: scalar(segment?.length_proportion ?? null, 3) },
-        { label: `${scaleReference} (mm)`, value: fittedScaleMm !== null ? scalar(fittedScaleMm, 1) : text("not measured") },
-        {
-            label: "Rotation, world",
-            value: quat(rotationIndex >= 0 && rotations ? rotations.worldQuaternions.slice(rotationIndex * 4, rotationIndex * 4 + 4) : null),
-        },
-        {
-            label: "Rotation, local",
-            value: quat(rotationIndex >= 0 && rotations ? rotations.localQuaternions.slice(rotationIndex * 4, rotationIndex * 4 + 4) : null),
-        },
-        { label: "Rest orientation", value: quat(segment?.rest_orientation ?? null) },
-        {
-            label: "Primary axis",
-            value: !segment
-                ? text("—")
-                : typeof segment.primary_axis === "string"
-                  ? text(segment.primary_axis)
-                  : vec3(segment.primary_axis, 3),
-        },
-    ];
 }
 
 function detailsAsText(target: InspectionTarget, rows: DetailRow[]): string {
@@ -190,6 +67,7 @@ function HoverLabel() {
         <div ref={ref} className="vp-hover-label" role="tooltip">
             <span className="vp-hover-kind">{KIND_LABEL[hovered.kind]}</span>
             <span className="vp-hover-name">{hovered.name}</span>
+            {hovered.kind !== "keypoint" && <span>{hovered.modelId} � subject {hovered.instanceId}</span>}
         </div>,
         document.body,
     );
@@ -247,7 +125,7 @@ function PinnedDetails({ onUnpin }: { onUnpin: () => void }) {
     }, [copied]);
 
     if (!pinned) return null;
-    const rows = computeDetails(pinned, source, source.getLatestModelFrames(), definitionsById.current);
+    const rows = computeInspectionDetails(pinned, source, source.getLatestModelFrames(), definitionsById.current);
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(detailsAsText(pinned, rows));

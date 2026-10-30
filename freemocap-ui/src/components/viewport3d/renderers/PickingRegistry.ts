@@ -1,5 +1,5 @@
 import type { InstancedMesh } from "three";
-import type { InspectionKind } from "../helpers/viewport3d-types";
+import type { InspectionKind, InspectionTarget } from "../helpers/viewport3d-types";
 
 /**
  * Module-level registry the renderers populate so the ViewportPicker can
@@ -9,8 +9,8 @@ import type { InspectionKind } from "../helpers/viewport3d-types";
 
 export interface PickingMeshEntry {
     kind: InspectionKind;
-    /** instance index -> point/bone name (mutated in place by the renderer). */
-    instanceIdToName: Map<number, string>;
+    /** Renderer slot -> semantic identity; populated only when its layout changes. */
+    instanceTargets: Map<number, InspectionTarget>;
 }
 
 const registry = new Map<InstancedMesh, PickingMeshEntry>();

@@ -12,6 +12,7 @@
 // index-keyed against their OWN model, so their names come from that model.
 
 import type { ChannelBlock, FrameMessage, ModelDefinition } from "./message-contract";
+import {snapshotEqual} from './snapshot-equality';
 import {
     OverlayLayer,
     type DerivedPointsFrame,
@@ -32,8 +33,6 @@ const OVERLAY_2D = "OVERLAY_2D";
 const BOXES_2D = "BOXES_2D";
 const SEGMENT_LENGTHS = "SEGMENT_LENGTHS";
 const OVERLAY_REPROJECTIONS = "OVERLAY_REPROJECTIONS";
-/** [x1, y1, x2, y2, confidence, detector_ran] — see BoxProducer.BOX_COLUMNS. */
-const BOX_STRIDE = 6;
 
 function channelByKind(channels: ChannelBlock[], kind: string): ChannelBlock | undefined {
     return channels.find((c) => c.kind === kind);
@@ -45,15 +44,42 @@ function float32(data: Uint8Array): Float32Array {
     return new Float32Array(data.buffer, data.byteOffset, data.byteLength / 4);
 }
 
-/** Strip a 4-column (x,y,z,reprojection_error) block to 3-interleaved xyz. */
-function xyzFromFourColumns(data: Float32Array, rowCount: number): Float32Array {
-    const out = new Float32Array(rowCount * 3);
-    for (let i = 0; i < rowCount; i++) {
-        out[i * 3] = data[i * 4];
-        out[i * 3 + 1] = data[i * 4 + 1];
-        out[i * 3 + 2] = data[i * 4 + 2];
+function overlayValues(channel: ChannelBlock, names: readonly string[]): Float32Array {
+    const required = channel.kind === BOXES_2D
+        ? ['x1', 'y1', 'x2', 'y2', 'confidence', 'detector_ran'] : ['x', 'y', 'visibility'];
+    if (new Set(channel.columns).size !== channel.columns.length || required.some(name => !channel.columns.includes(name)) ||
+        channel.data.byteLength !== names.length * channel.columns.length * Float32Array.BYTES_PER_ELEMENT) {
+        throw new Error('Camera overlay bytes do not match declared components and identities');
     }
-    return out;
+    return float32(channel.data);
+}
+
+/** Retain owned scientific values and select XYZ using declared component names. */
+function pointView(channel: ChannelBlock, names: readonly string[]): PointsFrame {
+    const stride = channel.columns.length;
+    if (new Set(channel.columns).size !== stride || channel.data.byteLength !== names.length * stride * Float32Array.BYTES_PER_ELEMENT)
+        throw new Error('Point channel bytes do not match unique declared components and identities');
+    const coordinateOffsets = ['x', 'y', 'z'].map(component => channel.columns.indexOf(component)) as [number, number, number];
+    if (coordinateOffsets.some(index => index < 0)) throw new Error('3D point channel requires declared XYZ components');
+    return {names, data: float32(channel.data), stride, coordinateOffsets};
+}
+
+function copyPoints(target: Float32Array, targetRow: number, source: PointsFrame): void {
+    const stride = source.stride ?? 3, offsets = source.coordinateOffsets ?? [0, 1, 2];
+    for (let row = 0; row < source.names.length; row++) {
+        const from = row * stride, to = (targetRow + row) * 3;
+        target[to] = source.data[from + offsets[0]]; target[to + 1] = source.data[from + offsets[1]]; target[to + 2] = source.data[from + offsets[2]];
+    }
+}
+
+const modelLayouts = new WeakMap<ModelDefinition, {segments: readonly string[]; landmarks: readonly string[]}>();
+function modelLayout(model: ModelDefinition) {
+    let layout = modelLayouts.get(model);
+    if (!layout) {
+        layout = {segments: model.segments.map(segment => segment.name), landmarks: model.landmarks.map(landmark => landmark.name)};
+        modelLayouts.set(model, layout);
+    }
+    return layout;
 }
 
 export interface ResolvedFrameChannels {
@@ -82,7 +108,7 @@ function mergeTrackerKeypoints(frame: FrameMessage): PointsFrame | null {
     const data = new Float32Array(names.length * 3);
     let offset = 0;
     for (const entry of blocks) {
-        data.set(xyzFromFourColumns(float32(entry.block.data), entry.count), offset * 3);
+        copyPoints(data, offset, pointView(entry.block, entry.block.names!));
         offset += entry.count;
     }
     return { names, data };
@@ -95,12 +121,11 @@ function resolveModelFrame(
     fittedScaleMm: number | null,
     instanceId: number,
 ): ResolvedModelFrame {
-    const segmentNames: readonly string[] = model.segments.map((s) => s.name);
-    const landmarkNames: readonly string[] = model.landmarks.map((l) => l.name);
+    const {segments: segmentNames, landmarks: landmarkNames} = modelLayout(model);
 
     const so = channelByKind(channels, SEGMENT_ORIGINS);
     const segmentOrigins: PointsFrame | null = so
-        ? { names: segmentNames, data: float32(so.data) }
+        ? pointView(so, segmentNames)
         : null;
 
     // LANDMARKS_3D is the model's landmarks placed by the FIT rather than by triangulation
@@ -108,15 +133,12 @@ function resolveModelFrame(
     // than as a cloud of measured corners.
     const lm = channelByKind(channels, LANDMARKS_3D);
     const landmarks: PointsFrame | null = lm
-        ? {
-              names: landmarkNames,
-              data: xyzFromFourColumns(float32(lm.data), landmarkNames.length),
-          }
+        ? pointView(lm, landmarkNames)
         : null;
 
     const mapped = channelByKind(channels, "MAPPED_KEYPOINTS_3D");
     const mappedKeypoints: PointsFrame | null = mapped
-        ? {names: landmarkNames, data: xyzFromFourColumns(float32(mapped.data), landmarkNames.length)}
+        ? pointView(mapped, landmarkNames)
         : null;
 
     const rw = channelByKind(channels, ROTATIONS_WORLD);
@@ -135,13 +157,14 @@ function resolveModelFrame(
     const dp = channelByKind(channels, DERIVED_POINTS);
     if (dp && dp.names) {
         const derivedNames = dp.names;
-        const raw = float32(dp.data);
+        const points = pointView(dp, derivedNames);
+        const raw = points.data, stride = points.stride!, offsets = points.coordinateOffsets!;
         const rowOf = (name: string): [number, number, number] | null => {
             const idx = derivedNames.indexOf(name);
             if (idx === -1) return null;
-            const x = raw[idx * 3];
+            const x = raw[idx * stride + offsets[0]];
             if (Number.isNaN(x)) return null;
-            return [raw[idx * 3], raw[idx * 3 + 1], raw[idx * 3 + 2]];
+            return [x, raw[idx * stride + offsets[1]], raw[idx * stride + offsets[2]]];
         };
         centerOfMass = rowOf("center_of_mass");
         xcom = rowOf("xcom");
@@ -169,69 +192,112 @@ function resolveModelFrame(
 }
 
 export function resolveFrameChannels(frame: FrameMessage): ResolvedFrameChannels {
-    const modelById = new Map(frame.models.map((m) => [m.model_id, m]));
+    return new FrameResolver().resolve(frame);
+}
 
-    const models: ResolvedModelFrame[] = [];
-    for (const instance of frame.instances) {
-        const model = modelById.get(instance.model_id);
-        // An instance naming a model the frame does not carry cannot be drawn — the frame
-        // is meant to be self-contained, so this is a backend bug rather than something to
-        // paper over with a guessed model.
-        if (!model) continue;
-        models.push(
-            resolveModelFrame(model, instance.channels, instance.fitted_scale_mm ?? null, instance.instance_id),
-        );
+/** Reuse only immutable-by-contract published values, never overwrite a retained frame. */
+export class FrameResolver {
+    private definitions: readonly ModelDefinition[] | null = null;
+    private modelById = new Map<string, ModelDefinition>();
+    private previous: FrameMessage | null = null;
+    private latest: ResolvedFrameChannels | null = null;
+    reset(): void {
+        this.definitions = null;
+        this.modelById.clear();
+        this.previous = null;
+        this.latest = null;
     }
+    resolve(frame: FrameMessage): ResolvedFrameChannels {
+        const definitionsChanged = this.definitions !== frame.models;
+        if (definitionsChanged) {
+            this.definitions = frame.models;
+            this.modelById = new Map(frame.models.map(model => [model.model_id, model]));
+        }
+        const modelById = this.modelById;
+        const sameChannels = (left: ChannelBlock[], right: ChannelBlock[]) => left.length === right.length && left.every((channel, index) => {
+            const other = right[index];
+            return channel.data === other.data && channel.kind === other.kind && channel.camera_id === other.camera_id
+                && snapshotEqual(channel.names, other.names) && snapshotEqual(channel.columns, other.columns) && snapshotEqual(channel.image_size, other.image_size);
+        });
+        const reuseModels = !definitionsChanged && this.previous && this.latest && frame.instances.length === this.previous.instances.length
+            && frame.instances.every((instance, index) => {
+                const old = this.previous!.instances[index];
+                return instance.model_id === old.model_id && instance.instance_id === old.instance_id && Object.is(instance.fitted_scale_mm, old.fitted_scale_mm)
+                    && sameChannels(instance.channels, old.channels);
+            });
 
-    const overlays: OverlayFrame[] = [];
-    for (const tracker of frame.trackers) {
-        for (const c of tracker.channels) {
-            if (c.kind === OVERLAY_2D && c.camera_id && c.names) {
-                overlays.push({
-                    cameraId: c.camera_id,
-                    layer: OverlayLayer.DETECTIONS,
-                    frameNumber: frame.frame_number,
-                    names: c.names,
-                    data: float32(c.data),
-                    imageSize: c.image_size,
-                });
-            }
-            // The detector's crop for this camera. Named by detection stage, so a
-            // tracker running several stages reports one row each.
-            if (c.kind === BOXES_2D && c.camera_id && c.names) {
-                overlays.push({
-                    cameraId: c.camera_id,
-                    layer: OverlayLayer.BOXES,
-                    frameNumber: frame.frame_number,
-                    names: c.names,
-                    data: float32(c.data),
-                    stride: BOX_STRIDE,
-                    imageSize: c.image_size,
-                });
+        const models: ResolvedModelFrame[] = [];
+        for (const instance of reuseModels ? [] : frame.instances) {
+            const model = modelById.get(instance.model_id);
+            // An instance naming a model the frame does not carry cannot be drawn — the frame
+            // is meant to be self-contained, so this is a backend bug rather than something to
+            // paper over with a guessed model.
+            if (!model) continue;
+            models.push(
+                resolveModelFrame(model, instance.channels, instance.fitted_scale_mm ?? null, instance.instance_id),
+            );
+        }
+
+        const overlays: OverlayFrame[] = [];
+        for (const tracker of frame.trackers) {
+            for (const c of tracker.channels) {
+                if (c.kind === OVERLAY_2D && c.camera_id && c.names) {
+                    overlays.push({
+                        cameraId: c.camera_id,
+                        layer: OverlayLayer.DETECTIONS,
+                        frameNumber: frame.frame_number,
+                        names: c.names,
+                        columns: c.columns,
+                        data: overlayValues(c, c.names),
+                        imageSize: c.image_size,
+                    });
+                }
+                // The detector's crop for this camera. Named by detection stage, so a
+                // tracker running several stages reports one row each.
+                if (c.kind === BOXES_2D && c.camera_id && c.names) {
+                    overlays.push({
+                        cameraId: c.camera_id,
+                        layer: OverlayLayer.BOXES,
+                        frameNumber: frame.frame_number,
+                        names: c.names,
+                        columns: c.columns,
+                        data: overlayValues(c, c.names),
+                        imageSize: c.image_size,
+                    });
+                }
             }
         }
-    }
-    for (const instance of frame.instances) {
-        const model = modelById.get(instance.model_id);
-        if (!model) continue;
-        // Named against THIS instance's model: reprojections are segment-origin rows, and
-        // labelling them from another model's segment list is how a board's overlay would
-        // come out wearing a human's names.
-        const segmentNames = model.segments.map((s) => s.name);
-        for (const c of instance.channels) {
-            if (c.kind === OVERLAY_REPROJECTIONS && c.camera_id) {
-                overlays.push({
-                    cameraId: c.camera_id,
-                    layer: OverlayLayer.REPROJECTIONS,
-                    modelId: model.model_id,
-                    frameNumber: frame.frame_number,
-                    names: segmentNames,
-                    data: float32(c.data),
-                    imageSize: c.image_size,
-                });
+        for (const instance of frame.instances) {
+            const model = modelById.get(instance.model_id);
+            if (!model) continue;
+            // Named against THIS instance's model: reprojections are segment-origin rows, and
+            // labelling them from another model's segment list is how a board's overlay would
+            // come out wearing a human's names.
+            const segmentNames = modelLayout(model).segments;
+            for (const c of instance.channels) {
+                if (c.kind === OVERLAY_REPROJECTIONS && c.camera_id) {
+                    overlays.push({
+                        cameraId: c.camera_id,
+                        layer: OverlayLayer.REPROJECTIONS,
+                        modelId: model.model_id,
+                        frameNumber: frame.frame_number,
+                        names: segmentNames,
+                        columns: c.columns,
+                        data: overlayValues(c, segmentNames),
+                        imageSize: c.image_size,
+                    });
+                }
             }
         }
-    }
 
-    return { models, keypoints: mergeTrackerKeypoints(frame), overlays };
+        const reusePoints = this.previous && this.latest && frame.trackers.length === this.previous.trackers.length
+            && frame.trackers.every((tracker, index) => {
+                const old = this.previous!.trackers[index];
+                const current = channelByKind(tracker.channels, KEYPOINTS_3D), prior = channelByKind(old.channels, KEYPOINTS_3D);
+                return tracker.tracker_id === old.tracker_id && (current && prior ? sameChannels([current], [prior]) : current === prior);
+            });
+        const result = {models: reuseModels ? this.latest!.models : models, keypoints: reusePoints ? this.latest!.keypoints : mergeTrackerKeypoints(frame), overlays};
+        this.previous = frame; this.latest = result;
+        return result;
+    }
 }

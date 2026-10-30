@@ -2,7 +2,7 @@ import {test, expect} from '@playwright/test';
 import {build} from 'esbuild';
 import {createServer, type Server} from 'node:http';
 import {execFileSync} from 'node:child_process';
-import {mkdtemp, readFile} from 'node:fs/promises';
+import {mkdtemp, readFile, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 
@@ -26,6 +26,25 @@ test.beforeAll(async () => {
         {cwd: resolve('..'), windowsHide: true, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024}));
     const worker = await build({entryPoints: ['src/services/recording/playback-parquet.worker.ts'], bundle: true,
         write: false, format: 'esm', platform: 'browser', alias: {'@': resolve('src')}});
+    const transferWorker = await build({stdin: {resolveDir: process.cwd(), loader: 'ts', contents: `
+        import {ViewportFrameReceiver} from './src/components/viewport3d/viewport-frame-transfer';
+        import {referencedFrameBuffers} from './src/components/viewport3d/viewport-frame-codec';
+        import {workerDataStore} from './src/components/viewport3d/WorkerDataStore';
+        const receiver = new ViewportFrameReceiver((message, transfers) => self.postMessage(message, transfers ?? []),
+            (stream, frame) => workerDataStore.dispatch(stream, frame),
+            () => referencedFrameBuffers(workerDataStore.getLatestKeypoints(), workerDataStore.getLatestModelFrames()),
+            () => workerDataStore.dispatch('frameReset', null));
+        workerDataStore.subscribeToKeypoints(() => receiver.scheduleRelease());
+        workerDataStore.subscribeToModelFrames(() => receiver.scheduleRelease());
+        self.onmessage = event => {
+            if (receiver.receive(event.data)) return;
+            if (event.data.type === 'probe') {
+                const points = workerDataStore.getLatestKeypoints();
+                self.postMessage({type: 'probe', id: event.data.id, names: points?.pointNames,
+                    values: Array.from(points?.interleaved ?? []), bufferBytes: points?.interleaved.buffer.byteLength});
+            } else workerDataStore.dispatch(event.data.type, event.data.data);
+        };
+    `}, bundle: true, write: false, format: 'esm', platform: 'browser', alias: {'@': resolve('src')}});
     const entry = await build({stdin: {resolveDir: process.cwd(), loader: 'tsx', contents: `
         import React, {useCallback, useEffect, useState} from 'react';
         import {createRoot} from 'react-dom/client';
@@ -35,6 +54,7 @@ test.beforeAll(async () => {
         import {useRecordingSelection} from './src/components/viewport3d/RecordingSelectionContext';
         import {PlaybackManifestSchema} from './src/services/recording/playback-data';
         import {decodePlaybackParquet} from './src/services/recording/playback-parquet';
+        import {ViewportFrameSender} from './src/components/viewport3d/viewport-frame-transfer';
         import {serverUrls} from './src/constants/server-urls';
         serverUrls.setHost(location.hostname); serverUrls.setPort(Number(location.port));
         const initial = PlaybackManifestSchema.parse(new URLSearchParams(location.search).get('recording') === 'real' ? ${JSON.stringify(realManifest)} : ${JSON.stringify(manifest)});
@@ -72,7 +92,10 @@ test.beforeAll(async () => {
             const [manifest, setManifest] = useState(initial);
             const [recordingId, setRecordingId] = useState(id);
             const [readyManifest, setReadyManifest] = useState(null);
-            const onReady = useCallback((manifest, ready) => setReadyManifest(current => ready ? manifest : current === manifest ? null : current), []);
+            const onReady = useCallback((manifest, ready) => {
+                if (ready && window.playbackReadyAt === undefined) window.playbackReadyAt = performance.now();
+                setReadyManifest(current => ready ? manifest : current === manifest ? null : current);
+            }, []);
             const ready = readyManifest === manifest;
             const controller = usePlaybackController({videos: [], recordingId, recordingParentDirectory: null,
                 bundle: null, reloadManifest: noop, playbackReady: ready});
@@ -92,6 +115,49 @@ test.beforeAll(async () => {
             return Object.values(runs).flat().map(item => ({group: item.channel.sensor_group,
                 frames: item.frame_numbers, times: item.timestamps_s}));
         };
+        window.decodeTensorFixture = async (file, invalidLayout) => {
+            const manifest = PlaybackManifestSchema.parse(await (await fetch('/fixture/tensor-manifest.json')).json());
+            if (invalidLayout === 'duplicate-name') manifest.runs[0].channels[0].names[1] = manifest.runs[0].channels[0].names[0];
+            if (invalidLayout === 'empty-components') manifest.runs[0].channels[0].components = {};
+            if (invalidLayout === 'duplicate-channel') manifest.runs[0].channels.push(manifest.runs[0].channels[0]);
+            if (invalidLayout === 'duplicate-run') manifest.runs.push(manifest.runs[0]);
+            const runs = await decodePlaybackParquet(await (await fetch('/fixture/tensor-' + file + '.parquet')).arrayBuffer(), manifest);
+            return Object.entries(runs).flatMap(([run_id, channels]) => channels.map(item => ({run_id: Number(run_id),
+                channel: item.channel, frames: item.frame_numbers, times: item.timestamps_s,
+                negativeZero: Object.is(item.values[0], -0),
+                values: Array.from(item.values, value => Number.isNaN(value) ? null : value)})));
+        };
+        window.checkFrameTransfer = async () => {
+            const worker = new Worker('/transfer-worker.js', {type: 'module'});
+            const pending = new Map();
+            let sequence = 0;
+            const packets = [];
+            const sender = new ViewportFrameSender((message, transfers) => {
+                if (message.type === 'viewportFrame') packets.push({bytes: message.buffer.byteLength, layout: !!message.layout});
+                worker.postMessage(message, transfers ?? []);
+            });
+            worker.onmessage = event => {
+                sender.receive(event.data);
+                if (event.data.type === 'probe') {pending.get(event.data.id)?.(event.data); pending.delete(event.data.id);}
+            };
+            const probe = () => new Promise(resolve => {const id = ++sequence; pending.set(id, resolve); worker.postMessage({type: 'probe', id});});
+            const recording = new Float32Array(100000);
+            recording.set([1, 2, 3], 30);
+            const names = ['point'];
+            try {
+                worker.postMessage({type: 'livePresentation', data: true});
+                sender.sendKeypoints({pointNames: names, interleaved: recording.subarray(30, 33)});
+                const first = await probe();
+                sender.sendKeypoints({pointNames: names, interleaved: new Float32Array([NaN, NaN, NaN])});
+                const missing = await probe();
+                sender.sendKeypoints({pointNames: names, interleaved: new Float32Array([4, 5, 6])});
+                const replacement = await probe();
+                sender.dispose();
+                const cleared = await probe();
+                return {first, missing, replacement, cleared, packets, sourceBytes: recording.byteLength,
+                    sourceValues: Array.from(recording.subarray(30, 33))};
+            } finally {sender.dispose(); worker.terminate();}
+        };
         createRoot(document.getElementById('root')).render(<App />);
     `}, bundle: true, write: false, format: 'esm', platform: 'browser', alias: {'@': resolve('src')}});
     server = createServer(async (request, response) => {
@@ -99,6 +165,8 @@ test.beforeAll(async () => {
         try {
             if (path.endsWith('/playback-parquet.worker.ts')) {
                 response.setHeader('Content-Type', 'text/javascript'); response.end(worker.outputFiles[0].text);
+            } else if (path === '/transfer-worker.js') {
+                response.setHeader('Content-Type', 'text/javascript'); response.end(transferWorker.outputFiles[0].text);
             } else if (path === '/entry.js') {
                 response.setHeader('Content-Type', 'text/javascript'); response.end(entry.outputFiles[0].text);
             } else if (path.startsWith('/fixture/')) {
@@ -188,6 +256,42 @@ test('decoder preserves native sample rates and rejects incomplete or duplicate 
     }
 });
 
+test('columnar decoder preserves declared axes across shuffled pages and rejects malformed tensors', async ({page}) => {
+    await page.goto(url);
+    const expected = JSON.parse(await readFile(join(directory, 'tensor-expected.json'), 'utf8'));
+    const actual = await page.evaluate(() => (window as any).decodeTensorFixture('valid'));
+    expect(actual).toEqual(expected.map((item: object) => ({...item, negativeZero: true})));
+    for (const file of ['duplicate', 'incomplete', 'missing-column', 'units', 'component', 'name',
+        'timestamp', 'inconsistent-time', 'value', 'null-frame', 'negative-frame', 'unsafe-frame',
+        'null-run', 'unsafe-run', 'null-name', 'reversed-time', 'string-values']) {
+        const error = await page.evaluate(async file => {
+            try {await (window as any).decodeTensorFixture(file); return '';}
+            catch (error) {return (error as Error).message;}
+        }, file);
+        expect(error, file).toMatch(/Invalid|Duplicate|Incomplete|Missing|does not match|timestamps must increase/);
+    }
+    for (const invalidLayout of ['duplicate-name', 'empty-components', 'duplicate-channel', 'duplicate-run']) {
+        const error = await page.evaluate(async invalidLayout => {
+            try {await (window as any).decodeTensorFixture('valid', invalidLayout); return '';}
+            catch (error) {return (error as Error).message;}
+        }, invalidLayout);
+        expect(error, invalidLayout).toMatch(/Invalid|Duplicate/);
+    }
+});
+
+test('real worker transfers only frame bytes and protects held live values until replacement', async ({page}) => {
+    await page.goto(url);
+    const result = await page.evaluate(() => (window as any).checkFrameTransfer());
+    expect(result.first.values).toEqual([1, 2, 3]);
+    expect(result.first.bufferBytes).toBe(12);
+    expect(result.missing.values).toEqual([1, 2, 3]);
+    expect(result.replacement.values).toEqual([4, 5, 6]);
+    expect(result.cleared.values).toEqual([]);
+    expect(result.sourceBytes).toBe(400000);
+    expect(result.sourceValues).toEqual([1, 2, 3]);
+    expect(result.packets).toEqual([{bytes: 12, layout: true}, {bytes: 12, layout: false}, {bytes: 12, layout: false}]);
+});
+
 
 test('play and keyboard wait for decoded frame zero after refresh', async ({page}) => {
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -213,9 +317,14 @@ test('play and keyboard wait for decoded frame zero after refresh', async ({page
 test('actual recording has frame zero and saved cameras before playback starts', async ({page}) => {
     test.skip(!realParquet, 'Set FREEMOCAP_PLAYBACK_PARQUET to a production recording');
     test.setTimeout(120_000);
-    for (let attempt = 0; attempt < 2; attempt++) {
+    const readinessReport = process.env.FREEMOCAP_PLAYBACK_READINESS_REPORT;
+    const readinessTimes: number[] = [];
+    for (let attempt = 0; attempt < (readinessReport ? 6 : 2); attempt++) {
         await page.goto(`${url}?recording=real`);
         await expect(page.locator('#play')).toBeEnabled({timeout: 90_000});
+        const readyAt = await page.evaluate(() => (window as any).playbackReadyAt as number);
+        expect(readyAt).toBeGreaterThan(0);
+        if (attempt) readinessTimes.push(readyAt);
         await expect(page.locator('#frame')).toHaveText('bones:61');
         const run = realManifest.runs.find((run: any) => run.run_id === realManifest.selected_run_id);
         const group = run.channels[0].sensor_group;
@@ -229,4 +338,7 @@ test('actual recording has frame zero and saved cameras before playback starts',
         await expect(page.locator('#frame')).toHaveText('bones:61');
         await expect(page.getByRole('alert')).toHaveCount(0);
     }
+    if (readinessReport) await writeFile(readinessReport, JSON.stringify({samples_ms: readinessTimes,
+        median_ms: [...readinessTimes].sort((a, b) => a - b)[Math.floor(readinessTimes.length / 2)],
+        method: 'One warmup and five fresh page loads; navigation start to RecordingPlaybackProvider first ready notification, using real worker fetch/decode and first frame. Manifest is precomputed, camera video playback and full application startup excluded.'}, null, 2) + '\n');
 });

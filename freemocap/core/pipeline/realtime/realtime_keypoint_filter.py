@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 from collections.abc import Mapping
 import numpy as np
-from freemocap.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.data_tensors.channel_values import ChannelValues
 
 logger = logging.getLogger(__name__)
 

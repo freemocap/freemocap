@@ -17,8 +17,10 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import (
     RunDescriptor,
     channel_key,
 )
-from freemocap.core.recording.parquet_storage.parquet_reader import read_batches, read_metadata
+from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.parquet_storage.parquet_writer import publish_recording
+from freemocap.core.recording.parquet_storage.recording_view import recording_view
+from freemocap.core.recording.parquet_storage.selected_batches import ChannelQuery, RunQuery, selected_batches
 from freemocap.core.recording.result_processing.input_signatures import definition_signature
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
@@ -55,32 +57,49 @@ def checkpoint_batches(
     plan: StageExecutionPlan,
     result: RunDescriptor,
     computed_batches: Iterable[pa.RecordBatch],
+    cancelled: Callable[[], bool] = lambda: False,
 ) -> Iterator[pa.RecordBatch]:
     retained = retained_run(base=metadata.runs[plan.base_run_id], plan=plan)
     reused_keys = {channel_key(channel=channel) for channel in retained.channels}
     computed_keys = {
         channel_key(channel=channel) for channel in result.channels
     } - reused_keys
-    for run_id, run in metadata.runs.items():
-        if run_id != plan.target_run_id:
-            yield from read_batches(
-                path=structure.data_parquet_path,
-                run_id=run_id,
-                sensor_groups=tuple(run.sensor_groups),
-            )
-    for batch in read_batches(
-        path=structure.data_parquet_path,
-        run_id=plan.base_run_id,
-        sensor_groups=tuple(metadata.runs[plan.base_run_id].sensor_groups),
-    ):
-        mask = channel_selection_mask(batch=batch, channel_keys=reused_keys)
-        reused = batch.filter(mask)
-        if reused.num_rows:
-            yield reused.set_column(
-                SAMPLE_SCHEMA.get_field_index("run_id"),
-                SAMPLE_SCHEMA.field("run_id"),
-                pa.repeat(pa.scalar(plan.target_run_id, type=pa.int64()), reused.num_rows),
-            )
+    retained_ids = tuple(run_id for run_id in metadata.runs if run_id != plan.target_run_id)
+    queries: tuple[RunQuery | ChannelQuery, ...] = tuple(
+        RunQuery(run_id, group)
+        for run_id in retained_ids for group in metadata.runs[run_id].sensor_groups
+    )
+    if plan.base_run_id not in retained_ids:
+        # An untouched base is already selected in full by its run predicates.
+        # Only an overwritten base needs individual reusable-channel predicates.
+        queries += tuple(
+            ChannelQuery(plan.base_run_id, group, source, kind, reference)
+            for group, source, reference, kind in reused_keys
+        )
+    with recording_view(structure.data_parquet_path) as view:
+        # Preserve read_batches' unknown-run/group failures, even when there are
+        # no reusable channels to decode from the base run.
+        for run_id in dict.fromkeys((*retained_ids, plan.base_run_id)):
+            groups = metadata.runs[run_id].sensor_groups
+            if not groups or not set(groups).issubset(view.metadata.runs[run_id].sensor_groups):
+                raise ValueError("Read requires known sensor groups")
+        retained_values = pa.array(retained_ids, type=pa.int64())
+        for batch in selected_batches(view, queries, cancelled=cancelled):
+            batch = batch.replace_schema_metadata(None)
+            # Decode each needed row group once, even when the base survives as
+            # an untouched run and also supplies channels for the target run.
+            unchanged = batch.filter(pc.is_in(batch.column("run_id"), value_set=retained_values))
+            if unchanged.num_rows:
+                yield unchanged
+            mask = pc.and_(pc.equal(batch.column("run_id"), plan.base_run_id),
+                           channel_selection_mask(batch=batch, channel_keys=reused_keys))
+            reused = batch.filter(mask)
+            if reused.num_rows:
+                yield reused.set_column(
+                    SAMPLE_SCHEMA.get_field_index("run_id"),
+                    SAMPLE_SCHEMA.field("run_id"),
+                    pa.repeat(pa.scalar(plan.target_run_id, type=pa.int64()), reused.num_rows),
+                )
     for batch in computed_batches:
         allowed = pc.and_(pc.equal(batch.column("run_id"), plan.target_run_id),
                           channel_selection_mask(batch=batch, channel_keys=computed_keys))
@@ -201,6 +220,7 @@ def publish_checkpoint(
             plan=plan,
             result=result,
             computed_batches=computed_batches,
+            cancelled=cancelled,
         ),
     )
     return published

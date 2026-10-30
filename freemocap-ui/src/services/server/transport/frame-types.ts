@@ -8,8 +8,15 @@
 
 export interface PointsFrame {
     names: readonly string[];
-    /** interleaved [x0,y0,z0, x1,y1,z1, …] — length names.length * 3. */
+    /** Read-only by consumer contract; rows have `stride` values (default three).
+     * Coordinate offsets select XYZ without discarding other scientific values.
+     * Published storage is never overwritten by the transport. */
     data: Float32Array;
+    /** Declared source row width; omitted for packed XYZ. Owned wire arrays can
+     * retain additional scientific components without a projection allocation. */
+    stride?: number;
+    /** XYZ component offsets within each source row; omitted for [0, 1, 2]. */
+    coordinateOffsets?: readonly [number, number, number];
 }
 
 export interface RotationsFrame {
@@ -41,7 +48,7 @@ export enum OverlayLayer {
     DETECTIONS = 0,
     REPROJECTIONS = 1,
     /** The detector's bounding boxes — the crop the keypoint detector was actually
-     *  given. Wider rows than the point layers; see `stride`. */
+     *  given. Its component names describe the wider numerical rows. */
     BOXES = 2,
 }
 
@@ -54,11 +61,9 @@ export interface OverlayFrame {
     modelId?: string;
     frameNumber: number;
     names: readonly string[];
-    /** Row-major interleaved values — length names.length * stride. */
+    columns: readonly string[];
+    /** Read-only row-major values — length names.length * columns.length. */
     data: Float32Array;
-    /** Values per row: 3 for the point layers ([x,y,visibility]), 6 for BOXES
-     *  ([x1,y1,x2,y2,confidence,detector_ran]). Defaults to 3 when absent. */
-    stride?: number;
     /** Full-resolution (rotated) image size this overlay is in, when the wire
      *  carries it on the channel (independent of calibration). */
     imageSize?: [number, number];

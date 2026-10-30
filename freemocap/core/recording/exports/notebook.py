@@ -10,7 +10,7 @@ IMPORTS = """from pathlib import Path
 import hashlib
 import json
 import numpy as np
-import pandas as pd
+import polars as pl
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 """
@@ -31,36 +31,63 @@ for index, channel in enumerate(CHANNELS):
     print(index, context['channel'], context['source'], context['reference_frame'])
 """
 
-TABLE = r"""def read_channel(kind):
-    filters = [('run_id', '=', RUN_ID), ('sensor_group', '=', context['sensor_group']),
-               ('source', '=', context['source']), ('channel', '=', kind)]
-    rows = pd.read_parquet(parquet_path, filters=filters,
-                           columns=['frame_number', 'timestamp_s', 'reference_frame', 'name', 'component', 'value'])
-    reference = context['reference_frame']
-    rows = rows[rows.reference_frame.isna() if reference is None else rows.reference_frame.eq(reference)].copy()
-    return rows
-
+TABLE = r"""# Select the complete channel identity before collecting numeric columns.
+# Lazy scans push selection/projection into the Parquet reader [@polarsParquetScan].
+storage_kinds = (['SEGMENT_ORIGINS', 'ROTATIONS_WORLD']
+                 if context['channel'] == 'SEGMENT_POSES' else [context['channel']])
+reference = context['reference_frame']
+reference_filter = (pl.col('reference_frame').is_null() if reference is None
+                    else pl.col('reference_frame') == reference)
+channel_query = (pl.scan_parquet(parquet_path)
+    .filter((pl.col('run_id') == RUN_ID) & (pl.col('sensor_group') == context['sensor_group'])
+            & (pl.col('source') == context['source']) & pl.col('channel').is_in(storage_kinds)
+            & reference_filter)
+    .select('channel', 'frame_number', 'timestamp_s', 'name', 'component', 'units', 'value'))
 if context['channel'] == 'SEGMENT_POSES':
-    positions = read_channel('SEGMENT_ORIGINS')
-    rotations = read_channel('ROTATIONS_WORLD')
-    rotations['component'] = 'q' + rotations['component']
-    rows = pd.concat([positions, rotations], ignore_index=True)
-else:
-    rows = read_channel(context['channel'])
-    if context['channel'] == 'OVERLAY_2D':
-        rows['component'] = rows['component'].replace({'visibility': 'confidence'})
-if rows.empty:
+    channel_query = channel_query.with_columns(
+        pl.when(pl.col('channel') == 'ROTATIONS_WORLD')
+        .then(pl.concat_str([pl.lit('q'), pl.col('component')]))
+        .otherwise(pl.col('component')).alias('component'))
+elif context['channel'] == 'OVERLAY_2D':
+    channel_query = channel_query.with_columns(pl.col('component').replace({'visibility': 'confidence'}))
+rows = channel_query.collect(engine='streaming')
+if rows.is_empty():
     raise ValueError('No saved samples for this channel')
-clock = rows.groupby('frame_number')['timestamp_s'].agg(['first', 'min', 'max']).sort_index()
-# Match the exporter's allowance for floating-point timestamp roundoff.
-tolerance = 4 * np.abs(np.spacing(clock['first'].to_numpy()))
-if np.any((clock['max'] - clock['first']).to_numpy() > tolerance) or np.any((clock['first'] - clock['min']).to_numpy() > tolerance):
+if any(rows[name].null_count() for name in ('frame_number', 'timestamp_s', 'name', 'component', 'units')):
+    raise ValueError('Missing sample identity, timestamp or units')
+if not rows['timestamp_s'].is_finite().all() or (rows['frame_number'] < 0).any():
+    raise ValueError('Invalid sample identity or timestamp')
+clock = rows.group_by('frame_number').agg(
+    pl.col('timestamp_s').first().alias('first'),
+    pl.col('timestamp_s').min().alias('min'),
+    pl.col('timestamp_s').max().alias('max')).sort('frame_number')
+# Each selected display channel must have one exact timestamp per frame.
+if (clock['max'] != clock['min']).any():
     raise ValueError('Conflicting timestamps in the selected channel')
 times = clock['first']
-columns = pd.MultiIndex.from_product([channel['names'], channel['components']], names=['name', 'component'])
-table = rows.pivot(index='frame_number', columns=['name', 'component'], values='value')
-table = table.reindex(index=times.index, columns=columns)
-values = table.to_numpy(dtype=float).reshape(len(table), len(channel['names']), len(channel['components']))
+frame_numbers = clock['frame_number'].to_numpy()
+if np.any(np.diff(times.to_numpy()) <= 0):
+    raise ValueError('Channel timestamps must increase with frame numbers')
+if rows.select(pl.struct('frame_number', 'name', 'component').is_duplicated().any()).item():
+    raise ValueError('Duplicate sample in the selected channel')
+# These dictionaries describe axes once; numerical data stays in arrays.
+name_positions = {name: index for index, name in enumerate(channel['names'])}
+component_positions = {name: index for index, name in enumerate(channel['components'])}
+indexed_rows = rows.with_columns(
+    pl.col('name').replace_strict(name_positions, return_dtype=pl.Int64).alias('name_index'),
+    pl.col('component').replace_strict(component_positions, return_dtype=pl.Int64).alias('component_index'))
+expected_units = rows['component'].replace_strict(dict(zip(channel['components'], channel['units'])))
+if (rows['units'] != expected_units).any():
+    raise ValueError('Sample units differ from the declared components')
+tensor_shape = (len(frame_numbers), len(channel['names']), len(channel['components']))
+flat_indices = np.ravel_multi_index((
+    np.searchsorted(frame_numbers, rows['frame_number'].to_numpy()),
+    indexed_rows['name_index'].to_numpy(), indexed_rows['component_index'].to_numpy()), tensor_shape)
+values = np.full(tensor_shape, np.nan, dtype=np.float64)
+present = np.zeros(tensor_shape, dtype=bool)
+values.reshape(-1)[flat_indices] = rows['value'].to_numpy()
+present.reshape(-1)[flat_indices] = True
+table = rows.select('frame_number', 'name', 'component', 'value')
 print('Array axes: frames, names, components; shape:', values.shape)
 print('Components:', dict(zip(channel['components'], channel['units'])))
 table.head()
@@ -71,7 +98,7 @@ joint_to_plot = next((name for name in channel['names'] if name in ('nose', 'bod
                      channel['names'][0])
 joint_to_plot_index = channel['names'].index(joint_to_plot)
 joint_data = values[:, joint_to_plot_index, :]
-elapsed_time = times.to_numpy() - times.iloc[0]
+elapsed_time = times.to_numpy() - times[0]
 """
 
 PLOT = r"""# One plot per coordinate, with shared time axes for zooming.
@@ -116,7 +143,7 @@ else:
                                     range=[center - half_width, center + half_width],
                                     autorange=False)
 
-    frames = [go.Frame(data=[points_at(i)], name=str(table.index[i])) for i in frame_indices]
+    frames = [go.Frame(data=[points_at(i)], name=str(frame_numbers[i])) for i in frame_indices]
     # Playback uses the median recorded interval; slider labels retain exact timestamps.
     intervals = np.diff(times.to_numpy()[frame_indices])
     positive_intervals = intervals[np.isfinite(intervals) & (intervals > 0)]
@@ -130,8 +157,8 @@ else:
             dict(label='Pause', method='animate', args=[[None], dict(
                 frame=dict(duration=0, redraw=False), mode='immediate')])])],
         sliders=[dict(currentvalue=dict(prefix='Frame / elapsed seconds: '), steps=[
-            dict(label=f'{table.index[i]} / {elapsed_time[i]:.3f}', method='animate',
-                 args=[[str(table.index[i])], dict(mode='immediate',
+            dict(label=f'{frame_numbers[i]} / {elapsed_time[i]:.3f}', method='animate',
+                 args=[[str(frame_numbers[i])], dict(mode='immediate',
                        frame=dict(duration=0, redraw=True), transition=dict(duration=0))])
             for i in frame_indices])])
     animation.show()
@@ -149,8 +176,8 @@ def write_notebook(path: Path, *, snapshot: dict) -> None:
     cells = [
         cell('markdown', """## Load necessary libraries
 
-We'll use NumPy and Pandas to load your recording, and Plotly for interactive plots.
-Your notebook environment needs numpy, pandas, pyarrow, and plotly.
+We'll use Polars to select saved columns, NumPy for data tensors, and Plotly for interactive plots.
+Your notebook environment needs numpy, polars>=2,<3, and plotly>=6,<7.
 """),
         cell('code', IMPORTS),
         cell('markdown', """## Define variables

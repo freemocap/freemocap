@@ -3,7 +3,7 @@ import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
 import {useMocap} from "@/hooks/useMocap";
 import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
-import {DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS, RealtimeFilterConfig} from "@/store/slices/mocap";
+import {DetectorType, EXECUTION_PROVIDERS, ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS, RealtimeFilterConfig} from "@/store/slices/mocap";
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {pipelineConfigUpdated, resetSkeletonFitter} from "@/store/slices/realtime";
 import ValueSelector from "@/components/ui-components/ValueSelector";
@@ -45,12 +45,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     // ── Realtime pipeline config (for context="realtime") ──────────────────────
     const pipelineConfig = useAppSelector(state => state.realtime.pipelineConfig);
     const cameraNodeConfig = pipelineConfig.camera_node_config;
+    const inferenceNodeConfig = pipelineConfig.skeleton_inference_node_config;
 
     // ── Posthoc (mocap slice) config (for context="posthoc") ──────────────────
     const {
         detectorType: posthocDetectorType,
         rtmPoseModelName,
         rtmPoseConfidenceThreshold,
+        executionProvider: posthocExecutionProvider,
+        setExecutionProvider: setPosthocExecutionProvider,
         mediapipeModelComplexity,
         mediapipeDetectionConfidence,
         mediapipePresenceConfidence,
@@ -86,6 +89,23 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         },
         [dispatch, pipelineConfig, cameraNodeConfig, triggerRealtimeApply]
     );
+
+    const activeExecutionProvider: ExecutionProviderName | null =
+        context === "realtime"
+            ? (inferenceNodeConfig?.execution_provider ?? null)
+            : (posthocExecutionProvider ?? null);
+
+    const handleSetExecutionProvider = useCallback((provider: ExecutionProviderName | null) => {
+        if (context === "realtime") {
+            dispatch(pipelineConfigUpdated({
+                ...pipelineConfig,
+                skeleton_inference_node_config: { ...inferenceNodeConfig, execution_provider: provider },
+            }));
+            triggerRealtimeApply();
+        } else {
+            setPosthocExecutionProvider(provider);
+        }
+    }, [context, dispatch, pipelineConfig, inferenceNodeConfig, triggerRealtimeApply, setPosthocExecutionProvider]);
 
     const handleSetDetectorType = useCallback((type: DetectorType) => {
         if (context === "realtime") {
@@ -230,6 +250,22 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                             <p className="text-sm text-gray">
                                 133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
                             </p>
+                        )}
+                        {activeDetectorType === "rtmpose" && (
+                            <div className="flex flex-row gap-1 items-center justify-content-space-between flex-wrap">
+                                <span className="text-sm">Execution provider</span>
+                                <div className="flex flex-row gap-1 flex-wrap">
+                                    {EXECUTION_PROVIDERS.map(({ label, value }) => (
+                                        <button
+                                            key={label}
+                                            className={`button sm br-1 ${activeExecutionProvider === value ? "primary accent" : "quaternary"}`}
+                                            onClick={() => handleSetExecutionProvider(value)}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         )}
 
                         {/* MediaPipe settings */}

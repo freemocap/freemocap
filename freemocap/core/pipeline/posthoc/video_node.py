@@ -26,6 +26,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
     CharucoDetectorConfig,
     CharucoBoardDefinition,
 )
+from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 from skellytracker.core.tracker.tracker import Tracker
 from skellytracker.core.tracker.tracker_state import TrackerState
 
@@ -77,7 +78,10 @@ def _is_mediapipe_config(tracker_config: TrackerConfig) -> bool:
     return False
 
 
-def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
+def _build_tracker(
+    tracker_config: TrackerConfig,
+    execution_provider: ExecutionProviderName | None = None,
+) -> tuple[Tracker, object]:
     """Build a (Tracker, session) pair from a TrackerConfig.
 
     For charuco configs, returns (Tracker, CpuSession).
@@ -113,7 +117,11 @@ def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
             if isinstance(kp_det, RTMPoseDetectorConfig):
                 model_name = kp_det.model_name
                 break
-    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name)
+    onnx_session = build_skeleton_onnx_session(
+        batch_size=1,
+        model_name=model_name,
+        execution_provider=execution_provider,
+    )
     tracker = Tracker.create(tracker_config, {"onnx": onnx_session})
     return tracker, onnx_session
 
@@ -177,6 +185,7 @@ class VideoNode(SourceNode):
         pipeline_type: PosthocPipelineType,
         save_annotated_video: bool = True,
         pipeline_id: PipelineIdString | None = None,
+        execution_provider: ExecutionProviderName | None = None,
     ) -> "VideoNode":
         _progress_queue: multiprocessing.queues.Queue = multiprocessing.Queue()
         shutdown_self_flag, worker = cls._create_worker(
@@ -188,6 +197,7 @@ class VideoNode(SourceNode):
                 camera_id=camera_id,
                 video_path=video_path,
                 detector_config=detector_config,
+                execution_provider=execution_provider,
                 ipc=ipc,
                 video_output_pub=pubsub.get_publication_queue(
                     VideoNodeOutputTopic,
@@ -247,6 +257,7 @@ class VideoNode(SourceNode):
         save_annotated_video: bool,
         pipeline_id: PipelineIdString,
         pipeline_type: PosthocPipelineType,
+        execution_provider: ExecutionProviderName | None = None,
     ) -> None:
         node_pipeline_id = f"{pipeline_id}:{camera_id}"
         video_progress_pub.put(VideoNodeProgressMessage(
@@ -259,7 +270,7 @@ class VideoNode(SourceNode):
             recording_name=recording_path.name,
             recording_path=str(recording_path),
         ))
-        tracker, session = _build_tracker(detector_config)
+        tracker, session = _build_tracker(detector_config, execution_provider)
         tracker_state = TrackerState()
 
         cache = _build_recording_frame_cache(

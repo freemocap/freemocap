@@ -104,7 +104,18 @@ export interface RealtimeFilterConfig {
 
 export type DetectorType = "rtmpose" | "mediapipe";
 export type RTMPoseModelName = "rtmw-x-l_256x192" | "rtmw-x-l_384x288" | "rtmw-l-m_256x192";
+/** null = auto-select the best available provider. */
+export type ExecutionProviderName = "trt" | "cuda" | "coreml" | "directml" | "cpu";
 export type MediapipeModelComplexity = "lite" | "full" | "heavy";
+
+export const EXECUTION_PROVIDERS: { label: string; value: ExecutionProviderName | null }[] = [
+    { label: "Auto", value: null },
+    { label: "TensorRT", value: "trt" },
+    { label: "CUDA", value: "cuda" },
+    { label: "CoreML", value: "coreml" },
+    { label: "DirectML", value: "directml" },
+    { label: "CPU", value: "cpu" },
+];
 
 export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
     { label: "Default", value: "rtmw-x-l_256x192" },
@@ -124,6 +135,7 @@ export interface MocapConfig {
     detectorType: DetectorType;
     rtmPoseModelName: RTMPoseModelName;
     rtmPoseConfidenceThreshold: number;
+    executionProvider: ExecutionProviderName | null;
     mediapipeModelComplexity: MediapipeModelComplexity;
     mediapipeDetectionConfidence: number;
     mediapipePresenceConfidence: number;
@@ -292,6 +304,7 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     detectorType: "rtmpose",
     rtmPoseModelName: "rtmw-x-l_256x192",
     rtmPoseConfidenceThreshold: 0.004,
+    executionProvider: null,
     mediapipeModelComplexity: "heavy",
     mediapipeDetectionConfidence: 0.5,
     mediapipePresenceConfidence: 0.5,
@@ -360,6 +373,11 @@ export const mocapSlice = createSlice({
         /** Change the RTMPose model variant. */
         mocapRtmPoseModelNameChanged: (state, action: PayloadAction<RTMPoseModelName>) => {
             state.config.rtmPoseModelName = action.payload;
+        },
+
+        /** Change the ONNX execution provider (null = auto). */
+        mocapExecutionProviderChanged: (state, action: PayloadAction<ExecutionProviderName | null>) => {
+            state.config.executionProvider = action.payload;
         },
 
         /** Change the RTMPose keypoint confidence threshold. */
@@ -514,6 +532,7 @@ export const selectPosthocFilterConfig = (state: RootState) => state.mocap.confi
 export const selectMocapBlenderExportConfig = (state: RootState) => state.mocap.config.blender_export;
 export const selectMocapDetectorType = (state: RootState) => state.mocap.config.detectorType;
 export const selectMocapRtmPoseModelName = (state: RootState) => state.mocap.config.rtmPoseModelName;
+export const selectMocapExecutionProvider = (state: RootState) => state.mocap.config.executionProvider;
 export const selectMocapRtmPoseConfidenceThreshold = (state: RootState) => state.mocap.config.rtmPoseConfidenceThreshold;
 export const selectMocapMediapipeComplexity = (state: RootState) => state.mocap.config.mediapipeModelComplexity;
 export const selectMocapMediapipeDetectionConfidence = (state: RootState) => state.mocap.config.mediapipeDetectionConfidence;
@@ -576,6 +595,7 @@ export const {
     mocapDetectorTypeChanged,
     mocapRtmPoseModelNameChanged,
     mocapRtmPoseConfidenceThresholdChanged,
+    mocapExecutionProviderChanged,
     mocapMediapipeComplexityChanged,
     mocapMediapipeDetectionConfidenceChanged,
     mocapMediapipePresenceConfidenceChanged,

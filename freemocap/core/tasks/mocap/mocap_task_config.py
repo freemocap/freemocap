@@ -7,6 +7,7 @@ from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_m
 )
 from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
 from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
+from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
     BBoxSmoothingConfig,
@@ -40,6 +41,11 @@ class PosthocMocapPipelineConfig(BaseModel):
         ge=0.0,
         le=1.0,
         description="Keypoint confidence threshold for RTMPose. Only used when detector_type='rtmpose'.",
+    )
+    execution_provider: ExecutionProviderName | None = Field(
+        default=None,
+        alias="executionProvider",
+        description="ONNX Runtime execution provider for RTMPose. None auto-selects the best available (trt, cuda, coreml, cpu); an explicit choice raises if unavailable.",
     )
     # MediaPipe settings (shared across pose/hands/face detectors)
     mediapipe_model_complexity: MediapipePoseModelComplexity = Field(

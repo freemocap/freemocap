@@ -55,7 +55,7 @@ class BoxProducer(ChannelProducer):
                     names=stage_names,
                     columns=BOX_COLUMNS,
                     data=assemble_channel_bytes(
-                        names=stage_names, positions=boxes, n_cols=len(BOX_COLUMNS),
+                        names=stage_names, positions=boxes, columns=BOX_COLUMNS,
                     ),
                     camera_id=camera_id,
                     image_size=stream_ctx.live_image_sizes.get(camera_id),

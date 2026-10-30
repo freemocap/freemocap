@@ -29,17 +29,12 @@ class SegmentProducer(ChannelProducer):
         reconstruction = message.reconstructions.get(skeleton.model_id)
         segment_names = tuple(skeleton.skeleton.segments)
         origin_positions = reconstruction.segment_origins if reconstruction else {}
-        lengths = {
-            name: np.array([length], dtype=np.float32)
-            for name, length in (
-                reconstruction.segment_lengths if reconstruction else {}
-            ).items()
-        }
+        lengths = reconstruction.segment_lengths if reconstruction else {}
         return [
             ChannelBlock(
                 kind=ChannelKind.SEGMENT_ORIGINS,
                 columns=("x", "y", "z"),
-                data=assemble_channel_bytes(names=segment_names, positions=origin_positions, n_cols=3),
+                data=assemble_channel_bytes(names=segment_names, positions=origin_positions, columns=("x", "y", "z")),
             ),
             ChannelBlock(
                 kind=ChannelKind.ROTATIONS_LOCAL,
@@ -47,7 +42,7 @@ class SegmentProducer(ChannelProducer):
                 data=assemble_channel_bytes(
                     names=segment_names,
                     positions=reconstruction.segment_rotations_local if reconstruction else {},
-                    n_cols=4,
+                    columns=("w", "x", "y", "z"),
                 ),
             ),
             ChannelBlock(
@@ -56,12 +51,12 @@ class SegmentProducer(ChannelProducer):
                 data=assemble_channel_bytes(
                     names=segment_names,
                     positions=reconstruction.segment_rotations_world if reconstruction else {},
-                    n_cols=4,
+                    columns=("w", "x", "y", "z"),
                 ),
             ),
             ChannelBlock(
                 kind=ChannelKind.SEGMENT_LENGTHS,
                 columns=("length_mm",),
-                data=assemble_channel_bytes(names=segment_names, positions=lengths, n_cols=1),
+                data=assemble_channel_bytes(names=segment_names, positions=lengths, columns=("length_mm",)),
             ),
         ]

@@ -42,13 +42,17 @@ def definition_signature(value: object) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def point_array_signature(values: NDArray[np.float64]) -> str:
+def point_array_signature(values: NDArray[np.float64], *, measured_support: np.ndarray | None = None) -> str:
     """Hash shape, missingness and values independently of Parquet batching and NaN payloads."""
+    if measured_support is not None and (measured_support.dtype != bool or measured_support.shape != values.shape[:-1]):
+        raise ValueError("Measured support must be boolean on the sample/entity axes")
     digest = hashlib.sha256(str(values.shape).encode("ascii"))
     for start in range(0, len(values), 1024):
         block = np.array(
             values[start : start + 1024], dtype="<f8", order="C", copy=True
         )
+        if measured_support is not None:
+            block[~measured_support[start : start + 1024]] = np.nan
         if np.isinf(block).any():
             raise ValueError("Point inputs cannot contain infinity")
         missing = np.isnan(block)

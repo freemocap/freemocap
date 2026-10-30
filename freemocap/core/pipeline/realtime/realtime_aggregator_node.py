@@ -31,6 +31,7 @@ from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import numpy as np
+from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from skellyforge.core.biomechanics.ground_reference import (
     GRAVITY_ACCELERATION,
     extrapolated_center_of_mass,
@@ -143,46 +144,18 @@ def _reproject_segment_origins(
     *,
     calibration,
     skeleton: SkeletonDefinition,
-    segment_origins: dict[str, np.ndarray],
-) -> dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]]:
-    """Project one skeleton's segment origins into every camera.
-
-    Builds an (n_segments, 3) array of origin positions in that skeleton's own names, runs
-    it through the calibration's triangulator projection, and returns
-    ``{camera_id: {segment_name: (x, y)}}`` in capture-resolution px. Origins not hydrated
-    this frame project to NaN and are dropped.
-    """
-    segment_names = list(skeleton.segments)
-    origins = np.full((len(segment_names), 3), np.nan, dtype=np.float64)
-    for i, name in enumerate(segment_names):
-        pos = segment_origins.get(name)
-        if pos is not None and not np.any(np.isnan(pos)):
-            origins[i] = np.asarray(pos, dtype=np.float64)[:3]
+    segment_origins: ChannelValues,
+) -> dict[CameraIdString, ChannelValues]:
+    """Project the complete declared segment axis in one numerical operation."""
+    segment_names = tuple(skeleton.segments)
     origins = RECONSTRUCTION_TO_CALIBRATION.convert_point(
-        point=Point.from_prevalidated_array(array=origins)
-    ).array
-    projected = calibration.triangulator.project(origins)  # (n_cameras, 60, 2)
-    # The triangulator is keyed by CALIBRATION camera id; every consumer of these
-    # overlays looks them up by LIVE camera id. Translate here, or the overlays
-    # silently vanish for any rig whose ids drifted from the calibration.
+        point=Point.from_prevalidated_array(array=segment_origins.aligned(segment_names))).array
+    projected = calibration.triangulator.project(origins)
     binding = calibration.binding
-    live_id_by_calibration_id = (
-        binding.live_id_for_calibration_id if binding is not None else {}
-    )
-    out: dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]] = {}
-    for cam_idx, calibration_camera_id in enumerate(
-        calibration.triangulator.camera_ids
-    ):
-        live_camera_id = live_id_by_calibration_id.get(calibration_camera_id)
-        if live_camera_id is None:
-            continue
-        per_cam: dict[TrackedPointNameString, tuple[float, float]] = {}
-        for i, name in enumerate(segment_names):
-            x, y = projected[cam_idx, i]
-            if not (np.isnan(x) or np.isnan(y)):
-                per_cam[name] = (float(x), float(y))
-        out[live_camera_id] = per_cam
-    return out
+    live_ids = binding.live_id_for_calibration_id if binding is not None else {}
+    return {live_ids[source]: ChannelValues(segment_names, projected[index],
+                ~np.isnan(projected[index]).any(axis=-1), component_names=('x', 'y'))
+            for index, source in enumerate(calibration.triangulator.camera_ids) if source in live_ids}
 
 
 def _publishable_calibration_bindings(
@@ -303,31 +276,13 @@ def _log_reconstruction_observability(
                 )
 
 
-def _merge_angulation(
-    *,
-    angulation: AngulationResult | None,
-    into_points: dict[str, np.ndarray],
-    into_errors: dict[str, float],
-    into_diagnostics: list[NamedReprojectionDiagnostics],
-) -> None:
-    """Merge one frame's triangulated points and their reprojection errors into
-    the output dicts, skipping NaN entries. Error-less results (single-camera
-    planar projection) merge points only."""
+def _merge_angulation(*, angulation: AngulationResult | None, into_points: list[ChannelValues],
+                      into_diagnostics: list[NamedReprojectionDiagnostics]) -> None:
     if angulation is None:
         return
+    into_points.append(angulation.points)
     if angulation.diagnostics is not None:
         into_diagnostics.append(angulation.diagnostics)
-    for point_name, coords in angulation.points.items():
-        if not isinstance(coords, np.ndarray):
-            raise TypeError(
-                f"Unexpected type for triangulated point '{point_name}': "
-                f"{type(coords).__name__} (expected np.ndarray)"
-            )
-        if np.any(np.isnan(coords)):
-            continue
-        into_points[point_name] = coords
-        if angulation.errors_px is not None and point_name in angulation.errors_px:
-            into_errors[point_name] = angulation.errors_px[point_name]
 
 
 @dataclass
@@ -886,14 +841,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                     point_gate.reset()
                     skeleton_set.reset()
                     skeleton_observability_logged.clear()
-                # All processing stays in dict[str, ndarray] until final
-                # conversion to Point3d for the output message.
-                raw_keypoints: dict[str, np.ndarray] = {}
-                raw_errors_px: dict[str, float] = {}
+                point_channels: list[ChannelValues] = []
+                raw_keypoints = ChannelValues.empty(component_names=SPATIAL_COMPONENTS)
                 reprojection_diagnostics: list[NamedReprojectionDiagnostics] = []
-                filtered_keypoints: dict[str, np.ndarray] = {}
-                measured_keypoints: dict[str, np.ndarray] = {}
-                skeleton_keypoints: dict[str, np.ndarray] = {}
+                filtered_keypoints = ChannelValues.empty(component_names=SPATIAL_COMPONENTS)
                 frame_time = time.perf_counter()
                 # One reconstruction per tracked skeleton, filled below. A skeleton that
                 # did not hydrate this frame is simply absent.
@@ -917,8 +868,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                                 triangulation_config=aggregator_config.triangulation_config,
                             ),
-                            into_points=raw_keypoints,
-                            into_errors=raw_errors_px,
+                            into_points=point_channels,
                             into_diagnostics=reprojection_diagnostics,
                         )
                         if timer is not None:
@@ -943,8 +893,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                                 triangulation_config=aggregator_config.triangulation_config,
                             ),
-                            into_points=raw_keypoints,
-                            into_errors=raw_errors_px,
+                            into_points=point_channels,
                             into_diagnostics=reprojection_diagnostics,
                         )
                         if timer is not None:
@@ -953,16 +902,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 (time.perf_counter() - t0) * 1e3,
                             )
 
-                    # Convert the triangulated keypoints to Blender once at the source:
-                    # the skeleton solve and the wire are Blender-native (+X right, +Y forward, +Z up).
-                    if raw_keypoints:
-                        point_names = tuple(raw_keypoints)
+                    if point_channels:
+                        names = tuple(name for channel in point_channels for name in channel.names)
+                        values = np.concatenate([channel.data_values for channel in point_channels])
+                        present = np.concatenate([channel.entry_present for channel in point_channels])
                         converted = CALIBRATION_TO_RECONSTRUCTION.convert_point(
-                            point=Point.from_prevalidated_array(
-                                array=np.asarray([raw_keypoints[name] for name in point_names], dtype=np.float64)
-                            )
-                        ).array
-                        raw_keypoints = dict(zip(point_names, converted, strict=True))
+                            point=Point.from_prevalidated_array(array=values)).array
+                        raw_keypoints = ChannelValues(names, converted, present, component_names=SPATIAL_COMPONENTS)
 
                     # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
                     if raw_keypoints:
@@ -972,13 +918,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                             raw_keypoints=raw_keypoints,
                         )
                         filtered_keypoints = filter_result.positions
-                        # Real measurements only: gap-filled (extrapolated)
-                        # points still display, but never teach bone lengths.
-                        measured_keypoints = {
-                            name: pos
-                            for name, pos in filter_result.positions.items()
-                            if name not in filter_result.predicted_names
-                        }
                         if timer is not None:
                             timer.record(
                                 "keypoint_filter", (time.perf_counter() - t0) * 1e3
@@ -992,9 +931,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 t=frame_time,
                                 points=raw_keypoints,
                             )
-                            for point_name, coords in gate_result.positions.items():
-                                if not np.any(np.isnan(coords)):
-                                    filtered_keypoints[point_name] = coords
+                            gated = gate_result.positions.aligned(filtered_keypoints.names)
+                            available = np.isfinite(gated).all(axis=-1)
+                            values = filtered_keypoints.data_values.copy()
+                            values[available] = gated[available]
+                            filtered_keypoints = filtered_keypoints.with_values(values, filtered_keypoints.entry_present | available)
                             if timer is not None:
                                 timer.record(
                                     "velocity_gate", (time.perf_counter() - t0) * 1e3

@@ -87,7 +87,19 @@ Parquet. It used CUDA fallback because TensorRT libraries were unavailable and
 reported poor camera-matching fitness under the existing continue policy; these
 are correctness checks, not reconstruction-accuracy or throughput acceptance.
 
-## Tracking and reconstruction migration — 2026-10-28
+## Tracking and reconstruction completion — 2026-10-29
+
+Global 2 is implemented and reference-tested. Core now uses Forge's `PoseTensor`,
+numerical roll resolution and joint calculations for recording and live results.
+`recording_roll_adapter.py` is removed; immediate streaming producers consume
+array-backed channel views. Forge commit `0038076` groups compatible segment
+recovery and prepares immutable geometry once, eliminating the measured live
+reconstruction regression. The [compliance map](tensor-contract-audit.md) records
+the tests, numerical comparisons, timing measurements and allocation limits.
+The dated migration account below describes the earlier stage, not open work.
+Global 3 addresses Parquet reading/publication; viewer trails are deferred.
+
+## Earlier tracking and reconstruction migration — 2026-10-28
 
 Global 2 has a validated core implementation, with the Forge dependency stage
 still outstanding. `ObservationArrays` borrows existing Tracker arrays and shares
@@ -449,18 +461,16 @@ These are specified tests, not tests already implemented or run:
 
 ## Sequential implementation plan
 
-The seven-item checklist replaces the superseded detailed draft. Current scope:
-item 1, contract definition and review. Runtime implementation remains deferred
-until that contract is settled. Internal acceptance cases above are not additional
-checklist tasks.
+Global 1 and Global 2 implementation and validation are complete. Global 3 is
+next; internal acceptance cases above are not additional checklist tasks.
 
-- [ ] **Define FreeMoCap’s tensor contract:** extend the existing `Keypoints`, `HydratedPoseBatch`, and `ChannelArrays` patterns into measurement tensors with explicit axes, masks, ownership, and independent source timelines.
-- [ ] **Keep tracking and reconstruction data in tensors:** remove repeated `Observation.to_keypoints()` flattening, `ObservationBuffer` point loops, and the tensor→`SkeletonPose`→tensor→`SkeletonReconstruction` conversions while preserving temporal roll resolution.
-- [ ] **Unify Parquet saving and loading:** make `ReconstructionRecording.series()`, saved-stage readers, and checkpoint publication consume measurement tensors directly, with selective column/row-group reads instead of repeated full-file scans.
-- [ ] **Make NumPy exports match runtime tensors:** update NPY/NPZ to preserve layouts, masks, static fits, and separate timelines; keep wide CSV as a batched spreadsheet projection and verify round-trip equivalence.
-- [ ] **Fix playback startup and frame delivery:** replace scalar-object decoding in `playback-parquet.ts`, load the selected data first, and remove repeated slicing, reordering, precision conversion, and worker cloning.
-- [ ] **Fix the Three.js rendering path:** replace face-point dictionaries and repeated keypoint, connection, bone, and axis repacking with prepared typed-array layouts and batched GPU updates, preserving picking and missing-data behavior.
-- [ ] **Finish downstream integration and prove the result:** update Blender/Forge saved-data consumers and remaining diagnostics, then compare correctness, Play readiness, processing/export time, and peak memory against measured baselines.
+- [x] **Global 1 — Define FreeMoCap’s tensor contract:** establish layouts, identities, components, availability, ownership and independent timelines.
+- [x] **Global 2 — Replace observation flattening and pose-object conversions with tensor interfaces.**
+- [ ] **Global 3 — Unify Parquet saving and loading:** connect runtime tensors directly to recording publication and selective saved-data readers.
+- [ ] **Global 4 — Make NumPy exports match runtime tensors:** preserve layouts, companion arrays and timelines in NPY/NPZ; produce wide CSV through batched conversion.
+- [ ] **Global 5 — Fix playback startup and frame delivery:** replace scalar-object Parquet decoding and repeated frame conversions/copies.
+- [ ] **Global 6 — Fix the Three.js rendering path:** replace numerical dictionaries and repeated geometry repacking with prepared arrays and batched GPU updates. **Trails remain outside this scope.**
+- [ ] **Global 7 — Finish downstream integration and prove the result:** validate remaining consumers and measure correctness, playback readiness, processing/export time and memory.
 
 One sub-agent per approved task, with integration review and validation before
 starting the next. Core owns integration contracts. Tracker and Forge remain
@@ -469,4 +479,5 @@ separate repository stages, branch preflight and human commit/push confirmation
 before downstream refresh. Agents do not mutate Git state.
 
 Baseline measurement and fixture design are internal work of the affected tasks;
-no speedup is promised without measurements. Current changes are documentation.
+no speedup is promised without measurements. Completed runtime changes and their
+measurements are recorded above; remaining checklist items are planned work.

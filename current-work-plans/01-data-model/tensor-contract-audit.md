@@ -5,6 +5,77 @@ Initial source inspection: 2026-10-28. The tables below preserve the initial
 The implementation update below supersedes the original findings where stated.
 Paths below are repository-relative unless a repository is named explicitly.
 
+## Core implementation update — 2026-10-29
+
+Global 2 implementation and reference-data validation are complete. Forge commit
+`0038076` on `sfn26` prepares immutable model geometry and groups compatible
+segment calculations across samples and segments. Six alternating reference-data
+runs measured single-frame human pose recovery at 1.959 s before and 0.378 s after
+for 222 frames, with identical numeric values, missingness and solution codes.
+The full chronological human reconstruction checks measured 1.639, 1.665 and
+1.823 s, below the previously recorded 2.984 s regression and 2.392 s original
+baseline. These are backend component measurements, not GUI frame rates.
+The rigid-board hydration comparison was effectively unchanged. Prepared metadata
+is reused; returned poses remain independently owned and numerical temporaries
+still allocate. Peak traced hydration allocation changed from 139,038 to 146,124
+bytes, so this is not a claim of lower peak memory or zero allocation.
+
+Forge validation passed 714 tests with one existing skip, plus three reference
+tests. Core passed six reference replay/integration tests and the recording-wide
+44-array comparison. Hydration reference comparisons used chunks of 1, 37 and 222
+frames. New standalone Forge tests cover signed axes, solver precedence, missing
+and degenerate inputs, reordered layouts, chunking and retained-output ownership.
+Evidence: `.test-artifacts/live-hydration-reference-replay.log`,
+`live-hydration-recording.log`, `live-hydration-core-{1,2,3}.log`, and Forge's
+`.test-artifacts/live-hydration-benchmark.json`. The measurements supersede the
+live-regression finding recorded below. Viewer history and trails remain deferred.
+
+Forge commit `0ff75ef` on `sfn26` supplies `PoseTensor`, `JointTensor` and
+`ScaleTensor`. Core consumes that checkout through its existing editable source.
+The core changes described here are working-tree changes based on `dd0187dc`.
+
+Recording reconstruction now calls numerical hydration, roll resolution and
+joint calculation directly; `recording_roll_adapter.py` is removed. Live
+triangulation, camera filtering, world-point filtering, velocity gating and
+reconstruction use dense arrays. `ChannelValues` binds explicit component names
+through the shared `TensorLayout`; named access is a view, not numerical storage
+in a dictionary. Mapping, geometry, topology and output layouts are prepared once.
+Streaming producers pack complete arrays. Joint angles use declared flat slices.
+Published reconstruction arrays are immutable. Named residual objects remain
+only at the existing diagnostic JSON boundary, and frozen scale fits retain
+their existing persisted representation.
+
+Recording scale fitting masks and hydrates bounded frame chunks. It retains
+recording-wide scalar scale evidence for the unchanged exact-median calculation;
+this is not a constant-memory guarantee for an arbitrarily long recording.
+Masked input fingerprints match the prior full-array masking operation.
+
+The isolated reference workflow at `C:/tmp/fmc-g2-cf01255c` passed fresh numerical
+processing of 222 frames from three cameras, saved-reconstruction reuse, and
+live replay. Six reference consumer/replay tests passed. The saved-stage restart
+matched all 36 channels exactly, including missingness, sample identities,
+timestamps and scientific metadata. Independent comparisons with the previous
+core implementation preserved fitted scales exactly; coordinate differences
+were below 8e-13. The accepted original reference file was unchanged.
+
+Component measurements show a tradeoff, not universal acceleration. Human
+recording reconstruction over 222 reference frames changed from a three-run
+median of 1.064 s to 0.665 s. Chronological human reconstruction changed from
+2.392 s to 2.984 s in single-run component checks. Profiling identifies Forge's
+single-sample `LandmarkPoseGeometry.recover_tensor` as the largest live cost;
+grouping compatible segment solves is a candidate follow-up before claiming a
+live speed improvement. On 3,552 repeated reference frames, scale fitting changed
+from 0.247 s / 95.5 MB peak traced allocation to 0.343 s / 11.8 MB, with exact fit
+and fingerprint parity. These allocation figures exclude the preallocated input
+and are not process RSS. GUI performance and Blender acceptance were not tested.
+
+Evidence: `.test-artifacts/global2_core_{baseline,compare}.json`,
+`global2_live_{baseline,compare}.json`, `global2_fit_profile.json`,
+`global2_saved_comparison.json`, `global2-processing.log`,
+`global2-saved-reuse.log` and `global2-reference-replay.log`.
+The historical findings below are superseded for these migrated paths; selective
+Parquet loading, NumPy/CSV export alignment and browser rendering remain later work.
+
 ## Core implementation update — 2026-10-28
 
 Shared tensor interfaces are implemented and tested. `ObservationArrays` now reads

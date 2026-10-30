@@ -1,10 +1,11 @@
 # Current Work Plans
 
-2026-10-28: [runtime tensor and export contract](01-data-model/tensor-contract.md)
-records the implemented shared tensor interfaces and the core tracking/reconstruction
-array migration, with reference-data validation. Global 2 remains open at Forge's
-object-based temporal roll API and live result interfaces. Storage, export and
-frontend migrations remain later work; current disk formats are unchanged.
+2026-10-29: [runtime tensor and export contract](01-data-model/tensor-contract.md)
+records completed Global 1 and Global 2 implementation and reference-data validation.
+Tracking, reconstruction and immediate streaming consumers use tensor-backed arrays;
+Forge's grouped segment recovery resolves the measured live reconstruction regression.
+Global 3 is selective Parquet loading and tensor publication. Export and frontend
+migrations remain later work; trails are deferred and current disk formats are unchanged.
 
 2026-10-10: [typed executable dataflow](02-pipeline/typed-dataflow.md) is the current
 graph architecture proposal, grounded in the refactored SkellySpeak graph core and

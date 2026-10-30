@@ -29,12 +29,13 @@ class RecordingFitInputs(BaseModel):
         names: tuple[str, ...],
         values: NDArray[np.float64],
         model: RecordedModel,
+        measured_support: np.ndarray | None = None,
     ) -> "RecordingFitInputs":
         # Increment when recording-wide fitting or its evidence-selection rules change.
         return cls(
             algorithm_version=1,
             keypoint_names=names,
-            points=point_array_signature(values),
+            points=point_array_signature(values, measured_support=measured_support),
             # Placement does not change scale evidence or fitted dimensions.
             model=definition_signature(model.model_dump(exclude={"anchor_segment_name"})),
         )

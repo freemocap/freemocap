@@ -6,6 +6,7 @@ via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
 from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -152,7 +153,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     # Every tracked keypoint this frame, from every detector, in one flat dict. Detector
     # name spaces do not collide (a pose detector emits `left_knee`, a charuco detector
     # emits `CharucoCorner-0`), and each skeleton's mapping takes only what it recognizes.
-    keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
+    keypoints_arrays: Mapping[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     # One reconstruction per tracked skeleton, keyed by `model_id`. A session tracking a
     # person and a charuco board publishes two; nothing downstream may assume one. Empty
     # for a frame where nothing hydrated at all.

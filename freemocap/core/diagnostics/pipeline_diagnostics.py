@@ -43,5 +43,5 @@ def frame_diagnostics(
         ))
     return PipelineDiagnostics(
         length_units=length_units, reprojection=tuple(blocks),
-        rigid_body={model_id: frame.rigid_body_residuals for model_id, frame in reconstructions.items()},
+        rigid_body={model_id: dict(frame.rigid_body_residuals) for model_id, frame in reconstructions.items()},
     )

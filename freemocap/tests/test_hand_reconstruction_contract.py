@@ -1,6 +1,7 @@
 """Tracker hand mappings and Forge frames must produce complete connected hands."""
 from types import SimpleNamespace
 
+from freemocap.tests.recording_tensor_assertions import reconstruction_frame
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -58,7 +59,7 @@ def test_complete_hands_in_live_posthoc_and_recorded_model(tracker, anchor):
         keypoints_3d=np.array([[points[n] for n in names]] * 3), compute_center_of_mass=False,
         timing=PosthocTimingReport())
     batch = reconstruct_skeletons_for_recording(request=request)[bundle.model_id]
-    for result in (live, *batch.frames):
+    for result in (live, *(reconstruction_frame(batch, index, saved_bundle) for index in range(batch.frame_count))):
         for side in ('left', 'right'):
             assert_hand_connected(bundle, result, side)
     # The live rolling estimate and recording-wide scale fit use different evidence
@@ -66,7 +67,7 @@ def test_complete_hands_in_live_posthoc_and_recorded_model(tracker, anchor):
     same_fit = reconstruct_skeleton(bundle=bundle, state=state_for(bundle, batch.scale_fit),
         filtered_keypoints=points, compute_center_of_mass=False)
     for name in same_fit.segment_origins:
-        assert_allclose(same_fit.segment_origins[name], batch.frames[0].segment_origins[name], atol=1e-8)
+        assert_allclose(same_fit.segment_origins[name], reconstruction_frame(batch, 0, saved_bundle).segment_origins[name], atol=1e-8)
     context = FrameContext(frame_number=0, timestamp=0., aggregator_output=SimpleNamespace(reconstructions={bundle.model_id: live}))
     blocks = {block.kind: block for block in SegmentProducer().fill(context, bundle)}
     origins = np.frombuffer(blocks[ChannelKind.SEGMENT_ORIGINS].data, dtype='<f4').reshape(-1, 3)
@@ -77,7 +78,7 @@ def test_complete_hands_in_live_posthoc_and_recorded_model(tracker, anchor):
     for index, name in enumerate(bundle.skeleton.segments):
         if bundle.skeleton.segments[name].anatomical_segment == 'hand':
             assert_allclose(origins[index], live.segment_origins[name], atol=1e-4)
-            assert_allclose(series[ChannelKind.SEGMENT_ORIGINS].values[0, index], batch.frames[0].segment_origins[name])
+            assert_allclose(series[ChannelKind.SEGMENT_ORIGINS].values[0, index], reconstruction_frame(batch, 0, saved_bundle).segment_origins[name])
 
 
 @pytest.mark.parametrize('tracker', ['rtmpose', 'mediapipe'])

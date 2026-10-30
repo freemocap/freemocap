@@ -42,24 +42,17 @@ class OverlayProducer(ChannelProducer):
                     kind=ChannelKind.OVERLAY_2D,
                     names=kp_names,
                     columns=("x", "y", "visibility"),
-                    data=assemble_channel_bytes(names=kp_names, positions=detections, n_cols=3),
+                    data=assemble_channel_bytes(names=kp_names, positions=detections, columns=("x", "y", "visibility")),
                     camera_id=camera_id,
                     image_size=stream_ctx.live_image_sizes.get(camera_id),
                 )
             )
-            reprojections = {
-                name: np.asarray(xy, dtype=np.float32)
-                for name, xy in (
-                    reconstruction.reprojected_segment_origins.get(camera_id, {})
-                    if reconstruction
-                    else {}
-                ).items()
-            }
+            reprojections = reconstruction.reprojected_segment_origins.get(camera_id, {}) if reconstruction else {}
             blocks.append(
                 ChannelBlock(
                     kind=ChannelKind.OVERLAY_REPROJECTIONS,
                     columns=("x", "y", "visibility"),
-                    data=assemble_channel_bytes(names=segment_names, positions=reprojections, n_cols=3),
+                    data=assemble_channel_bytes(names=segment_names, positions=reprojections, columns=("x", "y", "visibility"), unavailable_components=("visibility",)),
                     camera_id=camera_id,
                     image_size=stream_ctx.live_image_sizes.get(camera_id),
                 )

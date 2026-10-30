@@ -36,7 +36,8 @@ class RecordingReconstructionInput:
     def fit_inputs(self, bundle: TrackedSkeletonBundle) -> RecordingFitInputs:
         return RecordingFitInputs.from_points(
             names=self.keypoint_names,
-            values=self.scale_points,
+            values=self.keypoints_3d,
+            measured_support=self.measured_support,
             model=RecordedModel.from_bundle(bundle),
         )
 

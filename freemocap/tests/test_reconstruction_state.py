@@ -159,13 +159,15 @@ def test_the_global_fit_is_the_streaming_fitter_with_a_whole_recording_window(
     streamed_fit = state.scale_source.current_fit()
     batch_fit = fit_model_scale(
         skeleton=human_bundle.skeleton,
-        # The windows the fitter accumulated ARE the samples a batch call is handed.
-        scale_samples=state.scale_source._windows,  # noqa: SLF001 — pinning an equivalence
+        # Hydrate independently; compare scientific output rather than private storage.
+        scale_samples={name: [segment.scale_estimate] * frame_count
+                       for name, segment in _hydrated_pose(human_bundle).segment_poses.items()},
         voting_segment_names=voting,
     )
 
     assert streamed_fit.fitted_scale == batch_fit.fitted_scale
-    assert streamed_fit.segment_lengths == batch_fit.segment_lengths
+    assert streamed_fit.segment_lengths.keys() == batch_fit.segment_lengths.keys()
+    np.testing.assert_allclose(tuple(streamed_fit.segment_lengths.values()), tuple(batch_fit.segment_lengths.values()), atol=1e-10, rtol=1e-12)
 
 
 def test_a_frozen_scale_offers_one_fit_to_every_frame(

@@ -2,6 +2,7 @@
 from dataclasses import fields, is_dataclass
 from freemocap.tests.recording_tensor_assertions import reconstruction_frame, _finite_frame_points
 
+from collections.abc import Mapping
 import numpy as np
 import pytest
 
@@ -22,7 +23,7 @@ def assert_reconstruction_equal(expected, actual):
     if is_dataclass(expected):
         for field in fields(expected):
             assert_reconstruction_equal(getattr(expected, field.name), getattr(actual, field.name))
-    elif isinstance(expected, dict):
+    elif isinstance(expected, Mapping):
         assert expected.keys() == actual.keys()
         for name in expected:
             assert_reconstruction_equal(expected[name], actual[name])

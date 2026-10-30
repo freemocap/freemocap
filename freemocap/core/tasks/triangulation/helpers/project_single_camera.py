@@ -9,6 +9,7 @@ path — it sees the same data shapes and doesn't care about the origin.
 """
 
 import numpy as np
+from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from numpy.typing import NDArray
 
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
@@ -18,7 +19,7 @@ from freemocap.core.tracking.observation_arrays import observation_arrays
 def project_2d_observation_to_3d(
     *,
     observation,  # skellytracker.core.data_primitives.observation.Observation
-) -> dict[str, NDArray[np.float64]]:
+) -> ChannelValues:
     """Project a single camera's per-frame observation to 3D on the Y=0 plane.
 
     Returns {point_name: ndarray(3,)} — the same shape as the ``points`` dict
@@ -31,9 +32,9 @@ def project_2d_observation_to_3d(
 
     # Strip the stage prefix that Observation.to_keypoints() adds ("body.nose" → "nose")
     values = np.column_stack((xy[:, 0] - w / 2, np.zeros(len(xy)), h - xy[:, 1]))
-    # The current realtime result API still requires named views; projection is batched.
-    return {names[index].split(".", 1)[-1]: values[index]
-            for index in np.flatnonzero(~np.isnan(xy).any(axis=-1))}
+    return ChannelValues(tuple(name.split(".", 1)[-1] for name in names), values,
+                         ~np.isnan(xy).any(axis=-1), component_names=SPATIAL_COMPONENTS)
+
 
 
 def project_2d_batch_to_3d(

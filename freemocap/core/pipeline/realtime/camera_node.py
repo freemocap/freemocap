@@ -34,6 +34,8 @@ from freemocap.pubsub.pubsub_topics import (
 )
 
 import numpy as np
+from freemocap.core.data_tensors.channel_values import ChannelValues
+from skellytracker.core.data_primitives.keypoints import Keypoints
 
 from skellytracker.core.data_primitives.observation import Observation
 
@@ -328,20 +330,8 @@ class CameraNode(SourceNode):
                         # Apply 1€ filter to 2D keypoints before publishing.
                         if keypoint_filter is not None:
                             t0 = time.perf_counter() if timer is not None else 0.0
-                            kpts = body_stage.keypoints
-                            raw_2d = kpts.to_named_dict(dimensions=2)
-                            filtered_2d = keypoint_filter.filter(
-                                t=time.perf_counter(),
-                                raw_keypoints=raw_2d,
-                            )
-                            xyz = kpts.xyz
-                            for name, coords in filtered_2d.positions.items():
-                                try:
-                                    idx = kpts.index_of(name)
-                                    xyz[idx, 0] = coords[0]
-                                    xyz[idx, 1] = coords[1]
-                                except KeyError:
-                                    pass
+                            _filter_image_keypoints(keypoints=body_stage.keypoints, keypoint_filter=keypoint_filter,
+                                                    timestamp=time.perf_counter())
                             if timer is not None:
                                 timer.record("keypoint_filter_2d", (time.perf_counter() - t0) * 1e3)
 
@@ -398,3 +388,17 @@ class CameraNode(SourceNode):
             if skeleton_tracker is not None:
                 skeleton_tracker.close()
             logger.debug(f"RealtimeCameraNode [{camera_id}] exiting")
+
+
+def _filter_image_keypoints(*, keypoints: Keypoints, keypoint_filter: RealtimeKeypointFilter, timestamp: float) -> None:
+    """Smooth the declared XY array in place; Z/confidence retain their values.
+
+    Supplied detector NaNs are present samples, matching the existing scalar
+    camera filter. Missing identities and present-but-unavailable components
+    remain distinct; this representation change does not repair NaN recovery.
+    """
+    names = tuple(keypoints.names)
+    incoming = ChannelValues(names, keypoints.xyz[:, :2], component_names=('x', 'y'))
+    filtered = keypoint_filter.filter(t=timestamp, raw_keypoints=incoming).positions
+    available = filtered.aligned_presence(names)
+    keypoints.xyz[available, :2] = filtered.aligned(names)[available]

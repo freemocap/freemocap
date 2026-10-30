@@ -17,6 +17,7 @@ from skellyforge.core.math.geometry.transform_math import Transform
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 
 import numpy as np
+from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 from skellytracker.core.data_primitives.observation import Observation
@@ -452,7 +453,7 @@ class CalibrationStateTracker:
                 matched_obs_by_cam[camera_model.id] = obs
 
             if len(matched_obs_by_cam) == 0:
-                return AngulationResult(points={}, errors_px={}, diagnostics=None)
+                return AngulationResult(points=ChannelValues.empty(component_names=SPATIAL_COMPONENTS), errors_px=ChannelValues.empty(component_names=()), diagnostics=None)
             if len(matched_obs_by_cam) == 1:
                 if self._reference_transform is not None:
                     return None
@@ -516,15 +517,9 @@ class CalibrationStateTracker:
             # its mean reprojection error alongside its position.
             _t0 = time.perf_counter()
             valid_pt_mask = ~np.isnan(points_3d).any(axis=1)
-            points: dict[str, NDArray[np.float64]] = {}
-            errors_px: dict[str, float] = {}
-            for i, name in enumerate(point_names_seq):
-                if valid_pt_mask[i]:
-                    stripped = _strip_stage_prefix(name)
-                    points[stripped] = points_3d[i]
-                    errors_px[stripped] = float(mean_reproj_error[i])
-#             self._timer.record("result_dict", (time.perf_counter() - _t0) * 1e3)
-#             self._timer.maybe_report()
+            names = tuple(_strip_stage_prefix(name) for name in point_names_seq)
+            points = ChannelValues(names, points_3d, valid_pt_mask, component_names=SPATIAL_COMPONENTS)
+            errors_px = ChannelValues(names, mean_reproj_error, valid_pt_mask, component_names=())
 
             # Triangulation succeeded — reset failure counter
             self._consecutive_failure_count = 0

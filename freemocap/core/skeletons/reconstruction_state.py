@@ -28,6 +28,9 @@ from skellyforge.core.skeleton.pose.model_scale_fitting import (
     scale_voting_segment_names,
 )
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
+from skellyforge.core.skeleton.pose.pose_tensor import PoseTensor  # noqa: TC002 - runtime protocol admission
+from skellyforge.core.skeleton.pose.scale_tensor import ScaleTensor
+from freemocap.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
 from skellyforge.core.skeleton.skeleton_pose import SkeletonPose  # noqa: TC002 - runtime type checking
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle  # noqa: TC001 - runtime type checking
@@ -43,8 +46,10 @@ class ModelScaleSource(Protocol):
     offers that same fit to every frame of it.
     """
 
-    def observe_pose(self, *, pose: SkeletonPose) -> None:
-        """Record this frame's reading of how big the model is."""
+    def observe_tensor(self, *, poses: PoseTensor) -> None:
+        ...
+
+    def current_tensor(self) -> ScaleTensor:
         ...
 
     @property
@@ -73,6 +78,26 @@ class FrozenModelScale:
     """
 
     fit: ModelScaleFit | None
+
+    def __post_init__(self):
+        fit = self.fit
+        names = tuple(fit.segment_scales) if fit else ()
+        tensor = ScaleTensor(names, fit.fitted_scale,
+            np.asarray(tuple(fit.segment_scales.values()), np.float64),
+            np.asarray([fit.segment_lengths[name] for name in names], np.float64),
+            np.asarray([name in fit.measured_segment_names for name in names], bool),
+            np.asarray([name in fit.voting_segment_names for name in names], bool)) if fit else None
+        object.__setattr__(self, '_tensor', tensor)
+
+    _tensor: ScaleTensor | None = None
+
+    def observe_tensor(self, *, poses: PoseTensor) -> None:
+        return None
+
+    def current_tensor(self) -> ScaleTensor:
+        if self._tensor is None:
+            raise InsufficientScaleEvidence("The recording contains no scale evidence")
+        return self._tensor
 
     def observe_pose(self, *, pose: SkeletonPose) -> None:
         return None
@@ -112,22 +137,25 @@ class SkeletonReconstructionState:
     scale_source: ModelScaleSource
     roll_resolver: ContinuousRollResolver | None = None
     previous_center_of_mass: tuple[np.ndarray, float] | None = None
-    diagnostic_reference_fit: ModelScaleFit | None = None
+    diagnostic_reference_fit: ScaleTensor | None = None
+    pose_geometry: object | None = None
+    pose_outputs: object | None = None
     prepared_mapping: PreparedTrackerMapping | None = None
     mapping_bundle: TrackedSkeletonBundle | None = None
 
-    def map_frame(self, *, bundle: TrackedSkeletonBundle, points: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
-        """Compile per configuration; coordinate changes and occlusions reuse the plan."""
+    def map_frame(self, *, bundle: TrackedSkeletonBundle, points) -> ChannelValues:
+        """Use one authored mapping and dense values across coordinate changes/occlusion."""
+        from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
         if self.mapping_bundle is not bundle:
-            snapshots = bundle.landmark_mapping.mapping_snapshots()
-            self.prepared_mapping = None if all(snapshot.passthrough for snapshot in snapshots) else PreparedTrackerMapping.prepare(
+            self.prepared_mapping = PreparedTrackerMapping.prepare(
                 bundle.landmark_mapping, tracker_names=bundle.tracker_keypoint_names)
+            self.pose_geometry = LandmarkPoseGeometry.from_skeleton(
+                skeleton=bundle.skeleton, landmark_names=self.prepared_mapping.landmark_names)
             self.mapping_bundle = bundle
-        if self.prepared_mapping is None:
-            return bundle.landmark_mapping.apply(tracker_positions=points)
-        # A scene may contain board and human points; each bundle consumes its own axis.
-        return self.prepared_mapping.apply_frame(tracker_positions={
-            name: value for name, value in points.items() if name in self.prepared_mapping.tracker_columns})
+            self.pose_outputs = None
+        values = ChannelValues.from_mapping(points, component_names=SPATIAL_COMPONENTS).aligned(self.prepared_mapping.tracker_names)
+        mapped = self.prepared_mapping.apply(tracker_names=self.prepared_mapping.tracker_names, positions=values[None])
+        return ChannelValues(mapped.landmark_names, mapped.positions[0], mapped.present[0], component_names=SPATIAL_COMPONENTS)
 
 
     def reset(self) -> None:

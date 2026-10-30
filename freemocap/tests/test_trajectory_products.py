@@ -114,7 +114,10 @@ def test_missing_ancestor_suppresses_descendants_without_hiding_other_branches(m
         if parent != root and parent in complete.segment_origins and child in complete.segment_origins)
     for absent in (missing, root):
         pose = replace(measured, segment_poses={name: value for name, value in measured.segment_poses.items() if name != absent})
-        monkeypatch.setattr(module, 'hydrate_skeleton', lambda **kwargs: pose)
+        from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
+        from skellyforge.core.skeleton.pose.pose_tensor import PoseTensor
+        tensor = PoseTensor.from_pose(pose=pose, segment_names=tuple(bundle.skeleton.segments))
+        monkeypatch.setattr(LandmarkPoseGeometry, 'recover_tensor', lambda *args, **kwargs: tensor)
         result = reconstruct_skeleton(bundle=bundle, state=state_for(bundle, full_state.scale_source.current_fit()),
             filtered_keypoints=points, compute_center_of_mass=False)
         expected = set()

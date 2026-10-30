@@ -1,181 +1,58 @@
-"""Reconstruct ONE skeleton from one frame's keypoints.
-
-Everything the realtime loop does per tracked skeleton, in one place: map keypoints to
-observations, hydrate, resolve roll, fit scale, connect rigid segments, and place the centre of
-mass. The aggregator calls it once per skeleton and collects the results.
-
-Pulled out of the aggregator rather than inlined there because "do this for each tracked
-skeleton" should be a loop over a named thing, not fifty lines that a reader has to check
-for hidden assumptions about which skeleton they refer to.
-
-Cross-frame state lives in the caller-owned `SkeletonReconstructionState`, never in the
-bundle: this is a pure function of one frame given that state, which is what makes it
-testable without a pipeline AND what lets the posthoc driver call the very same function
-with a whole-recording scale fit instead of a rolling one.
-"""
-from __future__ import annotations
-
+"""Reconstruct one sample with the same prepared tensor calculations as recordings."""
+from collections.abc import Mapping
 import numpy as np
-from skellyforge.core.biomechanics.center_of_mass import (
-    compute_segment_coms,
-)
-from skellyforge.core.biomechanics.composite_inertia import whole_body_center_of_mass
-from skellyforge.core.math.geometry.spatial_vectors import Point
-from skellyforge.core.skeleton.chain.synthesis import synthesize_anchored_pose
-from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
-from skellyforge.core.skeleton.skeleton_pose import SkeletonPose  # noqa: TC001 - runtime type checking
-from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
-from skellyforge.core.skeleton.pose.model_scale_fitting import scale_voting_segment_names
-from skellyforge.core.skeleton.pose.rigid_body_diagnostics import measure_rigid_body_residuals
-
+from freemocap.core.data_tensors.channel_values import ChannelValues
+from freemocap.core.data_tensors.data_tensor import _immutable_values
+from freemocap.core.reconstruction.recording_pose_outputs import RecordingPoseOutputs
 from freemocap.core.skeletons.reconstruction_state import SkeletonReconstructionState, FrozenModelScale
-from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
-from freemocap.core.skeletons.rotation_output import canonical_joint_angles, canonical_quaternion_outputs
+from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction, ResidualValues, JointValues
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
+from freemocap.core.types.channel_kind import ChannelKind
 
 
-def reconstruct_skeleton(
-    *,
-    bundle: TrackedSkeletonBundle,
-    state: SkeletonReconstructionState,
-    filtered_keypoints: dict[str, np.ndarray],
-    compute_center_of_mass: bool,
-) -> SkeletonReconstruction | None:
-    """This skeleton's reconstruction for one frame, or `None` if there are no mapped observations.
-
-    Args:
-        bundle: the skeleton being reconstructed — what it IS, authored once.
-        state: what reconstructing it has accumulated over this take — the scale source and
-            the roll carry. Mutated here; owned by the caller.
-        filtered_keypoints: every detector's keypoints this frame, already smoothed and
-            gated. The bundle's mapping takes only the ones it recognizes, so one flat
-            dict feeds every skeleton.
-        compute_center_of_mass: whether to place the centre of mass this frame.
-
-    Returns:
-        The observations and available reconstruction. Observations survive unsolved poses;
-        `None` means there were no mapped observations.
-    """
-    mapped_landmarks = state.map_frame(bundle=bundle, points=filtered_keypoints)
-    if not mapped_landmarks:
+def reconstruct_skeleton(*, bundle: TrackedSkeletonBundle, state: SkeletonReconstructionState,
+                         filtered_keypoints: Mapping[str, np.ndarray], compute_center_of_mass: bool) -> SkeletonReconstruction | None:
+    mapped = state.map_frame(bundle=bundle, points=filtered_keypoints)
+    if not mapped:
         return None
-    observed = {
-        name: Point.from_array(values=position)
-        for name, position in mapped_landmarks.items()
-    }
-    hydrated_pose = hydrate_skeleton(
-        skeleton=bundle.skeleton, observed=observed, require_all=False
-    )
-    return reconstruct_hydrated_skeleton(
-        bundle=bundle, state=state, mapped_landmarks=mapped_landmarks,
-        hydrated_pose=hydrated_pose, compute_center_of_mass=compute_center_of_mass,
-    )
+    poses = state.pose_geometry.recover_tensor(positions=mapped.data_values[None], landmark_present=mapped.entry_present[None])
+    if not poses.segment_present.any():
+        return SkeletonReconstruction(model_id=bundle.model_id, mapped_keypoints=mapped.immutable_copy())
+    if state.roll_resolver is not None:
+        poses = state.roll_resolver.resolve_tensor(poses=poses)
+    reference_fit = (state.scale_source.current_tensor() if isinstance(state.scale_source, FrozenModelScale)
+                     and state.scale_source.has_model_scale else state.diagnostic_reference_fit)
+    state.scale_source.observe_tensor(poses=poses)
+    fit = state.scale_source.current_tensor() if state.scale_source.has_model_scale else None
+    state.diagnostic_reference_fit = fit
+    if state.pose_outputs is None or state.pose_outputs.compute_center_of_mass != compute_center_of_mass:
+        state.pose_outputs = RecordingPoseOutputs(bundle=bundle, fit=None, compute_center_of_mass=compute_center_of_mass)
+    outputs = state.pose_outputs
+    outputs.configure_fit(fit=fit, reference_fit=reference_fit,
+                          reference_kind='recording_fit' if isinstance(state.scale_source, FrozenModelScale) else 'prior_live_fit')
+    tensors = outputs.calculate(poses=poses, landmark_names=mapped.names,
+        landmark_positions=mapped.data_values[None], landmark_present=mapped.entry_present[None], start_position=0)
+    channels = {tensor.tensor_layout.channel_kind: tensor.immutable_copy() for tensor in tensors}
 
+    def channel(kind):
+        tensor = channels[kind]
+        present = next(item.data_values[0] for item in tensor.companion_tensors if item.metadata_name == 'entry_presence')
+        return ChannelValues(tensor.tensor_layout.axes[1].identifiers, tensor.data_values[0], _immutable_values(present.all(axis=-1)),
+                             component_names=tensor.tensor_layout.axes[2].identifiers)
 
-def reconstruct_hydrated_skeleton(
-    *, bundle: TrackedSkeletonBundle, state: SkeletonReconstructionState,
-    mapped_landmarks: dict[str, np.ndarray], hydrated_pose: SkeletonPose,
-    compute_center_of_mass: bool,
-) -> SkeletonReconstruction | None:
-    """Consume recovered geometry while retaining the shared temporal roll logic."""
-    if not mapped_landmarks:
-        return None
-    if not hydrated_pose.segment_poses:
-        return SkeletonReconstruction(model_id=bundle.model_id, mapped_keypoints=mapped_landmarks)
-    # A skeleton that measures its own roll (every segment fully specified, as a rigid
-    # marked object is) opted out of roll resolution, and applying a continuity convention
-    # to it would invent state where there is a measurement.
-    resolved_pose = (
-        state.roll_resolver.resolve_pose(pose=hydrated_pose)
-        if state.roll_resolver is not None
-        else hydrated_pose
-    )
-
-    reference_fit = (
-        state.scale_source.current_fit() if isinstance(state.scale_source, FrozenModelScale) and state.scale_source.has_model_scale
-        else state.diagnostic_reference_fit
-    )
-    residuals = measure_rigid_body_residuals(
-        skeleton=bundle.skeleton, pose=resolved_pose,
-        measured_segment_names=frozenset(scale_voting_segment_names(
-            skeleton=bundle.skeleton,
-            measured_landmark_names=bundle.landmark_mapping.directly_measured_landmark_names,
-        )),
-        reference_lengths=reference_fit.segment_lengths if reference_fit is not None else {},
-        reference_kind='recording_fit' if isinstance(state.scale_source, FrozenModelScale) else 'prior_live_fit',
-    )
-    state.scale_source.observe_pose(pose=resolved_pose)
-    scale_fit: ModelScaleFit | None = (
-        state.scale_source.current_fit()
-        if state.scale_source.has_model_scale
-        else None
-    )
-
-    state.diagnostic_reference_fit = scale_fit
-    # Measurement and scale evidence above remain independent of the connected output.
-    # Only measured paths reaching the observed anchor can be placed without inferring
-    # missing orientations. In particular, a visible hand cannot bridge a missing arm.
-    children: dict[str, list[str]] = {name: [] for name in bundle.rest_pose.parents}
-    for name, parent in bundle.rest_pose.parents.items():
-        if parent is not None:
-            children[parent].append(name)
-            children[name].append(parent)
-    selected: set[str] = set()
-    anchor_name = bundle.anchor_segment_name or bundle.rest_pose.root_segment_name
-    pending = [anchor_name] if scale_fit is not None else []
-    while pending:
-        name = pending.pop()
-        if name in selected or name not in resolved_pose.segment_poses:
-            continue
-        selected.add(name)
-        pending.extend(children[name])
-
-    relative = resolved_pose.parent_relative_orientations(parents=bundle.rest_pose.parents)
-    world_rotations, origins, landmarks = {}, {}, {}
-    if selected:
-        anchor = resolved_pose.segment_poses[anchor_name]
-        world_rotations, origins, landmarks = synthesize_anchored_pose(
-            skeleton=bundle.skeleton,
-            fit=scale_fit,
-            segment_world_orientations={name: resolved_pose.segment_poses[name].orientation for name in selected},
-            anchor_segment_name=anchor_name,
-            anchor_origin=anchor.origin,
-        )
-    reconstruction = SkeletonReconstruction(
-        model_id=bundle.model_id,
-        rigid_body_residuals=residuals,
-        mapped_keypoints=mapped_landmarks,
-        landmarks={name: point.array for name, point in landmarks.items()},
-        segment_origins={name: point.array for name, point in origins.items()},
-        segment_rotations_world=canonical_quaternion_outputs({
-            name: rotation.as_array() for name, rotation in world_rotations.items()
-        }),
-        segment_rotations_local=canonical_quaternion_outputs({
-            name: rotation.as_array()
-            for name, rotation in relative.items() if name in selected
-        }),
-        segment_lengths=dict(scale_fit.segment_lengths) if scale_fit else {},
-        fitted_scale_mm=scale_fit.fitted_scale if scale_fit else None,
-        joint_angles=(
-            canonical_joint_angles({
-                joint_name: joint_pose.angles
-                for joint_name, joint_pose in bundle.skeleton.compute_joint_poses(
-                    pose=resolved_pose
-                ).items()
-                if bundle.skeleton.joints[joint_name].parent.name in selected
-                and bundle.skeleton.joints[joint_name].child.name in selected
-            })
-            if bundle.skeleton.joints
-            else None
-        ),
-    )
-
-    if compute_center_of_mass and landmarks:
-        reconstruction.center_of_mass = whole_body_center_of_mass(
-            segment_coms=compute_segment_coms(
-                definitions=bundle.center_of_mass_definitions, world=reconstruction.landmarks
-            ),
-            segment_masses=bundle.segment_masses,
-        )
-    return reconstruction
-
+    residual = channels[ChannelKind.RIGID_BODY_RESIDUALS].data_values[0]
+    angle_values = None
+    if ChannelKind.JOINT_ANGLES in channels:
+        angles = channel(ChannelKind.JOINT_ANGLES)
+        angle_values = JointValues(angle_values=angles, definitions=outputs.joint_definitions)
+    center = None
+    if ChannelKind.DERIVED_POINTS in channels:
+        center = channel(ChannelKind.DERIVED_POINTS).get('center_of_mass')
+    return SkeletonReconstruction(model_id=bundle.model_id,
+        mapped_keypoints=channel(ChannelKind.MAPPED_KEYPOINTS_3D),
+        landmarks=channel(ChannelKind.LANDMARKS_3D), segment_origins=channel(ChannelKind.SEGMENT_ORIGINS),
+        segment_rotations_world=channel(ChannelKind.ROTATIONS_WORLD), segment_rotations_local=channel(ChannelKind.ROTATIONS_LOCAL),
+        segment_lengths=ChannelValues(fit.segment_names, fit.segment_lengths, component_names=()).immutable_copy() if fit else ChannelValues.empty(component_names=()),
+        fitted_scale_mm=fit.fitted_scale if fit else None, joint_angles=angle_values, center_of_mass=center,
+        rigid_body_residuals=ResidualValues(names=outputs.names, measured=residual[:, 0], residual=residual[:, 1],
+            reference=outputs.residuals.reference_lengths.copy(), reference_kind=outputs.residuals.reference_kind))

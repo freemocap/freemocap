@@ -1,4 +1,6 @@
 """Compose Forge batch calculations and retain numerical recording channels."""
+from dataclasses import replace
+from functools import lru_cache
 import numpy as np
 from skellyforge.core.biomechanics.center_of_mass_batch import CenterOfMassGeometry
 from skellyforge.core.math.geometry.rotation_quaternion import (
@@ -6,7 +8,8 @@ from skellyforge.core.math.geometry.rotation_quaternion import (
 )
 from skellyforge.core.skeleton.chain.anchored_batch import AnchoredSkeletonGeometry
 from skellyforge.core.skeleton.linkage.joint_batch import JointBatchGeometry
-from skellyforge.core.skeleton.pose.hydration_batch import HydratedPoseBatch
+from skellyforge.core.skeleton.pose.pose_tensor import PoseTensor
+from skellyforge.core.skeleton.pose.scale_tensor import ScaleTensor
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit, scale_voting_segment_names
 from skellyforge.core.skeleton.pose.rigid_body_diagnostics import ResidualBatchGeometry
 
@@ -21,19 +24,26 @@ POSITION_COMPONENTS = ("x", "y", "z")
 ROTATION_COMPONENTS = ("w", "x", "y", "z")
 
 
-def reconstruction_tensor(*, model_id: str, sample_positions: AxisDefinition, names: tuple[str, ...],
-                          components: tuple[str, ...], channel_kind: str, values: np.ndarray,
-                          entry_presence: np.ndarray, solver_status: np.ndarray | None = None) -> DataTensor:
-    """Bind declared channel axes; physical units/reference are supplied when saving."""
+@lru_cache(maxsize=256)
+def _channel_metadata(model_id, sample_positions, names, components, channel_kind):
     from freemocap.core.recording.sample_encoding.reconstruction_samples import model_source_name
     axes = (sample_positions, AxisDefinition("entity_identity", names), AxisDefinition("component_identity", components))
     source = SourceIdentity(source_id=model_source_name(model_id), model_id=model_id)
-    layout = TensorLayout(axes=axes, dtype=np.float64, source_identity=source, channel_kind=str(channel_kind))
-    companions = [CompanionTensor("entry_presence", entry_presence, TensorLayout(axes=axes, dtype=bool))]
+    return (TensorLayout(axes=axes, dtype=np.float64, source_identity=source, channel_kind=str(channel_kind)),
+            TensorLayout(axes=axes, dtype=bool), TensorLayout(axes=axes[:-1], dtype=np.uint8),
+            ScientificProvenance("model_estimate", "recording_reconstruction", model_id=model_id))
+
+
+def reconstruction_tensor(*, model_id: str, sample_positions: AxisDefinition, names: tuple[str, ...],
+                          components: tuple[str, ...], channel_kind: str, values: np.ndarray,
+                          entry_presence: np.ndarray, solver_status: np.ndarray | None = None) -> DataTensor:
+    """Bind prepared channel metadata; physical units/reference are supplied when saving."""
+    layout, presence_layout, status_layout, provenance = _channel_metadata(
+        model_id, sample_positions, names, components, channel_kind)
+    companions = [CompanionTensor("entry_presence", entry_presence, presence_layout)]
     if solver_status is not None:
-        companions.append(CompanionTensor("solver_status", solver_status, TensorLayout(axes=axes[:-1], dtype=solver_status.dtype)))
-    return DataTensor(values, layout, ScientificProvenance("model_estimate", "recording_reconstruction", model_id=model_id),
-                      tuple(companions))
+        companions.append(CompanionTensor("solver_status", solver_status, status_layout))
+    return DataTensor(values, layout, provenance, tuple(companions))
 
 
 class RecordingPoseOutputs:
@@ -49,28 +59,55 @@ class RecordingPoseOutputs:
         self.landmark_indices = {name: i for i, name in enumerate(self.landmark_names)}
         self.parents = np.array([self.indices.get(bundle.rest_pose.parents[n], self.indices[n]) for n in self.names])
         self.roots = np.array([bundle.rest_pose.parents[n] is None for n in self.names])
-        self.positions = AnchoredSkeletonGeometry.from_skeleton(skeleton=bundle.skeleton,
-            fit=fit, anchor_segment_name=bundle.anchor_segment_name or bundle.rest_pose.root_segment_name) if fit else None
+        unit_fit = ModelScaleFit(fitted_scale=1., segment_scales=dict.fromkeys(self.names, 1.),
+            segment_lengths={name: segment.length for name, segment in bundle.skeleton.segments.items()},
+            measured_segment_names=frozenset(), voting_segment_names=frozenset())
+        self.base_positions = AnchoredSkeletonGeometry.from_skeleton(skeleton=bundle.skeleton,
+            fit=unit_fit, anchor_segment_name=bundle.anchor_segment_name or bundle.rest_pose.root_segment_name)
+        self.positions = None
         self.joints = JointBatchGeometry.from_skeleton(skeleton=bundle.skeleton)
+        self.joint_definitions = tuple((name, tuple(joint.angle_names)) for name, joint in bundle.skeleton.joints.items())
+        self.angle_names = tuple(name for _, names in self.joint_definitions for name in names)
+        self.sample_axes = {}
         self.residuals = ResidualBatchGeometry.from_skeleton(skeleton=bundle.skeleton,
             measured_segment_names=frozenset(scale_voting_segment_names(skeleton=bundle.skeleton,
                 measured_landmark_names=bundle.landmark_mapping.directly_measured_landmark_names)),
-            reference_lengths=fit.segment_lengths if fit else {}, reference_kind='recording_fit')
+            reference_lengths={}, reference_kind='recording_fit')
         self.compute_center_of_mass = compute_center_of_mass
         self.center = CenterOfMassGeometry.from_definitions(definitions=bundle.center_of_mass_definitions,
-            landmark_names=self.positions.landmark_names, segment_masses=bundle.segment_masses
-        ) if compute_center_of_mass and self.positions and bundle.center_of_mass_definitions.definitions else None
+            landmark_names=self.base_positions.landmark_names, segment_masses=bundle.segment_masses
+        ) if compute_center_of_mass and bundle.center_of_mass_definitions.definitions else None
         self._mapping_columns: dict[tuple[str, ...], np.ndarray] = {}
-        self._connected_columns = np.asarray([self.landmark_indices[name] for name in self.positions.landmark_names]) if self.positions else None
+        self._connected_columns = np.asarray([self.landmark_indices[name] for name in self.base_positions.landmark_names])
 
-    def calculate(self, *, poses: HydratedPoseBatch, landmark_names: tuple[str, ...],
+        self.configure_fit(fit=fit, reference_fit=fit, reference_kind='recording_fit')
+
+    def configure_fit(self, *, fit, reference_fit, reference_kind):
+        """Apply changing scale arrays to already prepared geometry and topology."""
+        self.fit = fit
+        if fit is None:
+            self.positions = None
+        else:
+            scales = (fit.segment_scales if isinstance(fit, ScaleTensor)
+                      else np.asarray([fit.segment_scales[name] for name in self.names]))
+            if isinstance(fit, ScaleTensor) and fit.segment_names != self.names:
+                raise ValueError("Fitted segment axis must match the prepared skeleton")
+            self.positions = replace(self.base_positions,
+                attachment_vectors=self.base_positions.attachment_vectors * scales[self.base_positions.attachment_owners, None],
+                landmark_vectors=self.base_positions.landmark_vectors * scales[self.base_positions.landmark_owners, None])
+        references = (reference_fit.segment_lengths if isinstance(reference_fit, ScaleTensor)
+                      else np.asarray([reference_fit.segment_lengths[name] for name in self.names]) if reference_fit
+                      else np.full(len(self.names), np.nan))
+        self.residuals = replace(self.residuals, reference_lengths=references, reference_kind=reference_kind)
+
+    def calculate(self, *, poses: PoseTensor, landmark_names: tuple[str, ...],
                   landmark_positions: np.ndarray, landmark_present: np.ndarray, start_position: int) -> tuple[DataTensor, ...]:
         """Calculate entire chunks; no per-frame result objects or numerical dictionaries."""
         rotations, origins, scales = poses.orientations, poses.origins, poses.scale_estimates
         present = poses.segment_present
         frame_count = len(rotations)
         measured, residuals = self.residuals.calculate(scales=scales, segment_present=present)
-        joints = self.joints.calculate(world_orientations=rotations, segment_present=present, segment_solutions=poses.solutions)
+        joints = self.joints.calculate_tensor(poses=poses)
         selected = np.zeros_like(present)
         connected = None
         if self.positions:
@@ -87,9 +124,15 @@ class RecordingPoseOutputs:
             right=rotations[local_present]))
         local[:, self.roots] = rotations[:, self.roots]
         center = self.center.calculate(positions=connected.landmark_positions,
-            landmark_present=connected.landmark_present) if self.center else None
+            landmark_present=connected.landmark_present) if self.center and connected else None
         joint_selected = selected[:, self.joints.parent_indices] & selected[:, self.joints.child_indices]
-        sample_axis = AxisDefinition("sample_position", range(start_position, start_position + frame_count))
+        sample_key = (start_position, frame_count)
+        sample_axis = self.sample_axes.get(sample_key)
+        if sample_axis is None:
+            sample_axis = AxisDefinition("sample_position", range(start_position, start_position + frame_count))
+            # A live sample layout is reused; recording chunk positions need no permanent registry.
+            if start_position == 0:
+                self.sample_axes[sample_key] = sample_axis
         tensors = []
 
         def retain(kind, names, components, values, available, status=None):
@@ -116,17 +159,19 @@ class RecordingPoseOutputs:
             model_presence[:, self._connected_columns] = connected.landmark_present
         retain(ChannelKind.LANDMARKS_3D, self.landmark_names, POSITION_COMPONENTS, model_values, model_presence)
         connected_origins = np.where(selected[..., None], connected.segment_origins, np.nan) if connected else np.full_like(origins, np.nan)
-        retain(ChannelKind.SEGMENT_ORIGINS, self.names, POSITION_COMPONENTS, connected_origins, selected, poses.status)
+        retain(ChannelKind.SEGMENT_ORIGINS, self.names, POSITION_COMPONENTS, connected_origins, selected, poses.hydration_status)
         world_values = np.full_like(rotations, np.nan)
         world_values[selected] = canonical_quaternion_array(rotations[selected])
-        retain(ChannelKind.ROTATIONS_WORLD, self.names, ROTATION_COMPONENTS, world_values, selected, poses.status)
+        retain(ChannelKind.ROTATIONS_WORLD, self.names, ROTATION_COMPONENTS, world_values, selected, poses.hydration_status)
         local_values = np.full_like(rotations, np.nan)
         local_values[local_present] = canonical_quaternion_array(local[local_present])
         retain(ChannelKind.ROTATIONS_LOCAL, self.names, ROTATION_COMPONENTS, local_values, local_present)
         diagnostics = np.stack((measured, residuals), axis=-1)
         retain(ChannelKind.RIGID_BODY_RESIDUALS, self.names, ("measured_length", "residual"), diagnostics, np.isfinite(diagnostics))
         if self.bundle.skeleton.joints:
-            angle_names = tuple(name for joint in self.bundle.skeleton.joints.values() for name in joint.angle_names)
+            angle_names = self.angle_names
+            if any(len(names) != joints.angles.shape[-1] for _, names in self.joint_definitions):
+                raise ValueError("Forge joint-angle components differ from the authored joint declarations")
             angle_values = np.full_like(joints.angles, np.nan)
             angle_values[joint_selected] = canonical_joint_angle_array(joints.angles[joint_selected])
             angle_values = angle_values.reshape((frame_count, len(angle_names), 1))

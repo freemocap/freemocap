@@ -1,138 +1,92 @@
-"""
-RealtimeKeypointFilter: lightweight One Euro filter for the realtime pipeline.
-
-Applies per-keypoint One Euro smoothing to 2D or 3D positions and predicts
-(extrapolates) positions for keypoints that temporarily disappear, so the
-output stream doesn't blink when tracking is lost for a few frames.
-
-Predicted positions are extrapolations, not measurements: every ``filter``
-call reports which keypoints were predicted this frame so downstream consumers
-(bone-length estimation) can exclude them while still using them for display.
-
-Works on ``dict[str, ndarray(dims,)]`` — set ``dims=2`` for pixel-space
-(camera node) or ``dims=3`` for world-space (aggregator).
-"""
-
+"""One Euro smoothing and gap prediction over dense entity/component arrays."""
 import logging
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
+from collections.abc import Mapping
 import numpy as np
-
-from freemocap.core.tasks.mocap.realtime_filtering.one_euro_filter import OneEuroFilter1D
+from freemocap.core.data_tensors.channel_values import ChannelValues
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True, slots=True)
 class FilteredKeypoints:
-    """Smoothed keypoints for one frame, with provenance.
+    positions: ChannelValues
+    predicted_mask: np.ndarray
 
-    positions : dict[str, ndarray(dims,)]
-        Smoothed positions; includes extrapolations for recently-seen
-        keypoints absent this frame.
-    predicted_names : frozenset[str]
-        Names whose position this frame is an extrapolation, not a
-        measurement. Must not feed length estimation.
-    """
-
-    positions: dict[str, np.ndarray]
-    predicted_names: frozenset[str]
-
+    @property
+    def predicted_names(self):
+        return frozenset(self.positions.names[index] for index in np.flatnonzero(self.predicted_mask))
 
 @dataclass
 class RealtimeKeypointFilter:
-    """One Euro filter applied per-keypoint with velocity-decay gap filling.
-
-    Works with 2D (pixel) or 3D (world) keypoints via the ``dims`` parameter.
-    Each dimension gets an independent ``OneEuroFilter1D`` instance.
-    """
-
-    # Number of spatial dimensions (2 = pixel, 3 = world).
     dims: int = 3
-
-    # Minimum cutoff frequency (Hz) when the keypoint is nearly stationary.
     min_cutoff: float = 1.0
-    # Speed coefficient. For mm-space (~0.007); for pixel-space (~0.0001).
     beta: float = 0.007
-    # Cutoff for the velocity-estimate filter (Hz).
     d_cutoff: float = 1.0
-
     max_prediction_frames: int = 3
     prediction_velocity_decay: float = 0.5
 
-    # Per-keypoint state: each value is a tuple of ``dims`` OneEuroFilter1D
-    # instances, one per spatial axis.
-    _filters: dict[str, tuple[OneEuroFilter1D, ...]] = field(default_factory=dict, init=False, repr=False)
-    _prediction_counts: dict[str, int] = field(default_factory=dict, init=False, repr=False)
-    _last_t: float | None = field(default=None, init=False, repr=False)
+    def __post_init__(self) -> None:
+        self.component_names = tuple(f"component_{index}" for index in range(self.dims))
+        self.reset()
 
-    # ------------------------------------------------------------------
-    def filter(
-        self, *, t: float, raw_keypoints: dict[str, np.ndarray],
-    ) -> FilteredKeypoints:
-        """Return smoothed + gap-filled keypoints with predicted-name provenance.
+    def _extend(self, names: tuple[str, ...]) -> None:
+        if names == self._last_input_names:
+            return
+        self._last_input_names = names
+        added = tuple(name for name in names if name not in self._columns)
+        if not added:
+            return
+        self._names += added
+        self._columns = {name: i for i, name in enumerate(self._names)}
+        self._positions = np.concatenate((self._positions, np.full((len(added), self.dims), np.nan)))
+        self._velocities = np.concatenate((self._velocities, np.zeros((len(added), self.dims))))
+        self._times = np.concatenate((self._times, np.full(len(added), np.nan)))
+        self._counts = np.concatenate((self._counts, np.zeros(len(added), np.int64)))
 
-        Args:
-            t: Monotonic timestamp in seconds.
-            raw_keypoints: Keypoints keyed by name. Each value is a
-                           ``(dims,)`` ndarray. NaN-free — caller is
-                           responsible for pre-filtering.
-
-        Returns:
-            ``FilteredKeypoints`` — smoothed positions including predictions
-            for recently-seen keypoints absent this frame, plus the set of
-            names that were predicted rather than observed.
-        """
+    def filter(self, *, t: float, raw_keypoints: Mapping[str, np.ndarray]) -> FilteredKeypoints:
+        points = raw_keypoints if isinstance(raw_keypoints, ChannelValues) else ChannelValues.from_mapping(raw_keypoints, component_names=self.component_names)
+        if self._names and points.component_names != self.component_names:
+            raise ValueError("Filter component identities must remain unchanged until reset")
+        self.component_names = points.component_names
+        if points.data_values.shape[1:] != (self.dims,):
+            raise ValueError("Filter components must match the declared dimension count")
         if self._last_t is not None and t <= self._last_t:
-            logger.warning(
-                f"Non-monotonic timestamp: t={t} <= last_t={self._last_t}. "
-                f"Skipping filter for this frame."
-            )
-            return FilteredKeypoints(positions=raw_keypoints, predicted_names=frozenset())
+            logger.warning("Non-monotonic timestamp: skipping filter for this frame")
+            return FilteredKeypoints(points, np.zeros(len(points.names), bool))
         self._last_t = t
-
-        result: dict[str, np.ndarray] = {}
-
-        # Process keypoints present this frame.
-        for name, pos in raw_keypoints.items():
-            pos_f = pos.astype(float)
-            if name not in self._filters:
-                self._filters[name] = tuple(
-                    OneEuroFilter1D(
-                        t0=t, x0=float(pos_f[i]),
-                        min_cutoff=self.min_cutoff,
-                        beta=self.beta,
-                        d_cutoff=self.d_cutoff,
-                    )
-                    for i in range(self.dims)
-                )
-                self._prediction_counts[name] = 0
-                result[name] = pos_f
-            else:
-                self._prediction_counts[name] = 0
-                result[name] = np.array([
-                    self._filters[name][i](t=t, x=float(pos_f[i]))
-                    for i in range(self.dims)
-                ])
-
-        # Predict keypoints absent this frame (gap filling).
-        predicted: set[str] = set()
-        for name, filts in self._filters.items():
-            if name in raw_keypoints:
-                continue
-            count = self._prediction_counts.get(name, 0)
-            if count < self.max_prediction_frames:
-                result[name] = np.array([
-                    filts[i].predict(t=t, velocity_decay=self.prediction_velocity_decay)
-                    for i in range(self.dims)
-                ])
-                self._prediction_counts[name] = count + 1
-                predicted.add(name)
-
-        return FilteredKeypoints(positions=result, predicted_names=frozenset(predicted))
+        self._extend(points.names)
+        raw = points.aligned(self._names)
+        present = points.aligned_presence(self._names)
+        initialized = np.isfinite(self._times)
+        fresh = present & ~initialized
+        active = present & initialized
+        self._positions[fresh] = raw[fresh]
+        self._times[fresh] = t
+        dt = (t - self._times[active])[:, None]
+        derivative_factor = 2 * np.pi * self.d_cutoff * dt
+        derivative_factor /= derivative_factor + 1
+        derivative = (raw[active] - self._positions[active]) / dt
+        velocity = derivative_factor * derivative + (1 - derivative_factor) * self._velocities[active]
+        factor = 2 * np.pi * (self.min_cutoff + self.beta * np.abs(velocity)) * dt
+        factor /= factor + 1
+        self._positions[active] = factor * raw[active] + (1 - factor) * self._positions[active]
+        self._velocities[active] = velocity
+        self._times[active] = t
+        self._counts[present] = 0
+        predicted = ~present & initialized & (self._counts < self.max_prediction_frames)
+        self._positions[predicted] += self._velocities[predicted] * (t - self._times[predicted])[:, None]
+        self._velocities[predicted] *= self.prediction_velocity_decay
+        self._times[predicted] = t
+        self._counts[predicted] += 1
+        available = present | predicted
+        return FilteredKeypoints(ChannelValues(self._names, self._positions.copy(), available, component_names=self.component_names), predicted)
 
     def reset(self) -> None:
-        """Clear all filter state (call on calibration / coordinate change)."""
-        self._filters.clear()
-        self._prediction_counts.clear()
+        self._last_input_names = None
+        self._names: tuple[str, ...] = ()
+        self._columns = {}
+        self._positions = np.empty((0, self.dims), np.float64)
+        self._velocities = np.empty_like(self._positions)
+        self._times = np.empty(0, np.float64)
+        self._counts = np.empty(0, np.int64)
         self._last_t = None

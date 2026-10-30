@@ -10,6 +10,8 @@ from __future__ import annotations
 
 
 import numpy as np
+from freemocap.core.data_tensors.channel_values import ChannelValues
+from freemocap.core.skeletons.skeleton_reconstruction import JointValues
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
@@ -33,21 +35,29 @@ class JointAnglesProducer(ChannelProducer):
         if reconstruction is None or not reconstruction.joint_angles:
             return []
 
-        names: list[str] = []
-        values: list[float] = []
-        unknown_joints = set(reconstruction.joint_angles) - set(skeleton.skeleton.joints)
+        joint_names = tuple(skeleton.skeleton.joints)
+        names = tuple(name for joint in skeleton.skeleton.joints.values() for name in joint.angle_names)
+        unknown_joints = set(reconstruction.joint_angles) - set(joint_names)
         if unknown_joints:
             raise ValueError(f"Undeclared joint identities: {unknown_joints}")
-        for joint_name, joint_definition in skeleton.skeleton.joints.items():
-            angles = reconstruction.joint_angles.get(joint_name)
-            if angles is not None and len(angles) != len(joint_definition.angle_names):
-                raise ValueError(f"Joint {joint_name} values do not match its declared angles")
-            for angle_index, name in enumerate(joint_definition.angle_names):
-                names.append(name)
-                value = float(angles[angle_index]) if angles is not None else float("nan")
-                values.append(value if np.isfinite(value) else np.nan)
-
-        column = np.asarray(values, dtype=np.float32)
+        if isinstance(reconstruction.joint_angles, JointValues):
+            values = reconstruction.joint_angles.angle_values.aligned(names).reshape(-1)
+        elif isinstance(reconstruction.joint_angles, ChannelValues):
+            values = reconstruction.joint_angles.aligned(joint_names).reshape(-1)
+        else:
+            # External named fixtures enter once; production publishes dense joint arrays.
+            rows = []
+            for name, definition in skeleton.skeleton.joints.items():
+                row = reconstruction.joint_angles.get(name)
+                if row is None:
+                    row = np.full(len(definition.angle_names), np.nan)
+                if len(row) != len(definition.angle_names):
+                    raise ValueError(f"Joint {name} values do not match its declared angles")
+                rows.append(row)
+            values = np.concatenate(rows)
+        if values.size != len(names):
+            raise ValueError("Joint values do not match declared angle identities")
+        column = np.asarray(values, dtype='<f4')
         return [
             ChannelBlock(
                 kind=ChannelKind.JOINT_ANGLES,

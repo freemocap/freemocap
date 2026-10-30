@@ -32,7 +32,7 @@ class KeypointsProducer(ChannelProducer):
                 kind=ChannelKind.KEYPOINTS_3D,
                 names=tracker_names,
                 columns=("x", "y", "z", "reprojection_error"),
-                data=assemble_channel_bytes(names=tracker_names, positions=message.keypoints_arrays or {}, n_cols=4),
+                data=assemble_channel_bytes(names=tracker_names, positions=message.keypoints_arrays or {}, columns=("x", "y", "z", "reprojection_error"), unavailable_components=("reprojection_error",)),
             ),
             ChannelBlock(
                 kind=ChannelKind.MAPPED_KEYPOINTS_3D,
@@ -40,7 +40,7 @@ class KeypointsProducer(ChannelProducer):
                 data=assemble_channel_bytes(
                     names=landmark_names,
                     positions=reconstruction.mapped_keypoints if reconstruction else {},
-                    n_cols=4,
+                    columns=("x", "y", "z", "reprojection_error"), unavailable_components=("reprojection_error",),
                 ),
             ),
             ChannelBlock(
@@ -49,7 +49,7 @@ class KeypointsProducer(ChannelProducer):
                 data=assemble_channel_bytes(
                     names=landmark_names,
                     positions=reconstruction.landmarks if reconstruction else {},
-                    n_cols=4,
+                    columns=("x", "y", "z", "reprojection_error"), unavailable_components=("reprojection_error",),
                 ),
             ),
         ]

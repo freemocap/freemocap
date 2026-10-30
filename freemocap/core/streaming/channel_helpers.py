@@ -7,31 +7,35 @@ import cycle.
 from __future__ import annotations
 
 from typing import Any
+from collections.abc import Mapping  # noqa: TC003 - runtime type checking
+from freemocap.core.data_tensors.channel_values import ChannelValues
 
 import numpy as np
 
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition  # noqa: TC002
 
 
-def assemble_channel_bytes(
-    *,
-    names: tuple[str, ...],
-    positions: dict[str, np.ndarray | None],
-    n_cols: int,
-) -> bytes:
-    """Pack (len(names), n_cols) float32 little-endian bytes, NaN-filling
-    missing names (a missing point is a NaN row, never a dropped row)."""
-    rows = np.full((len(names), n_cols), np.nan, dtype=np.float32)
-    for i, name in enumerate(names):
-        pos = positions.get(name)
-        if pos is None:
-            continue
-        arr = np.asarray(pos, dtype=np.float32)
-        if arr.size == 0:
-            continue
-        k = min(n_cols, int(arr.size))
-        rows[i, :k] = arr[:k]
-    return rows.tobytes(order="C")
+def assemble_channel_bytes(*, names: tuple[str, ...], positions: Mapping,
+                           columns: tuple[str, ...], unavailable_components: tuple[str, ...] = ()) -> bytes:
+    """Pack declared entity/component axes; unavailable wire components stay NaN."""
+    if not set(unavailable_components).issubset(columns):
+        raise ValueError("Unavailable components must belong to the wire layout")
+    source_columns = tuple(column for column in columns if column not in unavailable_components)
+    if isinstance(positions, ChannelValues):
+        values = positions.aligned(names)
+        if positions.component_names:
+            if positions.component_names != source_columns:
+                raise ValueError("Numerical components do not match the declared wire columns")
+        elif len(source_columns) == 1:
+            values = values[:, None]
+        else:
+            raise ValueError("Scalar values require a single wire component")
+    else:
+        values = ChannelValues.from_mapping(positions, component_names=source_columns).aligned(names)
+    rows = np.full((len(names), len(columns)), np.nan, dtype='<f4')
+    selected = tuple(index for index, column in enumerate(columns) if column not in unavailable_components)
+    rows[:, selected] = values
+    return rows.tobytes(order='C')
 
 
 # Which camera-node observation, and which of its stages, a detector's 2D points live in.
@@ -85,7 +89,7 @@ def camera_2d_detections(
     camera_id: str,
     *,
     detector_type: str,
-) -> dict[str, np.ndarray]:
+) -> ChannelValues:
     """One detector's per-camera 2D detections (name -> (x, y, visibility)).
 
     `detector_type` is required rather than defaulted because a camera node produces
@@ -105,27 +109,25 @@ def camera_2d_detections(
             f"{sorted(_OBSERVATION_BY_DETECTOR)}"
         ) from error
 
+    components = ('x', 'y', 'visibility')
     cam_output = message.camera_node_outputs.get(camera_id)
-    if cam_output is None:
-        return {}
-    observation = getattr(cam_output, observation_attribute, None)
+    observation = getattr(cam_output, observation_attribute, None) if cam_output is not None else None
     if observation is None:
-        return {}
-
-    detections: dict[str, np.ndarray] = {}
+        return ChannelValues.empty(component_names=components)
+    point_channels = []
     for stage_name in stage_names:
         stage = observation.stages.get(stage_name)
         if stage is None or stage.keypoints is None:
             continue
         keypoints = stage.keypoints
-        for index, name in enumerate(keypoints.names):
-            x, y, _z = keypoints.xyz[index]
-            if np.isnan(x) or np.isnan(y):
-                continue
-            detections[name] = np.array(
-                [x, y, keypoints.visibility[index]], dtype=np.float32
-            )
-    return detections
+        values = np.column_stack((keypoints.xyz[:, :2], keypoints.visibility))
+        point_channels.append(ChannelValues(tuple(keypoints.names), values,
+            ~np.isnan(values[:, :2]).any(axis=-1), component_names=components))
+    if not point_channels:
+        return ChannelValues.empty(component_names=components)
+    return ChannelValues(tuple(name for channel in point_channels for name in channel.names),
+        np.concatenate([channel.data_values for channel in point_channels]),
+        np.concatenate([channel.entry_present for channel in point_channels]), component_names=components)
 
 
 def camera_2d_boxes(

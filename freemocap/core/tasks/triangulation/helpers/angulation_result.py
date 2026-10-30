@@ -1,28 +1,18 @@
 from dataclasses import dataclass
+from freemocap.core.data_tensors.channel_values import ChannelValues
 
-import numpy as np
-from numpy.typing import NDArray
 from freemocap.core.tasks.triangulation.helpers.reprojection_diagnostics import NamedReprojectionDiagnostics
 
 
 @dataclass(slots=True, frozen=True)
 class AngulationResult:
-    """Output of `CalibrationStateTracker.try_angulate(...)` for one frame.
+    """Dense spatial coordinates and optional reprojection errors for one frame.
 
-    points : dict[str, (3,) ndarray]
-        Triangulated 3D point positions (mm), keyed by standard-human point name.
-        NaN-free — points that failed triangulation or the reprojection gate
-        are absent, never NaN.
-    errors_px : dict[str, float] | None
-        Per-point mean reprojection error across cameras (px), keyed by the
-        same names as ``points``. None when no error information exists —
-        the single-camera planar-projection path, where reprojection error
-        is undefined by construction.
-
-    Hot path - slots removes per-instance __dict__ overhead, frozen makes it
-    immutable so it can be shared across threads/queues without copying.
+    Both channels retain the authored entity axis and explicit entry presence.
+    Invalid triangulations remain unavailable rows. Single-camera planar output
+    has no reprojection-error channel because that quantity is undefined there.
     """
 
-    points: dict[str, NDArray[np.float64]]
-    errors_px: dict[str, float] | None
+    points: ChannelValues
+    errors_px: ChannelValues | None
     diagnostics: NamedReprojectionDiagnostics | None

@@ -170,19 +170,27 @@ def fit_skeletons_for_recording(request: RecordingReconstructionInput) -> dict[s
     from skellyforge.core.skeleton.pose.model_scale_fitting import (
         fit_model_scale_arrays, scale_voting_segment_names,
     )
-    scale_points = request.scale_points
     fits = {}
     for bundle in request.bundles:
         mapping = PreparedTrackerMapping.prepare(bundle.landmark_mapping, tracker_names=request.keypoint_names)
-        mapped = mapping.apply(tracker_names=request.keypoint_names, positions=scale_points)
-        geometry = LandmarkPoseGeometry.from_skeleton(skeleton=bundle.skeleton, landmark_names=mapped.landmark_names)
-        poses = geometry.recover(positions=mapped.positions, landmark_present=mapped.present)
+        geometry = LandmarkPoseGeometry.from_skeleton(skeleton=bundle.skeleton, landmark_names=mapping.landmark_names)
+        scales = np.empty((request.frame_count, len(geometry.segment_names)), np.float64)
+        presence = np.empty(scales.shape, bool)
+        for start in range(0, request.frame_count, 256):
+            stop = min(start + 256, request.frame_count)
+            points = request.keypoints_3d[start:stop]
+            if request.measured_support is not None:
+                points = np.where(request.measured_support[start:stop, :, None], points, np.nan)
+            mapped = mapping.apply(tracker_names=request.keypoint_names, positions=points)
+            poses = geometry.recover_tensor(positions=mapped.positions, landmark_present=mapped.present)
+            scales[start:stop] = poses.scale_estimates
+            presence[start:stop] = poses.segment_present
         voters = scale_voting_segment_names(skeleton=bundle.skeleton,
             measured_landmark_names=bundle.landmark_mapping.directly_measured_landmark_names)
         voting_columns = [column for column, name in enumerate(geometry.segment_names) if name in voters]
         fit = fit_model_scale_arrays(skeleton=bundle.skeleton, segment_names=geometry.segment_names,
-            scales=poses.scale_estimates, segment_present=poses.segment_present,
-            voting_segment_names=voters) if poses.segment_present[:, voting_columns].any() else None
+            scales=scales, segment_present=presence,
+            voting_segment_names=voters) if presence[:, voting_columns].any() else None
         fits[bundle.model_id] = FittedRecordingScale(inputs=fit_inputs[bundle.model_id], fit=fit)
     request.timing.record("fit_recording_scale", time.perf_counter() - t0)
     return fits
@@ -212,7 +220,6 @@ def reconstruct_skeletons_with_fits(
     from skellytracker.core.io.prepared_tracker_mapping import PreparedTrackerMapping
     from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
     from freemocap.core.data_tensors import AxisDefinition, CompanionTensor, DataTensor
-    from freemocap.core.reconstruction.recording_roll_adapter import resolve_recording_roll
     empty_frames = ~np.isfinite(request.keypoints_3d).all(axis=-1).any(axis=-1)
     sample_axis = AxisDefinition("sample_position", range(request.frame_count))
     results = {}
@@ -223,13 +230,13 @@ def reconstruct_skeletons_with_fits(
         outputs = RecordingPoseOutputs(bundle=bundle, fit=fits[bundle.model_id].fit,
             compute_center_of_mass=request.compute_center_of_mass)
         channel_arrays = {}
-        # Bound geometry temporaries; only the unchanged Forge roll resolver is sequential.
+        # Bound geometry temporaries; the Forge roll resolver preserves chronological state.
         for start in range(0, request.frame_count, 256):
             stop = min(start + 256, request.frame_count)
             mapped = mapping.apply(tracker_names=request.keypoint_names, positions=request.keypoints_3d[start:stop])
-            poses = geometry.recover(positions=mapped.positions, landmark_present=mapped.present)
-            poses = resolve_recording_roll(poses=poses, segment_names=geometry.segment_names,
-                resolver=state.roll_resolver, empty_frames=empty_frames[start:stop])
+            poses = geometry.recover_tensor(positions=mapped.positions, landmark_present=mapped.present)
+            if state.roll_resolver is not None:
+                poses = state.roll_resolver.resolve_tensor(poses=poses, reset_before=empty_frames[start:stop])
             for tensor in outputs.calculate(poses=poses, landmark_names=mapped.landmark_names,
                 landmark_positions=mapped.positions, landmark_present=mapped.present, start_position=start):
                 kind = tensor.tensor_layout.channel_kind

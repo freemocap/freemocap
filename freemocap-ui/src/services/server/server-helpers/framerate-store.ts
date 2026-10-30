@@ -1,6 +1,7 @@
 // src/services/server/server-helpers/framerate-store.ts
 
 const MAX_DURATION_HISTORY = 1000;
+const CURRENT_DURATION_HISTORY = 60;
 
 /** Matches the shape sent by the Python backend's CurrentFramerate.model_dump() */
 export type DetailedFramerate = {
@@ -217,6 +218,10 @@ export class FramerateStore {
     private _recentBackendDurations = new TimestampedRingBuffer(MAX_DURATION_HISTORY);
     private _frontendStats = new WindowedStats(this._recentFrontendDurations, MAX_DURATION_HISTORY);
     private _backendStats = new WindowedStats(this._recentBackendDurations, MAX_DURATION_HISTORY);
+    private _currentFrontendDurations = new TimestampedRingBuffer(CURRENT_DURATION_HISTORY);
+    private _currentFrontendStats = new WindowedStats(this._currentFrontendDurations, CURRENT_DURATION_HISTORY);
+    private _lastFrontendTimestamp: number | null = null;
+    private _lastFrontendFrameNumber: number | null = null;
 
     private _writeVersion = 0;
     private _snapshotVersion = -1;
@@ -230,12 +235,18 @@ export class FramerateStore {
         }
     }
 
-    updateFrontend(data: DetailedFramerate): void {
-        this.currentFrontendFramerate = data;
-        this._writeVersion++;
-        if (data.mean_frame_duration_ms > 0) {
-            this._recentFrontendDurations.push(Date.now(), data.mean_frame_duration_ms);
+    /** One completed image batch, not one camera and not one animation tick. */
+    recordFrontendFrame(frameNumber: number, timestampMs = performance.now()): void {
+        if (frameNumber === this._lastFrontendFrameNumber) return;
+        if (this._lastFrontendTimestamp !== null && timestampMs > this._lastFrontendTimestamp) {
+            const duration = timestampMs - this._lastFrontendTimestamp;
+            const timestamp = Date.now();
+            this._recentFrontendDurations.push(timestamp, duration);
+            this._currentFrontendDurations.push(timestamp, duration);
         }
+        this._lastFrontendTimestamp = timestampMs;
+        this._lastFrontendFrameNumber = frameNumber;
+        this._writeVersion++;
     }
 
     /** Returns a snapshot for React components to read during render.
@@ -245,6 +256,7 @@ export class FramerateStore {
             return this._cachedSnapshot;
         }
 
+        this.currentFrontendFramerate = this._currentFrontendStats.computeAggregate('Decoded images');
         this._cachedSnapshot = {
             currentBackendFramerate: this.currentBackendFramerate,
             currentFrontendFramerate: this.currentFrontendFramerate,
@@ -264,6 +276,9 @@ export class FramerateStore {
     clear(): void {
         this.currentBackendFramerate = null;
         this.currentFrontendFramerate = null;
+        this._lastFrontendTimestamp = null;
+        this._lastFrontendFrameNumber = null;
+        this._currentFrontendDurations.clear();
         this._recentFrontendDurations.clear();
         this._recentBackendDurations.clear();
         this._writeVersion++;

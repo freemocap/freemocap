@@ -1,7 +1,7 @@
 import {createListenerMiddleware} from '@reduxjs/toolkit';
 import type {RootState} from './root-state-types';
 import {applyRealtimePipeline} from './slices/realtime/realtime-thunks';
-import {restoreCalibrationSelection} from './slices/calibration/calibration-thunks';
+import {restoreCalibrationSelection, loadRealtimeCalibrationDefault} from './slices/calibration/calibration-thunks';
 import {saveCalibrationTransform} from './slices/calibration/calibration-save';
 import {selectActiveRecordingFullPath} from './slices/active-recording/active-recording-slice';
 import {recordingCalibrationDefaultReset} from './slices/calibration/calibration-slice';
@@ -15,12 +15,14 @@ startListening({
 });
 startListening({
     predicate: (action, current, previous) => !restoreCalibrationSelection.fulfilled.match(action)
+        && !loadRealtimeCalibrationDefault.fulfilled.match(action)
+        && !loadRealtimeCalibrationDefault.rejected.match(action)
         && !restoreCalibrationSelection.rejected.match(action)
         && !saveCalibrationTransform.fulfilled.match(action)
         && current.calibration.loadedCalibration !== previous.calibration.loadedCalibration,
     effect: (_, api) => {
         const state = api.getState();
-        if (!state.realtime.isConnected || state.calibration.loadRequestId) return;
+        if (!state.realtime.isConnected || state.calibration.loadRequestId || state.calibration.error) return;
         void api.dispatch(applyRealtimePipeline({
             ...state.realtime.pipelineConfig,
             aggregator_config: {

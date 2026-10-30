@@ -8,6 +8,7 @@ import {equalBytes} from './content-equality';
 import {TransportService} from './TransportService';
 import {ModelDefinitionSchema, type FrameMessage} from './message-contract';
 import type {ResolvedModelFrame} from './frame-types';
+import {KeypointPackingWorkspace, keypointPosition} from '@/components/viewport3d/keypoint-storage';
 import {frameLayoutMatches, prepareFrameLayout, readFrameBuffer, writeFrameBuffer} from '@/components/viewport3d/viewport-frame-codec';
 
 function frame(): FrameMessage {
@@ -29,6 +30,12 @@ function projected(models: ResolvedModelFrame[]): ResolvedModelFrame[] {
     writeFrameBuffer(buffer, layout, 'modelFrames', models);
     return readFrameBuffer(buffer, layout, 'modelFrames') as ResolvedModelFrame[];
 }
+
+test('the complete golden wire frame resolves with its declared component layouts', () => {
+    const golden = decodeMessage(readFileSync('src/services/server/transport/__fixtures__/message_frame_golden.bin'));
+    assert.ok(golden?.kind === 'frame');
+    assert.doesNotThrow(() => new FrameResolver().resolve(golden));
+});
 
 test('identical metadata and numerical bytes are retained while frame identity and image ownership advance', () => {
     const decoder = new MessageDecoder(), resolver = new FrameResolver(), source = frame();
@@ -118,4 +125,87 @@ test('transport still publishes every stationary frame for live freshness and re
     assert.deepEqual(numbers, [source.frame_number, source.frame_number + 1]);
     service.reset(); dispatch(source);
     assert.notEqual(frames[2], frames[0]);
+});
+
+test('reused scalar layouts reject short, excess and empty data instead of retaining pooled values', () => {
+    const base = new FrameResolver().resolve(frame()).models[0];
+    const model = {...base, segmentLengths: {names: ['first', 'second'], data: new Float32Array([10, 20]), fittedScaleMm: null}};
+    const layout = prepareFrameLayout('modelFrames', [model]), buffer = new ArrayBuffer(layout.byteLength);
+    writeFrameBuffer(buffer, layout, 'modelFrames', [model]);
+    for (const values of [[99], [99, 98, 97], []]) {
+        const changed = {...model, segmentLengths: {...model.segmentLengths, data: new Float32Array(values)}};
+        assert.equal(frameLayoutMatches(layout, 'modelFrames', [changed]), false);
+        assert.throws(() => prepareFrameLayout('modelFrames', [changed]), /declared names/);
+        assert.throws(() => writeFrameBuffer(buffer, layout, 'modelFrames', [changed]), /scalar storage/);
+        const retained = readFrameBuffer(buffer, layout, 'modelFrames') as ResolvedModelFrame[];
+        assert.deepEqual([...retained[0].segmentLengths!.data], [10, 20]);
+    }
+});
+
+test('quaternion declarations preserve world and local meaning and canonical storage ownership', () => {
+    const source = frame();
+    source.models = [ModelDefinitionSchema.parse({model_id: 'subject', segments: [{name: 'root', parent: null,
+        primary_axis: 'z', rest_orientation: [1, 0, 0, 0], length_proportion: 1, is_fully_specified: true}], landmarks: [], connections: []})];
+    const canonical = new Float32Array([1, 0, 0, 0]), reordered = new Float32Array([1, 0, 0, 0]);
+    source.instances[0].channels = [
+        {kind: 'ROTATIONS_WORLD', columns: ['w', 'x', 'y', 'z'], data: new Uint8Array(canonical.buffer)},
+        {kind: 'ROTATIONS_LOCAL', columns: ['x', 'y', 'z', 'w'], data: new Uint8Array(reordered.buffer)},
+    ];
+    const result = new FrameResolver().resolve(source).models[0].rotations!;
+    assert.equal(result.worldQuaternions.buffer, canonical.buffer);
+    assert.deepEqual([...result.worldQuaternions], [1, 0, 0, 0]);
+    assert.deepEqual([...result.localQuaternions], [0, 1, 0, 0], '180-degree X rotation must not become identity');
+    assert.deepEqual([...reordered], [1, 0, 0, 0], 'wire storage remains unchanged');
+    for (const columns of [[], ['w', 'x', 'y'], ['w', 'x', 'y', 'y'], ['w', 'x', 'y', 'angle'], ['w', 'x', 'y', 'z', 'quality']]) {
+        source.instances[0].channels[0].columns = columns;
+        assert.throws(() => new FrameResolver().resolve(source), /Quaternion channel/);
+    }
+    source.instances[0].channels[0].columns = ['w', 'x', 'y', 'z'];
+    for (const length of [0, 3, 5]) {
+        source.instances[0].channels[0].data = new Uint8Array(new Float32Array(length).buffer);
+        assert.throws(() => new FrameResolver().resolve(source), /Quaternion channel/);
+    }
+});
+
+test('tracker channels remain borrowed views through changed frames and layouts', () => {
+    const source = frame(), resolver = new FrameResolver();
+    const firstData = new Float32Array([1, 2, 3, 100]);
+    source.trackers = [{tracker_id: 'body', detector_type: 'pose', model_id: 'subject', channels: [
+        {kind: 'KEYPOINTS_3D', names: ['wrist'], columns: ['x', 'y', 'z', 'error'], data: new Uint8Array(firstData.buffer)},
+    ]}];
+    const first = resolver.resolve(source).keypoints!;
+    assert.equal(first.sources[0].data.buffer, firstData.buffer);
+    assert.equal(first.sources[0].stride, 4);
+    const secondData = new Float32Array([4, 5, 6, 101]);
+    const changed = {...source, trackers: [{...source.trackers[0], channels: [{...source.trackers[0].channels[0], data: new Uint8Array(secondData.buffer)}]}]};
+    const second = resolver.resolve(changed).keypoints!;
+    assert.equal(second.names, first.names, 'stable identity metadata is reused');
+    assert.equal(second.sources[0].data.buffer, secondData.buffer);
+    assert.deepEqual([...first.sources[0].data], [1, 2, 3, 100]);
+    const reordered = resolver.resolve({...changed, trackers: [{...changed.trackers[0], channels: [
+        {...changed.trackers[0].channels[0], columns: ['error', 'z', 'x', 'y']},
+    ]}]}).keypoints!;
+    const packing = new KeypointPackingWorkspace();
+    const packed = packing.packFrame({pointNames: first.names, pointSources: first.sources});
+    assert.deepEqual([...packed], [1, 2, 3]);
+    assert.equal(packing.packFrame({pointNames: second.names, pointSources: second.sources}), packed);
+    assert.deepEqual([...packed], [4, 5, 6]);
+    const input = {pointNames: reordered.names, pointSources: reordered.sources};
+    assert.deepEqual([...packing.packFrame(input)], [6, 101, 5]);
+    assert.deepEqual(keypointPosition(input, 0), [6, 101, 5]);
+    assert.deepEqual([...firstData], [1, 2, 3, 100]);
+});
+
+test('camera-fit projection clones only current frame bytes from recording-backed channel views', () => {
+    const recording = new Float32Array(100_000).fill(999);
+    recording.set([1, 2, 3, 90, 4, 5, 6, 91], 100);
+    const pointNames = ['first', 'second'];
+    const frame = {pointNames, pointSources: [{names: pointNames, data: recording.subarray(100, 108), stride: 4}]};
+    const workspace = new KeypointPackingWorkspace();
+    const projected = workspace.packFrame(frame);
+    const command = structuredClone({pointNames, interleaved: projected});
+    assert.deepEqual([...command.interleaved], [1, 2, 3, 4, 5, 6]);
+    assert.equal(command.interleaved.buffer.byteLength, 24);
+    assert.equal(recording.buffer.byteLength, 400_000);
+    assert.equal(workspace.packFrame(frame), projected);
 });

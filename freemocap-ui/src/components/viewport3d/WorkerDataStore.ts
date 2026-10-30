@@ -13,7 +13,7 @@ import {CalibrationSceneSchema} from '@/store/slices/calibration/calibration-typ
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
-import type { KeypointsFrame, KeypointsSource, ModelFramesCallback, ModelsCallback } from "./KeypointsSourceContext";
+import type { PackedKeypointsFrame, KeypointsFrame, KeypointsSource, ModelFramesCallback, ModelsCallback } from "./KeypointsSourceContext";
 import {PresentationBuffer} from './presentation-buffer';
 import {snapshotEqual} from '@/services/server/transport/snapshot-equality';
 
@@ -58,7 +58,7 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     alignmentMethod: null,
 };
 
-const keypointsChan = makeChannel<KeypointsFrame | null>(null);
+const keypointsChan = makeChannel<PackedKeypointsFrame | null>(null);
 // Every tracked thing this frame: its model definition, segment origins, landmarks,
 // rotations, fitted lengths and derived points. These travel as ONE channel because they
 // describe ONE model — split apart, a renderer could pair a person's rotations with a
@@ -82,7 +82,7 @@ const resetCameraChan = makeChannel<null>(null);
 const unpinChan = makeChannel<null>(null);
 let livePresentation = false;
 const modelPresentation = new PresentationBuffer<ResolvedModelFrame>(values => modelFramesChan.dispatch(values), 1000);
-const pointPresentation = new PresentationBuffer<KeypointsFrame>(values => keypointsChan.dispatch(
+const pointPresentation = new PresentationBuffer<PackedKeypointsFrame>(values => keypointsChan.dispatch(
     values[0] ?? {pointNames: [], interleaved: new Float32Array()},
 ), 1000);
 const modelKey = (value: ResolvedModelFrame): string => JSON.stringify([value.modelId, value.instanceId]);
@@ -91,7 +91,8 @@ const modelKey = (value: ResolvedModelFrame): string => JSON.stringify([value.mo
 // Public store — also satisfies KeypointsSource for the KeypointsSourceProvider
 // ---------------------------------------------------------------------------
 
-export const workerDataStore: KeypointsSource & {
+export const workerDataStore: Omit<KeypointsSource, 'getLatestKeypoints'> & {
+    getLatestKeypoints: () => PackedKeypointsFrame | null;
     subscribeToCalibration: (cb: Listener<SceneCalibration | null>) => () => void;
     getCalibration: () => SceneCalibration | null;
     subscribeToReferenceTransform: (cb: Listener<number[] | null>) => () => void;
@@ -163,9 +164,9 @@ export const workerDataStore: KeypointsSource & {
                 pointPresentation.clear();
                 break;
             case "keypoints":
-                if (livePresentation) pointPresentation.update([data as KeypointsFrame], () => "points",
+                if (livePresentation) pointPresentation.update([data as PackedKeypointsFrame], () => "points",
                     value => value.interleaved.some(Number.isFinite));
-                else keypointsChan.dispatch(data as KeypointsFrame);
+                else keypointsChan.dispatch(data as PackedKeypointsFrame);
                 break;
             case "models":
                 if (!snapshotEqual(modelsChan.getLatest(), data)) {

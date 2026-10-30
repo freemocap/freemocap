@@ -78,7 +78,15 @@ export class ViewportFrameSender {
             if (state.allocated >= state.capacity) return;
             buffer = new ArrayBuffer(state.layout.byteLength); state.allocated++;
         }
-        writeFrameBuffer(buffer, state.layout, stream, frame);
+        try {
+            writeFrameBuffer(buffer, state.layout, stream, frame);
+        } catch (error) {
+            // Failed validation must not consume a reusable buffer and eventually
+            // prevent subsequent valid frames from reaching the viewport.
+            state.available.push(buffer);
+            state.pending = null;
+            throw error;
+        }
         state.pending = null;
         const sequence = ++state.sequence;
         state.inFlight = sequence;

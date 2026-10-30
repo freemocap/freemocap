@@ -1,6 +1,6 @@
 import React, {createContext, useContext, useEffect, useMemo, useRef, useState} from "react";
 import {useServerOptional} from "@/services/server/server-context";
-import type { ResolvedModelFrame } from '@/services/server/transport/frame-types';
+import type { PointsFrame, ResolvedModelFrame } from '@/services/server/transport/frame-types';
 import type { ModelDefinition } from '@/services/server/transport/message-contract';
 
 /**
@@ -13,17 +13,19 @@ import type { ModelDefinition } from '@/services/server/transport/message-contra
  * so existing Streaming code keeps working with zero changes at that layer.
  */
 
-/**
- * A single frame of keypoint data in typed-array form.
- *
- * `interleaved` is 3-interleaved `x, y, z` (stride 3): frame-resolution strips
- * KEYPOINTS_3D's 4th column (reprojection_error). Missing / untriangulated points
- * have NaN coords.
- */
-export interface KeypointsFrame {
+/** Packed XYZ presentation, produced at the viewport transfer boundary. */
+export interface PackedKeypointsFrame {
     pointNames: readonly string[];
     interleaved: Float32Array;
 }
+
+/** Borrowed channel arrays retain all components until presentation needs XYZ. */
+export interface SourceKeypointsFrame {
+    pointNames: readonly string[];
+    pointSources: readonly PointsFrame[];
+}
+
+export type KeypointsFrame = PackedKeypointsFrame | SourceKeypointsFrame;
 
 export type KeypointsCallback = (frame: KeypointsFrame) => void;
 export type ModelFramesCallback = (models: ResolvedModelFrame[]) => void;

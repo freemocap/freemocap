@@ -12,6 +12,8 @@ import { ensureInstanceBuffers } from "./instance-buffers";
 
 import type {InspectionTarget} from "../helpers/viewport3d-types";
 
+import {KeypointPackingWorkspace} from '../keypoint-storage';
+
 const MAX_POINTS = 1024; // Initial capacity; grows for larger declared layouts.
 const MAPPED_KEYPOINT_RADIUS = 0.12;
 const RAW_KEYPOINT_COLOR = new Color(LAYER_HEX.rawKeypoints);
@@ -45,6 +47,7 @@ function KeypointLayer({pointSource, color, radius, statsKey, inspectionKind}: K
     const {statsRef} = useViewportState();
     const {invalidate} = useThree();
     const meshRef = useRef<InstancedMesh>(null);
+    const packingWorkspace = useMemo(() => new KeypointPackingWorkspace(), []);
     const rawRef = useRef<KeypointsFrame | null>(null);
     const modelsRef = useRef<ResolvedModelFrame[]>([]);
     const dirtyRef = useRef(false);
@@ -134,9 +137,10 @@ function KeypointLayer({pointSource, color, radius, statsKey, inspectionKind}: K
         const matrices = mesh.instanceMatrix.array as Float32Array;
         const colors = mesh.instanceColor!.array as Float32Array;
         let count = 0, colorsChanged = changed;
+        const rawCoordinates = raw ? packingWorkspace.packFrame(raw) : undefined;
         for (const batch of batchesRef.current) {
             const points = batch.frameIndex < 0 ? null : models[batch.frameIndex]?.[field];
-            const data = batch.frameIndex < 0 ? raw?.interleaved : points?.data;
+            const data = batch.frameIndex < 0 ? rawCoordinates : points?.data;
             const stride = points?.stride ?? 3, coordinates = points?.coordinateOffsets ?? XYZ_OFFSETS;
             for (let i = 0; i < batch.rows.length; i++) {
                 const slot = batch.slots[i], m = slot * 16, c = slot * 3, offset = batch.rows[i] * stride;

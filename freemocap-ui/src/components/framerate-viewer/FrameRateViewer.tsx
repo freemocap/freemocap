@@ -37,7 +37,7 @@ const FramerateCollapsedView = () => {
             <p className="text sm text-gray">|</p>
             <p className="text sm text-gray">{t("server")}: <span ref={serverRef}>--</span> fps</p>
             <p className="text sm text-gray">|</p>
-            <p className="text sm text-gray">{t("display")}: <span ref={displayRef}>--</span> fps</p>
+            <p className="text sm text-gray">Decoded images: <span ref={displayRef}>--</span> fps</p>
         </div>
     )
 }

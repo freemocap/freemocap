@@ -98,10 +98,10 @@ export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraI
             >
                 <div className="camera-stats flex" style={{ fontSize: '10px', marginTop: '2px', gap: '6px', whiteSpace: 'nowrap' }}>
                     <span style={{color:'#aaa'}}>#{cameraIndex} - {cameraId}</span>
-                    <span style={{ color: frontendColor }}>
+                    <span title="Decoded camera images per second; not the camera capture rate" style={{ color: frontendColor }}>
                         D:<span ref={displayFpsRef} style={{display: 'inline-block', minWidth: '5ch', textAlign: 'right'}}>--</span>
                     </span>
-                    <span style={{ color: backendColor }}>
+                    <span title="Camera-group frames delivered by the server per second; not the camera capture rate" style={{ color: backendColor }}>
                         S:<span ref={serverFpsRef} style={{display: 'inline-block', minWidth: '5ch', textAlign: 'right'}}>--</span>
                     </span>
                     <span style={{ color: '#aaa' }}>fps</span>

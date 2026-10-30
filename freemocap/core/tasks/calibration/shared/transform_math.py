@@ -238,7 +238,7 @@ def build_maximum_spanning_tree(
         connection_counts: Mapping of (node_a, node_b) → weight for all pairs
             (both directions, i.e. (a,b) and (b,a)).
         n_nodes: Total number of nodes.
-        node_ids: Human-readable labels for error messages.
+        node_ids: Ordered camera identities; input order breaks equal-weight ties.
 
     Returns:
         Adjacency list representation of the spanning tree
@@ -249,19 +249,20 @@ def build_maximum_spanning_tree(
 
 
     components = {node_id: node_id for node_id in node_ids}
+    node_order = {node_id: index for index, node_id in enumerate(node_ids)}
     edges = set(connection_counts.items())
     graph: dict[CameraIdString, list[CameraIdString]] = defaultdict(list)
 
     for _ in range(n_nodes - 1):
         if len(edges) == 0:
-            comp_map = {node_ids[k]: v for k, v in components.items()}
             raise ValueError(
                 f"Cannot build connected calibration graph. "
                 f"Some cameras have no shared board observations. "
-                f"Component map: {comp_map}"
+                f"Component map: {components}"
             )
 
-        (a, b), weight = max(edges, key=lambda x: x[1])
+        (a, b), weight = max(edges, key=lambda edge: (
+            edge[1], -node_order[edge[0][0]], -node_order[edge[0][1]]))
         graph[a].append(b)
         graph[b].append(a)
 

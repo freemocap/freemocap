@@ -207,11 +207,16 @@ const CalibrationModule = ({
   }, [api, isElectron, dispatch]);
 
   const handleClearCalibration = useCallback(() => {
+    if (appMode === 'streaming') {
+      dispatch(calibrationAutoLoadDismissed(null));
+      void dispatch(loadMostRecentCalibration());
+      return;
+    }
     if (loadedCalibration) {
       dispatch(calibrationAutoLoadDismissed(loadedCalibration.path));
     }
     dispatch(calibrationLoadedFromBundle(null));
-  }, [dispatch, loadedCalibration]);
+  }, [dispatch, loadedCalibration, appMode]);
 
   /**
    * Whether the "Record and Calibrate" option should appear in the dropdown.
@@ -377,7 +382,7 @@ const CalibrationModule = ({
       <SettingRow label="Calibration source" info={{title: 'Calibration source',
         text: 'Load the latest calibration, choose a TOML file, or create a calibration from videos.'}}
         control={<>{calibrationDropdown}{loadedCalibration && <IconButton icon="cancelcalibrate-icon"
-          onClick={handleClearCalibration} tooltip tooltipText="Clear calibration"/>}</>}/>
+          onClick={handleClearCalibration} tooltip tooltipText={appMode === 'streaming' ? 'Use most recent calibration' : 'Clear calibration'}/>}</>}/>
       <SettingRow label="Board and solver" info={{title: 'Board and solver',
         text: 'Configure the ChArUco board dimensions, measured square size, and calibration solver. These settings apply when creating a calibration.'}}
         control={<ButtonSm text="Configure board…" iconClass="settings-icon" buttonType="secondary" onClick={handleToggleSettings}/>}/>
@@ -474,7 +479,7 @@ const CalibrationModule = ({
             className="button sm"
             onClick={handleClearCalibration}
             tooltip
-            tooltipText="Clear calibration"
+            tooltipText={appMode === 'streaming' ? 'Use most recent calibration' : 'Clear calibration'}
             tooltipPosition="pos-left"
           />
         </div>

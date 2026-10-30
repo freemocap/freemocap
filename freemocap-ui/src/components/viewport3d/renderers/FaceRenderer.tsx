@@ -7,11 +7,14 @@ import { FACE_CONTOUR_GROUPS } from "../helpers/face-contours";
 import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
 import { finitePoint, sameNames } from "./prepared-models";
 
-/** Face points and contours read the source array directly through prepared row indices. */
+import {KeypointPackingWorkspace} from '../keypoint-storage';
+
+/** Face points and contours read the source array through prepared row indices. */
 export function FaceRenderer() {
     const {subscribeToKeypoints} = useKeypointsSource();
     const {statsRef} = useViewportState();
     const {invalidate} = useThree();
+    const packingWorkspace = useMemo(() => new KeypointPackingWorkspace(), []);
     const frameRef = useRef<KeypointsFrame | null>(null);
     const namesRef = useRef<readonly string[] | undefined>(undefined);
     const rowsRef = useRef(new Int32Array());
@@ -47,7 +50,7 @@ export function FaceRenderer() {
             }
             dotGeo.setDrawRange(0, rowsRef.current.length);
         }
-        const data = frame.interleaved, dots = dotGeo.attributes.position.array as Float32Array;
+        const data = packingWorkspace.packFrame(frame), dots = dotGeo.attributes.position.array as Float32Array;
         let count = 0;
         for (let i = 0; i < rowsRef.current.length; i++) {
             const offset = rowsRef.current[i] * 3, base = i * 3;

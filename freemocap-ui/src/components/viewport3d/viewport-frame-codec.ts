@@ -1,6 +1,8 @@
 import type {KeypointsFrame} from './KeypointsSourceContext';
 import type {PointsFrame, ResolvedModelFrame} from '@/services/server/transport/frame-types';
 
+import {POSITION_COMPONENTS, validatePointStorage, validateKeypointStorage, copyPointCoordinates, copyKeypointCoordinates} from './keypoint-storage';
+
 export type NumericalStream = 'keypoints' | 'modelFrames';
 export type NumericalFrame = KeypointsFrame | ResolvedModelFrame[];
 interface ArrayLayout {names: readonly string[]; offset: number; length: number}
@@ -18,28 +20,17 @@ export interface FrameLayout {
 // These are the renderer frame contract's scalar fields, not generic tensor dimensions.
 const enum FrameScalar {FittedScale, LengthScale, CenterX, CenterY, CenterZ, XcomX, XcomY, XcomZ, Presence, Count}
 const enum ScalarPresence {FittedScale = 1, LengthScale = 2, Center = 4, Xcom = 8}
-const POSITION_COMPONENTS = 3;
 const QUATERNION_COMPONENTS = 4;
-function validatePointStorage(points: PointsFrame): void {
-    const stride = points.stride ?? POSITION_COMPONENTS;
-    const offsets = points.coordinateOffsets ?? [0, 1, 2];
-    if (!Number.isInteger(stride) || stride < POSITION_COMPONENTS ||
-        points.data.length !== points.names.length * stride || offsets.length !== POSITION_COMPONENTS ||
-        offsets[0] === offsets[1] || offsets[0] === offsets[2] || offsets[1] === offsets[2] ||
-        offsets.some(index => !Number.isInteger(index) || index < 0 || index >= stride)) {
-        throw new Error('Viewport point storage does not match declared layout');
-    }
-}
 const sameNames = (left: readonly string[], right: readonly string[]) =>
     left === right || left.length === right.length && left.every((name, index) => name === right[index]);
-function samePoints(layout: ArrayLayout | null, points: PointsFrame | null, components = 3): boolean {
+function samePoints(layout: ArrayLayout | null, points: PointsFrame | null, components: number = POSITION_COMPONENTS): boolean {
     return layout === null ? points === null : points !== null && layout.length === points.names.length * components && sameNames(layout.names, points.names);
 }
 
 export function frameLayoutMatches(layout: FrameLayout, type: NumericalStream, frame: NumericalFrame): boolean {
     if (type === 'keypoints') {
         const points = frame as KeypointsFrame;
-        return layout.points !== null && layout.points.length === points.interleaved.length && sameNames(layout.points.names, points.pointNames);
+        return layout.points !== null && layout.points.length === points.pointNames.length * POSITION_COMPONENTS && sameNames(layout.points.names, points.pointNames);
     }
     const models = frame as ResolvedModelFrame[];
     if (layout.models.length !== models.length) return false;
@@ -48,7 +39,7 @@ export function frameLayoutMatches(layout: FrameLayout, type: NumericalStream, f
         const rotation = model.rotations;
         return planned.modelId === model.modelId && planned.instanceId === model.instanceId &&
             samePoints(planned.origins, model.segmentOrigins) && samePoints(planned.landmarks, model.landmarks) &&
-            samePoints(planned.mapped, model.mappedKeypoints) && samePoints(planned.lengths, model.segmentLengths, 1) &&
+            samePoints(planned.mapped, model.mappedKeypoints) && (samePoints(planned.lengths, model.segmentLengths, 1) && (!model.segmentLengths || model.segmentLengths.data.length === model.segmentLengths.names.length)) &&
             (planned.rotations === null ? rotation === null : rotation !== null &&
                 planned.rotations.worldLength === rotation.worldQuaternions.length && planned.rotations.localLength === rotation.localQuaternions.length &&
                 sameNames(planned.rotations.names, rotation.boneNames));
@@ -65,8 +56,9 @@ export function prepareFrameLayout(type: NumericalStream, frame: NumericalFrame)
     };
     if (type === 'keypoints') {
         const points = frame as KeypointsFrame;
-        const layout = arrayLayout(points.pointNames, points.interleaved, POSITION_COMPONENTS);
-        return {points: layout, models: [], byteLength};
+        validateKeypointStorage(points);
+        const layout = {names: points.pointNames, offset: 0, length: points.pointNames.length * POSITION_COMPONENTS};
+        return {points: layout, models: [], byteLength: layout.length * Float32Array.BYTES_PER_ELEMENT};
     }
     const models = (frame as ResolvedModelFrame[]).map(model => {
         // Byte alignment only; no padding components are added to scientific values.
@@ -98,20 +90,23 @@ export function prepareFrameLayout(type: NumericalStream, frame: NumericalFrame)
 export function writeFrameBuffer(buffer: ArrayBuffer, layout: FrameLayout, type: NumericalStream, frame: NumericalFrame): void {
     if (buffer.byteLength !== layout.byteLength) throw new Error('Viewport transfer buffer has the wrong size');
     const copy = (target: ArrayLayout | null, data: Float32Array | undefined) => {
+        if ((target === null) !== (data === undefined) || target && data && target.length !== data.length)
+            throw new Error('Viewport scalar storage does not match declared layout');
         if (target && data) new Float32Array(buffer, target.offset, target.length).set(data);
     };
-    if (type === 'keypoints') {copy(layout.points, (frame as KeypointsFrame).interleaved); return;}
+    if (type === 'keypoints') {
+        if (!layout.points) throw new Error('Missing viewport keypoint layout');
+        copyKeypointCoordinates(new Float32Array(buffer, layout.points.offset, layout.points.length), frame as KeypointsFrame);
+        return;
+    }
     const frames = frame as ResolvedModelFrame[];
+    if (frames.length !== layout.models.length) throw new Error('Viewport model count does not match declared layout');
     const copyPoints = (target: ArrayLayout | null, points: PointsFrame | null) => {
+        if ((target === null) !== (points === null)) throw new Error('Viewport point presence does not match declared layout');
         if (!target || !points) return;
-        validatePointStorage(points);
-        const stride = points.stride ?? POSITION_COMPONENTS, offsets = points.coordinateOffsets ?? [0, 1, 2];
-        if (stride === POSITION_COMPONENTS && offsets[0] === 0 && offsets[1] === 1 && offsets[2] === 2) {copy(target, points.data); return;}
-        const data = new Float32Array(buffer, target.offset, target.length);
-        for (let row = 0; row < points.names.length; row++) {
-            const from = row * stride, to = row * POSITION_COMPONENTS;
-            data[to] = points.data[from + offsets[0]]; data[to + 1] = points.data[from + offsets[1]]; data[to + 2] = points.data[from + offsets[2]];
-        }
+        if (target.length !== points.names.length * POSITION_COMPONENTS)
+            throw new Error('Viewport point destination does not match declared layout');
+        copyPointCoordinates(new Float32Array(buffer, target.offset, target.length), points);
     };
     for (let index = 0; index < frames.length; index++) {
         const model = frames[index], target = layout.models[index];
@@ -124,7 +119,10 @@ export function writeFrameBuffer(buffer: ArrayBuffer, layout: FrameLayout, type:
         scalars[FrameScalar.Presence] = presence;
         copyPoints(target.origins, model.segmentOrigins); copyPoints(target.landmarks, model.landmarks);
         copyPoints(target.mapped, model.mappedKeypoints); copy(target.lengths, model.segmentLengths?.data);
+        if ((target.rotations === null) !== (model.rotations === null)) throw new Error('Viewport rotation presence does not match declared layout');
         if (target.rotations && model.rotations) {
+            if (target.rotations.worldLength !== model.rotations.worldQuaternions.length || target.rotations.localLength !== model.rotations.localQuaternions.length)
+                throw new Error('Viewport rotation storage does not match declared layout');
             new Float32Array(buffer, target.rotations.worldOffset, target.rotations.worldLength).set(model.rotations.worldQuaternions);
             new Float32Array(buffer, target.rotations.localOffset, target.rotations.localLength).set(model.rotations.localQuaternions);
         }
@@ -158,7 +156,10 @@ export function readFrameBuffer(buffer: ArrayBuffer, layout: FrameLayout, type: 
 /** Current published views are borrowed until their next subscriber notification. */
 export function referencedFrameBuffers(points: KeypointsFrame | null, models: ResolvedModelFrame[] | null): Set<ArrayBufferLike> {
     const buffers = new Set<ArrayBufferLike>();
-    if (points) buffers.add(points.interleaved.buffer);
+    if (points) {
+        if ('interleaved' in points) buffers.add(points.interleaved.buffer);
+        else for (const source of points.pointSources) buffers.add(source.data.buffer);
+    }
     for (const model of models ?? []) {
         if (model.segmentOrigins) buffers.add(model.segmentOrigins.data.buffer);
         if (model.landmarks) buffers.add(model.landmarks.data.buffer);

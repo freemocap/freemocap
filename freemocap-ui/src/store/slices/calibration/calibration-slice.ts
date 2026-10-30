@@ -8,7 +8,7 @@ import {
     loadCalibrationForRecording,
     loadRecordingCalibrationDefault,
     loadCalibrationToml,
-    loadMostRecentCalibration, restoreCalibrationSelection,
+    loadMostRecentCalibration, loadRealtimeCalibrationDefault, restoreCalibrationSelection,
     startCalibrationRecording,
     stopCalibrationRecording,
 } from '@/store/slices/calibration/calibration-thunks';
@@ -119,6 +119,7 @@ export const calibrationSlice = createSlice({
         calibrationLoadedFromBundle: (state, action: PayloadAction<LoadedCalibration | null>) => {
             state.loadRequestId = null;
             state.loadedCalibration = action.payload;
+            state.error = null;
         },
         calibrationAutoLoadDismissed: (state, action: PayloadAction<string | null>) => {
             state.dismissedCalibrationPath = action.payload;
@@ -185,19 +186,19 @@ export const calibrationSlice = createSlice({
             });
 
         builder
-            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.pending, loadCalibrationToml.pending, loadCalibrationForRecording.pending, loadMostRecentCalibration.pending, restoreCalibrationSelection.pending), (state, action) => {
+            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.pending, loadCalibrationToml.pending, loadCalibrationForRecording.pending, loadMostRecentCalibration.pending, loadRealtimeCalibrationDefault.pending, restoreCalibrationSelection.pending), (state, action) => {
                 if (loadRecordingCalibrationDefault.pending.match(action)) state.defaultRecordingPath = action.meta.arg;
                 state.loadRequestId = action.meta.requestId;
                 state.error = null;
-                if (isAnyOf(loadMostRecentCalibration.pending, restoreCalibrationSelection.pending)(action)) state.mostRecentLoadAttempted = true;
+                if (isAnyOf(loadMostRecentCalibration.pending, loadRealtimeCalibrationDefault.pending, restoreCalibrationSelection.pending)(action)) state.mostRecentLoadAttempted = true;
             })
-            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.fulfilled, loadCalibrationToml.fulfilled, loadCalibrationForRecording.fulfilled, loadMostRecentCalibration.fulfilled, restoreCalibrationSelection.fulfilled), (state, action) => {
+            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.fulfilled, loadCalibrationToml.fulfilled, loadCalibrationForRecording.fulfilled, loadMostRecentCalibration.fulfilled, loadRealtimeCalibrationDefault.fulfilled, restoreCalibrationSelection.fulfilled), (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
                 state.loadedCalibration = action.payload;
                 state.dismissedCalibrationPath = null;
             })
-            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.rejected, loadCalibrationToml.rejected, loadCalibrationForRecording.rejected, loadMostRecentCalibration.rejected, restoreCalibrationSelection.rejected), (state, action) => {
+            .addMatcher(isAnyOf(loadRecordingCalibrationDefault.rejected, loadCalibrationToml.rejected, loadCalibrationForRecording.rejected, loadMostRecentCalibration.rejected, loadRealtimeCalibrationDefault.rejected, restoreCalibrationSelection.rejected), (state, action) => {
                 if (state.loadRequestId !== action.meta.requestId) return;
                 state.loadRequestId = null;
                 if (action.meta.aborted) return;

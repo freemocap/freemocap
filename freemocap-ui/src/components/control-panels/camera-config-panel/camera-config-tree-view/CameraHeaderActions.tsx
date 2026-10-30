@@ -62,6 +62,16 @@ export const CameraHeaderActions: React.FC = () => {
                 disabled={isRecording}
             />
 
+            <IconButton
+                icon="recommendexposure-icon"
+                ariaLabel={t('recommendExposureAll')}
+                onClick={handleRecommendExposure}
+                tooltip
+                tooltipText={isRecording ? t('stopRecordingFirst') : t('recommendExposureAll')}
+                tooltipPosition="pos-bottom"
+                disabled={connectedCameras.length === 0 || isLoading || isRecording || isStoppingCameras}
+            />
+
             {connectedCameras.length === 0 ? (
                 <ButtonSm
                     text={isLoading ? t('connecting') : t('connectCameras')}
@@ -75,13 +85,6 @@ export const CameraHeaderActions: React.FC = () => {
                 />
             ) : (
                 <>
-                    <IconButton
-                        icon="recommendexposure-icon"
-                        onClick={handleRecommendExposure}
-                        tooltip
-                        tooltipText={t('recommendExposureAll')}
-                        tooltipPosition="pos-bottom"
-                    />
                     <IconButton
                         icon={isPaused ? 'play-icon' : 'pause-icon'}
                         onClick={handlePauseUnpause}

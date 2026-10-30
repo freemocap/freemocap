@@ -30,20 +30,21 @@ class LiveGeometryMatcher:
 
     def update(self, *, observations: dict[str, Observation], config: CameraMatchingConfig, elapsed_seconds: float) -> bool:
         key = (self._calibration.generation, config)
+        changed = False
         if key != self._key:
             self._lifecycle.reset()
             self._window = None
             self._key = key
-            self._calibration.reset_matching(camera_indices=self._camera_indices)
-        changed = False
+            changed = self._calibration.reset_matching(camera_indices=self._camera_indices)
         if self._future is not None and self._future.done():
             result = self._future.result()
             if self._attempt is None:
                 raise ValueError("Matching worker completed without an owned attempt")
             if self._lifecycle.finish(attempt=self._attempt, result=result):
                 logger.info("Camera matching result: status=%s assignment=%s fitness=%s thresholds=%s", result.status, result.assignment, result.fitness, config.model_dump())
-                self._calibration.apply_matching(source_ids=tuple(self._camera_indices), result=result, failure_policy=config.failure_policy)
-                changed = result.assignment is not None and result.search is not None
+                matching_changed = self._calibration.apply_matching(
+                    source_ids=tuple(self._camera_indices), result=result, failure_policy=config.failure_policy)
+                changed = changed or matching_changed
             self._future = None
             self._attempt = None
         if (not config.automatically_match or self._calibration.calibration is None
@@ -73,8 +74,9 @@ class LiveGeometryMatcher:
         if len(cameras) < len(self._camera_indices):
             result = CameraMatchingResult(status=CameraMatchingStatus.POOR, assignment=None, fitness=None, search=None)
             self._lifecycle.finish(attempt=self._lifecycle.begin(), result=result)
-            self._calibration.apply_matching(source_ids=tuple(self._camera_indices), result=result, failure_policy=config.failure_policy)
-            return True
+            matching_changed = self._calibration.apply_matching(
+                source_ids=tuple(self._camera_indices), result=result, failure_policy=config.failure_policy)
+            return changed or matching_changed
         by_id = {camera.id: index for index, camera in enumerate(cameras)}
         binding = self._calibration.binding
         initial = tuple(by_id[binding.by_live_id[source].id] for source in self._camera_indices) if binding is not None and binding.applicable else None

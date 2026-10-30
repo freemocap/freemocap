@@ -68,7 +68,10 @@ skellypings = { git = "https://github.com/freemocap/skellypings" }
 [project.scripts]
 freemocap = "freemocap.__main__:run_main"
 [tool.setuptools]
-packages = ["freemocap"]
+packages = { find = { include = ["freemocap", "freemocap.*"], exclude = ["freemocap.__pycache__", "freemocap.*.__pycache__"] } }
+
+[tool.setuptools.package-data]
+freemocap = ["tests/streaming_fixtures/*.bin", "tests/fixtures/*.md", "tests/connected_recording_review.html"]
 
   [tool.uv]
   package = true

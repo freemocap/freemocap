@@ -1,0 +1,442 @@
+{
+  "manifestVersion": 3,
+  "name": "FreeMoCap UI",
+  "namespace": "FreeMoCap",
+  "files": [
+    "assets/Icons/README.md",
+    "assets/Images/README.md",
+    "assets/Logos/README.md",
+    "audit.md",
+    "components/ButtonCard/README.md",
+    "components/ButtonSm/README.md",
+    "components/Checkbox/README.md",
+    "components/IconButton/README.md",
+    "components/SegmentedControl/README.md",
+    "components/SettingsSection/README.md",
+    "components/SidebarNav/README.md",
+    "components/ToastNotification/README.md",
+    "components/ToggleComponent/README.md",
+    "components/Tooltip/README.md",
+    "components/UpdateBanner/README.md",
+    "components/bundle.css",
+    "tokens.css"
+  ],
+  "libraries": [],
+  "components": [
+    {
+      "name": "ButtonCard",
+      "group": "Actions",
+      "summary": "A 100×116 tile with a large icon over a label, for top-level entry choices (welcome / splash)."
+    },
+    {
+      "name": "ButtonSm",
+      "group": "Actions",
+      "summary": "The workhorse small button: an optional 20px icon, a text-bg label, an optional dropdown chevron, and an optional hover tooltip."
+    },
+    {
+      "name": "Checkbox",
+      "group": "Selection",
+      "summary": "A label-wrapped custom checkbox: 12px box inside a 20px hit area, with a 6px square \"check\" that scales in."
+    },
+    {
+      "name": "IconButton",
+      "group": "Actions",
+      "summary": "A 25px square button holding one 20px CSS-background icon, with an optional hover tooltip."
+    },
+    {
+      "name": "SegmentedControl",
+      "group": "Selection",
+      "summary": "A pill track of mutually exclusive buttons; the active one sinks into color-bg-primary with primary text."
+    },
+    {
+      "name": "SettingsSection",
+      "group": "Settings layout",
+      "summary": "The settings-layout grammar: a section is a raised card, a row is label | info | control, every control lands in one 224px right-hand column, and a collapsed s…"
+    },
+    {
+      "name": "SidebarNav",
+      "group": "Navigation",
+      "summary": "Mode tabs for the side panel; each mode owns a hue — Cameras is green, Playback is blue."
+    },
+    {
+      "name": "ToastNotification",
+      "group": "Feedback",
+      "summary": "A small bottom-centred message card whose status is carried by its border colour alone."
+    },
+    {
+      "name": "ToggleComponent",
+      "group": "Selection",
+      "summary": "A full-width labelled row with a switch on the right; the whole row is the hit target."
+    },
+    {
+      "name": "Tooltip",
+      "group": "Feedback",
+      "summary": "A double-shell hover label: an outer color-bg-primary shell (br-2, 2px padding, shadow-elevated-sharp) around an inner pill with a 1.5px color-border-secondary…"
+    },
+    {
+      "name": "UpdateBanner",
+      "group": "Feedback",
+      "summary": "A full-width status strip for app-update state, plus a 4px progress track."
+    }
+  ],
+  "assetGroups": [
+    {
+      "name": "Logos",
+      "tile": "l",
+      "order": [
+        "freemocap-logo.png"
+      ],
+      "files": [
+        {
+          "path": "assets/Logos/freemocap-logo.png",
+          "id": "b5e940b6bb6687fba3621f473da3cfe2"
+        }
+      ]
+    },
+    {
+      "name": "Icons",
+      "tile": "xs",
+      "order": [
+        "record_icon.svg",
+        "stop_icon.svg",
+        "play_icon.svg",
+        "pause_icon.svg",
+        "camera_icon.svg",
+        "video_icon.svg",
+        "calibrate_icon.svg",
+        "calibrated_icon.svg",
+        "charuco_icon.svg",
+        "2dtracking_icon.svg",
+        "3dtracking_icon.svg",
+        "skeleton_icon.svg",
+        "skeleton_active_icon.svg",
+        "triangulate_icon.svg",
+        "triangulate_active_icon.svg",
+        "processmocap_icon.svg",
+        "stream_icon.svg",
+        "streaming_icon.svg",
+        "live_active_icon.svg",
+        "mic_icon.svg",
+        "grid_icon.svg",
+        "settings_icon.svg",
+        "home_icon.svg",
+        "import_icon.svg",
+        "subfolder_icon.svg",
+        "blender_icon.svg",
+        "warning_icon.svg",
+        "close_icon.svg"
+      ],
+      "files": [
+        {
+          "path": "assets/Icons/record_icon.svg",
+          "id": "09cb34d7d98257f36bb2121c810fb53b"
+        },
+        {
+          "path": "assets/Icons/stop_icon.svg",
+          "id": "5390c27111077aa24be16a614af7e924"
+        },
+        {
+          "path": "assets/Icons/play_icon.svg",
+          "id": "792e93658fe7accda68c28e5c866972d"
+        },
+        {
+          "path": "assets/Icons/pause_icon.svg",
+          "id": "2f7a99978b2c51a5835c138b5f405ae0"
+        },
+        {
+          "path": "assets/Icons/camera_icon.svg",
+          "id": "cf1b18c62204033c5643fa67406344ac"
+        },
+        {
+          "path": "assets/Icons/video_icon.svg",
+          "id": "653c1a86485785821e934b8f31cad648"
+        },
+        {
+          "path": "assets/Icons/calibrate_icon.svg",
+          "id": "8ea9b689fb5a2d8a84a99442e01cfed5"
+        },
+        {
+          "path": "assets/Icons/calibrated_icon.svg",
+          "id": "5c093965d095b90e42a8277bfb810658"
+        },
+        {
+          "path": "assets/Icons/charuco_icon.svg",
+          "id": "9c88b4d95ab74bb24dac83fb2d059b31"
+        },
+        {
+          "path": "assets/Icons/2dtracking_icon.svg",
+          "id": "50b9609b8377a86b8c6691be529efe1a"
+        },
+        {
+          "path": "assets/Icons/3dtracking_icon.svg",
+          "id": "c928b3c1bb11e7e9f7a17adf9957a8f2"
+        },
+        {
+          "path": "assets/Icons/skeleton_icon.svg",
+          "id": "33acdbf486be91f810350a1fdb958543"
+        },
+        {
+          "path": "assets/Icons/skeleton_active_icon.svg",
+          "id": "b286ac55ee2b8fc6ffddf57008f64eae"
+        },
+        {
+          "path": "assets/Icons/triangulate_icon.svg",
+          "id": "b5c394450f9f1d2df7f039b7cf839052"
+        },
+        {
+          "path": "assets/Icons/triangulate_active_icon.svg",
+          "id": "a8b1b1261d219e5d7f8d2f06884041ec"
+        },
+        {
+          "path": "assets/Icons/processmocap_icon.svg",
+          "id": "912143dcffa08c6be905f85b49c220b5"
+        },
+        {
+          "path": "assets/Icons/stream_icon.svg",
+          "id": "08af8014d55bae151ecf4b54494db150"
+        },
+        {
+          "path": "assets/Icons/streaming_icon.svg",
+          "id": "019a560e1fed642e3057a8c131713e34"
+        },
+        {
+          "path": "assets/Icons/live_active_icon.svg",
+          "id": "1fcb612f13da831bac0e4f5d9e79c5cb"
+        },
+        {
+          "path": "assets/Icons/mic_icon.svg",
+          "id": "fb09818cc3032e7611500b9daaa39562"
+        },
+        {
+          "path": "assets/Icons/grid_icon.svg",
+          "id": "6b6e4c7c4a7097fb6e1674ca86e95b17"
+        },
+        {
+          "path": "assets/Icons/settings_icon.svg",
+          "id": "0d67d7031c01e0e4bf51be564041289c"
+        },
+        {
+          "path": "assets/Icons/home_icon.svg",
+          "id": "94efd79c19e41a4d023ea11cc67aa39f"
+        },
+        {
+          "path": "assets/Icons/import_icon.svg",
+          "id": "3437534c58cc6331f5b154c833f06c9a"
+        },
+        {
+          "path": "assets/Icons/subfolder_icon.svg",
+          "id": "fecac0c5f1eb6c308687e09586f31749"
+        },
+        {
+          "path": "assets/Icons/blender_icon.svg",
+          "id": "7135b2b73f8ecd0b0c9e89a566ce1b66"
+        },
+        {
+          "path": "assets/Icons/warning_icon.svg",
+          "id": "b7c488f56f187221e15722e3ed5b3fee"
+        },
+        {
+          "path": "assets/Icons/close_icon.svg",
+          "id": "fbc7db1ec31fb1128671cef372d20d88"
+        }
+      ]
+    },
+    {
+      "name": "Images",
+      "order": [
+        "splashmodal_art.webp"
+      ],
+      "files": [
+        {
+          "path": "assets/Images/splashmodal_art.webp",
+          "id": "13f6862e274a6d872ff6dac6b6390125"
+        }
+      ]
+    }
+  ],
+  "storage": {
+    "files": {
+      "assets/Icons/2dtracking_icon.svg": {
+        "store": "blob",
+        "id": "50b9609b8377a86b8c6691be529efe1a",
+        "bytes": 1769,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/3dtracking_icon.svg": {
+        "store": "blob",
+        "id": "c928b3c1bb11e7e9f7a17adf9957a8f2",
+        "bytes": 2492,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/blender_icon.svg": {
+        "store": "blob",
+        "id": "7135b2b73f8ecd0b0c9e89a566ce1b66",
+        "bytes": 1139,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/calibrate_icon.svg": {
+        "store": "blob",
+        "id": "8ea9b689fb5a2d8a84a99442e01cfed5",
+        "bytes": 3587,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/calibrated_icon.svg": {
+        "store": "blob",
+        "id": "5c093965d095b90e42a8277bfb810658",
+        "bytes": 2729,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/camera_icon.svg": {
+        "store": "blob",
+        "id": "cf1b18c62204033c5643fa67406344ac",
+        "bytes": 2988,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/charuco_icon.svg": {
+        "store": "blob",
+        "id": "9c88b4d95ab74bb24dac83fb2d059b31",
+        "bytes": 3587,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/close_icon.svg": {
+        "store": "blob",
+        "id": "fbc7db1ec31fb1128671cef372d20d88",
+        "bytes": 883,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/grid_icon.svg": {
+        "store": "blob",
+        "id": "6b6e4c7c4a7097fb6e1674ca86e95b17",
+        "bytes": 1346,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/home_icon.svg": {
+        "store": "blob",
+        "id": "94efd79c19e41a4d023ea11cc67aa39f",
+        "bytes": 2198,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/import_icon.svg": {
+        "store": "blob",
+        "id": "3437534c58cc6331f5b154c833f06c9a",
+        "bytes": 3116,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/live_active_icon.svg": {
+        "store": "blob",
+        "id": "1fcb612f13da831bac0e4f5d9e79c5cb",
+        "bytes": 2789,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/mic_icon.svg": {
+        "store": "blob",
+        "id": "fb09818cc3032e7611500b9daaa39562",
+        "bytes": 1906,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/pause_icon.svg": {
+        "store": "blob",
+        "id": "2f7a99978b2c51a5835c138b5f405ae0",
+        "bytes": 606,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/play_icon.svg": {
+        "store": "blob",
+        "id": "792e93658fe7accda68c28e5c866972d",
+        "bytes": 340,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/processmocap_icon.svg": {
+        "store": "blob",
+        "id": "912143dcffa08c6be905f85b49c220b5",
+        "bytes": 2966,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/record_icon.svg": {
+        "store": "blob",
+        "id": "09cb34d7d98257f36bb2121c810fb53b",
+        "bytes": 1485,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/settings_icon.svg": {
+        "store": "blob",
+        "id": "0d67d7031c01e0e4bf51be564041289c",
+        "bytes": 1291,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/skeleton_active_icon.svg": {
+        "store": "blob",
+        "id": "b286ac55ee2b8fc6ffddf57008f64eae",
+        "bytes": 470,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/skeleton_icon.svg": {
+        "store": "blob",
+        "id": "33acdbf486be91f810350a1fdb958543",
+        "bytes": 470,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/stop_icon.svg": {
+        "store": "blob",
+        "id": "5390c27111077aa24be16a614af7e924",
+        "bytes": 409,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/stream_icon.svg": {
+        "store": "blob",
+        "id": "08af8014d55bae151ecf4b54494db150",
+        "bytes": 2708,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/streaming_icon.svg": {
+        "store": "blob",
+        "id": "019a560e1fed642e3057a8c131713e34",
+        "bytes": 2722,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/subfolder_icon.svg": {
+        "store": "blob",
+        "id": "fecac0c5f1eb6c308687e09586f31749",
+        "bytes": 1220,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/triangulate_active_icon.svg": {
+        "store": "blob",
+        "id": "a8b1b1261d219e5d7f8d2f06884041ec",
+        "bytes": 1621,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/triangulate_icon.svg": {
+        "store": "blob",
+        "id": "b5c394450f9f1d2df7f039b7cf839052",
+        "bytes": 1624,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/video_icon.svg": {
+        "store": "blob",
+        "id": "653c1a86485785821e934b8f31cad648",
+        "bytes": 753,
+        "type": "image/svg+xml"
+      },
+      "assets/Icons/warning_icon.svg": {
+        "store": "blob",
+        "id": "b7c488f56f187221e15722e3ed5b3fee",
+        "bytes": 810,
+        "type": "image/svg+xml"
+      },
+      "assets/Images/splashmodal_art.webp": {
+        "store": "blob",
+        "id": "13f6862e274a6d872ff6dac6b6390125",
+        "bytes": 80082,
+        "type": "image/webp"
+      },
+      "assets/Logos/freemocap-logo.png": {
+        "store": "blob",
+        "id": "b5e940b6bb6687fba3621f473da3cfe2",
+        "bytes": 126495,
+        "type": "image/png"
+      }
+    },
+    "blobBytesUsed": 256601
+  }
+}

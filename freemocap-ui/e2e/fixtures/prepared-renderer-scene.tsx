@@ -2,8 +2,8 @@ import React, {useEffect} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Canvas, useThree} from '@react-three/fiber';
 import {Raycaster, Vector3} from 'three';
-import {KeypointsSourceProvider} from '../../src/components/viewport3d/KeypointsSourceContext';
-import {workerDataStore as source} from '../../src/components/viewport3d/WorkerDataStore';
+import {KeypointsSourceProvider, type KeypointsFrame, type KeypointsCallback, type KeypointsSource} from '../../src/components/viewport3d/KeypointsSourceContext';
+import {workerDataStore} from '../../src/components/viewport3d/WorkerDataStore';
 import {ViewportStateProvider, useViewportState} from '../../src/components/viewport3d/scene/ViewportStateContext';
 import {KeypointsRenderer} from '../../src/components/viewport3d/renderers/KeypointsRenderer';
 import {RigidBodyBoneRenderer} from '../../src/components/viewport3d/renderers/RigidBodyBoneRenderer';
@@ -14,6 +14,19 @@ import {getPickingEntries} from '../../src/components/viewport3d/renderers/Picki
 
 import {ViewportPicker} from '../../src/components/viewport3d/renderers/ViewportPicker';
 import {computeInspectionDetails} from '../../src/components/viewport3d/scene/inspection-details';
+
+let directPoints: KeypointsFrame | null = null;
+const directSubscribers = new Set<KeypointsCallback>();
+const source: KeypointsSource & Pick<typeof workerDataStore, 'dispatch'> = {
+    ...workerDataStore,
+    get isLive() {return workerDataStore.isLive;},
+    getLatestKeypoints: () => directPoints ?? workerDataStore.getLatestKeypoints(),
+    subscribeToKeypoints: callback => {
+        directSubscribers.add(callback);
+        const unsubscribe = workerDataStore.subscribeToKeypoints(callback);
+        return () => {directSubscribers.delete(callback); unsubscribe();};
+    },
+};
 
 const api = window as any;
 let state: any;
@@ -33,7 +46,14 @@ api.renderFixture = async (input: any) => {
             frame[field] ? {...frame[field], data: Float32Array.from(frame[field].data, value => value === null ? NaN : value as number)} : null])),
         rotations: frame.rotations ? {...frame.rotations, worldQuaternions: Float32Array.from(frame.rotations.worldQuaternions ?? []), localQuaternions: Float32Array.from(frame.rotations.localQuaternions ?? [])} : null,
     })));
-    if (input.points) source.dispatch('keypoints', {...input.points, interleaved: Float32Array.from(input.points.interleaved, value => value === null ? NaN : value as number)});
+    if (input.points?.pointSources) {
+        directPoints = {pointNames: input.points.pointNames, pointSources: input.points.pointSources.map((entry: any) =>
+            ({...entry, data: Float32Array.from(entry.data, value => value === null ? NaN : value as number)}))};
+        directSubscribers.forEach(callback => callback(directPoints!));
+    } else if (input.points) {
+        directPoints = null;
+        source.dispatch('keypoints', {...input.points, interleaved: Float32Array.from(input.points.interleaved, value => value === null ? NaN : value as number)});
+    }
     await wait();
     state.advance(performance.now());
     const result: any = {meshes: [], lines: [], dots: []};

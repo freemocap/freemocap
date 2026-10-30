@@ -7,7 +7,9 @@ test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
 test('displayed calibration owns recording and live requests, including clearing and load races', async ({page}) => {
     page.on('pageerror', error => {throw error;});
-    const requests: {mocapTaskConfig?: {calibrationTomlPath: string | null}; realtimeConfig?: {aggregator_config: {calibration_toml_path: string | null}}}[] = [];
+    const requests: {mocapTaskConfig?: {calibrationTomlPath: string | null}; realtimeConfig?: {
+        aggregator_config: {calibration_toml_path: string | null}; camera_node_config: {charuco_board: unknown};
+    }}[] = [];
     await page.route('http://localhost:53117/**', async route => {
         if (route.request().method() === 'POST') {
             requests.push(route.request().postDataJSON());
@@ -15,12 +17,13 @@ test('displayed calibration owns recording and live requests, including clearing
         await route.fulfill({json: {success: true, camera_group_id: 'cameras', pipeline_id: 'live'}});
     });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<output id="result"></output>'}));
+    await page.route('**/calibration/most-recent', route => route.fulfill({json: calibrationFixture('C:/latest.toml')}));
     await page.goto('http://localhost:53117/');
     const bundle = await build({
         stdin: {contents: `
             import {store} from './src/store/store';
             import {calibrationFixture} from './e2e/fixtures/calibration';
-            import {calibrationLoadedFromBundle, loadCalibrationToml, loadCalibrationForRecording} from './src/store/slices/calibration';
+            import {calibrationLoadedFromBundle, calibrationConfigUpdated, loadCalibrationToml, loadCalibrationForRecording} from './src/store/slices/calibration';
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {startMocapRecording, stopMocapRecording, processMocapRecording} from './src/store/slices/mocap/mocap-thunks';
             import {applyRealtimePipeline, closePipeline} from './src/store/slices/realtime/realtime-thunks';
@@ -35,6 +38,7 @@ test('displayed calibration owns recording and live requests, including clearing
             }
             async function run(): Promise<void> {
                 const selected = calibrationFixture('C:/selected.toml');
+                store.dispatch(calibrationConfigUpdated({charucoBoard: {squares_x: 7, squares_y: 5, square_length_mm: 58}}));
                 store.dispatch(calibrationLoadedFromBundle(selected));
                 store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
                 for (const thunk of [startMocapRecording, stopMocapRecording, processMocapRecording]) await store.dispatch(thunk()).unwrap();
@@ -72,7 +76,11 @@ test('displayed calibration owns recording and live requests, including clearing
     }
     await expect(page.locator('#result')).toHaveText('done');
     expect(requests.slice(0, 3).map(request => request.mocapTaskConfig?.calibrationTomlPath)).toEqual(Array(3).fill('C:/selected.toml'));
-    expect(requests.slice(3).map(request => request.realtimeConfig?.aggregator_config.calibration_toml_path)).toEqual(['C:/selected.toml', 'C:/replacement.toml', null]);
+    expect(requests.slice(3).map(request => request.realtimeConfig?.aggregator_config.calibration_toml_path)).toEqual(['C:/selected.toml', 'C:/replacement.toml', 'C:/latest.toml']);
+    const savedBoard = {squares_x: 5, squares_y: 3, square_length_mm: 50, marker_length_ratio: 0.65, aruco_dictionary_enum: 2};
+    expect(requests.slice(3).map(request => request.realtimeConfig?.camera_node_config.charuco_board)).toEqual([
+        savedBoard, savedBoard, savedBoard,
+    ]);
 });
 
 test('opening calibration options and automatic discovery preserve the selected file', async ({page}) => {

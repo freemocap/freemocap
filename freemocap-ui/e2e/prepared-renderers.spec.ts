@@ -161,3 +161,23 @@ test('actual pointer picking preserves model and subject identity through inspec
     expect((await pointer(slot('fixture', 2))).hovered).toEqual(target('fixture', 2));
     expect((await inspect(state.pinned)).find((row: any) => row.label === 'Position (mm)').value.values).toBeNull();
 });
+
+
+test('direct rendering and inspection consume borrowed tracker channels with declared component order', async ({page}) => {
+    await page.goto(url); await page.waitForFunction(() => (window as any).renderFixture);
+    const render = (input: any) => page.evaluate(input => (window as any).renderFixture(input), input);
+    const points = {pointNames: ['left_point', 'face_0000'], pointSources: [
+        {names: ['left_point'], data: [999, 3, 1, 2], stride: 4, coordinateOffsets: [2, 3, 1]},
+        {names: ['face_0000'], data: [4, 5, 6]},
+    ]};
+    let result = await render({definitions: [definition()], frames: [], points});
+    expect(origin(mesh(result, 'keypoint'), 0)).toEqual([1, 2, 3]);
+    expect(result.dots).toEqual([4, 5, 6]);
+    points.pointSources[0].data = [999, 10, 8, 9];
+    points.pointSources[1].data = [11, 12, 13];
+    result = await render({points});
+    expect(origin(mesh(result, 'keypoint'), 0)).toEqual([8, 9, 10]);
+    expect(result.dots).toEqual([11, 12, 13]);
+    const details = await page.evaluate(() => (window as any).inspectFixture({kind: 'keypoint', name: 'left_point'}));
+    expect(details[0].value.values).toEqual([8, 9, 10]);
+});

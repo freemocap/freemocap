@@ -24,6 +24,7 @@ from skellytracker.core.data_primitives.observation import Observation
 from freemocap.core.tracking.observation_arrays import observation_arrays, aligned_coordinates
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.shared import calibration_paths
 from freemocap.core.tasks.calibration.shared.calibration_transform import (
     CalibrationTransform, CalibrationTransformType,
 )
@@ -47,6 +48,14 @@ logger = logging.getLogger(__name__)
 MAX_CONSECUTIVE_FAILURES: int = 10
 
 
+def _same_camera_assignment(first: CalibrationBinding | None, second: CalibrationBinding | None) -> bool:
+    """Compare selected calibration-owned models without ndarray-valued equality."""
+    if first is None or second is None:
+        return first is second
+    return first.by_live_id.keys() == second.by_live_id.keys() and all(
+        camera is second.by_live_id[source] for source, camera in first.by_live_id.items())
+
+
 def _strip_stage_prefix(name: str) -> str:
     """Strip the stage prefix that Observation.to_keypoints() adds.
 
@@ -63,7 +72,8 @@ class CalibrationStateTracker:
     Uses the pure Triangulator (DLT from CameraModel) rather than AniposeCameraGroup.
 
     Lifecycle:
-      1. On creation, load the explicitly selected calibration, if any.
+      1. On creation, load the selected calibration, or the latest successful
+         calibration when no explicit path is supplied.
       2. Triangulation requests go through try_triangulate(), which returns
          None if no valid calibration is loaded.
       3. If triangulation fails repeatedly (MAX_CONSECUTIVE_FAILURES), the
@@ -82,7 +92,7 @@ class CalibrationStateTracker:
         self._consecutive_failure_count: int = 0
         self._calibration_path: Path | None = None
         self._calibration_file_mtime: float | None = None
-        # None means no calibration is selected.
+        # None selects the canonical latest successful calibration.
         self._configured_path: Path | None = None
         # Maps frozenset of active calibration-name strings -> pre-built sub-Triangulator.
         # Lazily populated on first frame with a given camera subset; reused thereafter.
@@ -107,7 +117,7 @@ class CalibrationStateTracker:
 
         Args:
             calibration_toml_path: Explicit calibration TOML to load from.
-                If None, no calibration is loaded.
+                If None, use and watch the latest successful calibration.
         """
         tracker = cls()
         tracker._configured_path = calibration_toml_path
@@ -147,10 +157,10 @@ class CalibrationStateTracker:
         """Re-point the tracker at a different calibration source (live update).
 
         If the configured path changed, reloads immediately from the new
-        source. None clears the calibration.
+        source. None returns to the latest successful calibration.
 
         Returns:
-            True if the calibration source changed, including clearing it.
+            True if the calibration source changed.
         """
         if calibration_toml_path == self._configured_path:
             return False
@@ -159,8 +169,7 @@ class CalibrationStateTracker:
         )
         self._configured_path = calibration_toml_path
         self._invalidate()
-        if calibration_toml_path is not None:
-            self._try_load_from_path(path=calibration_toml_path)
+        self._try_load_latest()
         return True
 
     @property
@@ -176,23 +185,28 @@ class CalibrationStateTracker:
     def generation(self) -> int:
         return self._calibration_generation
 
-    def reset_matching(self, *, camera_indices: Mapping[str, int]) -> None:
+    def reset_matching(self, *, camera_indices: Mapping[str, int]) -> bool:
+        previous_binding, was_applicable = self._binding, self.is_applicable()
         self._binding_key = None
         self.bind_live_cameras(live_camera_indices=camera_indices)
+        return (not _same_camera_assignment(previous_binding, self._binding)
+                or was_applicable != self.is_applicable())
 
-    def apply_matching(self, *, source_ids: tuple[str, ...], result: CameraMatchingResult, failure_policy: MatchingFailurePolicy) -> None:
+    def apply_matching(self, *, source_ids: tuple[str, ...], result: CameraMatchingResult, failure_policy: MatchingFailurePolicy) -> bool:
+        """Install accepted metadata and report changes that invalidate reconstruction history."""
         if self._calibration is None:
             raise ValueError("Cannot install camera matching without calibration")
         if result.status is CameraMatchingStatus.INSUFFICIENT:
-            return
+            return False
         accepted = result.status in (CameraMatchingStatus.INITIAL_ACCEPTED, CameraMatchingStatus.MATCHED)
         if not accepted:
             if failure_policy is MatchingFailurePolicy.STOP:
                 raise ValueError(f"Camera matching stopped by configured failure policy: {result.status}")
             logger.info(f"Camera geometry matching: {result.status}; retaining the current camera binding (continue policy)")
-            return
+            return False
         if result.assignment is None:
             raise ValueError("Accepted camera matching requires an assignment")
+        previous_binding, was_applicable = self._binding, self.is_applicable()
         self._binding = CalibrationBinding(
             by_live_id={source: self._calibration.cameras[result.assignment[index]]
                         for index, source in enumerate(source_ids)},
@@ -200,10 +214,13 @@ class CalibrationStateTracker:
             applicable=True, reason=f"Camera geometry matching: {result.status}",
             live_camera_ids=source_ids, calibration_camera_ids=tuple(camera.id for camera in self._calibration.cameras),
         )
-        self._subset_triangulator_cache.clear()
+        assignment_changed = not _same_camera_assignment(previous_binding, self._binding)
+        if assignment_changed:
+            self._subset_triangulator_cache.clear()
         logger.info(self._binding.reason)
         self._is_valid = True
         self._consecutive_failure_count = 0
+        return assignment_changed or was_applicable != self.is_applicable()
 
     def is_applicable(self) -> bool:
         """Whether the loaded calibration actually describes the current camera set.
@@ -289,8 +306,8 @@ class CalibrationStateTracker:
         Called by the owning worker between frames. Nothing in runtime state is
         changed until replacement geometry is prepared and the file save succeeds.
         """
-        if self._configured_path is None or (
-            self._configured_path.expanduser().resolve()
+        if (
+            self._resolve_source_path().expanduser().resolve()
             != request.path.expanduser().resolve()
         ):
             raise ValueError("The selected calibration changed before saving.")
@@ -339,12 +356,18 @@ class CalibrationStateTracker:
             return response
 
     def check_for_update(self) -> bool:
-        """Reload the selected file when it changes; fail if it becomes unreadable."""
-        path = self._configured_path
-        if path is None:
-            return False
+        """Watch the selected/default file, including the first calibration save."""
+        path = self._resolve_source_path()
         try:
             mtime = path.stat().st_mtime
+        except FileNotFoundError:
+            if self._configured_path is not None:
+                self._invalidate()
+                raise
+            if self.is_valid:
+                self._invalidate()
+            self._calibration_file_mtime = None
+            return False
         except OSError:
             self._invalidate()
             raise
@@ -353,10 +376,15 @@ class CalibrationStateTracker:
         return self._try_load_from_path(path=path)
 
     def _try_load_latest(self) -> bool:
-        """Load the explicitly selected calibration, if any."""
-        if self._configured_path is None:
+        """Load the explicit selection or the canonical latest calibration."""
+        path = self._resolve_source_path()
+        if self._configured_path is None and not path.exists():
+            logger.warning(f"No calibration found at {path}; waiting for a successful calibration save.")
             return False
-        return self._try_load_from_path(path=self._configured_path)
+        return self._try_load_from_path(path=path)
+
+    def _resolve_source_path(self) -> Path:
+        return self._configured_path or calibration_paths.get_last_successful_calibration_toml_path()
 
     def _try_load_from_path(self, path: Path) -> bool:
         """Attempt to load calibration from an anipose-format TOML file.

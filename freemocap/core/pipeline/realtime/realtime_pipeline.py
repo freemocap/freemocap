@@ -485,7 +485,9 @@ class RealtimePipeline:
             return None
 
         aggregation_output: AggregationNodeOutputMessage | None = None
-        while True:
+        # Publication reaches the queue before the producer clears consumed and
+        # sets ready. Draining early would let that clear erase our acknowledgement.
+        while self.result_ready_event.is_set():
             try:
                 candidate = self.aggregation_output_subscription.get_nowait()
             except Empty:

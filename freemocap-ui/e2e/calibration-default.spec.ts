@@ -11,7 +11,8 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
     let discoveries = 0;
     let manualSelection = false;
     const livePaths: string[] = [];
-    const startupPath = runningPath === undefined ? 'C:/latest.toml' : runningPath ?? 'none';
+    const usesDefault = runningPath === undefined || runningPath === null;
+    const startupPath = usesDefault ? 'C:/latest.toml' : runningPath;
     await page.route('**/realtime/config', route => route.fulfill({json: runningPath === undefined ? null : {
         camera_node_config: {charuco_tracking_enabled: false, skeleton_tracking_enabled: true},
         aggregator_config: {calibration_toml_path: runningPath, triangulation_enabled: true, filter_enabled: true},
@@ -66,8 +67,8 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.getByLabel('Calibration', {exact: true})).toHaveText(startupPath);
-    await expect(page.getByLabel('Camera count')).toHaveText(runningPath === null ? '0' : '1');
-    expect(discoveries).toBe(runningPath === undefined ? 1 : 0);
+    await expect(page.getByLabel('Camera count')).toHaveText('1');
+    expect(discoveries).toBe(usesDefault ? 1 : 0);
     expect(livePaths).toEqual([]);
     await page.reload();
     for (const file of bundle.outputFiles) {
@@ -75,7 +76,7 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.getByLabel('Calibration', {exact: true})).toHaveText(startupPath);
-    expect(discoveries).toBe(runningPath === undefined ? 2 : 0);
+    expect(discoveries).toBe(usesDefault ? 2 : 0);
     expect(livePaths).toEqual([]);
     const dropdown = page.getByRole('button', {name: 'Set up calibration', exact: true});
     await expect(dropdown.locator('svg')).toBeVisible();
@@ -84,7 +85,7 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
     await page.getByRole('button', {name: 'Load most recent calibration TOML (default)', exact: true}).click();
     await expect(page.getByLabel('Calibration', {exact: true})).toHaveText('C:/replacement.toml');
     await expect(page.getByLabel('Camera count')).toHaveText('1');
-    expect(discoveries).toBe(runningPath === undefined ? 3 : 1);
+    expect(discoveries).toBe(usesDefault ? 3 : 1);
     await expect.poll(() => livePaths).toEqual(['C:/replacement.toml']);
 });
 

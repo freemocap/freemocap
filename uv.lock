@@ -2530,7 +2530,6 @@ dev = [
     { name = "pip-tools" },
     { name = "poethepoet" },
     { name = "pytest", specifier = ">=9.1.1" },
-    { name = "skellytracker", editable = "../skellytracker" },
 ]
 
 [[package]]

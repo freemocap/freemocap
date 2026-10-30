@@ -15,7 +15,7 @@ from skellyforge.core.data_tensors.data_tensor import ScientificProvenance
 from skellyforge.core.data_tensors.layout_definitions import SourceIdentity
 from skellyforge.core.data_tensors.sample_timing import SampleTiming
 from skellyforge.core.data_tensors.time_series import TimeSeries
-from freemocap.core.recording.parquet_storage.channel_arrays import ChannelArrays
+from freemocap.core.recording.parquet_storage.saved_channel_arrays import ChannelArrays
 
 
 @dataclass(frozen=True)
@@ -130,10 +130,14 @@ class RecordingObservationSeries:
         self.timestamp_present = np.zeros(count, dtype=bool)
         self.layout_indices = np.full(count, -1, dtype=np.intp)
         self.stage_paths: tuple[tuple[str, ...], ...] = ()
+        self.root_stage_columns = np.empty(0, dtype=np.intp)
         self.layouts: list[tuple] = []
         self._layout_plans: list[tuple] = []
         self._layout_lookup: dict[tuple, int] = {}
         self._layout_point_names: list[tuple[str, ...]] = []
+        self._annotation_point_names = self.point_names
+        self._annotation_point_columns: dict[str, int] = {}
+        self._annotation_layouts: dict[int, tuple] = {}
         self.finalized = False
 
     def __len__(self):
@@ -202,6 +206,8 @@ class RecordingObservationSeries:
             self.box_counts = self._grow((len(self), len(paths)), self.box_counts, 0)
             self.detector_values = self._grow((len(self), len(paths)), self.detector_values, False)
             self.stage_paths = paths
+            self.root_stage_columns = np.fromiter(
+                (column for column, path in enumerate(paths) if len(path) == 1), dtype=np.intp)
         if layout_index is None:
             self.stage_names = tuple(dict.fromkeys((*self.stage_names, *(stage.name for path, stage in stages if len(path) == 1))))
             layout_index = len(self.layouts)
@@ -272,13 +278,26 @@ class RecordingObservationSeries:
         from skellytracker.core.data_primitives.observation import Observation, StageObservation
         from skellytracker.core.data_primitives.bounding_box import BoundingBox
         self[index]  # Require delivered coverage before constructing an adapter.
+        # Admission can append identities, and finalize can reorder their columns.
+        # Rebuild only when that identity tuple changes, never once per point/frame.
+        if self._annotation_point_names is not self.point_names:
+            self._annotation_point_names = self.point_names
+            self._annotation_point_columns = {name: column for column, name in enumerate(self.point_names)}
+            self._annotation_layouts.clear()
+        layout_index = self.layout_indices[index]
+        if layout_index not in self._annotation_layouts:
+            self._annotation_layouts[layout_index] = tuple(
+                (path, name, names, self.stage_paths.index(path),
+                 None if names is None else np.fromiter(
+                     (self._annotation_point_columns[f'{name}.{point}'] for point in names),
+                     dtype=np.intp, count=len(names)))
+                for path, name, names in self.layouts[layout_index])
         roots, parents = {}, {}
-        for path, name, names in self.layouts[self.layout_indices[index]]:
-            column = self.stage_paths.index(path)
-            indices = [self.point_names.index(f'{name}.{point}') for point in names] if names is not None else []
+        for path, name, names, column, indices in self._annotation_layouts[layout_index]:
             stage = StageObservation(name=name, detector_ran=bool(self.detector_values[index, column]),
                 bounding_boxes=[BoundingBox(*values) for values in self.box_values[index, column, :self.box_counts[index, column]]],
                 keypoints=None if names is None else Keypoints(names=names,
+                    # Independent returned observations must not alias recording values.
                     xyz=self.coordinate_values[index, indices], visibility=self.confidence_values[index, indices]))
             (roots if len(path) == 1 else parents[path[:-1]].children)[path[-1]] = stage
             parents[path] = stage

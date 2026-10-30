@@ -13,6 +13,8 @@ export interface DetailRow {
     value: DetailValue;
 }
 
+import {keypointPosition} from '../keypoint-storage';
+
 const XYZ = ["x", "y", "z"] as const;
 const WXYZ = ["w", "x", "y", "z"] as const;
 
@@ -56,7 +58,7 @@ export function computeInspectionDetails(
     if (target.kind === "keypoint") {
         const frame = source.getLatestKeypoints?.();
         const index = frame ? frame.pointNames.indexOf(target.name) : -1;
-        return [{ label: "Position (mm)", value: vec3(pointAt(frame?.interleaved, index), 1) }];
+        return [{ label: "Position (mm)", value: vec3(frame ? keypointPosition(frame, index) : null, 1) }];
     }
 
     // A selection belongs to one model occurrence, even if another uses the same names.

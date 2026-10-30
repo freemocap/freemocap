@@ -84,7 +84,7 @@ export const realtimeSlice = createSlice({
             // `!isLoading` guard avoids clobbering an in-flight apply/close.
             .addCase(serverStateReceived, (state, action) => {
                 const pipelines = action.payload.state.realtime_pipelines ?? [];
-                const alive = pipelines.find(p => p.alive) ?? pipelines[0];
+                const alive = pipelines.find(p => p.alive);
                 if (alive) {
                     state.isConnected = true;
                     state.pipelineId = alive.id;

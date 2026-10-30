@@ -64,6 +64,46 @@ test('frame transfer copies only view bytes, preserves source ownership and reus
     } finally {await h.close();}
 });
 
+test('multiple borrowed tracker channels pack directly into pooled transfer with backpressure and layout changes', async () => {
+    const h = harness();
+    try {
+        const firstValues = new Float32Array([1, 2, 3]), secondValues = new Float32Array([90, 6, 4, 5]);
+        const frame = {pointNames: ['wrist', 'corner'], pointSources: [
+            {names: ['wrist'], data: firstValues},
+            {names: ['corner'], data: secondValues, stride: 4, coordinateOffsets: [2, 3, 1] as const},
+        ]};
+        h.sender.sendKeypoints(frame);
+        h.sender.sendKeypoints({...frame, pointSources: [{...frame.pointSources[0], data: new Float32Array([7, 8, 9])}, frame.pointSources[1]]});
+        assert.equal(h.sent.length, 1);
+        await h.worker();
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [1, 2, 3, 4, 5, 6]);
+        h.main(); await h.drain();
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [7, 8, 9, 4, 5, 6]);
+        assert.equal(h.sent[1].layout, undefined);
+        h.sender.sendKeypoints({pointNames: ['corner'], pointSources: [frame.pointSources[1]]});
+        await h.drain();
+        assert.deepEqual(workerDataStore.getLatestKeypoints()!.pointNames, ['corner']);
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [4, 5, 6]);
+        assert.deepEqual([...firstValues], [1, 2, 3]);
+        assert.deepEqual([...secondValues], [90, 6, 4, 5]);
+        assert.equal(firstValues.buffer.byteLength, 12, 'source ownership never transfers');
+    } finally {await h.close();}
+});
+
+test('rejected source arrays do not exhaust the transfer pool or poison the next valid frame', async () => {
+    const h = harness();
+    try {
+        const frame = {pointNames: ['point'], pointSources: [{names: ['point'], data: new Float32Array([1, 2, 3])}]};
+        h.sender.sendKeypoints(frame); await h.drain();
+        for (let attempt = 0; attempt < 10; attempt++) {
+            assert.throws(() => h.sender.sendKeypoints({...frame, pointSources: [{...frame.pointSources[0], data: new Float32Array(1)}]}), /point storage/);
+        }
+        h.sender.sendKeypoints({...frame, pointSources: [{...frame.pointSources[0], data: new Float32Array([9, 8, 7])}]});
+        await h.drain();
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [9, 8, 7]);
+    } finally {await h.close();}
+});
+
 test('delayed receipt coalesces latest frame and replacement does not wait for current buffer return', async () => {
     const h = harness();
     try {

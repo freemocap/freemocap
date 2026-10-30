@@ -114,7 +114,7 @@ export const restoreCalibrationSelection = createAsyncThunk<
             if (getState().calibration.loadRequestId !== requestId) return null;
             dispatch(pipelineConfigUpdated(config));
             const path = config.aggregator_config.calibration_toml_path;
-            if (path === null) return null;
+            if (path === null) return await readMostRecentCalibration();
             return await readCalibration(path);
         } catch (error) {
             return rejectWithValue(error instanceof Error ? error.message : String(error));
@@ -126,6 +126,20 @@ export const loadMostRecentCalibration = createAsyncThunk<
     LoadedCalibration | null, void, {state: RootState; rejectValue: string}
 >(
     'calibration/loadMostRecent',
+    async (_, {rejectWithValue}) => {
+        try {
+            return await readMostRecentCalibration();
+        } catch (error) {
+            return rejectWithValue(error instanceof Error ? error.message : String(error));
+        }
+    },
+);
+
+/** Resolve the live startup default; the calling apply action sends the config. */
+export const loadRealtimeCalibrationDefault = createAsyncThunk<
+    LoadedCalibration | null, void, {state: RootState; rejectValue: string}
+>(
+    'calibration/loadRealtimeDefault',
     async (_, {rejectWithValue}) => {
         try {
             return await readMostRecentCalibration();

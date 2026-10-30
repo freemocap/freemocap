@@ -13,11 +13,15 @@ from freemocap.tests.pipelines.mocks.realtime_driver import drive_realtime_locks
 
 def replay(frames):
     queue = Queue()
-    for frame in frames:
-        queue.put(AggregationNodeOutputMessage(frame_number=frame))
     pipeline = SimpleNamespace(alive=True, aggregation_output_subscription=queue,
                                result_ready_event=Event(), result_consumed_event=Event())
-    return drive_realtime_lockstep(pipeline=pipeline, mock_group=Mock(),
+    def publish_frame(frame_index):
+        queue.put(AggregationNodeOutputMessage(frame_number=frames[frame_index]))
+        pipeline.result_consumed_event.clear()
+        pipeline.result_ready_event.set()
+    mock_group = Mock()
+    mock_group.write_frame.side_effect = publish_frame
+    return drive_realtime_lockstep(pipeline=pipeline, mock_group=mock_group,
                                    num_frames=len(frames), per_frame_timeout=1.0)
 
 

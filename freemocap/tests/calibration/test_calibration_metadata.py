@@ -121,8 +121,15 @@ class CalibrationMetadataTests(TestCase):
                     response = client.post(
                         "/calibration/transform", json=request.model_dump(mode="json"),
                     )
+                    self.assertEqual(response.status_code, 200, response.text)
+                    config.aggregator_config.calibration_toml_path = None
+                    with patch.object(calibration_api, "get_last_successful_calibration_toml_path", return_value=path):
+                        response = client.post(
+                            "/calibration/transform", json=request.model_dump(mode="json"),
+                        )
             self.assertEqual(response.status_code, 200, response.text)
-            pipeline.save_calibration_transform.assert_awaited_once_with(request=request)
+            self.assertEqual(pipeline.save_calibration_transform.await_count, 2)
+            pipeline.save_calibration_transform.assert_awaited_with(request=request)
             self.assertEqual(path.read_bytes(), original)
 
     def test_live_save_consumes_offset_only_after_success(self) -> None:

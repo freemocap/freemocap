@@ -1,5 +1,6 @@
 // Shared worker JPEG decoding returns transferable RGBA buffers.
 // Camera workers own bitmap preparation and presentation.
+import {FrameCadence} from '../frame-cadence';
 
 export interface FrameData {
     cameraId: string;
@@ -42,8 +43,7 @@ interface DecodeErrorMessage {
 type DecodeWorkerMessage = DecodeResultMessage | DecodeErrorMessage;
 
 export class FrameProcessor {
-    private lastFrameTime: Map<string, number> = new Map();
-    private currentFps: Map<string, number> = new Map();
+    private readonly frameCadences = new Map<string, FrameCadence>();
 
     private worker: Worker;
     private nextRequestId: number = 0;
@@ -107,14 +107,12 @@ export class FrameProcessor {
             cameraIds.add(frame.cameraId);
             frameNumbers.add(frame.frameNumber);
 
-            // Track frame timing and calculate FPS on the main thread
-            const now = performance.now();
-            const lastTime = this.lastFrameTime.get(frame.cameraId);
-            if (lastTime) {
-                const fps = 1000 / (now - lastTime);
-                this.currentFps.set(frame.cameraId, fps);
+            let cadence = this.frameCadences.get(frame.cameraId);
+            if (!cadence) {
+                cadence = new FrameCadence();
+                this.frameCadences.set(frame.cameraId, cadence);
             }
-            this.lastFrameTime.set(frame.cameraId, now);
+            cadence.record(frame.frameNumber);
         }
 
         pending.resolve({ frames, cameraIds, frameNumbers });
@@ -132,12 +130,11 @@ export class FrameProcessor {
     }
 
     public getFps(cameraId: string): number | null {
-        return this.currentFps.get(cameraId) ?? null;
+        return this.frameCadences.get(cameraId)?.getFps() ?? null;
     }
 
     public reset(): void {
-        this.lastFrameTime.clear();
-        this.currentFps.clear();
+        this.frameCadences.clear();
 
         // Reject any pending requests
         for (const [, pending] of this.pendingRequests) {
@@ -154,7 +151,6 @@ export class FrameProcessor {
         this.worker.terminate();
         for (const pending of this.pendingRequests.values()) pending.reject(new Error('Frame decoder closed'));
         this.pendingRequests.clear();
-        this.lastFrameTime.clear();
-        this.currentFps.clear();
+        this.frameCadences.clear();
     }
 }

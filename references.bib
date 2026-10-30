@@ -411,3 +411,13 @@
   review = {full-text},
   claim = {Global overrides replace transitive requirements, allowing core to consistently select its already-declared shared utility sources.}
 }
+
+@misc{microsoftCameraExposureUnits,
+  title = {CameraControlProperty enumeration},
+  author = {{Microsoft}},
+  url = {https://learn.microsoft.com/en-us/windows/win32/api/strmif/ne-strmif-cameracontrolproperty},
+  urldate = {2026-10-30},
+  review = {excerpt},
+  claim = {The Windows camera exposure property uses log-base-two seconds. This defines the setting's units, not the cause of a measured application throughput regression.},
+  note = {Reviewed the CameraControl Exposure definition during the live capture diagnosis; driver behavior and application throughput require separate measurements.}
+}

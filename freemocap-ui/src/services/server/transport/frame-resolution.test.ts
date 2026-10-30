@@ -16,7 +16,7 @@ test('live resolution keeps all three trajectory products distinct', () => {
         trackers: [{tracker_id: 'tracker', detector_type: 'rtmpose', model_id: 'subject',
             channels: [block('KEYPOINTS_3D', [1, 2, 3], ['detector_wrist'])]}]});
     const resolved = resolveFrameChannels(frame);
-    assert.deepEqual(Array.from(resolved.keypoints!.data), [1, 2, 3]);
+    assert.deepEqual(Array.from(resolved.keypoints!.sources[0].data), [1, 2, 3, NaN]);
     assert.deepEqual(Array.from(resolved.models[0].mappedKeypoints!.data), [10, 20, 30, NaN]);
     assert.deepEqual(Array.from(resolved.models[0].landmarks!.data), [100, 200, 300, NaN]);
     assert.equal(resolved.models[0].landmarks!.stride, 4);

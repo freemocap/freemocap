@@ -13,7 +13,7 @@ class RealtimeAggregatorNodeConfig(BaseModel):
     camera_matching: CameraMatchingConfig = Field(default_factory=CameraMatchingConfig)
     calibration_toml_path: str | None = Field(
         default=None,
-        description="Selected calibration TOML to load and watch. None disables calibrated triangulation.",
+        description="Path to calibration TOML. If None, the most-recent successful calibration is used (and hot-reloaded).",
     )
     triangulation_enabled: bool = True
     filter_enabled: bool = False

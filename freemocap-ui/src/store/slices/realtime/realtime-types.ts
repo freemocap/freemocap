@@ -5,6 +5,8 @@ export interface CharucoBoardConfigForPipeline {
     squares_x: number;
     squares_y: number;
     square_length_mm: number;
+    marker_length_ratio?: number;
+    aruco_dictionary_enum?: number;
 }
 
 export interface CameraNodeConfig {
@@ -28,7 +30,6 @@ export interface RealtimeAggregatorNodeConfig {
     calibration_toml_path: string | null;
     triangulation_enabled: boolean;
     filter_enabled: boolean;
-    skeleton_enabled: boolean;
     anchor_segment_name: string;
     center_of_mass_enabled: boolean;
     skeleton_fitting_enabled: boolean;
@@ -59,10 +60,9 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         calibration_toml_path: null,
         triangulation_enabled: true,
         filter_enabled: false,
-        skeleton_enabled: true,
         anchor_segment_name: "pelvis",
         center_of_mass_enabled: true,
-        skeleton_fitting_enabled: false,
+        skeleton_fitting_enabled: true,
     },
 };
 

@@ -1,3 +1,4 @@
+import {keypointSources, POSITION_COMPONENTS, XYZ_OFFSETS} from '../keypoint-storage';
 import { useCallback, useEffect } from "react";
 import { CameraControls } from "@react-three/drei";
 import type CameraControlsImpl from "camera-controls";
@@ -55,15 +56,13 @@ export function fitCameraToPoints(
     if (now - _lastFitCallMs < FIT_COOLDOWN_MS) return;
     _lastFitCallMs = now;
 
-    const { pointNames, interleaved } = frame;
-    const box = new Box3();
-    for (let i = 0; i < pointNames.length; i++) {
-        const off = i * 3;
-        const x = interleaved[off];
-        const y = interleaved[off + 1];
-        const z = interleaved[off + 2];
-        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
-            box.expandByPoint(new Vector3(x, y, z));
+    const box = new Box3(), point = new Vector3();
+    for (const source of keypointSources(frame)) {
+        const stride = source.stride ?? POSITION_COMPONENTS, offsets = source.coordinateOffsets ?? XYZ_OFFSETS;
+        for (let index = 0; index < source.names.length; index++) {
+            const row = index * stride;
+            const x = source.data[row + offsets[0]], y = source.data[row + offsets[1]], z = source.data[row + offsets[2]];
+            if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) box.expandByPoint(point.set(x, y, z));
         }
     }
     if (box.isEmpty()) return;

@@ -140,6 +140,7 @@ def ambiguous_instances(observation: Observation | ObservationFrame) -> bool:
     # previous saved reader; no instance assignments are inferred on reload.
     if isinstance(observation, ObservationFrame):
         if isinstance(observation.camera_series, RecordingObservationSeries):
-            return bool(np.any(observation.camera_series.box_counts[observation.sample_index] > 1))
+            series = observation.camera_series
+            return bool(np.any(series.box_counts[observation.sample_index, series.root_stage_columns] > 1))
         return False
     return any(len(stage.bounding_boxes) > 1 for stage in observation.stages.values())

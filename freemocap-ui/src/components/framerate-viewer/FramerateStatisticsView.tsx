@@ -220,13 +220,13 @@ export default function FramerateStatisticsView({
                     </tr>
                 </thead>
                 <tbody>
-                    {renderRow("backend", backendColor, t("server"), t("capturesFramesFromCamera"), "Server represents the camera frame-grabbing performance. This is the true rate at which frames are pulled from the camera and saved during recording. This is the most important metric for recording quality and should remain stable even if display performance fluctuates.")}
+                    {renderRow("backend", backendColor, t("server"), "Delivered camera-group frames per second", "Counts camera-group frames delivered to this viewer. Skipped capture frames are not counted. This does not measure the cameras' capture or recording rate.")}
                     <tr>
                         <td colSpan={7} className="p-0">
                             <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '2px 0'}} />
                         </td>
                     </tr>
-                    {renderRow("frontend", frontendColor, t("display"), t("rendersReceivedFrames"), t("displayTooltipLong"))}
+                    {renderRow("frontend", frontendColor, "Decoded images", "Completed image batches per second", "Measured in the browser when an image batch finishes decoding. Counts a group once regardless of camera count; does not count monitor refreshes or measure camera capture rate.")}
                 </tbody>
             </table>
         </div>

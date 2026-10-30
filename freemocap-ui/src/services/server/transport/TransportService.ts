@@ -34,7 +34,7 @@ import type {
 import type { LogRecord } from "../server-helpers/log-store";
 import type {
     OverlayFrame,
-    PointsFrame,
+    PointSourcesFrame,
     ResolvedModelFrame,
 } from "./frame-types";
 
@@ -90,7 +90,7 @@ export class TransportService {
     private readonly connection: WebSocketConnection;
 
     // Latest-frame refs.
-    private keypointsLatest: PointsFrame | null = null;
+    private keypointsLatest: PointSourcesFrame | null = null;
     private modelFramesLatest: ResolvedModelFrame[] | null = null;
 
     // Held model/convention/camera state (change-detected, not per-frame).
@@ -99,7 +99,7 @@ export class TransportService {
     private camerasLatest: CalibratedCamera[] | null = null;
 
     // Frame-channel subscriber sets.
-    private readonly keypointsSubscribers = new Set<(f: PointsFrame) => void>();
+    private readonly keypointsSubscribers = new Set<(f: PointSourcesFrame) => void>();
     private readonly modelFramesSubscribers = new Set<ModelFramesCallback>();
     private readonly overlaySubscribers = new Set<OverlayCallback>();
     private readonly imageSubscribers = new Set<ImageCallback>();
@@ -167,7 +167,7 @@ export class TransportService {
         this.updateStaticModel(frame);
         const resolved = this.frameResolver.resolve({...frame, models: this.modelsLatest!, convention: this.conventionLatest!, cameras: this.camerasLatest!});
 
-        this.keypointsLatest = resolved.keypoints ?? {names: [], data: new Float32Array()};
+        this.keypointsLatest = resolved.keypoints ?? {names: [], sources: []};
         fanOut(this.keypointsSubscribers, this.keypointsLatest);
         this.modelFramesLatest = resolved.models;
         fanOut(this.modelFramesSubscribers, resolved.models);
@@ -242,7 +242,7 @@ export class TransportService {
 
     // ── frame-channel subscriptions ──────────────────────────────────────
 
-    subscribeToKeypoints(cb: (f: PointsFrame) => void): () => void {
+    subscribeToKeypoints(cb: (f: PointSourcesFrame) => void): () => void {
         this.keypointsSubscribers.add(cb);
         return () => this.keypointsSubscribers.delete(cb);
     }
@@ -301,7 +301,7 @@ export class TransportService {
 
     // ── accessors ────────────────────────────────────────────────────────
 
-    getLatestKeypoints(): PointsFrame | null {
+    getLatestKeypoints(): PointSourcesFrame | null {
         return this.keypointsLatest;
     }
 
@@ -334,6 +334,6 @@ export class TransportService {
         this.camerasLatest = null;
         fanOut(this.modelsSubscribers, []);
         fanOut(this.modelFramesSubscribers, []);
-        fanOut(this.keypointsSubscribers, {names: [], data: new Float32Array()});
+        fanOut(this.keypointsSubscribers, {names: [], sources: []});
     }
 }

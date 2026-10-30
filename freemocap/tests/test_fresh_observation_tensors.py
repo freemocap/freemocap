@@ -75,7 +75,9 @@ def test_sparse_reordered_and_late_stages_preserve_missingness_and_box_counts():
     hand.keypoints = Keypoints(names=hand.keypoints.names[::-1], xyz=hand.keypoints.xyz[::-1], visibility=hand.keypoints.visibility[::-1])
     stored.store(2, reordered)
     assert stored.annotation_frame(0).stages == {}
-    assert ambiguous_instances(stored[1]) and not ambiguous_instances(stored[2])
+    assert not ambiguous_instances(source)
+    assert ambiguous_instances(stored[1]) == ambiguous_instances(source)
+    assert not ambiguous_instances(stored[2])
     np.testing.assert_array_equal(stored.coordinate_values[1], stored.coordinate_values[2])
     values = ObservationBuffer(stored).to_keypoints_array(names=stored.point_names)
     assert np.isnan(values[0]).all()
@@ -114,6 +116,9 @@ def test_completion_restores_chronological_authored_order_independent_of_deliver
     for frame in (1, 0):
         first.store(frame, originals[frame]['a'])
         second.store(frame, originals[frame]['b'])
+        # Exercise cached annotation selections before layout growth/finalization.
+        np.testing.assert_array_equal(first.annotation_frame(frame).stages['body'].keypoints.xyz,
+                                      originals[frame]['a'].stages['body'].keypoints.xyz)
     frames = ObservationFrames({'a': first, 'b': second})
     frames.finalize()
     assert frames.point_names == recording_point_names(originals)
@@ -121,11 +126,29 @@ def test_completion_restores_chronological_authored_order_independent_of_deliver
     assert first.point_names == ('body.early_a', 'body.late_a')
     np.testing.assert_array_equal(first.coordinate_values[:, :, 0], [[10., np.nan], [np.nan, 30.]])
     assert first.annotation_frame(1).stages['body'].keypoints.names == ('late_a',)
+    for frame in (0, 1):
+        np.testing.assert_array_equal(first.annotation_frame(frame).stages['body'].keypoints.xyz,
+                                      originals[frame]['a'].stages['body'].keypoints.xyz)
     coordinate_values = first.coordinate_values
     frames.finalize()
     assert first.coordinate_values is coordinate_values
     with pytest.raises(ValueError, match='Completed'):
         first.store(0, originals[0]['a'])
+
+
+def test_root_instance_ambiguity_matches_original_and_restored_observations():
+    stored = series(2)
+    for frame in (0, 1):
+        incoming = observation(frame)
+        root = incoming.stages['parent_key']
+        child = root.children['child_key']
+        child.bounding_boxes.append(BoundingBox(5., 6., 9., 10., .4))
+        if frame == 1:
+            root.bounding_boxes = [BoundingBox(1., 2., 8., 9., .8), BoundingBox(5., 6., 9., 10., .4)]
+        stored.store(frame, incoming)
+        assert ambiguous_instances(incoming) is bool(frame)
+        assert ambiguous_instances(stored[frame]) == ambiguous_instances(incoming)
+        assert ambiguous_instances(stored.annotation_frame(frame)) == ambiguous_instances(incoming)
 
 
 def test_stage_extraction_rejects_reordered_authored_stage_names():

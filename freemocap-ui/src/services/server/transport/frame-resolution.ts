@@ -18,6 +18,7 @@ import {
     type DerivedPointsFrame,
     type OverlayFrame,
     type PointsFrame,
+    type PointSourcesFrame,
     type ResolvedModelFrame,
     type RotationsFrame,
     type SegmentLengthsFrame,
@@ -64,12 +65,24 @@ function pointView(channel: ChannelBlock, names: readonly string[]): PointsFrame
     return {names, data: float32(channel.data), stride, coordinateOffsets};
 }
 
-function copyPoints(target: Float32Array, targetRow: number, source: PointsFrame): void {
-    const stride = source.stride ?? 3, offsets = source.coordinateOffsets ?? [0, 1, 2];
-    for (let row = 0; row < source.names.length; row++) {
-        const from = row * stride, to = (targetRow + row) * 3;
-        target[to] = source.data[from + offsets[0]]; target[to + 1] = source.data[from + offsets[1]]; target[to + 2] = source.data[from + offsets[2]];
+const QUATERNION_COMPONENTS = ['w', 'x', 'y', 'z'] as const;
+function quaternionValues(channel: ChannelBlock, names: readonly string[]): Float32Array {
+    const width = QUATERNION_COMPONENTS.length;
+    const offsets = QUATERNION_COMPONENTS.map(component => channel.columns.indexOf(component));
+    if (channel.columns.length !== width || new Set(channel.columns).size !== width || offsets.some(index => index < 0) ||
+        channel.data.byteLength !== names.length * width * Float32Array.BYTES_PER_ELEMENT)
+        throw new Error('Quaternion channel bytes do not match declared WXYZ components and identities');
+    const source = float32(channel.data);
+    if (offsets.every((offset, index) => offset === index)) return source;
+    const ordered = new Float32Array(source.length);
+    for (let row = 0; row < names.length; row++) {
+        const start = row * width;
+        ordered[start] = source[start + offsets[0]];
+        ordered[start + 1] = source[start + offsets[1]];
+        ordered[start + 2] = source[start + offsets[2]];
+        ordered[start + 3] = source[start + offsets[3]];
     }
+    return ordered;
 }
 
 const modelLayouts = new WeakMap<ModelDefinition, {segments: readonly string[]; landmarks: readonly string[]}>();
@@ -86,7 +99,7 @@ export interface ResolvedFrameChannels {
     /** One per tracked model, in the frame's own order. */
     models: ResolvedModelFrame[];
     /** Every detector's 3D keypoints, merged. Detector name spaces do not collide. */
-    keypoints: PointsFrame | null;
+    keypoints: PointSourcesFrame | null;
     overlays: OverlayFrame[];
 }
 
@@ -95,23 +108,17 @@ export interface ResolvedFrameChannels {
  *  Merged rather than "the first one" because a session runs several detectors — a pose
  *  detector and a charuco detector — and taking the first silently dropped the other's
  *  points. Their names are disjoint, so concatenating is lossless. */
-function mergeTrackerKeypoints(frame: FrameMessage): PointsFrame | null {
-    const names: string[] = [];
-    const blocks: { block: ChannelBlock; count: number }[] = [];
+function mergeTrackerKeypoints(frame: FrameMessage, previous: PointSourcesFrame | null): PointSourcesFrame | null {
+    const sources: PointsFrame[] = [];
     for (const tracker of frame.trackers) {
-        const kp = channelByKind(tracker.channels, KEYPOINTS_3D);
-        if (!kp || !kp.names) continue;
-        names.push(...kp.names);
-        blocks.push({ block: kp, count: kp.names.length });
+        const channel = channelByKind(tracker.channels, KEYPOINTS_3D);
+        if (channel?.names) sources.push(pointView(channel, channel.names));
     }
-    if (names.length === 0) return null;
-    const data = new Float32Array(names.length * 3);
-    let offset = 0;
-    for (const entry of blocks) {
-        copyPoints(data, offset, pointView(entry.block, entry.block.names!));
-        offset += entry.count;
-    }
-    return { names, data };
+    if (!sources.some(source => source.names.length)) return null;
+    const sameLayout = previous && sources.length === previous.sources.length &&
+        sources.every((source, index) => snapshotEqual(source.names, previous.sources[index].names));
+    const names = sameLayout ? previous.names : sources.flatMap(source => [...source.names]);
+    return {names, sources};
 }
 
 /** One instance's channels, named against ITS model. */
@@ -147,8 +154,8 @@ function resolveModelFrame(
         rw || rl
             ? {
                   boneNames: segmentNames,
-                  worldQuaternions: rw ? float32(rw.data) : new Float32Array(0),
-                  localQuaternions: rl ? float32(rl.data) : new Float32Array(0),
+                  worldQuaternions: rw ? quaternionValues(rw, segmentNames) : new Float32Array(0),
+                  localQuaternions: rl ? quaternionValues(rl, segmentNames) : new Float32Array(0),
               }
             : null;
 
@@ -296,7 +303,7 @@ export class FrameResolver {
                 const current = channelByKind(tracker.channels, KEYPOINTS_3D), prior = channelByKind(old.channels, KEYPOINTS_3D);
                 return tracker.tracker_id === old.tracker_id && (current && prior ? sameChannels([current], [prior]) : current === prior);
             });
-        const result = {models: reuseModels ? this.latest!.models : models, keypoints: reusePoints ? this.latest!.keypoints : mergeTrackerKeypoints(frame), overlays};
+        const result = {models: reuseModels ? this.latest!.models : models, keypoints: reusePoints ? this.latest!.keypoints : mergeTrackerKeypoints(frame, this.latest?.keypoints ?? null), overlays};
         this.previous = frame; this.latest = result;
         return result;
     }

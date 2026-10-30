@@ -109,7 +109,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         }));
 
         subs.push(transport.subscribeToKeypoints((frame) => {
-            const kf: KeypointsFrame = { pointNames: frame.names, interleaved: frame.data };
+            const kf: KeypointsFrame = { pointNames: frame.names, pointSources: frame.sources };
             keypointsRef.current = kf;
             for (const cb of keypointsSubscribersRef.current) cb(kf);
         }));
@@ -160,7 +160,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subs.push(transport.subscribeToFramerate((message) => {
             serverFpsRef.current = message.backend_framerate.mean_frames_per_second;
             framerateStoreRef.current.updateBackend(message.backend_framerate);
-            framerateStoreRef.current.updateFrontend(message.frontend_framerate);
         }));
         subs.push(transport.subscribeToAppState((message) => {
             store.dispatch(serverStateReceived(message));
@@ -205,6 +204,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (!result) return;
 
             const {frames, cameraIds} = result;
+            if (frames.length > 0) {
+                framerateStoreRef.current.recordFrontendFrame(frames[0].frameNumber);
+            }
 
             const lastIds = lastCameraIdsRef.current;
             let cameraListChanged = lastIds.length !== cameraIds.size;

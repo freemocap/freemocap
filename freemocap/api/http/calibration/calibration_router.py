@@ -70,8 +70,9 @@ async def transform_calibration(request: CalibrationUpdateRequest) -> LoadedCali
         if pipelines:
             pipeline = pipelines[0]
             selected = pipeline.config.aggregator_config.calibration_toml_path
-            if selected is None or (
-                Path(selected).expanduser().resolve()
+            selected_path = Path(selected) if selected is not None else get_last_successful_calibration_toml_path()
+            if (
+                selected_path.expanduser().resolve()
                 != request.path.expanduser().resolve()
             ):
                 raise ValueError("The active pipeline is using a different calibration.")

@@ -47,6 +47,8 @@ def drive_realtime_lockstep(
                     f"Realtime pipeline died while waiting for frame {frame_index} "
                     f"(processed {len(outputs)} frames). Check worker logs above."
                 )
+            if not pipeline.result_ready_event.wait(timeout=0.2):
+                continue
             try:
                 msg = sub.get(timeout=0.2)
             except queue.Empty:

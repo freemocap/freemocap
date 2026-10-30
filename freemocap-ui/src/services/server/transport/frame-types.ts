@@ -19,6 +19,12 @@ export interface PointsFrame {
     coordinateOffsets?: readonly [number, number, number];
 }
 
+/** Ordered channel views; numerical storage remains owned by the decoded message. */
+export interface PointSourcesFrame {
+    names: readonly string[];
+    sources: readonly PointsFrame[];
+}
+
 export interface RotationsFrame {
     boneNames: readonly string[];
     /** interleaved wxyz — length boneNames.length * 4. */

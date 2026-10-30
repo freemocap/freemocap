@@ -24,7 +24,6 @@ from queue import Empty
 from types import TracebackType
 
 from fastapi import FastAPI
-from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.camera.config.image_rotation_types import RotationTypes
@@ -85,7 +84,7 @@ class WebsocketServer:
         self._display_image_sizes: dict[CameraGroupIdString, dict[str, float]] | None = None
 
         self._frontend_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
-        self._server_framerate_calculators: dict[CameraGroupIdString, ServerFramerateCalculator] = {}
+        self._server_framerate_calculators: dict[CameraGroupIdString, FramerateTracker] = {}
         self._display_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
         self._last_framerate_send_time: float = 0.0
         self._camera_frame_cursors: dict[CameraGroupIdString, int] = {}
@@ -316,7 +315,11 @@ class WebsocketServer:
         aggregator output (lockstep, newest-wins); with no pipeline it serves
         camera images directly (the frame's image field).
         """
-        pipeline_ids = tuple(sorted(self._app.realtime_pipeline_manager.pipelines))
+        pipeline_ids = tuple(sorted(
+            pipeline_id
+            for pipeline_id, pipeline in self._app.realtime_pipeline_manager.pipelines.items()
+            if pipeline.alive
+        ))
         if pipeline_ids != self._pipeline_source_ids:
             self._pipeline_source_ids = pipeline_ids
             self._pipeline_frame_cursor = -1
@@ -509,23 +512,17 @@ class WebsocketServer:
         camera_group_id: CameraGroupIdString,
         frame_number: FrameNumberInt,
     ) -> None:
-        """Record the server-side frame cadence.
+        """Count each delivered camera-group frame once, regardless of capture-ID gaps.
 
-        ``ServerFramerateCalculator`` derives per-frame durations from
-        consecutive timestamps — its documented input is ``perf_counter_ns``
-        at grab time, so the record uses the local monotonic clock. (Passing
-        the capture timestamp is wrong: its 0.0/None case produces
-        non-positive durations and the calculator raises.)
+        Newest-wins delivery deliberately skips capture frames. Dividing elapsed
+        delivery time by those gaps reports an inferred capture rate, not the
+        server's delivered rate. Neither camera count nor frame-ID jumps belong
+        in this calculation.
         """
         if camera_group_id not in self._server_framerate_calculators:
-            self._server_framerate_calculators[camera_group_id] = ServerFramerateCalculator(
-                source_name="Server")
-        self._server_framerate_calculators[camera_group_id].update(
-            frame_number=frame_number,
-            # float(): skellycam's signature types this as float; perf_counter_ns
-            # returns int.
-            capture_timestamp_ns=float(time.perf_counter_ns()),
-        )
+            self._server_framerate_calculators[camera_group_id] = FramerateTracker.create(
+                framerate_source="Server delivery")
+        self._server_framerate_calculators[camera_group_id].update(time.perf_counter_ns())
         if camera_group_id not in self._display_framerate_trackers:
             self._display_framerate_trackers[camera_group_id] = FramerateTracker.create(
                 framerate_source="Display")
@@ -538,6 +535,8 @@ class WebsocketServer:
         for camera_group_id, server_calc in self._server_framerate_calculators.items():
             if camera_group_id not in self._display_framerate_trackers:
                 continue
+            if not server_calc.has_data:
+                continue
             server_framerate = server_calc.current_framerate
             display_tracker = self._display_framerate_trackers[camera_group_id]
             if server_framerate and display_tracker.has_data:
@@ -547,8 +546,10 @@ class WebsocketServer:
                     frontend_framerate=DetailedFramerate.from_current_framerate(display_tracker.current_framerate),
                 )
                 await self._serializer.send_message(encode_message(message))
-                server_calc.clear()
-                display_tracker.clear()
+                # Keep the preceding timestamp so the interval crossing a
+                # statistics publication (including a stall) is still counted.
+                server_calc.frame_durations_ns.clear()
+                display_tracker.frame_durations_ns.clear()
         self._last_framerate_send_time = now
 
     async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):

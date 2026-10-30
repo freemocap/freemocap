@@ -66,11 +66,38 @@ async def test_empty_manager_accepts_initial_cursor(server: WebsocketServer) -> 
     assert server._camera_frame_cursors == {}
 
 
+async def test_stopped_pipeline_does_not_block_reconnected_camera_video(server: WebsocketServer) -> None:
+    server._app.realtime_pipeline_manager = SimpleNamespace(
+        pipelines={"stopped": SimpleNamespace(alive=False)},
+    )
+    server._app.camera_group_manager.camera_groups = {
+        "replacement": CameraPayload(id="replacement", frame_number=12),
+    }
+    server._app.get_latest_aggregator_outputs = Mock(return_value=[])
+    server._app.wait_for_realtime_result = AsyncMock()
+    frame = await server._await_next_frame()
+    assert frame is not None and frame.frame_number == 12
+    server._app.wait_for_realtime_result.assert_not_awaited()
+
+
+async def test_live_pipeline_still_waits_for_matching_reconstruction(server: WebsocketServer) -> None:
+    server._app.realtime_pipeline_manager = SimpleNamespace(
+        pipelines={"live": SimpleNamespace(alive=True)},
+    )
+    server._app.camera_group_manager.camera_groups = {
+        "capture": CameraPayload(id="capture", frame_number=12),
+    }
+    server._app.get_latest_aggregator_outputs = Mock(return_value=[])
+    server._app.wait_for_realtime_result = AsyncMock()
+    assert await server._await_next_frame() is None
+    server._app.wait_for_realtime_result.assert_awaited_once()
+
+
 async def test_processing_cursor_is_independent_of_capture_cursor(server: WebsocketServer) -> None:
     server._relay._last_sent_frame_number = 10000
     server._pipeline_source_ids = ("old",)
     server._pipeline_frame_cursor = 500
-    server._app.realtime_pipeline_manager = SimpleNamespace(pipelines={"new": object()})
+    server._app.realtime_pipeline_manager = SimpleNamespace(pipelines={"new": SimpleNamespace(alive=True)})
     server._app.get_latest_aggregator_outputs = Mock(return_value=[])
     server._app.wait_for_realtime_result = AsyncMock()
     assert await server._await_next_frame() is None

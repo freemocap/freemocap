@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Object3D } from "three";
 import {
   ViewportStateProvider,
@@ -20,42 +20,16 @@ import {useReferenceFrameForwarder} from './hooks/useReferenceFrameForwarder';
 import { type InspectionTarget, type ViewportStats } from "./helpers/viewport3d-types";
 import {ViewportFrameSender} from './viewport-frame-transfer';
 
+import {hasVisibleKeypoints, KeypointPackingWorkspace} from './keypoint-storage';
+
 Object3D.DEFAULT_UP.set(0, 0, 1);
 
-/** Returns true if at least one point in the frame is finite (stride 3, NaN = missing). */
-function _frameHasVisiblePoints(frame: { interleaved: Float32Array }): boolean {
-  const arr = frame.interleaved;
-  for (let i = 0; i < arr.length; i += 3) {
-    if (isFinite(arr[i]) && isFinite(arr[i + 1]) && isFinite(arr[i + 2])) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/** Every tracked model's segment origins as one point cloud, for camera framing.
- *  Null when nothing has been reconstructed yet. */
-function fittableOrigins(
-  models: ResolvedModelFrame[] | null,
-): KeypointsFrame | null {
-  if (!models || models.length === 0) return null;
-  const names: string[] = [];
-  let total = 0;
-  for (const m of models) {
-    if (!m.segmentOrigins) continue;
-    names.push(...m.segmentOrigins.names);
-    total += m.segmentOrigins.data.length;
-  }
-  if (names.length === 0) return null;
-  const interleaved = new Float32Array(total);
-  let offset = 0;
-  for (const m of models) {
-    if (!m.segmentOrigins) continue;
-    interleaved.set(m.segmentOrigins.data, offset);
-    offset += m.segmentOrigins.data.length;
-  }
-  const frame = { pointNames: names, interleaved };
-  return _frameHasVisiblePoints(frame) ? frame : null;
+/** Borrow model channel views for the occasional camera-fit command. */
+function fittableOrigins(models: ResolvedModelFrame[] | null): KeypointsFrame | null {
+  const pointSources = (models ?? []).flatMap(model => model.segmentOrigins ? [model.segmentOrigins] : []);
+  if (!pointSources.length) return null;
+  const frame = {pointNames: pointSources.flatMap(source => [...source.names]), pointSources};
+  return hasVisibleKeypoints(frame) ? frame : null;
 }
 
 console.debug("[ThreeJsCanvas] creating viewport3d worker");
@@ -194,6 +168,7 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
   } = useKeypointsSource();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraFitWorkspace = useMemo(() => new KeypointPackingWorkspace(), []);
 
   useReferenceFrameForwarder(VIEWPORT_WORKER, isLive, calibration);
 
@@ -284,7 +259,12 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
     const postFit = (): boolean => {
       const origins = fittableOrigins(getLatestModelFrames());
       if (!origins) return false;
-      VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: origins });
+      // Structured cloning a recording-backed view would copy its entire backing
+      // recording. Project into a reusable frame-sized command array first.
+      VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: {
+        pointNames: origins.pointNames,
+        interleaved: cameraFitWorkspace.packFrame(origins),
+      } });
       return true;
     };
     if (!postFit()) return;
@@ -300,7 +280,7 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
       }
       postFit();
     }, 150);
-  }, [getLatestModelFrames]);
+  }, [getLatestModelFrames, cameraFitWorkspace]);
 
   const handleReset = useCallback(() => {
     VIEWPORT_WORKER.postMessage({ type: "resetCamera" });

@@ -50,7 +50,7 @@ const RTPthreeDReconstructionSettings: React.FC<
     (value: boolean) =>
       applyOrUpdatePipelineConfig({
         ...pipelineConfig,
-        aggregator_config: { ...aggregatorConfig, skeleton_enabled: value },
+        aggregator_config: { ...aggregatorConfig, skeleton_fitting_enabled: value },
       }),
     [applyOrUpdatePipelineConfig, pipelineConfig, aggregatorConfig],
   );
@@ -237,7 +237,7 @@ const RTPthreeDReconstructionSettings: React.FC<
 
         <ToggleComponent
           text="Skeleton"
-          isToggled={aggregatorConfig.skeleton_enabled}
+          isToggled={aggregatorConfig.skeleton_fitting_enabled}
           onToggle={handleSkeletonToggle}
           disabled={isLoading}
         />

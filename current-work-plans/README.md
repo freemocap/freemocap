@@ -1,5 +1,10 @@
 # Current Work Plans
 
+2026-10-31: [recording API organization and terminology cleanup](03-transport/recording-api-and-terminology-plan.md)
+maps the agreed recording-resource direction to existing handlers, UI callers,
+Swagger categories, compatibility contracts, and independently reviewable work
+stages. Planning only; individual linear tasks have not started under this plan.
+
 2026-10-29: [runtime tensor and export contract](01-data-model/tensor-contract.md)
 records completed Global 1 and Global 2 implementation and reference-data validation.
 Tracking, reconstruction and immediate streaming consumers use tensor-backed arrays;

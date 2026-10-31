@@ -23,7 +23,6 @@ import {
     mocapRtmPoseConfidenceThresholdChanged,
     mocapRtmPoseModelNameChanged,
     processMocapRecording,
-    RealtimeFilterConfig,
     RTMPoseModelName,
     selectCanProcessMocapRecording,
     selectCanStartMocapRecording,
@@ -41,9 +40,6 @@ import {
     selectMocapRecordingPath,
     selectMocapRtmPoseConfidenceThreshold,
     selectMocapRtmPoseModelName,
-    selectSkeletonFilterConfig,
-    skeletonFilterConfigReplaced,
-    skeletonFilterConfigUpdated,
     startMocapRecording,
     stopMocapRecording,
 } from "@/store/slices/mocap";
@@ -82,7 +78,6 @@ export function useMocap() {
     const mediapipeTrackingConfidence = useAppSelector(selectMocapMediapipeTrackingConfidence);
     const mediapipeNumHands = useAppSelector(selectMocapMediapipeNumHands);
     const mediapipeNumFaces = useAppSelector(selectMocapMediapipeNumFaces);
-    const skeletonFilterConfig = useAppSelector(selectSkeletonFilterConfig);
     const canStartRecording = useAppSelector(selectCanStartMocapRecording);
     const canProcessMocapRecording = useAppSelector(selectCanProcessMocapRecording);
     const mocapRecordingPath = useAppSelector(selectMocapRecordingPath);
@@ -148,20 +143,6 @@ export function useMocap() {
         [dispatch]
     );
 
-    const updateSkeletonFilterConfig = useCallback(
-        (updates: Partial<RealtimeFilterConfig>) => {
-            dispatch(skeletonFilterConfigUpdated(updates));
-        },
-        [dispatch]
-    );
-
-    const replaceSkeletonFilterConfig = useCallback(
-        (config: RealtimeFilterConfig) => {
-            dispatch(skeletonFilterConfigReplaced(config));
-        },
-        [dispatch]
-    );
-
     // Local-only variants — update Redux state without triggering a server call.
     // Used when the caller (e.g. RealtimePipelineConfigTree) manages server sync itself.
     const updateDetectorConfigLocalOnly = useCallback(
@@ -174,20 +155,6 @@ export function useMocap() {
     const replaceDetectorConfigLocalOnly = useCallback(
         (config: MediapipeDetectorConfig) => {
             dispatch(mocapDetectorConfigReplaced(config));
-        },
-        [dispatch]
-    );
-
-    const updateSkeletonFilterConfigLocalOnly = useCallback(
-        (updates: Partial<RealtimeFilterConfig>) => {
-            dispatch(skeletonFilterConfigUpdated(updates));
-        },
-        [dispatch]
-    );
-
-    const replaceSkeletonFilterConfigLocalOnly = useCallback(
-        (config: RealtimeFilterConfig) => {
-            dispatch(skeletonFilterConfigReplaced(config));
         },
         [dispatch]
     );
@@ -273,7 +240,6 @@ export function useMocap() {
         mediapipeTrackingConfidence,
         mediapipeNumHands,
         mediapipeNumFaces,
-        skeletonFilterConfig,
         error: mocapState.error,
         isLoading: mocapState.isLoading,
         isRecording: mocapState.isRecording,
@@ -298,12 +264,8 @@ export function useMocap() {
         setMediapipeNumFaces,
         updateDetectorConfig,
         replaceDetectorConfig,
-        updateSkeletonFilterConfig,
-        replaceSkeletonFilterConfig,
         updateDetectorConfigLocalOnly,
         replaceDetectorConfigLocalOnly,
-        updateSkeletonFilterConfigLocalOnly,
-        replaceSkeletonFilterConfigLocalOnly,
         setManualRecordingPath,
         clearManualRecordingPath,
         dispatchStartMocapRecording,

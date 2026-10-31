@@ -142,6 +142,7 @@ class SkeletonReconstructionState:
     pose_outputs: object | None = None
     prepared_mapping: PreparedTrackerMapping | None = None
     mapping_bundle: TrackedSkeletonBundle | None = None
+    pose_continuity: object | None = None
 
     def map_frame(self, *, bundle: TrackedSkeletonBundle, points) -> ChannelValues:
         """Use one authored mapping and dense values across coordinate changes/occlusion."""
@@ -171,6 +172,7 @@ class SkeletonReconstructionState:
             self.roll_resolver.reset()
         self.previous_center_of_mass = None
         self.diagnostic_reference_fit = None
+        self.pose_continuity = None
 
 
 def streaming_model_scale_source(

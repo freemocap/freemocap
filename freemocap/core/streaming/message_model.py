@@ -413,6 +413,10 @@ class ChannelBlock:
     kind: ChannelKind
     columns: tuple[str, ...]
     data: bytes
+    # One uint8 per entity: 0 unavailable, 1 current input, 2 predicted support,
+    # 3 retained value. Model quantities remain model estimates in every case.
+    sample_status: bytes | None = None
+    status_labels: tuple[str, ...] | None = None
     camera_id: CameraIdString | None = None
     names: tuple[str, ...] | None = None
     # Full-resolution (rotated) image size of the channel's coordinate space,
@@ -452,6 +456,8 @@ class ChannelBlock:
         expected_bytes = len(resolved_names) * len(self.columns) * channel_layout.dtype.itemsize
         if len(self.data) != expected_bytes:
             raise ValueError(f"Channel payload requires {expected_bytes} bytes, received {len(self.data)}")
+        if self.sample_status is not None and len(self.sample_status) != len(resolved_names):
+            raise ValueError('Temporal status requires one byte per entity')
         return channel_layout
 
     @classmethod

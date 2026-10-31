@@ -13,6 +13,7 @@ observations (routed to trackers); everything else is model reconstruction
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import numpy as np
 from freemocap.core.diagnostics.pipeline_diagnostics import frame_diagnostics
 
 from freemocap.core.streaming.message_model import (
@@ -68,6 +69,13 @@ class MessageComposition:
             instance_blocks = tuple(b for b in blocks if b.kind not in _TRACKER_KINDS)
             tracker_blocks = tuple(b for b in blocks if b.kind in _TRACKER_KINDS)
             reconstruction = reconstructions.get(skeleton.model_id)
+            if reconstruction is not None and reconstruction.generated_support:
+                from freemocap.core.streaming.channel_helpers import TEMPORAL_STATUS_LABELS
+                # Derived channels must not lose their dependence on generated poses.
+                instance_blocks = tuple(replace(block,
+                    sample_status=(np.isfinite(np.frombuffer(block.data, dtype='<f4').reshape(-1, len(block.columns))).any(axis=-1).astype(np.uint8) * 2).tobytes(),
+                    status_labels=TEMPORAL_STATUS_LABELS) if block.sample_status is None else block
+                    for block in instance_blocks)
             if instance_blocks:
                 instances.append(
                     ModelInstance(

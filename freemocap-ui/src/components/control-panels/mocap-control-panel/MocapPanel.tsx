@@ -1,3 +1,4 @@
+import {posthocFilterConfigUpdated} from '@/store/slices/mocap';
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {useMocap} from "@/hooks/useMocap";
 import {useDirectoryWatcher} from "@/hooks/useDirectoryWatcher";
@@ -10,11 +11,12 @@ import {BlenderSection} from "@/components/control-panels/mocap-control-panel/Bl
 import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
 import {useRecordingStatus} from "@/hooks/useRecordingStatus";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
-import {useAppSelector} from "@/store";
+import {useAppSelector, useAppDispatch} from "@/store";
 import IconButton from "@/components/ui-components/IconButton";
 import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
 export const MocapPanel: React.FC = () => {
+    const dispatch = useAppDispatch();
     useRecordingCalibrationDefault();
     const {setOverlayVisibility} = useServer();
     const [localError, setLocalError] = useState<string | null>(null);
@@ -77,7 +79,8 @@ export const MocapPanel: React.FC = () => {
     }, [charucoEnabled, skeletonEnabled, setOverlayVisibility]);
 
     const [triangulateEnabled, setTriangulateEnabled] = useState(true);
-    const [filterEnabled, setFilterEnabled] = useState(true);
+    const filterEnabled = useAppSelector(state => state.mocap.config.posthoc_filter.enabled);
+    const setFilterEnabled = (enabled: boolean) => dispatch(posthocFilterConfigUpdated({enabled}));
     const [rigidBodyEnabled, setRigidBodyEnabled] = useState(true);
 
     const handleClearError = useCallback((): void => {

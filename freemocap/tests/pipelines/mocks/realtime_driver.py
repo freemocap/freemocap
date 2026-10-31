@@ -3,6 +3,7 @@ import logging
 import queue
 import time
 from dataclasses import dataclass
+from collections.abc import Callable
 
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
@@ -25,6 +26,7 @@ def drive_realtime_lockstep(
     mock_group,
     num_frames: int,
     per_frame_timeout: float = 30.0,
+    before_frame: Callable | None = None,
 ) -> RealtimeDriveResult:
     logger.info(
         f"Starting lockstep drive: {num_frames} frames  "
@@ -37,6 +39,8 @@ def drive_realtime_lockstep(
     last_progress_log = t_start
 
     for frame_index in range(num_frames):
+        if before_frame is not None:
+            before_frame(frame_index, pipeline)
         mock_group.write_frame(frame_index)
 
         got: AggregationNodeOutputMessage | None = None

@@ -3,7 +3,9 @@ import numpy as np
 import pytest
 from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
-from freemocap.core.pipeline.realtime.camera_node import _filter_image_keypoints
+from freemocap.core.pipeline.realtime.temporal_pipeline import TemporalPipeline
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig, OneEuroConfig
+from skellytracker.core.data_primitives.observation import Observation, StageObservation
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.core.tasks.mocap.realtime_filtering.one_euro_filter import OneEuroFilter1D
 from freemocap.core.recording.result_processing.input_signatures import point_array_signature
@@ -40,14 +42,12 @@ def test_masked_fingerprint_matches_explicit_mask_without_changing_chunk_boundar
     assert point_array_signature(values, measured_support=present) == expected
 
 
-def test_camera_filter_matches_scalar_nan_semantics_and_preserves_z_visibility():
+def test_camera_filter_matches_finite_scalar_recurrence_and_preserves_z_visibility():
     names = ('first', 'second')
-    state = RealtimeKeypointFilter(dims=2, beta=.0001)
+    state = TemporalPipeline(RealtimeFilterConfig(image_smoothing=OneEuroConfig(beta=.0001)))
     scalar = None
     for frame in range(5):
         xyz = np.array([[10. + frame, 20. - frame, 17.], [40. - frame, 50. + frame, 19.]])
-        if frame == 2:
-            xyz[1, 0] = np.nan
         confidence = np.array([.4, .7])
         keypoints = Keypoints(names=names, xyz=xyz.copy(), visibility=confidence.copy())
         timestamp = frame / 30.
@@ -58,7 +58,11 @@ def test_camera_filter_matches_scalar_nan_semantics_and_preserves_z_visibility()
         else:
             expected = np.array([[scalar[row][column](t=timestamp, x=float(xyz[row, column]))
                                   for column in range(2)] for row in range(2)])
-        _filter_image_keypoints(keypoints=keypoints, keypoint_filter=state, timestamp=timestamp)
+        observation = Observation(frame_number=frame, image_size=(640, 480),
+            stages={'body': StageObservation(name='body', keypoints=keypoints)})
+        filtered = state.image_observation(camera_id='camera_one', observation=observation,
+            timestamp_s=timestamp, confidence_threshold=.4)
+        keypoints = filtered.stages['body'].keypoints
         np.testing.assert_allclose(keypoints.xyz[:, :2], expected, equal_nan=True, rtol=1e-13)
         np.testing.assert_array_equal(keypoints.xyz[:, 2], xyz[:, 2])
         np.testing.assert_array_equal(keypoints.visibility, confidence)
@@ -89,8 +93,8 @@ def test_live_tensor_outputs_own_arrays_and_reuse_prepared_geometry(monkeypatch)
 
 def test_dense_velocity_gate_matches_scalar_accept_hold_and_timeout():
     from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import RealtimePointGate
-    gate = RealtimePointGate(max_velocity_mm_per_s=20., max_rejected_streak=2)
-    accepted, streaks, previous = {}, {}, None
+    gate = RealtimePointGate(max_velocity_mm_per_s=20., reacquisition_timeout_s=.3)
+    accepted, accepted_times, previous = {}, {}, None
     first_result = None
     frames = ({'a': (0., 0., 0.)}, {'a': (1., 0., 0.), 'b': (3., 0., 0.)},
               {'a': (100., 0., 0.)}, {'a': (100., 0., 0.)}, {'a': (100., 0., 0.)},
@@ -100,15 +104,14 @@ def test_dense_velocity_gate_matches_scalar_accept_hold_and_timeout():
         expected, held = {}, set()
         for name, values in entries.items():
             value = np.asarray(values)
-            reject = (previous is not None and name in accepted and streaks[name] < 2
-                      and np.linalg.norm(value - accepted[name]) / (timestamp - previous) > 20.)
+            reject = (name in accepted and timestamp - accepted_times[name] < .3
+                      and np.linalg.norm(value - accepted[name]) > 20. * (timestamp - accepted_times[name]))
             if reject:
                 held.add(name)
-                streaks[name] += 1
             else:
                 accepted[name] = value.copy()
-                streaks[name] = 0
-            expected[name] = accepted[name]
+                accepted_times[name] = timestamp
+                expected[name] = accepted[name]
         previous = timestamp
         values = ChannelValues.from_mapping(entries, component_names=SPATIAL_COMPONENTS)
         result = gate.gate(t=timestamp, points=values)

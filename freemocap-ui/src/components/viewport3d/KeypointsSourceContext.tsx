@@ -17,6 +17,8 @@ import type { ModelDefinition } from '@/services/server/transport/message-contra
 export interface PackedKeypointsFrame {
     pointNames: readonly string[];
     interleaved: Float32Array;
+    sampleStatus?: Uint8Array;
+    statusGroups?: readonly {startIndex: number; count: number; labels: readonly string[]}[];
 }
 
 /** Borrowed channel arrays retain all components until presentation needs XYZ. */
@@ -34,7 +36,7 @@ export type ModelsCallback = (models: ModelDefinition[]) => void;
 /**
  * A source of scene data.
  *
- * `keypoints` are raw measurements — every detector's triangulated points, merged.
+ * `keypoints` are triangulated predictions, possibly smoothed or gap-recovered.
  * `modelFrames` are the RECONSTRUCTIONS: one entry per tracked thing this frame, each
  * carrying its own model definition alongside its own origins / landmarks / rotations /
  * lengths / derived points. A tracked person and a tracked charuco board are two entries,

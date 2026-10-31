@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
-from freemocap.core.streaming.channel_helpers import assemble_channel_bytes
+from freemocap.core.streaming.channel_helpers import assemble_channel_bytes, temporal_status_bytes, TEMPORAL_STATUS_LABELS
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
@@ -30,9 +30,18 @@ class SegmentProducer(ChannelProducer):
         segment_names = tuple(skeleton.skeleton.segments)
         origin_positions = reconstruction.segment_origins if reconstruction else {}
         lengths = reconstruction.segment_lengths if reconstruction else {}
+        status = reconstruction.segment_status if reconstruction else None
+        if status is not None and reconstruction.generated_support:
+            # Weighted placement couples segment translations. Conservatively flag
+            # all available origins when any input pose was generated or retained.
+            values = status.data_values.copy()
+            values[values == 1] = 2
+            status = status.with_values(values)
         return [
             ChannelBlock(
                 kind=ChannelKind.SEGMENT_ORIGINS,
+                sample_status=temporal_status_bytes(names=segment_names, status=status),
+                status_labels=TEMPORAL_STATUS_LABELS if status is not None else None,
                 columns=("x", "y", "z"),
                 data=assemble_channel_bytes(names=segment_names, positions=origin_positions, columns=("x", "y", "z")),
             ),

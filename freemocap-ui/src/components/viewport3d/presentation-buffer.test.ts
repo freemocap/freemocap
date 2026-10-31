@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {PresentationBuffer} from './presentation-buffer';
+import {workerDataStore} from './WorkerDataStore';
+import type {ResolvedModelFrame} from '@/services/server/transport/frame-types';
 
 test('missing observations expire without another incoming frame and fresh observations renew them', t => {
     t.mock.timers.enable({apis: ['setTimeout']});
@@ -21,4 +23,19 @@ test('missing observations expire without another incoming frame and fresh obser
     buffer.update([3], String, Number.isFinite);
     buffer.clear();
     assert.deepEqual(visible, []);
+});
+
+test('a complete missing frame clears the previous model immediately, without extending backend retention', () => {
+    const model = {modelId: 'subject', instanceId: 0} as ResolvedModelFrame;
+    workerDataStore.dispatch('livePresentation', true);
+    workerDataStore.dispatch('modelFrames', [model]);
+    assert.equal(workerDataStore.getLatestModelFrames()?.length, 1);
+    workerDataStore.dispatch('modelFrames', []);
+    assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
+    const points = {pointNames: ['wrist'], interleaved: new Float32Array([1, 2, 3])};
+    workerDataStore.dispatch('keypoints', points);
+    const missing = {pointNames: ['wrist'], interleaved: new Float32Array([NaN, NaN, NaN])};
+    workerDataStore.dispatch('keypoints', missing);
+    assert.equal(workerDataStore.getLatestKeypoints(), missing);
+    workerDataStore.dispatch('presentationReset', null);
 });

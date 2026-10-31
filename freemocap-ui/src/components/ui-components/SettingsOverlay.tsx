@@ -1,3 +1,4 @@
+import {useTemporalFiltering} from '@/hooks/useTemporalFiltering';
 import React, { useState } from "react";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { useTranslation } from "react-i18next";
@@ -65,7 +66,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const charucoEnabled = cameraNodeConfig.charuco_tracking_enabled;
   const skeletonEnabled = cameraNodeConfig.skeleton_tracking_enabled;
   const triangulateEnabled = aggregatorConfig.triangulation_enabled;
-  const filterEnabled = aggregatorConfig.filter_enabled;
+  const temporal = useTemporalFiltering();
+  const filterEnabled = temporal.config?.spatial_smoothing.enabled ?? false;
 
   const handleCharucoToggle = () =>
     applyOrUpdatePipelineConfig({
@@ -85,11 +87,11 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       aggregator_config: { ...aggregatorConfig, triangulation_enabled: !triangulateEnabled },
     });
 
-  const handleFilterToggle = () =>
-    applyOrUpdatePipelineConfig({
-      ...pipelineConfig,
-      aggregator_config: { ...aggregatorConfig, filter_enabled: !filterEnabled },
-    });
+  const handleFilterToggle = () => {
+    if (temporal.config) void temporal.apply({...temporal.config, spatial_smoothing: {
+      ...temporal.config.spatial_smoothing, enabled: !filterEnabled,
+    }}).catch(() => { /* Filter settings display the API error. */ });
+  };
 
   const handleLiveStreamClick = () => {
     toggleConnection();
@@ -186,9 +188,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               icon={filterEnabled ? "skeletonfilter-active-icon" : "skeletonfilter-icon"}
               onClick={handleFilterToggle}
               tooltip
-              tooltipText="Skeleton Filter"
+              tooltipText={temporal.error ?? "Toggle spatial smoothing; open settings for gap recovery and other filters"}
               tooltipPosition="pos-bottom"
-              disabled={false}
+              disabled={temporal.loading || !temporal.config}
               className={`icon-size-25 ${filterEnabled ? "active" : ""}`}
             />
 

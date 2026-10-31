@@ -21,7 +21,7 @@ from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
-from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
+from freemocap.core.pipeline.realtime.temporal_pipeline import capture_timestamp
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
@@ -204,15 +204,6 @@ class CameraNode(SourceNode):
             # the ONNX session and serves all cameras via batched inference.
             skeleton_tracker, skeleton_session = _build_skeleton_tracker_from_config(config)
 
-        keypoint_filter: RealtimeKeypointFilter | None = None
-        if config.enable_keypoint_filter:
-            keypoint_filter = RealtimeKeypointFilter(
-                dims=2,
-                min_cutoff=config.keypoint_filter_min_cutoff,
-                beta=config.keypoint_filter_beta,
-                d_cutoff=config.keypoint_filter_d_cutoff,
-            )
-
         frame_recarray: np.recarray | None = None
         timer = None
         if log_pipeline_times:
@@ -230,7 +221,9 @@ class CameraNode(SourceNode):
                     new_config: CameraNodeConfig = update_msg.pipeline_config.camera_node_config
                     logger.debug(f"RealtimeCameraNode [{camera_id}] received config update")
 
-                    if new_config.charuco_tracking_enabled and new_config.charuco_tracker_config is not None:
+                    if (new_config.charuco_tracking_enabled and new_config.charuco_tracker_config is not None
+                            and (new_config.charuco_tracker_config != config.charuco_tracker_config
+                                 or new_config.charuco_tracking_enabled != config.charuco_tracking_enabled)):
                         if charuco_tracker is not None:
                             charuco_tracker.close()
                         charuco_tracker, charuco_session = _build_charuco_tracker_from_config(new_config)
@@ -246,6 +239,8 @@ class CameraNode(SourceNode):
                             new_config.skeleton_tracking_enabled
                             and new_config.skeleton_tracker_config is not None
                             and not skeleton_inference_centralized
+                            and (new_config.skeleton_tracker_config != config.skeleton_tracker_config
+                                 or new_config.skeleton_tracking_enabled != config.skeleton_tracking_enabled)
                     ):
                         if skeleton_tracker is not None:
                             skeleton_tracker.close()
@@ -256,16 +251,6 @@ class CameraNode(SourceNode):
                             skeleton_tracker.close()
                         skeleton_tracker = None
                         skeleton_session = None
-
-                    if new_config.enable_keypoint_filter:
-                        keypoint_filter = RealtimeKeypointFilter(
-                            dims=2,
-                            min_cutoff=new_config.keypoint_filter_min_cutoff,
-                            beta=new_config.keypoint_filter_beta,
-                            d_cutoff=new_config.keypoint_filter_d_cutoff,
-                        )
-                    else:
-                        keypoint_filter = None
 
                     config = new_config
 
@@ -325,24 +310,6 @@ class CameraNode(SourceNode):
 
                     from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
                     merge_mediapipe_hand_face_children(skeleton_observation)
-                    body_stage = skeleton_observation.stages.get("body")
-                    if body_stage is not None and body_stage.keypoints is not None:
-                        # Apply 1€ filter to 2D keypoints before publishing.
-                        if keypoint_filter is not None:
-                            t0 = time.perf_counter() if timer is not None else 0.0
-                            _filter_image_keypoints(keypoints=body_stage.keypoints, keypoint_filter=keypoint_filter,
-                                                    timestamp=time.perf_counter())
-                            if timer is not None:
-                                timer.record("keypoint_filter_2d", (time.perf_counter() - t0) * 1e3)
-
-                        # Confidence gating: NaN-out low-confidence 2D keypoints.
-                        kpts = body_stage.keypoints
-                        low_conf = kpts.visibility < config.confidence_threshold
-                        if low_conf.any():
-                            kpts.xyz[low_conf, :2] = np.nan
-                            if timer is not None:
-                                timer.record("confidence_gate_dropped", float(low_conf.sum()))
-
                 if charuco_tracker is not None:
                     if actual_frame_number > charuco_skip_until_frame_number:
                         t0 = time.perf_counter() if timer is not None else 0.0
@@ -367,6 +334,7 @@ class CameraNode(SourceNode):
                     CameraNodeOutputMessage(
                         camera_id=actual_camera_id,
                         frame_number=actual_frame_number,
+                        capture_timestamp_s=capture_timestamp(frame_recarray),
                         charuco_observation=charuco_observation,
                         skeleton_observation=skeleton_observation,
                     ),
@@ -388,17 +356,3 @@ class CameraNode(SourceNode):
             if skeleton_tracker is not None:
                 skeleton_tracker.close()
             logger.debug(f"RealtimeCameraNode [{camera_id}] exiting")
-
-
-def _filter_image_keypoints(*, keypoints: Keypoints, keypoint_filter: RealtimeKeypointFilter, timestamp: float) -> None:
-    """Smooth the declared XY array in place; Z/confidence retain their values.
-
-    Supplied detector NaNs are present samples, matching the existing scalar
-    camera filter. Missing identities and present-but-unavailable components
-    remain distinct; this representation change does not repair NaN recovery.
-    """
-    names = tuple(keypoints.names)
-    incoming = ChannelValues(names, keypoints.xyz[:, :2], component_names=('x', 'y'))
-    filtered = keypoint_filter.filter(t=timestamp, raw_keypoints=incoming).positions
-    available = filtered.aligned_presence(names)
-    keypoints.xyz[available, :2] = filtered.aligned(names)[available]

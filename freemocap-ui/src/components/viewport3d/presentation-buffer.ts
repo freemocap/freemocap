@@ -4,6 +4,12 @@ export class PresentationBuffer<T> {
     private timer: ReturnType<typeof setTimeout> | null = null;
     constructor(private readonly publish: (values: T[]) => void, private readonly graceMs: number) {}
 
+    /** A complete new frame supersedes even entities omitted from that frame. */
+    replace(values: readonly T[], key: (value: T) => string): void {
+        this.values.clear();
+        this.update(values, key, () => true);
+    }
+
     update(values: readonly T[], key: (value: T) => string, valid: (value: T) => boolean): void {
         const now = performance.now();
         for (const value of values) {

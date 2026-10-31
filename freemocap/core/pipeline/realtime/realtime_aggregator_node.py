@@ -81,13 +81,7 @@ from skellytracker.core.data_primitives.observation import Observation
 from freemocap.core.tasks.triangulation.helpers.angulation_result import (
     AngulationResult,
 )
-from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import (
-    RealtimePointGate,
-    GateResult,
-)
-from freemocap.core.pipeline.realtime.realtime_keypoint_filter import (
-    RealtimeKeypointFilter,
-)
+from freemocap.core.pipeline.realtime.temporal_pipeline import TemporalPipeline
 from freemocap.core.types.type_overloads import (
     TopicPublicationQueue,
     TrackedPointNameString,
@@ -407,11 +401,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         filter_config = aggregator_config.realtime_filter_config
         geometry_matcher = LiveGeometryMatcher(calibration=calibration, camera_indices=live_camera_indices)
 
-        # Initialize velocity gate for rejecting teleportation spikes
-        point_gate = RealtimePointGate(
-            max_velocity_mm_per_s=filter_config.max_velocity_mm_per_s,
-            max_rejected_streak=filter_config.max_rejected_streak,
-        )
+        temporal_pipeline = TemporalPipeline(filter_config)
 
         detector_type = pipeline_config.camera_node_config.detector_type
         # Every skeleton this run tracks, each bundled with what reconstructs it. Built
@@ -427,13 +417,6 @@ class RealtimeAggregatorNode(AggregatorNode):
         )
 
         skeleton_fitting_enabled: bool = aggregator_config.skeleton_fitting_enabled
-
-        # One Euro filter: smooths raw keypoints and gap-fills brief occlusions
-        keypoint_filter = RealtimeKeypointFilter(
-            min_cutoff=filter_config.min_cutoff,
-            beta=filter_config.beta,
-            d_cutoff=filter_config.d_cutoff,
-        )
 
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {
             cam_id: None for cam_id in camera_ids
@@ -516,10 +499,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         continue
                     pipeline_config = msg.pipeline_config
                     aggregator_config = pipeline_config.aggregator_config
+                    previous_filter_config = filter_config
                     filter_config = aggregator_config.realtime_filter_config
+                    temporal_pipeline.configure(filter_config)
                     if calibration.set_reference_transform(reference_transform=aggregator_config.reference_transform):
-                        keypoint_filter.reset()
-                        point_gate.reset()
+                        temporal_pipeline.reset()
                         skeleton_set.reset()
                         skeleton_observability_logged.clear()
                     logger.info(
@@ -530,8 +514,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     if calibration.set_source_path(
                         Path(_updated_calib_path) if _updated_calib_path else None
                     ):
-                        keypoint_filter.reset()
-                        point_gate.reset()
+                        temporal_pipeline.reset()
                         skeleton_set.reset()
                         skeleton_observability_logged.clear()
                         logger.info(
@@ -548,7 +531,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                     detector_type_changed = new_detector_type != detector_type
                     detector_type = new_detector_type
 
-                    if detector_type_changed:
+                    if detector_type_changed or previous_filter_config.segment_scale_window_frames != filter_config.segment_scale_window_frames:
+                        if detector_type_changed:
+                            temporal_pipeline.reset()
                         # A different detector measures different landmarks, so which
                         # segments may set a skeleton's scale changes with it. Rebuilding
                         # also drops the old detector's readings, which is right: they
@@ -611,8 +596,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # Coordinate frame may have changed — reset filter + gate + XCoM
                         # tracking, and the body scale with them: every reading in the
                         # fitter's windows was measured in the old frame's units.
-                        keypoint_filter.reset()
-                        point_gate.reset()
+                        temporal_pipeline.reset()
                         skeleton_set.reset()
                         skeleton_observability_logged.clear()
 
@@ -813,6 +797,20 @@ class RealtimeAggregatorNode(AggregatorNode):
                         f"Ring buffer should be monotonically increasing."
                     )
 
+                capture_times = [output.capture_timestamp_s for output in frame_n_outputs.values()
+                                 if isinstance(output, CameraNodeOutputMessage)]
+                if not capture_times or any(value is None for value in capture_times):
+                    raise ValueError("Realtime filtering requires capture timestamps from every camera")
+                frame_time = float(np.mean(capture_times))
+                # Admit both inference paths here, after the camera results are joined.
+                for source, output in frame_n_outputs.items():
+                    if isinstance(output, CameraNodeOutputMessage):
+                        output.raw_skeleton_observation = output.skeleton_observation
+                        output.skeleton_observation = temporal_pipeline.image_observation(
+                            camera_id=source, observation=output.skeleton_observation,
+                            timestamp_s=output.capture_timestamp_s,
+                            confidence_threshold=pipeline_config.camera_node_config.confidence_threshold)
+
                 # ---- Triangulate and process if calibration is valid ----
                 matching_observations: dict[str, Observation] = {}
                 for source, output in frame_n_outputs.items():
@@ -837,15 +835,14 @@ class RealtimeAggregatorNode(AggregatorNode):
                     observations=matching_observations, config=aggregator_config.camera_matching,
                     elapsed_seconds=time.perf_counter(),
                 ):
-                    keypoint_filter.reset()
-                    point_gate.reset()
+                    temporal_pipeline.reset()
                     skeleton_set.reset()
                     skeleton_observability_logged.clear()
                 point_channels: list[ChannelValues] = []
                 raw_keypoints = ChannelValues.empty(component_names=SPATIAL_COMPONENTS)
                 reprojection_diagnostics: list[NamedReprojectionDiagnostics] = []
                 filtered_keypoints = ChannelValues.empty(component_names=SPATIAL_COMPONENTS)
-                frame_time = time.perf_counter()
+                keypoint_status = None
                 # One reconstruction per tracked skeleton, filled below. A skeleton that
                 # did not hydrate this frame is simply absent.
                 reconstructions: dict[str, SkeletonReconstruction] = {}
@@ -910,43 +907,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                             point=Point.from_prevalidated_array(array=values)).array
                         raw_keypoints = ChannelValues(names, converted, present, component_names=SPATIAL_COMPONENTS)
 
-                    # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
-                    if raw_keypoints:
-                        t0 = time.perf_counter() if timer is not None else 0.0
-                        filter_result = keypoint_filter.filter(
-                            t=frame_time,
-                            raw_keypoints=raw_keypoints,
-                        )
-                        filtered_keypoints = filter_result.positions
-                        if timer is not None:
-                            timer.record(
-                                "keypoint_filter", (time.perf_counter() - t0) * 1e3
-                            )
-
-                    # Velocity gate: reject teleportation spikes
-                    if aggregator_config.filter_enabled:
-                        if raw_keypoints:
-                            t0 = time.perf_counter() if timer is not None else 0.0
-                            gate_result: GateResult = point_gate.gate(
-                                t=frame_time,
-                                points=raw_keypoints,
-                            )
-                            gated = gate_result.positions.aligned(filtered_keypoints.names)
-                            available = np.isfinite(gated).all(axis=-1)
-                            values = filtered_keypoints.data_values.copy()
-                            values[available] = gated[available]
-                            filtered_keypoints = filtered_keypoints.with_values(values, filtered_keypoints.entry_present | available)
-                            if timer is not None:
-                                timer.record(
-                                    "velocity_gate", (time.perf_counter() - t0) * 1e3
-                                )
+                    filter_result = temporal_pipeline.process(timestamp_s=frame_time, points=raw_keypoints,
+                        metric_space=calibration.is_applicable() and len(camera_ids) > 1)
+                    filtered_keypoints = filter_result.positions
+                    keypoint_status = filter_result.sample_status
 
                     # ---- Reconstruct each tracked skeleton ----
                     # One pass per skeleton: map -> hydrate -> resolve roll -> fit scale ->
                     # size every segment -> place the centre of mass. A session tracking a
                     # person and a charuco board runs this twice, and nothing below knows
                     # which is which.
-                    if skeleton_fitting_enabled and filtered_keypoints:
+                    if skeleton_fitting_enabled:
                         t0 = time.perf_counter() if timer is not None else 0.0
                         for bundle in skeleton_set.bundles:
                             state = skeleton_set.state_for(bundle)
@@ -955,6 +926,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 state=state,
                                 filtered_keypoints=filtered_keypoints,
                                 compute_center_of_mass=aggregator_config.center_of_mass_enabled,
+                                observed_keypoints=filter_result.observed_positions,
+                                timestamp_s=frame_time,
+                                segment_retention_s=filter_config.segment_retention_s,
                             )
                             if reconstruction is None:
                                 continue
@@ -1007,6 +981,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=last_received_frame,
+                        capture_timestamp_s=frame_time,
+                        keypoint_status=keypoint_status,
+                        raw_keypoints_arrays=raw_keypoints,
                         pipeline_id=ipc.pipeline_id,
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,

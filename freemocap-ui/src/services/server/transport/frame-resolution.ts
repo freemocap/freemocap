@@ -62,7 +62,10 @@ function pointView(channel: ChannelBlock, names: readonly string[]): PointsFrame
         throw new Error('Point channel bytes do not match unique declared components and identities');
     const coordinateOffsets = ['x', 'y', 'z'].map(component => channel.columns.indexOf(component)) as [number, number, number];
     if (coordinateOffsets.some(index => index < 0)) throw new Error('3D point channel requires declared XYZ components');
-    return {names, data: float32(channel.data), stride, coordinateOffsets};
+    if (channel.sample_status && channel.sample_status.length !== names.length)
+        throw new Error('Temporal status must have one value per entity');
+    return {names, data: float32(channel.data), stride, coordinateOffsets,
+        sampleStatus: channel.sample_status, statusLabels: channel.status_labels};
 }
 
 const QUATERNION_COMPONENTS = ['w', 'x', 'y', 'z'] as const;

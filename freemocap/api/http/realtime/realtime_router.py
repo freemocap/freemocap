@@ -8,6 +8,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.pubsub.pubsub_topics import (
     SkeletonFitterResetMessage,
     SkeletonFitterResetTopic,
@@ -16,6 +17,47 @@ from freemocap.pubsub.pubsub_topics import (
 logger = logging.getLogger(__name__)
 
 realtime_router = APIRouter(prefix="/realtime", tags=["Realtime Processing Pipeline"])
+
+
+class TemporalConfigStatus(BaseModel):
+    defaults: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
+    requested: RealtimeFilterConfig | None = None
+    applied: RealtimeFilterConfig | None = None
+
+
+def _running_pipeline() -> RealtimePipeline | None:
+    pipelines = [pipeline for pipeline in get_freemocap_app().realtime_pipeline_manager.pipelines.values() if pipeline.alive]
+    if len(pipelines) > 1:
+        raise HTTPException(status_code=409, detail="Multiple running pipelines require an explicit pipeline selection")
+    return pipelines[0] if pipelines else None
+
+
+@realtime_router.get("/filter-config")
+def temporal_config_status() -> TemporalConfigStatus:
+    pipeline = _running_pipeline()
+    return TemporalConfigStatus(
+        requested=pipeline.config.aggregator_config.realtime_filter_config if pipeline else None,
+        applied=pipeline.applied_filter_config if pipeline else None,
+    )
+
+
+@realtime_router.put("/filter-config")
+def update_temporal_config(config: RealtimeFilterConfig) -> TemporalConfigStatus:
+    """Update numerical processing without reconnecting or configuring cameras.
+
+    Applied values come from a completed worker frame, not the outgoing command.
+    Clients can poll GET while awaiting the next processed frame.
+    """
+    pipeline = _running_pipeline()
+    if pipeline is None:
+        raise HTTPException(status_code=409, detail="No running realtime pipeline")
+    updated = pipeline.config.model_copy(deep=True)
+    updated.aggregator_config.realtime_filter_config = config
+    try:
+        pipeline.update_config(updated)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return temporal_config_status()
 
 
 @realtime_router.get("/config", response_model_by_alias=False)
@@ -44,6 +86,7 @@ class RealtimePipelineConnectRequest(BaseModel):
     )
 
 class RealtimePipelineCreateResponse(BaseModel):
+    resolved_config: RealtimePipelineConfig
     camera_group_id: CameraGroupIdString = Field(
         description="ID of the camera group attached to the pipeline",
     )
@@ -53,6 +96,7 @@ class RealtimePipelineCreateResponse(BaseModel):
     @classmethod
     def from_pipeline(cls, pipeline: RealtimePipeline) -> "RealtimePipelineCreateResponse":
         return cls(
+            resolved_config=pipeline.config,
             camera_group_id=pipeline.camera_group.id,
             pipeline_id=pipeline.id,
         )

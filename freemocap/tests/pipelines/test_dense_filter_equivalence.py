@@ -20,8 +20,7 @@ def test_dense_filter_matches_scalar_recurrence(component_count):
     present[20:30, 2] = False  # Exhaust prediction, then recover using elapsed source time.
     present[40:45] = False
     settings = dict(min_cutoff=0.7, beta=0.013, d_cutoff=1.4)
-    dense = RealtimeKeypointFilter(dims=component_count, max_prediction_frames=3,
-                                   prediction_velocity_decay=0.6, **settings)
+    dense = RealtimeKeypointFilter(dims=component_count, gap_duration_s=0.0, **settings)
     scalar_filters = {}
     prediction_counts = {}
     retained_outputs = []
@@ -38,11 +37,8 @@ def test_dense_filter_matches_scalar_recurrence(component_count):
                     expected[name] = np.array([scalar(t=float(timestamp), x=float(value))
                                               for scalar, value in zip(scalar_filters[name], sample, strict=True)])
                 prediction_counts[name] = 0
-            elif name in scalar_filters and prediction_counts[name] < 3:
-                expected[name] = np.array([scalar.predict(t=float(timestamp), velocity_decay=0.6)
-                                          for scalar in scalar_filters[name]])
-                prediction_counts[name] += 1
-                predicted_names.add(name)
+            else:
+                scalar_filters.pop(name, None)
         # Reorder the incoming axis to catch state accidentally indexed by arrival position.
         order = random.permutation(len(entity_names))
         incoming = ChannelValues(tuple(entity_names[index] for index in order),

@@ -1,4 +1,5 @@
 import {CameraMatchingOptions, defaultCameraMatchingOptions} from '@/types/camera-matching';
+import type {TemporalConfig, TemporalStatus} from '@/types/temporal-config';
 import {DetectorType, MediapipeModelComplexity, RTMPoseModelName} from "@/store/slices/mocap";
 
 export interface CharucoBoardConfigForPipeline {
@@ -29,7 +30,7 @@ export interface RealtimeAggregatorNodeConfig {
     camera_matching: CameraMatchingOptions;
     calibration_toml_path: string | null;
     triangulation_enabled: boolean;
-    filter_enabled: boolean;
+    realtime_filter_config?: TemporalConfig;
     anchor_segment_name: string;
     center_of_mass_enabled: boolean;
     skeleton_fitting_enabled: boolean;
@@ -59,7 +60,6 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         camera_matching: {...defaultCameraMatchingOptions},
         calibration_toml_path: null,
         triangulation_enabled: true,
-        filter_enabled: false,
         anchor_segment_name: "pelvis",
         center_of_mass_enabled: true,
         skeleton_fitting_enabled: true,
@@ -73,6 +73,7 @@ export interface PipelineApplyRequest {
 }
 
 export interface PipelineApplyResponse {
+    resolved_config: RealtimePipelineConfig;
     camera_group_id: string;
     pipeline_id: string;
 }
@@ -80,6 +81,9 @@ export interface PipelineApplyResponse {
 // ==================== Redux State ====================
 
 export interface PipelineState {
+    temporalStatus: TemporalStatus | null;
+    temporalLoading: boolean;
+    temporalError: string | null;
     pipelineConfig: RealtimePipelineConfig;
     cameraGroupId: string | null;
     pipelineId: string | null;

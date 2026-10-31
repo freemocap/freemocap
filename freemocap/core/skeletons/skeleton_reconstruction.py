@@ -49,6 +49,8 @@ class SkeletonReconstruction:
     """
 
     model_id: str
+    segment_status: ChannelValues | None = None
+    generated_support: bool = False
     rigid_body_residuals: Mapping[str, RigidBodyResidual] = field(default_factory=dict)
     mapped_keypoints: Mapping[str, np.ndarray] = field(default_factory=dict)
     segment_origins: Mapping[str, np.ndarray] = field(default_factory=dict)

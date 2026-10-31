@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
+from skellyforge.core.data_tensors.channel_values import ChannelValues
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import (
     CameraGroupIdString,
@@ -79,8 +80,10 @@ class CalibrationUpdateResultMessage(TopicMessageABC):
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
+    capture_timestamp_s: float | None = None
     charuco_observation: Observation | None = None
     skeleton_observation: Observation | None = None
+    raw_skeleton_observation: Observation | None = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -146,6 +149,9 @@ class LiveCameraCalibrationBinding:
 @dataclass
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = 0
+    keypoint_status: ChannelValues | None = None
+    raw_keypoints_arrays: ChannelValues | None = None
+    capture_timestamp_s: float | None = None
     pipeline_id: PipelineIdString = ""
     pipeline_config: RealtimePipelineConfig = None
     camera_group_id: CameraGroupIdString = ""

@@ -1,10 +1,13 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
 import {defaultRealtimePipelineConfig, PipelineState, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
-import {applyRealtimePipeline, closePipeline} from "@/store/slices/realtime/realtime-thunks";
+import {applyRealtimePipeline, closePipeline, fetchTemporalConfig, applyTemporalConfig} from "@/store/slices/realtime/realtime-thunks";
 import {serverStateReceived, serverDisconnected} from "@/store/slices/connection/connection-slice";
 import {matchesSavedManualOffset, saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
 
 const initialState: PipelineState = {
+    temporalStatus: null,
+    temporalLoading: false,
+    temporalError: null,
     pipelineConfig: defaultRealtimePipelineConfig,
     cameraGroupId: null,
     pipelineId: null,
@@ -28,6 +31,29 @@ export const realtimeSlice = createSlice({
         },
     },
     extraReducers: (builder) => {
+        builder
+            .addCase(fetchTemporalConfig.fulfilled, (state, action) => {
+                state.temporalStatus = action.payload;
+                state.temporalError = null;
+                const current = state.pipelineConfig.aggregator_config;
+                current.realtime_filter_config = action.payload.requested ?? current.realtime_filter_config ?? action.payload.defaults;
+            })
+            .addCase(fetchTemporalConfig.rejected, (state, action) => {
+                state.temporalError = action.error.message ?? 'Could not read filter settings';
+            })
+            .addCase(applyTemporalConfig.pending, (state) => {
+                state.temporalLoading = true;
+                state.temporalError = null;
+            })
+            .addCase(applyTemporalConfig.fulfilled, (state, action) => {
+                state.temporalLoading = false;
+                state.temporalStatus = action.payload;
+                if (action.payload.requested) state.pipelineConfig.aggregator_config.realtime_filter_config = action.payload.requested;
+            })
+            .addCase(applyTemporalConfig.rejected, (state, action) => {
+                state.temporalLoading = false;
+                state.temporalError = action.error.message ?? 'Could not apply filter settings';
+            });
         builder
             .addCase(saveCalibrationTransform.pending, (state) => {
                 state.isLoading = true;
@@ -54,7 +80,7 @@ export const realtimeSlice = createSlice({
             .addCase(applyRealtimePipeline.fulfilled, (state, action) => {
                 state.cameraGroupId = action.payload.camera_group_id;
                 state.pipelineId = action.payload.pipeline_id;
-                state.pipelineConfig = action.meta.arg;
+                state.pipelineConfig = action.payload.resolved_config;
                 state.isConnected = true;
                 state.isLoading = false;
             })
@@ -98,6 +124,7 @@ export const realtimeSlice = createSlice({
 
             // On websocket disconnect, reset so nothing goes stale.
             .addCase(serverDisconnected, (state) => {
+                state.temporalStatus = null;
                 state.isConnected = false;
                 state.pipelineId = null;
                 state.cameraGroupId = null;

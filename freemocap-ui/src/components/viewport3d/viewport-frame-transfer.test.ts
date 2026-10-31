@@ -126,7 +126,7 @@ test('delayed receipt coalesces latest frame and replacement does not wait for c
     } finally {await h.close();}
 });
 
-test('live retention protects different model packets and releases them on timed expiry without input', async t => {
+test('fresh model packets replace missing values and disconnected presentation expires without input', async t => {
     t.mock.timers.enable({apis: ['setTimeout']});
     let now = 0;
     t.mock.method(performance, 'now', () => now);
@@ -138,16 +138,16 @@ test('live retention protects different model packets and releases them on timed
         const firstBuffer = workerDataStore.getLatestModelFrames()![1].mappedKeypoints!.data.buffer;
         h.sender.sendModels([modelFrame(0, 3), modelFrame(1, NaN)]); await h.drain();
         let frames = workerDataStore.getLatestModelFrames()!;
-        assert.deepEqual(frames.map(frame => frame.mappedKeypoints!.data[0]), [3, 2]);
-        assert.ok(firstBuffer.byteLength > 0);
+        assert.deepEqual(frames.map(frame => frame.mappedKeypoints!.data[0]), [3, NaN]);
+        assert.equal(firstBuffer.byteLength, 0);
         const secondBuffer = frames[0].mappedKeypoints!.data.buffer;
         h.sender.sendModels([modelFrame(0, NaN), modelFrame(1, 4)]); await h.drain();
         frames = workerDataStore.getLatestModelFrames()!;
-        assert.deepEqual(frames.map(frame => frame.mappedKeypoints!.data[0]), [3, 4]);
+        assert.deepEqual(frames.map(frame => frame.mappedKeypoints!.data[0]), [NaN, 4]);
         assert.equal(firstBuffer.byteLength, 0);
         const thirdBuffer = frames[1].mappedKeypoints!.data.buffer;
         h.sender.sendModels([modelFrame(0, NaN), modelFrame(1, NaN)]); await h.drain();
-        assert.ok(secondBuffer.byteLength > 0); assert.ok(thirdBuffer.byteLength > 0);
+        assert.equal(secondBuffer.byteLength, 0); assert.equal(thirdBuffer.byteLength, 0);
         now = 1001; t.mock.timers.tick(1001); await h.drain();
         assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
         assert.equal(secondBuffer.byteLength, 0); assert.equal(thirdBuffer.byteLength, 0);
@@ -188,14 +188,15 @@ test('model codec preserves double precision scalars, optional channels and eith
     }
 });
 
-test('live missing points do not detach the last valid point frame before replacement or reset', async () => {
+test('explicit missing points replace the previous values and release their transfer storage', async () => {
     const h = harness();
     try {
         await h.drain(); workerDataStore.dispatch('livePresentation', true);
         h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([1, 2, 3])}); await h.drain();
         const held = workerDataStore.getLatestKeypoints()!.interleaved;
         h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([NaN, NaN, NaN])}); await h.drain();
-        assert.deepEqual(Array.from(held), [1, 2, 3]);
+        assert.equal(held.buffer.byteLength, 0);
+        assert.ok(workerDataStore.getLatestKeypoints()!.interleaved.every(Number.isNaN));
         h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([4, 5, 6])}); await h.drain();
         assert.equal(held.buffer.byteLength, 0);
         const replacement = workerDataStore.getLatestKeypoints()!.interleaved;
@@ -212,21 +213,21 @@ test('pool preserves replacement capacity when a smaller model set changes layou
     const h = harness();
     try {
         await h.drain(); workerDataStore.dispatch('livePresentation', true);
-        // Each update replaces one model, leaving other models on older packets.
+        // Every packet describes its complete model set, including missing values.
         for (let updated = 0; updated < 4; updated++) {
             h.sender.sendModels([0, 1, 2, 3].map(index => modelFrame(index, index === updated ? index + 1 : NaN)));
             await h.drain();
         }
         const retained = workerDataStore.getLatestModelFrames()!;
         assert.equal(retained.length, 4);
-        assert.equal(new Set(retained.map(frame => frame.mappedKeypoints!.data.buffer)).size, 4);
+        assert.equal(new Set(retained.map(frame => frame.mappedKeypoints!.data.buffer)).size, 1);
         const before = h.sent.length;
         const changed = modelFrame(9, 99);
         changed.mappedKeypoints = {names: ['first', 'second'], data: new Float32Array([1, 2, 3, 4, 5, 6])};
         h.sender.sendModels([changed]); await h.drain();
         assert.equal(h.sent.length, before + 1, 'retained model packets must not delay a changed layout');
         assert.ok(h.sent.at(-1).layout);
-        assert.deepEqual(workerDataStore.getLatestModelFrames()!.map(frame => frame.instanceId), [0, 1, 2, 3, 9]);
+        assert.deepEqual(workerDataStore.getLatestModelFrames()!.map(frame => frame.instanceId), [9]);
         assert.deepEqual(Array.from(workerDataStore.getLatestModelFrames()!.at(-1)!.mappedKeypoints!.data), [1, 2, 3, 4, 5, 6]);
         now = 1001; t.mock.timers.tick(1001); await h.drain();
         assert.equal(h.sent.length, before + 1);
@@ -234,7 +235,7 @@ test('pool preserves replacement capacity when a smaller model set changes layou
     } finally {await h.close();}
 });
 
-test('individually arriving live identities retain spare transfer capacity until expiry', async t => {
+test('replacing live identities returns obsolete packets without waiting for disconnect expiry', async t => {
     t.mock.timers.enable({apis: ['setTimeout']});
     let now = 0;
     t.mock.method(performance, 'now', () => now);
@@ -246,11 +247,12 @@ test('individually arriving live identities retain spare transfer capacity until
             h.sender.sendModels([modelFrame(instance, instance + 1)]);
             await h.drain();
             const frames = workerDataStore.getLatestModelFrames()!;
-            assert.equal(frames.length, instance + 1, 'new identity must arrive without waiting for older identities to expire');
+            assert.equal(frames.length, 1, 'the new complete model set replaces the previous set');
             held.push(frames.at(-1)!.mappedKeypoints!.data.buffer);
         }
         assert.equal(h.sent.length, 9);
-        assert.ok(held.every(buffer => buffer.byteLength > 0));
+        assert.ok(held.slice(0, -1).every(buffer => buffer.byteLength === 0));
+        assert.ok(held.at(-1)!.byteLength > 0);
         now = 1001; t.mock.timers.tick(1001); await h.drain();
         assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
         assert.ok(held.every(buffer => buffer.byteLength === 0), 'expired worker references all returned to sender');

@@ -3,9 +3,41 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-
 from freemocap.core.pipeline.realtime import realtime_pipeline as module
 
+
+def test_filter_adjustments_survive_calibration_recording_mode():
+    from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
+    pipeline = object.__new__(module.RealtimePipeline)
+    pipeline.id = 'filter-restore'
+    pipeline.config = module.RealtimePipelineConfig(use_centralized_inference=False)
+    pipeline._pre_calibration_config = pipeline.config.model_copy(deep=True)
+    pipeline._pre_calibration_config.camera_node_config.skeleton_tracking_enabled = True
+    pipeline.config.camera_node_config.skeleton_tracking_enabled = False
+    requested = RealtimeFilterConfig(gap_duration_s=0.5, segment_retention_s=0.5)
+    pipeline.config.aggregator_config.realtime_filter_config = requested
+    pipeline.skeleton_inference_node = None
+    pipeline.pubsub = Mock()
+    pipeline.exit_calibration_charuco_only_mode()
+    assert pipeline.config.camera_node_config.skeleton_tracking_enabled
+    assert pipeline.config.aggregator_config.realtime_filter_config == requested
+    assert pipeline._pre_calibration_config is None
+    pipeline.pubsub.publish.assert_called_once()
+
+
+def test_invalid_recording_timing_closes_replay_videos(tmp_path):
+    from freemocap.tests.pipelines.mocks import mock_camera_group as replay
+    (tmp_path / 'camera.mp4').touch()
+    videos = Mock(spec=replay.VideoGroupHelper)
+    videos.videos = {}
+    videos.video_metadata_by_id = {}
+    videos.frame_count = 1
+    with patch.object(replay.VideoGroupHelper, 'from_video_paths', return_value=videos), \
+         patch.object(replay, 'build_camera_configs_from_videos', return_value={}), \
+         patch.object(replay.RecordingGroupTiming, 'resolve', side_effect=ValueError('invalid timing')):
+        with pytest.raises(ValueError, match='invalid timing'):
+            replay.MockCameraGroup.create(synchronized_videos_dir=str(tmp_path), global_kill_flag=Mock())
+    videos.close.assert_called_once()
 
 def node():
     result = Mock()

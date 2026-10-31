@@ -7,6 +7,8 @@
 // names arrays below are in the model's ordered segment order.
 
 export interface PointsFrame {
+    sampleStatus?: Uint8Array;
+    statusLabels?: readonly string[];
     names: readonly string[];
     /** Read-only by consumer contract; rows have `stride` values (default three).
      * Coordinate offsets select XYZ without discarding other scientific values.

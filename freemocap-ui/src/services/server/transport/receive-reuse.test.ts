@@ -31,6 +31,37 @@ function projected(models: ResolvedModelFrame[]): ResolvedModelFrame[] {
     return readFrameBuffer(buffer, layout, 'modelFrames') as ResolvedModelFrame[];
 }
 
+test('temporal status stays aligned through CBOR, resolution and pooled worker transfer', () => {
+    const source = frame();
+    const labels = ['unavailable', 'current_input', 'predicted_support', 'retained_value'];
+    source.instances[0].channels[0].sample_status = new Uint8Array([3]);
+    source.instances[0].channels[0].status_labels = labels;
+    source.trackers = [{tracker_id: 'body', detector_type: 'pose', model_id: 'subject', channels: [
+        {kind: 'KEYPOINTS_3D', names: ['wrist'], columns: ['x', 'y', 'z'],
+            data: new Uint8Array(new Float32Array([1, 2, 3]).buffer), sample_status: new Uint8Array([2]), status_labels: labels},
+    ]}];
+    const resolved = new FrameResolver().resolve(decoded(new MessageDecoder(), source));
+    const models = projected(resolved.models);
+    assert.deepEqual([...models[0].landmarks!.sampleStatus!], [3]);
+    assert.deepEqual(models[0].landmarks!.statusLabels, labels);
+    const points = {pointNames: resolved.keypoints!.names, pointSources: resolved.keypoints!.sources};
+    const layout = prepareFrameLayout('keypoints', points), buffer = new ArrayBuffer(layout.byteLength);
+    writeFrameBuffer(buffer, layout, 'keypoints', points);
+    const packed = readFrameBuffer(buffer, layout, 'keypoints');
+    assert.ok(!Array.isArray(packed) && 'interleaved' in packed);
+    assert.deepEqual([...packed.sampleStatus!], [2]);
+    assert.deepEqual(packed.statusGroups, [{startIndex: 0, count: 1, labels}]);
+    assert.ok(frameLayoutMatches(layout, 'keypoints', points));
+    points.pointSources[0].sampleStatus![0] = 3;
+    writeFrameBuffer(buffer, layout, 'keypoints', points);
+    assert.deepEqual([...packed.sampleStatus!], [3], 'the reused numerical buffer includes updated status');
+    assert.equal(frameLayoutMatches(layout, 'keypoints', {...points, pointSources: [{...points.pointSources[0], sampleStatus: undefined, statusLabels: undefined}]}), false);
+    for (const length of [0, 2]) {
+        const malformed = {...points, pointSources: [{...points.pointSources[0], sampleStatus: new Uint8Array(length)}]};
+        assert.throws(() => writeFrameBuffer(buffer, layout, 'keypoints', malformed), /Invalid point source status/);
+    }
+});
+
 test('the complete golden wire frame resolves with its declared component layouts', () => {
     const golden = decodeMessage(readFileSync('src/services/server/transport/__fixtures__/message_frame_golden.bin'));
     assert.ok(golden?.kind === 'frame');

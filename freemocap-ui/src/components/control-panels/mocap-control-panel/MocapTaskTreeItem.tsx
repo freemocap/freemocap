@@ -4,7 +4,7 @@ import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useMocap} from "@/hooks/useMocap";
 import {useElectronIPC} from "@/services";
 import {MediapipeConfigPanel} from "@/components/control-panels/mocap-control-panel/MediapipeConfigPanel";
-import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
+import {PosthocFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/PosthocFilterConfigPanel";
 import IconButton from "@/components/ui-components/IconButton";
 
 export const MocapTaskTreeItem: React.FC = () => {
@@ -356,7 +356,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                     <MediapipeConfigPanel />
 
                     {/* Skeleton Filter Config */}
-                    <SkeletonFilterConfigPanel />
+                    <PosthocFilterConfigPanel />
 
                     {/* Process Recording Button */}
                     <button

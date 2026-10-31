@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from freemocap.core.reconstruction.reference_transform import ReferenceTransform
 
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
@@ -7,6 +7,7 @@ from freemocap.core.tasks.calibration.camera_matching.matching_models import Cam
 
 
 class RealtimeAggregatorNodeConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid', validate_assignment=True)
     anchor_segment_name: str = Field(default="pelvis", min_length=1,
         description="Human segment whose measured origin anchors connected reconstruction.")
     reference_transform: ReferenceTransform | None = None
@@ -16,7 +17,6 @@ class RealtimeAggregatorNodeConfig(BaseModel):
         description="Path to calibration TOML. If None, the most-recent successful calibration is used (and hot-reloaded).",
     )
     triangulation_enabled: bool = True
-    filter_enabled: bool = False
     center_of_mass_enabled: bool = True
     skeleton_fitting_enabled: bool = False
 

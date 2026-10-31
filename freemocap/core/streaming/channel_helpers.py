@@ -14,6 +14,14 @@ import numpy as np
 
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition  # noqa: TC002
 
+TEMPORAL_STATUS_LABELS = ('unavailable', 'current_input', 'predicted_support', 'retained_value')
+
+
+def temporal_status_bytes(*, names: tuple[str, ...], status: ChannelValues | None) -> bytes | None:
+    if status is None:
+        return None
+    return np.nan_to_num(status.aligned(names), nan=0).astype(np.uint8).tobytes()
+
 
 def assemble_channel_bytes(*, names: tuple[str, ...], positions: Mapping,
                            columns: tuple[str, ...], unavailable_components: tuple[str, ...] = ()) -> bytes:

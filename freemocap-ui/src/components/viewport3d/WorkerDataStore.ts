@@ -164,8 +164,7 @@ export const workerDataStore: Omit<KeypointsSource, 'getLatestKeypoints'> & {
                 pointPresentation.clear();
                 break;
             case "keypoints":
-                if (livePresentation) pointPresentation.update([data as PackedKeypointsFrame], () => "points",
-                    value => value.interleaved.some(Number.isFinite));
+                if (livePresentation) pointPresentation.replace([data as PackedKeypointsFrame], () => "points");
                 else keypointsChan.dispatch(data as PackedKeypointsFrame);
                 break;
             case "models":
@@ -176,10 +175,7 @@ export const workerDataStore: Omit<KeypointsSource, 'getLatestKeypoints'> & {
                 modelsChan.dispatch(data as ModelDefinition[]);
                 break;
             case "modelFrames":
-                if (livePresentation) modelPresentation.update(data as ResolvedModelFrame[], modelKey,
-                    value => Boolean(value.segmentOrigins?.data.some(Number.isFinite)
-                        || value.mappedKeypoints?.data.some(Number.isFinite)
-                        || value.landmarks?.data.some(Number.isFinite)));
+                if (livePresentation) modelPresentation.replace(data as ResolvedModelFrame[], modelKey);
                 else modelFramesChan.dispatch(data as ResolvedModelFrame[]);
                 break;
             case "calibrationScene": {

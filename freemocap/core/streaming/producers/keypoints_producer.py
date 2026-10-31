@@ -6,7 +6,7 @@ from __future__ import annotations
 
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
-from freemocap.core.streaming.channel_helpers import assemble_channel_bytes
+from freemocap.core.streaming.channel_helpers import assemble_channel_bytes, temporal_status_bytes, TEMPORAL_STATUS_LABELS
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
@@ -30,6 +30,8 @@ class KeypointsProducer(ChannelProducer):
         return [
             ChannelBlock(
                 kind=ChannelKind.KEYPOINTS_3D,
+                sample_status=temporal_status_bytes(names=tracker_names, status=message.keypoint_status),
+                status_labels=TEMPORAL_STATUS_LABELS if message.keypoint_status is not None else None,
                 names=tracker_names,
                 columns=("x", "y", "z", "reprojection_error"),
                 data=assemble_channel_bytes(names=tracker_names, positions=message.keypoints_arrays or {}, columns=("x", "y", "z", "reprojection_error"), unavailable_components=("reprojection_error",)),

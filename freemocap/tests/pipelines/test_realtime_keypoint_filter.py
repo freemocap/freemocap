@@ -19,8 +19,8 @@ def test_missing_point_is_gap_filled_and_flagged():
     assert out.predicted_names == frozenset({"nose"})
 
 
-def test_prediction_stops_after_max_frames():
-    f = RealtimeKeypointFilter(dims=3, max_prediction_frames=2)
+def test_prediction_stops_after_max_duration():
+    f = RealtimeKeypointFilter(dims=3, gap_duration_s=0.2)
     f.filter(t=0.0, raw_keypoints={"nose": np.zeros(3)})
     f.filter(t=0.1, raw_keypoints={})
     f.filter(t=0.2, raw_keypoints={})

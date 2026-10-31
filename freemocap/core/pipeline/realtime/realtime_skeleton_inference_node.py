@@ -242,17 +242,10 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         timer.record("predict_batch", inf_ms)
                         timer.record("predict_per_camera", inf_ms / max(len(images), 1))
 
-                    # ---- Apply confidence gating per camera ----
-                    conf_threshold = pipeline_config.camera_node_config.confidence_threshold
+                    # ---- Preserve raw detections; aggregator owns temporal processing ----
                     per_camera_skeleton: dict[CameraIdString, Observation | None] = {}
                     for camera_id, obs in observations.items():
                         merge_mediapipe_hand_face_children(obs)
-                        body_stage = obs.stages.get("body")
-                        if body_stage is not None and body_stage.keypoints is not None:
-                            kpts = body_stage.keypoints
-                            low_conf = kpts.visibility < conf_threshold
-                            if low_conf.any():
-                                kpts.xyz[low_conf, :2] = np.nan
                         per_camera_skeleton[camera_id] = obs
 
                     # Cameras whose frame we couldn't read get None.

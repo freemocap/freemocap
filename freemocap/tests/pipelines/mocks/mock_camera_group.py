@@ -33,6 +33,7 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellycam.utilities.create_camera_group_id import create_camera_group_id
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
+from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
 
 
 def build_camera_configs_from_videos(video_group: VideoGroupHelper) -> CameraConfigs:
@@ -69,18 +70,29 @@ class MockCameraGroup(CameraGroup):
     """Subclass of CameraGroup that feeds recorded-video frames into real shm."""
 
     @classmethod
-    def create(cls, *, synchronized_videos_dir, global_kill_flag) -> "MockCameraGroup":
+    def create(cls, *, synchronized_videos_dir, global_kill_flag, recording_folder=None) -> "MockCameraGroup":
         paths = sorted(str(p) for p in Path(synchronized_videos_dir).glob("*.mp4"))
         if not paths:
             raise FileNotFoundError(f"No .mp4 videos found in {synchronized_videos_dir}")
         video_group = VideoGroupHelper.from_video_paths(video_paths=paths)
-        for helper in video_group.videos.values():
-            helper.cache.max_size_mb = 8  # Sequential replay does not need a recording-sized cache.
-        configs = build_camera_configs_from_videos(video_group)
-        timebase_mapping = TimebaseMapping()
-        # Lockstep replay needs only a few slots, not the capture default of 1 GiB/camera.
         buffers = {}
         try:
+            for helper in video_group.videos.values():
+                helper.cache.max_size_mb = 8  # Sequential replay does not need a recording-sized cache.
+            configs = build_camera_configs_from_videos(video_group)
+            video_folder = Path(synchronized_videos_dir)
+            recording_folder = Path(recording_folder) if recording_folder else (
+                video_folder.parent.parent if video_folder.name == 'synchronized' else video_folder.parent)
+            recording_timing = RecordingGroupTiming.resolve(recording_folder=recording_folder,
+                videos=video_group.video_metadata_by_id, frame_numbers=tuple(range(video_group.frame_count)))
+            # Preserve source intervals and camera offsets while mapping the recording
+            # onto this process's monotonic clock. Replay speed never changes signal time.
+            origin_s = min(item.timestamps_s[0] for item in recording_timing.cameras.values())
+            origin_ns = time.perf_counter_ns()
+            capture_times = {camera: origin_ns + np.rint((np.asarray(item.timestamps_s) - origin_s) * 1e9).astype(np.int64)
+                             for camera, item in recording_timing.cameras.items()}
+            timebase_mapping = TimebaseMapping()
+            # Lockstep replay needs only a few slots, not the capture default of 1 GiB/camera.
             for camera_id, config in configs.items():
                 buffers[camera_id] = CameraSharedMemoryRingBuffer.create(
                     example_data=np.recarray(1, dtype=create_frame_dtype(config)),
@@ -109,6 +121,8 @@ class MockCameraGroup(CameraGroup):
         # mock-only state
         self._video_group = video_group
         self._timebase_mapping = timebase_mapping
+        self.recording_timing = recording_timing
+        self.capture_times_ns = capture_times
         self._frame_recarrays: dict[CameraIdString, np.recarray] = {}
         self._next_frame = 0
         return self
@@ -160,11 +174,11 @@ class MockCameraGroup(CameraGroup):
             rec = self._recarray_for(camera_id)
             rec.image[0] = image
             rec.frame_metadata.frame_number[0] = frame_index
-            now_ns = time.perf_counter_ns()
-            rec.frame_metadata.timestamps.pre_frame_grab_ns[0] = now_ns
-            rec.frame_metadata.timestamps.post_frame_grab_ns[0] = now_ns
-            rec.frame_metadata.timestamps.pre_copy_to_camera_shm_ns[0] = now_ns
-            rec.frame_metadata.timestamps.post_copy_to_camera_shm_ns[0] = now_ns
+            capture_ns = self.capture_times_ns[camera_id][frame_index]
+            rec.frame_metadata.timestamps.pre_frame_grab_ns[0] = capture_ns
+            rec.frame_metadata.timestamps.post_frame_grab_ns[0] = capture_ns
+            rec.frame_metadata.timestamps.pre_copy_to_camera_shm_ns[0] = time.perf_counter_ns()
+            rec.frame_metadata.timestamps.post_copy_to_camera_shm_ns[0] = time.perf_counter_ns()
             self.shm.camera_shms[camera_id].put_frame(frame_rec_array=rec, overwrite=True)
         self._next_frame += 1
 

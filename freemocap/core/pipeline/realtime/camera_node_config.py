@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellytracker.core import TrackerConfig, DetectionStageConfig
 from skellytracker.core.detectors.keypoint_detectors.charuco import (
@@ -70,6 +70,7 @@ def _charuco_tracker_config_for_board(board: CharucoBoardDefinition) -> TrackerC
 #TODO - JSM - Yee-ikes! this is awful and ugly and NEEDS FIXED
 
 class CameraNodeConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
@@ -96,20 +97,6 @@ class CameraNodeConfig(BaseModel):
     skeleton_tracker_config: TrackerConfig | None = Field(
         default_factory=_default_skeleton_tracker_config
     )
-
-    # ---- 2D keypoint One Euro filter ----
-    # When True, applies per-keypoint temporal smoothing to the 2D pixel
-    # coordinates coming out of the skeleton detector, before they leave
-    # the camera node. Reduces pixel jitter before triangulation.
-    enable_keypoint_filter: bool = True
-    # Minimum cutoff (Hz) — lower = more smoothing when stationary.
-    keypoint_filter_min_cutoff: float = 1.0
-    # Speed coefficient. Pixel-space needs much smaller values than mm-space
-    # because pixel velocities are ~100× larger numerically. 0.0001 keeps the
-    # adaptive cutoff near min_cutoff for typical movements.
-    keypoint_filter_beta: float = 0.0001
-    # Velocity-estimate filter cutoff (Hz).
-    keypoint_filter_d_cutoff: float = 1.0
 
     # Confidence gating threshold — keypoints below this visibility score
     # have their xy NaN-ed before publication so triangulation skips them.

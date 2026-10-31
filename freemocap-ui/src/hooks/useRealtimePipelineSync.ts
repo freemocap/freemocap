@@ -1,4 +1,5 @@
 import {useCallback} from "react";
+import {store} from '@/store';
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {
     applyRealtimePipeline,
@@ -43,9 +44,9 @@ export function useRealtimePipelineSync() {
     /** Re-applies the current pipeline config if connected — call after a mocap detector/filter config change. */
     const triggerRealtimeApply = useCallback(() => {
         if (isConnected) {
-            dispatch(applyRealtimePipeline(pipelineConfig));
+            dispatch(applyRealtimePipeline(store.getState().realtime.pipelineConfig));
         }
-    }, [dispatch, isConnected, pipelineConfig]);
+    }, [dispatch, isConnected]);
 
     /** Connects or disconnects the realtime pipeline. */
     const toggleConnection = useCallback(async () => {

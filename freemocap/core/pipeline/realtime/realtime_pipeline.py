@@ -90,6 +90,12 @@ class RealtimePipeline:
             and not self._calibration_update_task.done()
         )
 
+    @property
+    def applied_filter_config(self):
+        """Settings on the latest completed aggregator frame, if one exists."""
+        output = self._latest_aggregation_output
+        return output.pipeline_config.aggregator_config.realtime_filter_config if output is not None else None
+
     async def save_calibration_transform(
         self, *, request: CalibrationUpdateRequest,
     ) -> LoadedCalibration:
@@ -458,7 +464,10 @@ class RealtimePipeline:
             f"RealtimePipeline [{self.id}]: exiting Charuco-only mode — "
             f"restoring skeleton inference"
         )
-        restored_config = self._pre_calibration_config
+        restored_config = self._pre_calibration_config.model_copy(deep=True)
+        # Recording temporarily changes detector activity, not the user's live
+        # filter settings. Preserve adjustments made while calibration ran.
+        restored_config.aggregator_config.realtime_filter_config = self.config.aggregator_config.realtime_filter_config
         self.update_config(restored_config)
         self._pre_calibration_config = None
 

@@ -39,15 +39,6 @@ export interface MediapipeDetectorConfig {
     refine_face_landmarks: boolean;
 }
 
-/**
- * Mirrors backend EstimatorConfig (bone length estimation tuning).
- */
-export interface EstimatorConfig {
-    max_samples: number;
-    min_samples_for_full_confidence: number;
-    iqr_confidence_sensitivity: number;
-}
-
 export interface TriangulationConfig {
     use_outlier_rejection: boolean;
     minimum_cameras_for_triangulation: number;
@@ -60,31 +51,6 @@ export interface PosthocFilterConfig {
     method: "butter_low_pass";
     cutoff: number;
     order: number;
-}
-
-/**
- * Mirrors backend RealtimeFilterConfig (skeleton smoothing + gating).
- * Field names use snake_case to match the backend JSON.
- */
-export interface RealtimeFilterConfig {
-    // One Euro Filter params
-    min_cutoff: number;
-    beta: number;
-    d_cutoff: number;
-    // FABRIK params
-    fabrik_tolerance: number;
-    fabrik_max_iterations: number;
-    // Bone length estimation params
-    height_meters: number;
-    noise_sigma: number;
-    estimator_config: EstimatorConfig;
-    // Point gate params
-    max_reprojection_error_px: number;
-    max_velocity_m_per_s: number;
-    max_rejected_streak: number;
-    // Prediction params
-    max_prediction_frames: number;
-    prediction_velocity_decay: number;
 }
 
 export type DetectorType = "rtmpose" | "mediapipe";
@@ -104,7 +70,6 @@ export interface MocapConfig {
     cameraMatching: CameraMatchingOptions;
     charucoTrackingEnabled: boolean;
     detector: MediapipeDetectorConfig;
-    skeleton_filter: RealtimeFilterConfig;
     triangulation: TriangulationConfig;
     posthoc_filter: PosthocFilterConfig;
     detectorType: DetectorType;
@@ -155,13 +120,6 @@ export const MEDIAPIPE_POSTHOC_PRESET: MediapipeDetectorConfig = {
     refine_face_landmarks: true,
 };
 
-/** Default EstimatorConfig matching backend defaults. */
-export const DEFAULT_ESTIMATOR_CONFIG: EstimatorConfig = {
-    max_samples: 500,
-    min_samples_for_full_confidence: 100,
-    iqr_confidence_sensitivity: 10.0,
-};
-
 export type DetectorPreset = "realtime" | "posthoc" | "custom";
 
 /** Detects which preset (if any) the current detector config matches. */
@@ -181,22 +139,6 @@ export function detectPreset(
     return "custom";
 }
 
-/**
- * Default RealtimeFilterConfig.
- *
- * One Euro Filter tuning (positions are in millimetres):
- *   adaptive cutoff (Hz) = min_cutoff + beta * |velocity_mm_s|
- *
- * min_cutoff (Hz) — settling speed when stationary:
- *   1.0 Hz → ~0.4 s at 30 fps (default, snappy settling)
- *   0.5 Hz → ~0.8 s, 2.0 Hz → ~0.2 s
- *
- * beta (1/mm) — responsiveness during motion:
- *   0.007 → walking (500 mm/s) adds 3.5 Hz; fast swing (2000 mm/s) → ~15 Hz
- *   Range 0.003–0.02 is appropriate for mm-space data.
- *   NOTE: beta = 0.3 (meter-space convention) is ~1000× too high.
- */
-
 export const DEFAULT_TRIANGULATION_CONFIG: TriangulationConfig = {
     use_outlier_rejection: true,
     minimum_cameras_for_triangulation: 2,
@@ -204,22 +146,6 @@ export const DEFAULT_TRIANGULATION_CONFIG: TriangulationConfig = {
     target_reprojection_error: 0.02,
 };
 
-
-export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
-    min_cutoff: 1.0,
-    beta: 0.007,
-    d_cutoff: 1.0,
-    fabrik_tolerance: 1e-4,
-    fabrik_max_iterations: 20,
-    height_meters: 1.75,
-    noise_sigma: 0.015,
-    estimator_config: { ...DEFAULT_ESTIMATOR_CONFIG },
-    max_reprojection_error_px: 60.0,
-    max_velocity_m_per_s: 50.0,
-    max_rejected_streak: 5,
-    max_prediction_frames: 15,
-    prediction_velocity_decay: 0.75,
-};
 
 export const DEFAULT_POSTHOC_FILTER_CONFIG: PosthocFilterConfig ={
     enabled: true,
@@ -257,7 +183,6 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     cameraMatching: {...defaultCameraMatchingOptions},
     detector: {...MEDIAPIPE_REALTIME_PRESET},
     triangulation: {...DEFAULT_TRIANGULATION_CONFIG},
-    skeleton_filter: {...DEFAULT_REALTIME_FILTER_CONFIG},
     posthoc_filter: {...DEFAULT_POSTHOC_FILTER_CONFIG},
 
     charucoTrackingEnabled: true,
@@ -297,11 +222,6 @@ const initialMocapConfig: MocapConfig = {
     triangulation: {
         ...DEFAULT_MOCAP_CONFIG.triangulation,
         ...(_persistedMocapConfig?.triangulation ?? {}),
-    },
-
-    skeleton_filter: {
-        ...DEFAULT_MOCAP_CONFIG.skeleton_filter,
-        ...(_persistedMocapConfig?.skeleton_filter ?? {}),
     },
 
     posthoc_filter: {
@@ -410,16 +330,6 @@ export const mocapSlice = createSlice({
             state.config.detector = { ...state.config.detector, ...action.payload };
         },
 
-        /** Replace the entire skeleton filter config. */
-        skeletonFilterConfigReplaced: (state, action: PayloadAction<RealtimeFilterConfig>) => {
-            state.config.skeleton_filter = action.payload;
-        },
-
-        /** Partially update individual skeleton filter fields. */
-        skeletonFilterConfigUpdated: (state, action: PayloadAction<Partial<RealtimeFilterConfig>>) => {
-            state.config.skeleton_filter = { ...state.config.skeleton_filter, ...action.payload };
-        },
-
         triangulationConfigUpdated: (state, action: PayloadAction<Partial<TriangulationConfig>>) => {
             state.config.triangulation = { ...state.config.triangulation, ...action.payload };
         },
@@ -515,7 +425,6 @@ export const selectMocap = (state: RootState) => state.mocap;
 export const selectMocapConfig = (state: RootState) => state.mocap.config;
 export const selectMocapDetectorConfig = (state: RootState) => state.mocap.config.detector;
 export const selectMocapTriangulationConfig = (state: RootState) => state.mocap.config.triangulation;
-export const selectSkeletonFilterConfig = (state: RootState) => state.mocap.config.skeleton_filter;
 export const selectPosthocFilterConfig = (state: RootState) => state.mocap.config.posthoc_filter;
 export const selectReferenceTransform = (state: RootState) => state.mocap.config.referenceTransform;
 export const selectReferenceTransformEnabled = (state: RootState) => state.mocap.config.referenceTransformEnabled;
@@ -583,8 +492,6 @@ export const {
     mocapMediapipeNumFacesChanged,
     mocapDetectorConfigReplaced,
     mocapDetectorConfigUpdated,
-    skeletonFilterConfigReplaced,
-    skeletonFilterConfigUpdated,
     triangulationConfigUpdated,
     posthocFilterConfigUpdated,
     mocapProgressUpdated,

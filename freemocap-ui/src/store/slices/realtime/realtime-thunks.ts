@@ -1,4 +1,6 @@
 import {createAsyncThunk} from "@reduxjs/toolkit";
+import {TemporalConfig} from '@/types/temporal-config';
+import {requestTemporalSettings} from '@/services/server/temporal-settings';
 import {RootState, selectRealtimeEnabledCameraConfigs, selectSelectedCameraConfigs} from "@/store";
 import {serverUrls} from "@/services";
 import {PipelineApplyResponse, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
@@ -106,3 +108,11 @@ export const resetSkeletonFitter = createAsyncThunk<void, void, { state: RootSta
         }
     }
 );
+
+export const fetchTemporalConfig = createAsyncThunk('realtime/readTemporal', async () => {
+    return requestTemporalSettings(`${serverUrls.getHttpUrl()}/freemocap/realtime/filter-config`);
+});
+
+export const applyTemporalConfig = createAsyncThunk('realtime/applyTemporal', async (config: TemporalConfig) => {
+    return requestTemporalSettings(`${serverUrls.getHttpUrl()}/freemocap/realtime/filter-config`, config);
+});

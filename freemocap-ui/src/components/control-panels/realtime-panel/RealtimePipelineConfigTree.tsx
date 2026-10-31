@@ -1,9 +1,10 @@
+import {TemporalFilterControls} from './TemporalFilterControls';
 import React, {useCallback} from "react";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
-import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
+import {PosthocFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/PosthocFilterConfigPanel";
 import {useMocap} from "@/hooks/useMocap";
 import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
-import {DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS, RealtimeFilterConfig} from "@/store/slices/mocap";
+import {DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS} from "@/store/slices/mocap";
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {pipelineConfigUpdated, resetSkeletonFitter} from "@/store/slices/realtime";
 import ValueSelector from "@/components/ui-components/ValueSelector";
@@ -62,8 +63,6 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         setMediapipeDetectionConfidence,
         setMediapipePresenceConfidence,
         setMediapipeTrackingConfidence,
-        updateSkeletonFilterConfigLocalOnly,
-        replaceSkeletonFilterConfigLocalOnly,
     } = useMocap();
 
     const {triggerRealtimeApply} = useRealtimePipelineSync();
@@ -94,23 +93,6 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
             setPosThocDetectorType(type);
         }
     }, [context, handleCameraNodeConfigUpdate, setPosThocDetectorType]);
-
-    // ── Skeleton filter config ─────────────────────────────────────────────────
-    const handleUpdateSkeletonFilterConfig = useCallback(
-        (updates: Partial<RealtimeFilterConfig>) => {
-            updateSkeletonFilterConfigLocalOnly(updates);
-            if (context === "realtime") triggerRealtimeApply();
-        },
-        [updateSkeletonFilterConfigLocalOnly, context, triggerRealtimeApply]
-    );
-
-    const handleReplaceSkeletonFilterConfig = useCallback(
-        (config: RealtimeFilterConfig) => {
-            replaceSkeletonFilterConfigLocalOnly(config);
-            if (context === "realtime") triggerRealtimeApply();
-        },
-        [replaceSkeletonFilterConfigLocalOnly, context, triggerRealtimeApply]
-    );
 
     // ── 2D Tracking parent state ──────────────────────────────────────────────
     const tracking2dAllOn = charucoEnabled && skeletonEnabled;
@@ -347,13 +329,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     checked={filterEnabled}
                     onToggle={onFilterToggle}
 
-                    summaryWhenCollapsed="One Euro, FABRIK"
+                    summaryWhenCollapsed={context === "realtime" ? "Smoothing and timed recovery" : "Butterworth low-pass"}
                 >
                     <div className="p-1 pl-4" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
-                        <SkeletonFilterConfigPanel
-                            updateSkeletonFilterConfig={handleUpdateSkeletonFilterConfig}
-                            replaceSkeletonFilterConfig={handleReplaceSkeletonFilterConfig}
-                        />
+                        {context === "realtime" ? <TemporalFilterControls/> : <PosthocFilterConfigPanel/>}
                     </div>
                 </RealtimePipelineStageTreeItem>
 

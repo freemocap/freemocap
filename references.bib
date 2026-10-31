@@ -430,3 +430,66 @@
   claim = {Root configure defaults an omitted frameloop option to always and updates the existing render-loop state. Resize callers must retain demand explicitly.},
   note = {Inspected the installed 9.5.0 distribution's configure implementation; verified behavior with the actual production UI before and after resize.}
 }
+
+@misc{casiezOneEuroTuning,
+  title = {1 Euro Filter: algorithm, implementations and tuning},
+  author = {Casiez, Gery and Roussel, Nicolas and Vogel, Daniel},
+  url = {https://gery.casiez.net/1euro/},
+  urldate = {2026-10-31},
+  review = {full-text},
+  claim = {The authors recommend tuning minimum cutoff for slow-motion jitter with beta initially zero, then tuning beta for fast-motion lag; beta depends on the input data units.},
+  note = {Reviewed the authors' project page, not the full CHI paper; this guidance does not establish optimal FreeMoCap parameters or a missing-data policy.}
+}
+
+@misc{mediapipePoseTemporalFiltering,
+  title = {{MediaPipe} pose landmark temporal filtering graph},
+  author = {{Google AI Edge contributors}},
+  url = {https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/modules/pose_landmark/pose_landmark_filtering.pbtxt},
+  urldate = {2026-10-31},
+  review = {source-code},
+  claim = {The graph separately smooths landmark visibility, normalized landmark coordinates and world landmark coordinates, with One Euro parameters and value scaling specific to the coordinate representation.},
+  note = {Reviewed the current master graph through its raw source. These are parallel output representations, not evidence that serial 2D and 3D filtering improves multi-camera triangulation; this review does not establish which graph is active in the installed detector.}
+}
+
+@article{karashchukAnipose2021,
+  title = {{Anipose}: A toolkit for robust markerless 3D pose estimation},
+  author = {Karashchuk, Pierre and Rupp, Katie L. and Dickinson, Evyn S. and Walling-Bell, Sarah and Sanders, Elischa and Azim, Eiman and Brunton, Bingni W. and Tuthill, John C.},
+  year = {2021},
+  journal = {Cell Reports},
+  volume = {36},
+  pages = {109730},
+  doi = {10.1016/j.celrep.2021.109730},
+  url = {https://faculty.washington.edu/tuthill/docs/anipose.pdf},
+  urldate = {2026-10-31},
+  review = {excerpt},
+  claim = {The Anipose video processing pipeline refines 2D detections and integrates temporal and spatial regularization during 3D reconstruction.},
+  note = {Reviewed the summary and pipeline description on article pages 1 and 2; this supports comparing filtering stages, not adopting offline regularization as a causal realtime algorithm or selecting a FreeMoCap gap duration.}
+}
+@misc{vmcProtocolSpecification,
+  title = {{VMC} Protocol specification},
+  author = {{VirtualMotionCaptureProtocol contributors}},
+  url = {https://protocol.vmc.info/english},
+  urldate = {2026-10-31},
+  review = {excerpt},
+  claim = {VMC uses OSC over UDP with root and named humanoid bone transforms; the specification links engine receiver implementations.},
+  note = {Reviewed communication format, receiver listings and root/bone transform sections for initial FreeMoCap interoperability planning. No receiver compatibility was tested.}
+}
+
+@misc{lslInternalsOverview,
+  title = {How liblsl works: overview},
+  author = {{Lab Streaming Layer contributors}},
+  url = {https://labstreaminglayer.readthedocs.io/projects/liblsl/internals/overview.html},
+  urldate = {2026-10-31},
+  review = {full-text},
+  claim = {LSL outlets publish streams described by channel count, format, nominal rate, source identity and XML metadata; inlets discover and receive streams.}
+}
+
+@misc{lslTimeSynchronizationGuide,
+  title = {Time Synchronization},
+  author = {{Lab Streaming Layer contributors}},
+  url = {https://labstreaminglayer.readthedocs.io/info/time_synchronization.html},
+  urldate = {2026-10-31},
+  review = {excerpt},
+  claim = {LSL sample timestamps use its local clock domain; other clock domains require explicit mapping for synchronization.},
+  note = {Reviewed documentation excerpts about local timestamps, clock offsets and mapping another clock to LSL time. FreeMoCap capture clock semantics have not been validated by this research.}
+}

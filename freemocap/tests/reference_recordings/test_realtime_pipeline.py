@@ -1,8 +1,8 @@
 """Deterministic video replay through core's real realtime processing workers.
 
 Capture is replaced at shared-memory input; this is not a SkellyCam capture or
-wall-clock throughput test. The 2D filter and velocity gate are disabled;
-the production 3D One Euro smoother remains active.
+wall-clock throughput test. Selected temporal defaults run on both inference
+paths, with live changes that must preserve workers and source timestamps.
 """
 
 import multiprocessing
@@ -16,6 +16,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.pipeline.inference_service import InferenceService
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig, OneEuroConfig
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import RealtimeAggregatorNodeConfig
@@ -53,7 +54,8 @@ def replay_reference():
 @pytest.mark.slow
 @pytest.mark.parametrize("human_enabled", [False, True], ids=["charuco", "charuco-and-human"])
 @pytest.mark.parametrize("use_default_calibration", [False, True], ids=["explicit-calibration", "latest-calibration"])
-def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, human_enabled, use_default_calibration, monkeypatch):
+@pytest.mark.parametrize('centralized', [True, False], ids=['centralized', 'per-camera'])
+def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, human_enabled, use_default_calibration, centralized, monkeypatch):
     calibration = find_recording_calibration(recording_folder=replay_reference.full_path)
     assert calibration is not None
     monkeypatch.setattr(calibration_paths, 'get_last_successful_calibration_toml_path', lambda: calibration)
@@ -61,13 +63,12 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
         camera_node_config=CameraNodeConfig(
             worker_mode=WorkerMode.THREAD, charuco_board=CharucoBoardDefinition.create_test_data_7x5(),
             charuco_tracking_enabled=True, skeleton_tracking_enabled=human_enabled,
-            enable_keypoint_filter=False,
         ),
         aggregator_config=RealtimeAggregatorNodeConfig(
             calibration_toml_path=None if use_default_calibration else str(calibration), triangulation_enabled=True,
-            skeleton_fitting_enabled=True, center_of_mass_enabled=human_enabled, filter_enabled=False,
+            skeleton_fitting_enabled=True, center_of_mass_enabled=human_enabled, realtime_filter_config=RealtimeFilterConfig(),
         ),
-        use_centralized_inference=True, log_pipeline_times=False,
+        use_centralized_inference=centralized, log_pipeline_times=False,
     )
     flag = multiprocessing.Value("b", False)
     registry = WorkerRegistry(global_kill_flag=flag, worker_mode=WorkerMode.THREAD)
@@ -87,8 +88,24 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
         service.start()
         capture = CaptureGroup(group, flag)
         pipeline = manager.create_pipeline(camera_group=capture, pipeline_config=config)
+        original_nodes = tuple(pipeline.camera_nodes.values()) + (pipeline.aggregation_node, pipeline.skeleton_inference_node)
+        updated_filter = RealtimeFilterConfig(image_smoothing=OneEuroConfig(beta=.03), gap_duration_s=.5)
+        def change_filters(frame_index, active_pipeline):
+            if frame_index == 55:
+                updated = active_pipeline.config.model_copy(deep=True)
+                updated.aggregator_config.realtime_filter_config = updated_filter
+                active_pipeline.update_config(updated)
         driven = drive_realtime_lockstep(pipeline=pipeline, mock_group=group,
-                                        num_frames=222, per_frame_timeout=120.0)
+                                        num_frames=222, per_frame_timeout=120.0, before_frame=change_filters)
+        assert original_nodes == tuple(pipeline.camera_nodes.values()) + (pipeline.aggregation_node, pipeline.skeleton_inference_node)
+        assert driven.outputs[40].pipeline_config.aggregator_config.realtime_filter_config == RealtimeFilterConfig()
+        assert driven.outputs[65].pipeline_config.aggregator_config.realtime_filter_config == updated_filter
+        capture_times = np.array([output.capture_timestamp_s for output in driven.outputs])
+        np.testing.assert_allclose(np.diff(capture_times), np.diff(group.recording_timing.synchronized.timestamps_s), atol=2e-8, rtol=0)
+        assert all(output.keypoint_status is not None for output in driven.outputs)
+        if human_enabled:
+            assert any(output.raw_skeleton_observation is not None and output.raw_skeleton_observation is not output.skeleton_observation
+                for frame in driven.outputs[65:] for output in frame.camera_node_outputs.values())
         assert [output.frame_number for output in driven.outputs] == list(range(222))
         assert driven.frames_written == driven.frames_processed == 222
         assert pipeline.failure is None

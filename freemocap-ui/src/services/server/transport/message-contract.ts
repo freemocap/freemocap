@@ -150,6 +150,8 @@ export const ChannelBlockSchema = z.object({
   kind: z.string(),
   columns: z.array(z.string()),
   data: z.instanceof(Uint8Array),
+  sample_status: z.instanceof(Uint8Array).optional(),
+  status_labels: z.array(z.string()).optional(),
   camera_id: z.string().optional(),
   names: z.array(z.string()).optional(),
   // Full-resolution (rotated) image size of this channel's coordinate space,

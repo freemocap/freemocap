@@ -21,6 +21,7 @@ from skellylogs.handlers.websocket_log_queue_handler import create_websocket_log
 
 from skellyforge.core.data_tensors import SourceIdentity
 from freemocap.core.pipeline.inference_service import InferenceService
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig, OneEuroConfig
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import RealtimeAggregatorNodeConfig
@@ -71,10 +72,10 @@ class TensorReplayTests(unittest.TestCase):
         config = RealtimePipelineConfig(
             camera_node_config=CameraNodeConfig(worker_mode=WorkerMode.THREAD,
                 charuco_board=CharucoBoardDefinition.create_test_data_7x5(),
-                charuco_tracking_enabled=True, skeleton_tracking_enabled=True, enable_keypoint_filter=False),
+                charuco_tracking_enabled=True, skeleton_tracking_enabled=True),
             aggregator_config=RealtimeAggregatorNodeConfig(calibration_toml_path=str(calibration),
                 triangulation_enabled=True, skeleton_fitting_enabled=True,
-                center_of_mass_enabled=True, filter_enabled=False),
+                center_of_mass_enabled=True, realtime_filter_config=RealtimeFilterConfig(spatial_smoothing=OneEuroConfig(enabled=False), velocity_gate_enabled=False, gap_duration_s=0.0, segment_retention_s=0.0)),
             use_centralized_inference=True, log_pipeline_times=False,
         )
         flag = multiprocessing.Value("b", False)

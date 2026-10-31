@@ -35,9 +35,9 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
     CharucoBoardDefinition,
     CharucoDetectorConfig,
 )
-from skellytracker.core.detectors.keypoint_detectors.rtmpose import (
-    RTMPoseDetectorConfig,
-    RTMPoseKeypointDetector,
+from skellytracker.core.detectors.keypoint_detectors.rtmw.wholebody.rtmw_wholebody_detector import (
+    RTMWWholebodyDetectorConfig,
+    RTMWWholebodyDetector,
 )
 from skellytracker.core.sessions.mediapipe_session import (
     MediaPipeSession,
@@ -45,7 +45,7 @@ from skellytracker.core.sessions.mediapipe_session import (
 )
 from skellytracker.core.sessions.shared_sessions import SessionRequest
 from skellytracker.core.sessions.session import Session  # noqa: TC002
-from skellytracker.core.sessions.onnx_model_spec import OnnxModelSpec  # noqa: TC002
+from skellytracker.core.tracker import tracker_session_requests as registry_session_requests
 from skellytracker.core.detectors.object_detectors.yolox import (
     YoloxPersonDetector,
     YoloxPersonDetectorConfig,
@@ -90,46 +90,16 @@ def tracker_session_requests(
     *, config: TrackerConfig, batch_size: int, execution_provider: ExecutionProviderName | None,
     mediapipe_disable_gpu: bool | None = None,
 ) -> tuple[SessionRequest, ...]:
-    """Describe compatible model resources without allocating sessions."""
-    if batch_size < 1:
-        raise ValueError("batch_size must be positive")
-    backends: set[str] = set()
-    models: dict[str, OnnxModelSpec] = {}
-    pending = list(config.stages)
-    while pending:
-        stage = pending.pop()
-        pending.extend(stage.children)
-        detectors = list(stage.keypoint_detectors)
-        if stage.object_detector is not None:
-            detectors = [*detectors, stage.object_detector]
-        for detector in detectors:
-            backends.add(detector.session_backend)
-            if isinstance(detector, RTMPoseDetectorConfig):
-                models[detector.model_name] = RTMPoseKeypointDetector.model_spec(
-                    detector.model_name
-                )
-            elif isinstance(detector, YoloxPersonDetectorConfig):
-                models[detector.model_name] = YoloxPersonDetector.model_spec(
-                    detector.model_name
-                )
-            elif detector.session_backend == "onnx":
-                raise ValueError(f"Unsupported ONNX detector: {detector.detector_type}")
-    if not backends or backends - {"cpu", "mediapipe", "onnx"}:
-        raise ValueError(f"Unsupported tracker backends: {backends}")
-    requests: list[SessionRequest] = []
-    for backend in sorted(backends):
-        if backend == "cpu":
-            requests.append(SessionRequest(session_type=CpuSession, config=CpuSessionConfig()))
-        elif backend == "mediapipe":
-            requests.append(SessionRequest(session_type=MediaPipeSession, config=MediaPipeSessionConfig(
-                disable_gpu=mediapipe_disable_gpu,
-            )))
-        else:
-            requests.append(SessionRequest(session_type=OnnxSession, config=OnnxSessionConfig(
-                batch_size=batch_size, models=sorted(models.values(), key=lambda model: model.name),
-                execution_provider=execution_provider,
-            )))
-    return tuple(requests)
+    """Describe Tracker registry resources without allocating inference sessions."""
+    requests = registry_session_requests(
+        config,
+        batch_size=batch_size,
+        onnx_overrides={"execution_provider": execution_provider},
+        mediapipe_overrides={"disable_gpu": mediapipe_disable_gpu},
+    )
+    if not requests:
+        raise ValueError("Tracker configuration requires at least one detector")
+    return requests
 
 
 def build_charuco_tracker(
@@ -161,29 +131,24 @@ def build_skeleton_onnx_session(
     model_name: str = "rtmw-x-l_256x192",
     yolox_model_name: str = "yolox-m",
 ) -> OnnxSession:
-    """Create an OnnxSession for RTMPose+YOLOX inference.
+    """Create an OnnxSession for RTMW+YOLOX inference.
 
     Args:
         batch_size: Number of cameras (images) per batched inference call.
         execution_provider: Force a specific provider ('cuda', 'trt', 'cpu',
             etc.). None = auto-detect best available.
         device_id: GPU device index. None = auto-select.
-        model_name: RTMPose model variant.
+        model_name: RTMW model variant.
         yolox_model_name: YOLOX person detector model variant.
     """
-    from skellytracker.core.detectors.keypoint_detectors.rtmpose import (
-        RTMPoseKeypointDetector,
-        RTMPOSE_MODEL_SPECS,
-    )
-
     yolox_spec = YoloxPersonDetector.model_spec(yolox_model_name)
-    rtmpose_spec = RTMPoseKeypointDetector.model_spec(model_name)
+    rtmw_spec = RTMWWholebodyDetector.model_spec(model_name)
 
     with _onnx_session_build_lock:
         session = OnnxSession.create(
             OnnxSessionConfig(
                 batch_size=batch_size,
-                models=[yolox_spec, rtmpose_spec],
+                models=[yolox_spec, rtmw_spec],
                 execution_provider=execution_provider,
                 device_id=device_id,
             )
@@ -202,7 +167,7 @@ def build_skeleton_tracker(
     video_fps: float = 30.0,
     keypoint_bbox_expansion: float = 0.05,
 ) -> Tracker:
-    """Build a body-pose Tracker (RTMPose + YOLOX) backed by an OnnxSession.
+    """Build a body-pose Tracker (RTMW + YOLOX) backed by an OnnxSession.
 
     The session must have been created with build_skeleton_onnx_session() using
     matching model names.
@@ -222,7 +187,7 @@ def skeleton_tracker_config(
                 name="body",
                 object_detector=YoloxPersonDetectorConfig(),
                 keypoint_detectors=[
-                    RTMPoseDetectorConfig(
+                    RTMWWholebodyDetectorConfig(
                         model_name=model_name,
                         confidence_threshold=confidence_threshold,
                     )

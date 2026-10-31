@@ -19,8 +19,10 @@ python -B -m pytest freemocap/tests/reference_recordings/test_realtime_pipeline.
 
 Use `-k test-data` for the smaller recording only. These replay checks accept the
 explicit `numerical` processing profile; they do not certify Blender exports.
-`test_sidecar_factory_contract.py` separately verifies that Core and Tracker
-produce identical session requests without loading models.
+`test_sidecar_factory_contract.py` separately verifies Core's model/backend
+requirements against independent expectations without loading models.
+`test_rtmw_schema_contract.py` checks model variants, confidence settings,
+landmark order, skeleton connections and saved identifiers after the migration.
 
 The [complete-run acceptance contract](../../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09)
 now requires Blender output and its saved-scene validation for a standard run,

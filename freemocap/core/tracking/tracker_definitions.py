@@ -1,9 +1,8 @@
 """Lightweight definitions for tracker keypoint schemas.
 
 Provides RTMPOSE_WHOLEBODY_DEFINITION and MEDIAPIPE_BODY_DEFINITION as simple
-named objects with .name, .tracked_points, and .connections fields, loaded from
-the new skellytracker core YAML files. These replace imports from the old
-skellytracker.trackers.*.names_and_connections modules.
+named objects with .name, .tracked_points, and .connections fields. RTMW uses
+the public detector schema API; MediaPipe definitions compose Tracker's schemas.
 """
 from __future__ import annotations
 
@@ -12,6 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 import skellytracker
+from skellytracker.core.detectors.keypoint_detectors.rtmw.wholebody.rtmw_wholebody_detector import RTMWWholebodyDetector
 from skellytracker.core.detectors.keypoint_detectors._schema_loader import (
     load_connections,
     load_point_names,
@@ -36,9 +36,11 @@ def _load(yaml_path: Path, name: str) -> TrackerDefinition:
     )
 
 
-RTMPOSE_WHOLEBODY_DEFINITION: TrackerDefinition = _load(
-    _CORE_DETECTORS / "rtmpose" / "wholebody" / "rtmpose_wholebody.yaml",
+# Preserve the recording/API source name while using Tracker's emitted schema.
+RTMPOSE_WHOLEBODY_DEFINITION: TrackerDefinition = TrackerDefinition(
     name="rtmpose_wholebody",
+    tracked_points=RTMWWholebodyDetector.keypoint_names(),
+    connections=RTMWWholebodyDetector.connections(),
 )
 
 MEDIAPIPE_BODY_DEFINITION: TrackerDefinition = _load(

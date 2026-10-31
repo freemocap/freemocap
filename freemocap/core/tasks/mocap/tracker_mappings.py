@@ -11,17 +11,15 @@ detector can emit appears in the schema KEYPOINTS_3D / OVERLAY_2D groups. The
 tracker never filters its own keypoints — foot / hand / face points ride the
 stream as pure measurements even where no standard-human landmark consumes them.
 
-IMPORT-LIGHT BY DESIGN: this module is imported by the realtime aggregator (and
-the center-of-mass loader), which run in their own process and must NOT drag the
-mediapipe / onnxruntime trees in at startup. It therefore reads the tracker
-metadata (point-name tuples + mapping paths) straight from skellytracker
-import-light mapping_paths + _schema_loader modules — never from the detector
-classes, whose module imports would pull in mediapipe / onnxruntime.
+Metadata access does not construct detectors or inference sessions. RTMW names
+come from the detector's public schema accessor; MediaPipe schemas and anatomical
+mapping paths remain owned by Tracker. Core owns their composition.
 """
 from __future__ import annotations
 
 from pathlib import Path  # noqa: TC003  # module-level annotations are evaluated lazily
 
+from skellytracker.core.detectors.keypoint_detectors.rtmw.wholebody.rtmw_wholebody_detector import RTMWWholebodyDetector
 from skellytracker.core.detectors.keypoint_detectors._schema_loader import (
     load_point_names,
 )
@@ -48,9 +46,7 @@ _MEDIAPIPE_FACE_NAMES: tuple[str, ...] = load_point_names(
 _MEDIAPIPE_HAND_NAMES: tuple[str, ...] = load_point_names(
     _KEYPOINT_DETECTORS_DIR / "mediapipe" / "hands" / "mediapipe_hand.yaml"
 )
-_RTMPOSE_WHOLEBODY_NAMES: tuple[str, ...] = load_point_names(
-    _KEYPOINT_DETECTORS_DIR / "rtmpose" / "wholebody" / "rtmpose_wholebody.yaml"
-)
+_RTMPOSE_WHOLEBODY_NAMES = RTMWWholebodyDetector.keypoint_names()
 
 _BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
     "rtmpose": RTMPOSE_BODY_MAPPING,

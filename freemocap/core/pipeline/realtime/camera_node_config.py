@@ -10,7 +10,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
     MediapipePoseModelComplexity,
 )
-from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.rtmw.wholebody.rtmw_wholebody_detector import RTMWWholebodyDetectorConfig
 from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
@@ -34,7 +34,7 @@ def _default_skeleton_tracker_config() -> TrackerConfig:
                 name="body",
                 object_detector=YoloxPersonDetectorConfig(),
                 keypoint_detectors=[
-                    RTMPoseDetectorConfig(
+                    RTMWWholebodyDetectorConfig(
                         model_name="rtmw-x-l_256x192",
                         confidence_threshold=0.4,
                     )

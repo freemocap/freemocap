@@ -7,7 +7,7 @@ ONNX construction lock. Dependency installation is outside this approval.
 - [x] **2.1. Replace Core's hard-coded session discovery with Tracker's registry requests, preserving shared-session ownership and ONNX construction locking.**
 - [x] **2.2. Update Core's RTMW imports and schema access, with tests for model names, confidence values, landmark ordering and skeleton connections.**
 - [x] **2.3. Validate the migrated Core factory through real-time replay and post-hoc processing of both reference recordings.**
-- [ ] **2.4. Publish the tested Core integration and prepare the execution-provider controls handoff.**
+- [x] **2.4. Publish the tested Core integration and prepare the execution-provider controls handoff.**
 
 ## Session discovery
 
@@ -99,6 +99,15 @@ Original recordings were not overwritten. Correctness runs overlapped; their
 elapsed times are not speedup or live-FPS measurements.
 
 ## Execution-provider controls handoff: Global 3
+
+Global 2 is complete. Core implementation/tests were published as
+[`38c67163`](https://github.com/freemocap/freemocap/commit/38c67163c7fb0b0f15647edd92ab1006fbb49c8c),
+with Tracker's schema accessor in
+[`4118b54`](https://github.com/freemocap/skellytracker/commit/4118b5481458e2383719fc6535d559dc8f2a51b9).
+Both `origin/sfn26` revisions were verified after pushing. Core's pre-existing
+100-line `references.bib` addition remains unstaged and unchanged. No generated
+artifacts, dependency declarations or lockfiles were included. This documentation
+checkpoint records completion after publication; Global 3 remains unstarted.
 
 PR #931 has not been merged or applied in Global 2. Review it against these
 current paths before integration:

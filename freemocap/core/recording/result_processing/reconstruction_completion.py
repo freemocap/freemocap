@@ -4,7 +4,7 @@ import numpy as np
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.reconstruction.recording_fit import RecordingFitInputs
-from freemocap.core.recording.result_processing.input_signatures import definition_signature
+from freemocap.core.recording.result_processing.input_signatures import definition_signature, reconstruction_stage_signature
 from freemocap.core.recording.result_processing.observation_inputs import (
     ObservationRecordingRequest,
 )
@@ -92,14 +92,10 @@ def reconstruction_checkpoints(
         ProcessingStage.SCALE_FIT: definition_signature(
             dict(version=1, points=points, fits=fits)
         ),
-        ProcessingStage.RECONSTRUCTION: definition_signature(
-            dict(version=1, models=reconstruction)
-        ),
+        ProcessingStage.RECONSTRUCTION: reconstruction_stage_signature(models=reconstruction),
     }
     if all(item.result.compute_center_of_mass for item in request.reconstructions):
-        signatures[ProcessingStage.BIOMECHANICS] = definition_signature(
-            dict(version=1, models=reconstruction)
-        )
+        signatures[ProcessingStage.BIOMECHANICS] = reconstruction_stage_signature(models=reconstruction)
     return tuple(
         StageCheckpoint(
             sensor_group=request.group.name, stage=stage, signature=signature

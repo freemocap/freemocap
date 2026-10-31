@@ -7,8 +7,10 @@ import shutil
 import numpy as np
 import pyarrow.parquet as pq
 import pytest
-from numpy.testing import assert_allclose
-from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
+from numpy.testing import assert_allclose, assert_array_equal
+from skellyforge.core.math.geometry.rotation_quaternion import rotate_vector_pairs
+from skellyforge.core.skeleton.chain.anchored_batch import AnchoredSkeletonGeometry
+from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
 
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.result_processing.saved_reconstruction import read_saved_channel
@@ -16,6 +18,77 @@ from freemocap.core.recording.playback_queries import playback_manifest
 from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from freemocap.tests.refresh_recording_reconstruction import refresh_reconstruction
+
+
+def assert_saved_weighted_geometry(*, bundle, fit, mapped, landmarks, origins, rotations):
+    """Check rigid geometry and the constrained strength-one objective independently.
+
+    Recover observed origins from saved mapping evidence. Published rotations
+    already include chronological roll resolution and remain the source for
+    fitted offsets; translation validation must not re-estimate those rotations.
+    """
+    geometry = AnchoredSkeletonGeometry.from_skeleton(skeleton=bundle.skeleton, fit=fit,
+        anchor_segment_name=bundle.anchor_segment_name or bundle.rest_pose.root_segment_name)
+    recovery = LandmarkPoseGeometry.from_skeleton(skeleton=bundle.skeleton,
+        landmark_names=tuple(mapped.channel.names))
+    assert recovery.segment_names == geometry.segment_names
+    indices = {name: i for i, name in enumerate(geometry.segment_names)}
+    origin_columns = [origins.channel.names.index(name) for name in geometry.segment_names]
+    rotation_columns = [rotations.channel.names.index(name) for name in geometry.segment_names]
+    landmark_columns = [landmarks.channel.names.index(name) for name in geometry.landmark_names]
+    joints = tuple(bundle.skeleton.joints.values())
+    parents = np.array([indices[joint.parent.name] for joint in joints])
+    children = np.array([indices[joint.child.name] for joint in joints])
+    anchor = geometry.anchor_index
+    assert np.isfinite(origins.values).all(axis=-1).any()
+    # Bound recovery and rotated-landmark temporaries for full reference recordings.
+    for start in range(0, len(origins.frames), 256):
+        stop = start + 256
+        mapped_values = mapped.values[start:stop]
+        recovered = recovery.recover_tensor(positions=mapped_values,
+            landmark_present=np.isfinite(mapped_values).all(axis=-1))
+        selected = np.zeros_like(recovered.segment_present)
+        selected[:, anchor] = recovered.segment_present[:, anchor]
+        for traversal_parents, traversal_children, _, _ in geometry.traversal_levels:
+            selected[:, traversal_children] = (selected[:, traversal_parents]
+                                               & recovered.segment_present[:, traversal_children])
+        positions = origins.values[start:stop, origin_columns]
+        orientations = rotations.values[start:stop, rotation_columns]
+        model_landmarks = landmarks.values[start:stop, landmark_columns]
+        assert_array_equal(np.isfinite(positions).all(axis=-1), selected)
+        assert_array_equal(np.isfinite(orientations).all(axis=-1), selected)
+        assert np.isnan(positions[~selected]).all()
+        assert np.isnan(orientations[~selected]).all()
+        safe_rotations = np.where(selected[..., None], orientations, [1., 0., 0., 0.])
+
+        def rotate_offsets(owners, vectors):
+            return rotate_vector_pairs(quaternions=safe_rotations[:, owners].reshape((-1, 4)),
+                vectors=np.broadcast_to(vectors, (len(positions), len(owners), 3)).reshape((-1, 3))
+            ).reshape((len(positions), len(owners), 3))
+
+        landmark_present = selected[:, geometry.landmark_owners]
+        assert_array_equal(np.isfinite(model_landmarks).all(axis=-1), landmark_present)
+        assert np.isnan(model_landmarks[~landmark_present]).all()
+        expected_landmarks = positions[:, geometry.landmark_owners] + rotate_offsets(
+            geometry.landmark_owners, geometry.landmark_vectors)
+        assert_allclose(model_landmarks[landmark_present], expected_landmarks[landmark_present], atol=1e-8)
+
+        # Half the objective gradient: (t-o) + B.T @ (B @ t - R*a).
+        # With the anchor fixed and unit position weights, zero free gradient
+        # characterizes the unique strength-one minimizer, including missingness.
+        gaps = positions[:, children] - positions[:, parents] - rotate_offsets(
+            geometry.attachment_owners, geometry.attachment_vectors)
+        edges_present = selected[:, children] & selected[:, parents]
+        gaps = np.where(edges_present[..., None], gaps, 0.)
+        gradient = np.where(selected[..., None], positions - recovered.origins, 0.)
+        for edge, (parent, child) in enumerate(zip(parents, children, strict=True)):
+            gradient[:, parent] -= gaps[:, edge]
+            gradient[:, child] += gaps[:, edge]
+        free = selected.copy()
+        free[:, anchor] = False
+        assert_allclose(gradient[free], 0., atol=1e-7, rtol=0.)
+        assert_allclose(positions[selected[:, anchor], anchor],
+                        recovered.origins[selected[:, anchor], anchor], atol=1e-8, rtol=0.)
 
 
 @pytest.mark.parametrize('dataset', ['freemocap_test_data', 'freemocap_sample_data'])
@@ -51,26 +124,8 @@ def test_saved_reference_preserves_three_trajectories(tmp_path, dataset):
     common = np.isfinite(mapped.values).all(axis=-1) & np.isfinite(landmarks.values).all(axis=-1)
     assert np.any(np.linalg.norm(mapped.values[common] - landmarks.values[common], axis=-1) > 1.)
     fit = next(f.fit for f in run.scale_fits if f.source == 'model:standard_human')
-    origin_indices = {name: i for i, name in enumerate(origins.channel.names)}
-    rotation_indices = {name: i for i, name in enumerate(rotations.channel.names)}
-    landmark_indices = {name: i for i, name in enumerate(landmarks.channel.names)}
-    for joint in bundle.skeleton.joints.values():
-        child = origins.values[:, origin_indices[joint.child.name]]
-        attachment = landmarks.values[:, landmark_indices[joint.connect_at.name]]
-        present = np.isfinite(child).all(axis=-1)
-        assert_allclose(child[present], attachment[present], atol=1e-8)
-        assert not np.any(present & ~np.isfinite(origins.values[:, origin_indices[joint.parent.name]]).all(axis=-1))
-    for index, name in enumerate(landmarks.channel.names):
-        landmark = bundle.skeleton.landmarks[name]
-        for frame in range(len(landmarks.frames)):
-            rotation = rotations.values[frame, rotation_indices[landmark.segment]]
-            position = landmarks.values[frame, index]
-            if not np.isfinite(rotation).all():
-                assert np.isnan(position).all()
-                continue
-            expected = origins.values[frame, origin_indices[landmark.segment]] + RotationQuaternion.from_array(array=rotation).rotate_vector(
-                vector=fit.segment_scales[landmark.segment] * landmark.local_position.array)
-            assert_allclose(position, expected, atol=1e-8)
+    assert_saved_weighted_geometry(bundle=bundle, fit=fit, mapped=mapped, landmarks=landmarks,
+                                  origins=origins, rotations=rotations)
     manifest = playback_manifest(structure.data_parquet_path)
     playback = next(r for r in manifest.runs if r.run_id == run_id)
     assert all(channel in playback.channels for channel in channels.values())

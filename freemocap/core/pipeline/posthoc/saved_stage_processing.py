@@ -22,7 +22,7 @@ from freemocap.core.recording.parquet_storage.checkpoint_publication import publ
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
-from freemocap.core.recording.result_processing.input_signatures import definition_signature
+from freemocap.core.recording.result_processing.input_signatures import definition_signature, reconstruction_stage_signature
 from freemocap.core.recording.result_processing.saved_reconstruction import SavedPointSeries, read_saved_channel
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
 from freemocap.core.recording.sample_encoding.reconstruction_samples import ReconstructionRecording, ReconstructionSourceDefinition, model_source_name
@@ -185,8 +185,8 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
                 raw_points={name: points.signature() for name in point_signatures},
                 points=point_signatures, filtering=report)),
             ProcessingStage.SCALE_FIT: definition_signature(dict(version=1, points=point_signatures, fits=fit_signatures)),
-            ProcessingStage.RECONSTRUCTION: definition_signature(dict(version=1, models=model_signatures)),
-            ProcessingStage.BIOMECHANICS: definition_signature(dict(version=1, models=model_signatures)),
+            ProcessingStage.RECONSTRUCTION: reconstruction_stage_signature(models=model_signatures),
+            ProcessingStage.BIOMECHANICS: reconstruction_stage_signature(models=model_signatures),
         }
         data['checkpoints'] = (*retained.checkpoints, *(StageCheckpoint(sensor_group=group,
             stage=stage, signature=signatures[stage]) for stage in executed))

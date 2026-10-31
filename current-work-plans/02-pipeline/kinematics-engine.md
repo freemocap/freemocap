@@ -47,6 +47,39 @@ loop that drives it in [realtime-loop.md](realtime-loop.md).
    rotations compose as `q_local = conj(q_parent) · q_world`; freemocap falls back to world when
    the parent segment did not hydrate this frame.
 
+## Human segment placement
+
+`RecordingPoseOutputs` is the shared Core output path for live frames and recording
+chunks. It uses Forge's `WeightedAttachmentGeometry` for `standard_human`, with
+attachment strength **1**. Other models use `AnchoredSkeletonGeometry` placement.
+This replaces exact human joint attachment with a translation-only least-squares
+balance between recovered segment origins and fitted parent attachment positions:
+
+```text
+sum_segments ||placed_origin - recovered_origin||²
+  + strength * sum_joints ||child_origin - parent_origin - rotated_attachment||²
+```
+
+The selected anchor stays at its recovered origin. Segment rotations, fitted
+lengths, and rigid landmark geometry within each segment stay unchanged. Joint
+attachments may have gaps. Core still requires an observed path to the anchor;
+missing segments are not synthesized. Mapped observations remain separate from
+model landmarks. Center of mass uses the resulting model landmarks; existing
+`RIGID_BODY_RESIDUALS` remains length diagnostics, not attachment-gap diagnostics.
+
+Forge prepares topology once and caches at most 128 presence-pattern operators.
+Changing scale fits update attachment vectors without rebuilding those operators.
+Strength is a dimensionless attachment-to-origin weight, not detector confidence.
+Strength 1 was selected in the live comparison of rigid attachment, independent
+segments, released shoulders, and weighted attachment. That comparison established
+the user's visual preference, not a measurement of anatomical accuracy.
+
+Reconstruction provenance records the placement method and strength. Reconstruction
+and biomechanics checkpoint version 2 prevents earlier rigid-placement outputs
+from satisfying current derived-stage prerequisites. Scale-fit and filtering
+versions are unchanged. Existing saved runs retain their original results until
+reconstruction is explicitly rerun.
+
 ## Coordinate systems in/out
 
 Everything above runs in the canonical Blender convention

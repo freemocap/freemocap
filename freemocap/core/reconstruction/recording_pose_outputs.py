@@ -7,6 +7,7 @@ from skellyforge.core.math.geometry.rotation_quaternion import (
     conjugate_quaternion_array, hamilton_product, normalize_quaternion_array,
 )
 from skellyforge.core.skeleton.chain.anchored_batch import AnchoredSkeletonGeometry
+from skellyforge.core.skeleton.chain.weighted_attachments import WeightedAttachmentGeometry
 from skellyforge.core.skeleton.linkage.joint_batch import JointBatchGeometry
 from skellyforge.core.skeleton.pose.pose_tensor import PoseTensor
 from skellyforge.core.skeleton.pose.scale_tensor import ScaleTensor
@@ -22,6 +23,7 @@ from freemocap.core.types.channel_kind import ChannelKind
 
 POSITION_COMPONENTS = ("x", "y", "z")
 ROTATION_COMPONENTS = ("w", "x", "y", "z")
+HUMAN_ATTACHMENT_STRENGTH = 1.0
 
 
 @lru_cache(maxsize=256)
@@ -64,6 +66,14 @@ class RecordingPoseOutputs:
             measured_segment_names=frozenset(), voting_segment_names=frozenset())
         self.base_positions = AnchoredSkeletonGeometry.from_skeleton(skeleton=bundle.skeleton,
             fit=unit_fit, anchor_segment_name=bundle.anchor_segment_name or bundle.rest_pose.root_segment_name)
+        # Human translations balance recovered origins against joint attachments.
+        # Other models retain their rigid attachment geometry. The same prepared
+        # solver serves live frames and recording batches, including changing fits.
+        self.weighted_attachments = (WeightedAttachmentGeometry.from_skeleton(
+            skeleton=bundle.skeleton,
+            anchor_segment_name=self.base_positions.segment_names[self.base_positions.anchor_index],
+            strength=HUMAN_ATTACHMENT_STRENGTH,
+        ) if bundle.model_id == "standard_human" else None)
         self.positions = None
         self.joints = JointBatchGeometry.from_skeleton(skeleton=bundle.skeleton)
         self.joint_definitions = tuple((name, tuple(joint.angle_names)) for name, joint in bundle.skeleton.joints.items())
@@ -78,7 +88,7 @@ class RecordingPoseOutputs:
             landmark_names=self.base_positions.landmark_names, segment_masses=bundle.segment_masses
         ) if compute_center_of_mass and bundle.center_of_mass_definitions.definitions else None
         self._mapping_columns: dict[tuple[str, ...], np.ndarray] = {}
-        self._connected_columns = np.asarray([self.landmark_indices[name] for name in self.base_positions.landmark_names])
+        self._position_columns = np.asarray([self.landmark_indices[name] for name in self.base_positions.landmark_names])
 
         self.configure_fit(fit=fit, reference_fit=fit, reference_kind='recording_fit')
 
@@ -109,22 +119,26 @@ class RecordingPoseOutputs:
         measured, residuals = self.residuals.calculate(scales=scales, segment_present=present)
         joints = self.joints.calculate_tensor(poses=poses)
         selected = np.zeros_like(present)
-        connected = None
+        position_result = None
         if self.positions:
             selected[:, self.positions.anchor_index] = present[:, self.positions.anchor_index]
             # Tree dependencies require depth order; frames and branches batch together.
             for parents, children, _, _ in self.positions.traversal_levels:
                 selected[:, children] = selected[:, parents] & present[:, children]
-            connected = self.positions.positions(world_orientations=rotations, segment_present=selected,
-                anchor_origins=origins[:, self.positions.anchor_index])
+            if self.weighted_attachments is not None:
+                position_result = self.weighted_attachments.positions(geometry=self.positions,
+                    world_orientations=rotations, segment_present=selected, observed_origins=origins)
+            else:
+                position_result = self.positions.positions(world_orientations=rotations, segment_present=selected,
+                    anchor_origins=origins[:, self.positions.anchor_index])
         local_present = selected & present[:, self.parents]
         local = np.full_like(rotations, np.nan)
         local[local_present] = normalize_quaternion_array(quaternions=hamilton_product(
             left=conjugate_quaternion_array(quaternions=rotations[:, self.parents][local_present]),
             right=rotations[local_present]))
         local[:, self.roots] = rotations[:, self.roots]
-        center = self.center.calculate(positions=connected.landmark_positions,
-            landmark_present=connected.landmark_present) if self.center and connected else None
+        center = self.center.calculate(positions=position_result.landmark_positions,
+            landmark_present=position_result.landmark_present) if self.center and position_result else None
         joint_selected = selected[:, self.joints.parent_indices] & selected[:, self.joints.child_indices]
         sample_key = (start_position, frame_count)
         sample_axis = self.sample_axes.get(sample_key)
@@ -154,12 +168,12 @@ class RecordingPoseOutputs:
         retain(ChannelKind.MAPPED_KEYPOINTS_3D, self.landmark_names, POSITION_COMPONENTS, mapped_values, mapped_presence)
         model_values = np.full_like(mapped_values, np.nan)
         model_presence = np.zeros_like(mapped_presence)
-        if connected is not None:
-            model_values[:, self._connected_columns] = np.where(connected.landmark_present[..., None], connected.landmark_positions, np.nan)
-            model_presence[:, self._connected_columns] = connected.landmark_present
+        if position_result is not None:
+            model_values[:, self._position_columns] = np.where(position_result.landmark_present[..., None], position_result.landmark_positions, np.nan)
+            model_presence[:, self._position_columns] = position_result.landmark_present
         retain(ChannelKind.LANDMARKS_3D, self.landmark_names, POSITION_COMPONENTS, model_values, model_presence)
-        connected_origins = np.where(selected[..., None], connected.segment_origins, np.nan) if connected else np.full_like(origins, np.nan)
-        retain(ChannelKind.SEGMENT_ORIGINS, self.names, POSITION_COMPONENTS, connected_origins, selected, poses.hydration_status)
+        placed_origins = np.where(selected[..., None], position_result.segment_origins, np.nan) if position_result else np.full_like(origins, np.nan)
+        retain(ChannelKind.SEGMENT_ORIGINS, self.names, POSITION_COMPONENTS, placed_origins, selected, poses.hydration_status)
         world_values = np.full_like(rotations, np.nan)
         world_values[selected] = canonical_quaternion_array(rotations[selected])
         retain(ChannelKind.ROTATIONS_WORLD, self.names, ROTATION_COMPONENTS, world_values, selected, poses.hydration_status)

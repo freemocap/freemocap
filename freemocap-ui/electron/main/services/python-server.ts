@@ -61,14 +61,21 @@ export class PythonServer {
                 maxBuffer: 1024 * 1024 * 100 // 100MB buffer
             });
 
-            pythonProcess.on('exit', (code) => {
-                console.log(`Python server exited (code: ${code})`);
+            const launchedProcess = pythonProcess;
+            const clearOwnedProcess = () => {
+                if (pythonProcess !== launchedProcess) return;
+                pythonProcess = null;
                 this.currentExecutablePath = null;
+                this.discoveredPort = null;
+            };
+            launchedProcess.on('exit', (code) => {
+                console.log(`Python server exited (code: ${code})`);
+                clearOwnedProcess();
             });
 
-            pythonProcess.on('error', (error) => {
+            launchedProcess.on('error', (error) => {
                 console.error('Python server process error:', error);
-                this.currentExecutablePath = null;
+                clearOwnedProcess();
             });
 
             if (!pythonProcess.pid) {
@@ -78,7 +85,8 @@ export class PythonServer {
             LifecycleLogger.logPythonProcess(pythonProcess);
             console.log(`✔ Python server started successfully (PID: ${pythonProcess.pid})`);
 
-            const port = await this.waitForPort(pythonProcess);
+            const port = await this.waitForPort(launchedProcess);
+            if (pythonProcess !== launchedProcess) throw new Error('Python server exited during startup');
             this.discoveredPort = port;
             console.log(`✔ Python server bound to port ${port}`);
 

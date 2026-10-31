@@ -19,7 +19,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
         isConnected, isFailed, connectedCameraIds, isElectron,
         autoConnectWs, autoLaunchServer,
         serverRunning, serverLoading, currentExePath,
-        candidates, candidatesLoading, processInfo, error,
+        candidates, candidatesLoading, processInfo, error, shutdownNotice,
         selectedExePath, setSelectedExePath,
         serverHost, serverPort, hostDraft, setHostDraft, portDraft, setPortDraft,
         startServer, stopServer, resetServer,
@@ -86,24 +86,27 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
             dropdownItems={
                 <div className="connection-container flex flex-col p-1 gap-2 br-1 bg-darkgray border-mid-black">
                     <div className="group-0 connection-group flex flex-col gap-1 bg-middark br-1 p-1">
-                        {/* Launch server executable (Electron only) — process control, NOT
-                            connection status. The server is "connected" iff the websocket is open. */}
-                        {isElectron && (
-                            <div className="row-1 gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
-                                <div className="text-container overflow-hidden flex items-center gap-1">
-                                    <span className={`${serverStatusColor} br-5 icon icon-warning icon-size-20`} style={{ width: 8, height: 8, flexShrink: 0 }} />
-                                    <p className="text text-nowrap text-left bg">
-                                        {serverRunning ? t('running') : serverLoading ? t('connecting') : t('stopped')}
-                                    </p>
-                                </div>
-                                <ButtonSm
-                                    text={serverRunning ? 'Stop server' : 'Launch server'}
-                                    onClick={() => (serverRunning ? stopServer() : startServer())}
-                                    disabled={serverLoading}
-                                    className={serverRunning ? 'quaternary flex-shrink-0' : 'quaternary flex-shrink-0'}
-                                />
+                        {/* Launching needs Electron; HTTP shutdown works for any configured backend. */}
+                        <div className="row-1 gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
+                            <div className="text-container overflow-hidden flex items-center gap-1">
+                                <span className={`${isConnected ? 'bg-green' : serverStatusColor} br-5 icon icon-warning icon-size-20`} style={{ width: 8, height: 8, flexShrink: 0 }} />
+                                <p className="text text-nowrap text-left bg">
+                                    {isConnected ? t('running') : serverRunning ? 'Process running' : 'Not connected'}
+                                </p>
                             </div>
-                        )}
+                            {isElectron && !serverRunning && !isConnected && <ButtonSm
+                                text="Launch server"
+                                onClick={startServer}
+                                disabled={serverLoading}
+                                className="quaternary flex-shrink-0"
+                            />}
+                            <ButtonSm
+                                text="Stop server"
+                                onClick={stopServer}
+                                disabled={serverLoading}
+                                className="quaternary flex-shrink-0"
+                            />
+                        </div>
 
                         {/* WebSocket row */}
                         <div className="row-2 gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
@@ -121,12 +124,15 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                         </div>
                     </div>
 
+                    {error && <p role="alert" className="text sm text-warning p-2 border-1 border-warning br-1 text-wrap">{error}</p>}
+                    {shutdownNotice && <p role="status" className="text sm text-gray p-2 text-wrap">{shutdownNotice}</p>}
+
                     {/* Detailed settings */}
                         <>
                             {/* Server Process Section (Electron only) */}
                             {isElectron && (
                                 <div className="server-process-section bg-middark flex flex-col gap-1 br-1 p-2">
-                                    <SubactionHeader text="Server Process" />
+                                    <SubactionHeader text="App-launched server" />
 
                                     <ToggleComponent
                                         text={t('autoLaunch')}
@@ -187,14 +193,14 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                         <ButtonSm
                                             text={t('launchServer')}
                                             onClick={startServer}
-                                            disabled={serverRunning || serverLoading}
+                                            disabled={serverRunning || isConnected || serverLoading}
                                             className="secondary"
                                             
                                         />
                                         <ButtonSm
                                             text={t('stopServer')}
                                             onClick={stopServer}
-                                            disabled={!serverRunning || serverLoading}
+                                            disabled={serverLoading}
                                             className="secondary flex-1"
                                         />
                                         <ButtonSm
@@ -212,9 +218,6 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                         </p>
                                     )}
 
-                                    {error && (
-                                        <p className="text sm text-warning p-2 mt-1 border-1 border-warning br-1 text-wrap">{error}</p>
-                                    )}
                                 </div>
                             )}
 

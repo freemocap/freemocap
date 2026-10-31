@@ -14,7 +14,7 @@ from freemocap.core.recording.data_descriptors.recording_descriptor import RunDe
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
 from freemocap.core.recording.data_descriptors.scale_fit import RecordingScaleFit
 from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance, set_stage_provenance
-from freemocap.core.recording.result_processing.input_signatures import definition_signature
+from freemocap.core.recording.result_processing.input_signatures import definition_signature, reconstruction_stage_signature
 from freemocap.core.recording.result_processing.provenance import ProvenanceContext, stage_settings
 from freemocap.core.recording.result_processing.saved_reconstruction import SavedPointSeries
 from freemocap.core.recording.sample_encoding.channel_series import ChannelSeries, SeriesSampling
@@ -80,8 +80,8 @@ def save_numerical_checkpoint(*, source: SavedSpatialSource, config: PosthocMoca
         ProcessingStage.FILTERING: definition_signature(dict(version=2,
             raw_points={b.model_id: points.signature() for b in numerical.bundles}, points=point_signatures, filtering=filtering)),
         ProcessingStage.SCALE_FIT: definition_signature(dict(version=1, points=point_signatures, fits=fit_signatures)),
-        ProcessingStage.RECONSTRUCTION: definition_signature(dict(version=1, models=model_signatures)),
-        ProcessingStage.BIOMECHANICS: definition_signature(dict(version=1, models=model_signatures)),
+        ProcessingStage.RECONSTRUCTION: reconstruction_stage_signature(models=model_signatures),
+        ProcessingStage.BIOMECHANICS: reconstruction_stage_signature(models=model_signatures),
     }
     data['checkpoints'] = (*retained.checkpoints, *(StageCheckpoint(sensor_group=source.group, stage=s,
                                                                   signature=signatures[s]) for s in executed))

@@ -8,6 +8,13 @@ Playback uses HTTP metadata/data endpoints and browser-native video delivery; it
 See [browser video playback](browser-video-playback.md) for the current playback implementation.
 Closing a viewer does not cancel a pipeline. Pipeline cancellation remains an explicit task operation.
 
+The connection panel's **Stop server** sends `GET /shutdown` to the active HTTP
+host and port, in both browser and Electron clients. It does not require Electron
+to own the backend process and does not fall back to process termination. The
+panel reports request acceptance or an error; the backend owns graceful teardown.
+Electron separately clears its launched-process ownership on exit, so an exited
+child cannot remain marked as running or be targeted by a later termination.
+
 Reuse typed messages, encoding, decoding and rendering where applicable. Live delivery selects fresh
 frames with bounded pending work; playback follows HTTP requests and browser media buffering.
 

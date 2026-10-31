@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from 'react-i18next';
 import {useElectronIPC} from '@/services';
-import {DEFAULT_HOST, DEFAULT_PORT} from '@/constants/server-urls';
+import {DEFAULT_HOST, DEFAULT_PORT, serverUrls} from '@/constants/server-urls';
 import {ExecutableCandidate} from './server-connection-types';
 import {STORAGE_KEYS, loadFromStorage, saveToStorage} from './storage';
 
@@ -35,6 +35,7 @@ export interface ServerPanelState {
     candidatesLoading: boolean;
     processInfo: { pid: number | undefined; killed: boolean } | null;
     error: string | null;
+    shutdownNotice: string | null;
     // actions
     startServer: () => Promise<void>;
     stopServer: () => Promise<void>;
@@ -81,9 +82,15 @@ export function useServerPanel(): ServerPanelState {
     const [candidatesInitialized, setCandidatesInitialized] = useState(false);
     const [processInfo, setProcessInfo] = useState<{ pid: number | undefined; killed: boolean } | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [shutdownNotice, setShutdownNotice] = useState<string | null>(null);
 
     const autoLaunchFiredRef = useRef(false);
     const serverLaunchingRef = useRef(false);
+    const serverStoppingRef = useRef(false);
+
+    useEffect(() => {
+        if (isConnected) setShutdownNotice(null);
+    }, [isConnected]);
 
     // ── Persistence effects ──
 
@@ -182,6 +189,7 @@ export function useServerPanel(): ServerPanelState {
         serverLaunchingRef.current = true;
         setServerLoading(true);
         setError(null);
+        setShutdownNotice(null);
         try {
             try {
                 await api.pythonServer.start.mutate({ exePath: selectedExePath || null });
@@ -208,19 +216,27 @@ export function useServerPanel(): ServerPanelState {
     }, [isElectron, api, selectedExePath, pollServerStatus]);
 
     const stopServer = useCallback(async () => {
-        if (!isElectron || !api) return;
+        if (serverStoppingRef.current) return;
+        serverStoppingRef.current = true;
+        // Explicitly stopping must not trigger the pending automatic launcher.
+        autoLaunchFiredRef.current = true;
         setServerLoading(true);
         setError(null);
+        setShutdownNotice(null);
         try {
-            await api.pythonServer.stop.mutate();
-            await pollServerStatus();
+            const response = await fetch(serverUrls.endpoints.shutdown, {
+                method: 'GET', cache: 'no-store', signal: AbortSignal.timeout(15000),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            setShutdownNotice('Shutdown requested.');
         } catch (err) {
             console.error('Failed to stop server:', err);
             setError(`Stop failed: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             setServerLoading(false);
+            serverStoppingRef.current = false;
         }
-    }, [isElectron, api, pollServerStatus]);
+    }, []);
 
     const resetServer = useCallback(async () => {
         if (!isElectron || !api) return;
@@ -276,12 +292,12 @@ export function useServerPanel(): ServerPanelState {
         // loadCandidates() setting it true on mount.
         if (!candidatesInitialized) return;
         if (candidatesLoading) return;
-        if (serverRunning || serverLoading) return;
+        if (serverRunning || isConnected || serverLoading) return;
 
         autoLaunchFiredRef.current = true;
         console.log('Auto-launching server...');
         startServer();
-    }, [isElectron, api, autoLaunchServer, candidatesInitialized, candidatesLoading, serverRunning, serverLoading, startServer]);
+    }, [isElectron, api, autoLaunchServer, candidatesInitialized, candidatesLoading, serverRunning, isConnected, serverLoading, startServer]);
 
     // ── WebSocket auto-reconnect ──
 
@@ -364,6 +380,7 @@ export function useServerPanel(): ServerPanelState {
         candidatesLoading,
         processInfo,
         error,
+        shutdownNotice,
         startServer,
         stopServer,
         resetServer,

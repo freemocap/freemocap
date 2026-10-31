@@ -55,9 +55,21 @@ def test_noisy_observations_are_preserved_and_geometry_uses_owning_pose(tracker)
     for name, rotation in result.segment_rotations_world.items():
         # Quaternion signs may differ while representing the same orientation.
         assert_allclose(abs(np.dot(rotation, measured.segment_poses[name].orientation.as_array())), 1., atol=1e-12)
+    # Strength-one attachments minimize origin displacement plus joint gaps.
+    # The root is fixed above; every other present segment must have zero free
+    # gradient. Use recovered evidence and published rigid landmarks directly.
+    gradient = {name: origin - measured.segment_poses[name].origin.array
+                for name, origin in result.segment_origins.items()}
     for joint in bundle.skeleton.joints.values():
-        if joint.child.name in result.segment_origins:
-            assert_allclose(result.segment_origins[joint.child.name], result.landmarks[joint.connect_at.name], atol=1e-9)
+        parent, child = joint.parent.name, joint.child.name
+        if child in result.segment_origins:
+            assert parent in result.segment_origins
+            gap = result.segment_origins[child] - result.landmarks[joint.connect_at.name]
+            gradient[parent] -= gap
+            gradient[child] += gap
+    for name, value in gradient.items():
+        if name != bundle.rest_pose.root_segment_name:
+            assert_allclose(value, 0., atol=1e-9, rtol=0.)
     for name, position in result.landmarks.items():
         landmark = bundle.skeleton.landmarks[name]
         rotation = RotationQuaternion.from_array(array=result.segment_rotations_world[landmark.segment])

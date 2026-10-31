@@ -1,10 +1,11 @@
-"""Tracker hand mappings and Forge frames must produce complete connected hands."""
+"""Tracker hand mappings and Forge frames must produce complete rigid hand segments."""
 from types import SimpleNamespace
 
 from freemocap.tests.recording_tensor_assertions import reconstruction_frame
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+from skellyforge.core.math.geometry.rotation_quaternion import rotate_vector_pairs
 
 from freemocap.core.reconstruction.posthoc_reconstruction import reconstruct_skeletons_for_recording
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
@@ -34,14 +35,25 @@ def tracked_hands(bundle):
     return points
 
 
-def assert_hand_connected(bundle, result, side):
+def assert_hand_geometry(bundle, result, side):
     hands = {name for name, segment in bundle.skeleton.segments.items()
              if segment.anatomical_segment == 'hand' and name.startswith(side + '_')}
     assert len(hands) == 20
     assert hands <= result.segment_origins.keys()
-    for joint in bundle.skeleton.joints.values():
-        if joint.child.name in hands:
-            assert_allclose(result.segment_origins[joint.child.name], result.landmarks[joint.connect_at.name], atol=1e-9)
+    assert result.segment_origins.keys() == result.segment_rotations_world.keys()
+    expected_landmarks = {name for name, landmark in bundle.skeleton.landmarks.items()
+                          if landmark.segment in result.segment_origins}
+    assert result.landmarks.keys() == expected_landmarks
+    # Soft attachments may leave joint gaps, but each segment must retain its
+    # fitted rigid landmark geometry, including all palm and finger segments.
+    hand_landmarks = [landmark for landmark in bundle.skeleton.landmarks.values() if landmark.segment in hands]
+    owners = [landmark.segment for landmark in hand_landmarks]
+    rotations = np.array([result.segment_rotations_world[name] for name in owners])
+    vectors = np.array([landmark.local_position.array * result.segment_lengths[landmark.segment]
+                        / bundle.skeleton.segments[landmark.segment].length for landmark in hand_landmarks])
+    expected = np.array([result.segment_origins[name] for name in owners]) + rotate_vector_pairs(
+        quaternions=rotations, vectors=vectors)
+    assert_allclose(np.array([result.landmarks[landmark.name] for landmark in hand_landmarks]), expected, atol=1e-9)
 
 
 @pytest.mark.parametrize('tracker', ['rtmpose', 'mediapipe'])
@@ -61,7 +73,7 @@ def test_complete_hands_in_live_posthoc_and_recorded_model(tracker, anchor):
     batch = reconstruct_skeletons_for_recording(request=request)[bundle.model_id]
     for result in (live, *(reconstruction_frame(batch, index, saved_bundle) for index in range(batch.frame_count))):
         for side in ('left', 'right'):
-            assert_hand_connected(bundle, result, side)
+            assert_hand_geometry(bundle, result, side)
     # The live rolling estimate and recording-wide scale fit use different evidence
     # windows. With the same fit, their shared geometry must agree exactly.
     same_fit = reconstruct_skeleton(bundle=bundle, state=state_for(bundle, batch.scale_fit),
@@ -90,9 +102,9 @@ def test_missing_palm_evidence_removes_that_hand_and_reentry_restores_it(tracker
     for present in (True, False, True):
         frame = points if present else {n: p for n, p in points.items() if n != missing}
         result = reconstruct_skeleton(bundle=bundle, state=state, filtered_keypoints=frame, compute_center_of_mass=False)
-        assert_hand_connected(bundle, result, 'right')
+        assert_hand_geometry(bundle, result, 'right')
         if present:
-            assert_hand_connected(bundle, result, 'left')
+            assert_hand_geometry(bundle, result, 'left')
         else:
             assert 'left_lower_arm' in result.segment_origins
             assert not any(n.startswith('left_') and s.anatomical_segment == 'hand'

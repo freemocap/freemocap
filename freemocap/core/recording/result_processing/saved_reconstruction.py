@@ -15,6 +15,7 @@ from freemocap.core.reconstruction.recording_reconstruction import (
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
 from freemocap.core.recording.result_processing.input_signatures import (
     ReconstructionInputSignatures,
+    RECONSTRUCTION_STAGE_VERSION,
     definition_signature,
     point_array_signature,
 )
@@ -207,6 +208,7 @@ def read_saved_reconstruction(
                 fit=fit_signature,
                 reconstruction=definition_signature(
                     dict(
+                        version=RECONSTRUCTION_STAGE_VERSION,
                         points=point_signature,
                         model=model_signature,
                         fit=fit_signature,

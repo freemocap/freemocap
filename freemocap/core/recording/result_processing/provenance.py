@@ -84,7 +84,11 @@ def stage_settings(stage: ProcessingStage, config: dict, *, filtering=None) -> d
     if stage == ProcessingStage.SCALE_FIT:
         return dict(policy="recording_global_measured_support")
     if stage == ProcessingStage.RECONSTRUCTION:
-        return dict(policy="saved_model_and_frozen_scale_fresh_roll_state")
+        from freemocap.core.reconstruction.recording_pose_outputs import HUMAN_ATTACHMENT_STRENGTH
+        return dict(policy="saved_model_and_frozen_scale_fresh_roll_state",
+            segment_placement=dict(
+                standard_human=dict(method="weighted_attachments", strength=HUMAN_ATTACHMENT_STRENGTH),
+                other_models=dict(method="rigid_attachments")))
     if stage == ProcessingStage.BIOMECHANICS:
         return dict(compute_center_of_mass=True)
     raise ValueError(f"Stage has its own settings adapter: {stage}")

@@ -150,7 +150,10 @@ async function initRoot(
 async function resizeRoot(width: number, height: number, top: number, left: number) {
     if (!root) return;
     canvasSize = { width, height, top, left };
-    await root.configure({ size: { width, height, top, left } });
+    // configure() defaults omitted frameloop to "always", including on resize.
+    // Preserve demand rendering instead of restarting an idle 60-Hz render loop.
+    // [@reactThreeFiber950Configuration]
+    await root.configure({ size: { width, height, top, left }, frameloop: "demand" });
 }
 
 // ---------------------------------------------------------------------------

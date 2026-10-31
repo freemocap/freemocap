@@ -20,7 +20,7 @@ import {
 import { CameraView } from "./CameraView";
 
 const EXPOSURE_MIN = -13;
-const EXPOSURE_MAX = -4;
+const EXPOSURE_MAX = -5;
 
 interface CameraViewWithOverlayProps {
   cameraIndex: number;

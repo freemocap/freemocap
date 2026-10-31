@@ -8,6 +8,7 @@ import logging
 import threading
 import time
 from types import SimpleNamespace
+import numpy as np
 
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.camera_group.rust_camera_group import RustCameraGroup
@@ -28,6 +29,8 @@ class CaptureGroup:
         self._stop = threading.Event()
         self._thread = None
         self._signature = None
+        self._native_frames = {}
+        self._transport_frames = {}
         self._sequence = 0
         self.error: str | None = None
         self._closed = False
@@ -35,10 +38,10 @@ class CaptureGroup:
             self.shm = source.shm
             return
         deadline = time.monotonic() + 5
-        frames = source.get_latest_frames()
+        frames = source.get_latest_frames(frame_buffers=self._native_frames)
         while not frames and time.monotonic() < deadline:
             time.sleep(0.01)
-            frames = source.get_latest_frames()
+            frames = source.get_latest_frames(frame_buffers=self._native_frames)
         if not frames or set(frames) != set(source.camera_ids):
             raise RuntimeError("The camera group did not provide a complete initial frame")
         configs = {}
@@ -90,9 +93,14 @@ class CaptureGroup:
             if frame.dtype != self.shm.camera_shms[camera_id].dtype:
                 raise RuntimeError("Camera image dimensions changed; restart realtime processing")
         for camera_id, original in frames.items():
-            frame = original.copy()
+            frame = self._transport_frames.get(camera_id)
+            if frame is None:
+                frame = np.zeros_like(original)
+                self._transport_frames[camera_id] = frame
+            np.copyto(frame, original)
             frame.frame_metadata.frame_number = self._sequence
-            frame.frame_metadata.camera_info = self.shm.camera_configs[camera_id].to_frame_camera_info()
+            # Keep the camera identity and rotation carried by this frame. The
+            # settings used to allocate transport can be older than a live update.
             self.shm.camera_shms[camera_id].put_frame(frame, overwrite=True)
         self._signature = signature
         self._sequence += 1
@@ -102,7 +110,8 @@ class CaptureGroup:
             while not self._stop.is_set() and not self.ipc.global_kill_flag.value:
                 if not self._source.cameras.all_ready:
                     raise RuntimeError("The capture group closed during realtime processing")
-                frames = self._source.get_latest_frames()
+                cursor = max(item[1] for item in self._signature) if self._signature else -1
+                frames = self._source.get_latest_frames(if_newer_than=cursor, frame_buffers=self._native_frames)
                 if frames:
                     self._publish(frames)
                 self._stop.wait(0.005)

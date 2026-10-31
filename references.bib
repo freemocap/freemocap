@@ -421,3 +421,12 @@
   claim = {The Windows camera exposure property uses log-base-two seconds. This defines the setting's units, not the cause of a measured application throughput regression.},
   note = {Reviewed the CameraControl Exposure definition during the live capture diagnosis; driver behavior and application throughput require separate measurements.}
 }
+@misc{reactThreeFiber950Configuration,
+  title = {{React Three Fiber} 9.5.0 root configuration implementation},
+  author = {Henschel, Paul and {React Three Fiber contributors}},
+  url = {https://github.com/pmndrs/react-three-fiber/blob/v9.5.0/packages/fiber/src/core/renderer.tsx},
+  urldate = {2026-10-30},
+  review = {source-code},
+  claim = {Root configure defaults an omitted frameloop option to always and updates the existing render-loop state. Resize callers must retain demand explicitly.},
+  note = {Inspected the installed 9.5.0 distribution's configure implementation; verified behavior with the actual production UI before and after resize.}
+}

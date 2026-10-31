@@ -17,11 +17,14 @@ class NativeSnapshots(RustCameraGroup):
         super().__init__("native", {"0001": config}, SimpleNamespace(list_groups=lambda: ["native"]))
         image_config = config.model_copy(update={"resolution": type(config.resolution)(width=6, height=8)}) if rotated else config
         self.frame = np.zeros(1, dtype=create_frame_dtype(image_config)).view(np.recarray)
+        self.frame.frame_metadata.camera_info = config.to_frame_camera_info()
         self.frame.frame_metadata.frame_number = 17
         self.frame.frame_metadata.timestamps.pre_frame_grab_ns = 123456
         self.frame.image[:] = 61
 
-    def get_latest_frames(self):
+    def get_latest_frames(self, if_newer_than=None, frame_buffers=None):
+        if if_newer_than is not None and int(self.frame.frame_metadata.frame_number[0]) <= if_newer_than:
+            return None
         return {"0001": self.frame}
 
 
@@ -39,7 +42,9 @@ def test_native_transport_preserves_pixels_and_timestamps_with_contiguous_indice
         assert int(first.frame_metadata.timestamps.pre_frame_grab_ns[0]) == 123456
         np.testing.assert_array_equal(first.image, source.frame.image)
         source.frame.frame_metadata.frame_number = 24
+        transport_buffer = capture._transport_frames['0001']
         capture._publish(source.get_latest_frames())
+        assert capture._transport_frames['0001'] is transport_buffer
         capture._publish(source.get_latest_frames())
         assert capture.shm.latest_multiframe_number == 1
         assert int(capture.shm.get_latest_multiframe()["0001"].frame_metadata.frame_number[0]) == 1
@@ -57,6 +62,22 @@ def test_python_transport_is_reused_and_never_unlinked_by_pipeline_cleanup():
     capture = CaptureGroup(source, SimpleNamespace(value=False))
     assert capture.shm is source.shm
     capture.close_transport()
+
+
+def test_native_transport_preserves_updated_frame_rotation():
+    source = NativeSnapshots()
+    capture = CaptureGroup(source, SimpleNamespace(value=False))
+    capture._stop.set()
+    capture._thread.join(timeout=2)
+    try:
+        source.frame.frame_metadata.camera_info.rotation = 1
+        source.frame.frame_metadata.frame_number = 18
+        capture._publish(source.get_latest_frames())
+        received = capture.shm.get_latest_multiframe()['0001']
+        assert int(received.frame_metadata.camera_info.rotation[0]) == 1
+        np.testing.assert_array_equal(received.frame_metadata.camera_info, source.frame.frame_metadata.camera_info)
+    finally:
+        capture.close_transport()
 
 
 def test_geometry_change_is_rejected_before_advancing_transport():

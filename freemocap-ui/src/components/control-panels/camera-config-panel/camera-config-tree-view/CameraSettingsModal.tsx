@@ -32,7 +32,7 @@ const PRESET_RESOLUTIONS = [
 ];
 
 const EXPOSURE_MIN = -13;
-const EXPOSURE_MAX = -4;
+const EXPOSURE_MAX = -5;
 
 const resolutionLabel = (config: CameraConfig): string => {
     const preset = PRESET_RESOLUTIONS.find(

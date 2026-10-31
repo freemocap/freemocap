@@ -477,6 +477,29 @@
   cursor: pointer;
 }
 
+.camera-backend-select {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 4px;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.camera-backend-select:focus-visible {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+.camera-backend-select:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 /* ============================================================
    Playback Controls
    ============================================================ */

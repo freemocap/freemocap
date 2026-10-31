@@ -11,7 +11,7 @@ interface CameraConfigExposureProps {
 
 const EXPOSURE_CONSTRAINTS = {
     min: -13,
-    max: -4,
+    max: -5,
     default: -7
 };
 

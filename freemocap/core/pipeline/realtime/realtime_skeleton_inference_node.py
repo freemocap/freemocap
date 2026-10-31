@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
 from queue import Empty
-from concurrent.futures import TimeoutError
+from concurrent.futures import CancelledError, TimeoutError
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from freemocap.core.pipeline.inference_service import InferenceService, InferenceMode, InferenceRegistration, InferenceRequest
 from freemocap.core.tracking.tracker_factory import tracker_session_requests, skeleton_tracker_config, mediapipe_tracker_config
@@ -233,16 +233,9 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         for cam_id, img in zip(ordered_camera_ids, images)
                     }
                     result = client.submit(InferenceRequest(frame_number=requested_frame_number, images=images_dict))
-                    while True:
-                        try:
-                            observations = result.result(timeout=0.05)
-                            break
-                        except TimeoutError:
-                            if result.done():
-                                raise
-                            if not ipc.should_continue or shutdown_self_flag.value:
-                                client.close()
-                                return
+                    observations = _await_inference_result(result, ipc, shutdown_self_flag)
+                    if observations is None:
+                        return
 
                     if timer is not None:
                         inf_ms = (time.perf_counter() - t_inf) * 1e3
@@ -290,6 +283,22 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             finally:
                 client.close()
                 logger.debug(f"RealtimeSkeletonInferenceNode [{camera_group_id}] exiting")
+
+
+def _await_inference_result(result, ipc, shutdown_self_flag):
+    """Expected stop cancellation ends the adapter; unexpected cancellation remains an error."""
+    while True:
+        try:
+            return result.result(timeout=0.05)
+        except CancelledError:
+            if not ipc.should_continue or shutdown_self_flag.value:
+                return None
+            raise
+        except TimeoutError:
+            if result.done():
+                raise
+            if not ipc.should_continue or shutdown_self_flag.value:
+                return None
 
 
 def _read_frames(

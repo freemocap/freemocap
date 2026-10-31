@@ -18,7 +18,7 @@ if sys.stderr is None:
 logger = logging.getLogger(__name__)
 
 
-async def main(force_preferred_port:bool=True, *, reload_stop=None) -> None:
+async def main(force_preferred_port:bool=True, *, reload_stop=None, server_port: int | None = None, route_inventory_path: str | None = None) -> None:
     # Configure logging once, at startup — NOT at import time. freemocap's
     # package __init__ stays side-effect free so sandboxes/CI/child processes
     # can import it without I/O or thread spawns.
@@ -35,7 +35,8 @@ async def main(force_preferred_port:bool=True, *, reload_stop=None) -> None:
     producers_stopped = Event()
     producers_stopped.set()
     try:
-        await _run_application(force_preferred_port, log_relay, producers_stopped, reload_stop=reload_stop)
+        await _run_application(force_preferred_port, log_relay, producers_stopped, reload_stop=reload_stop,
+                               server_port=server_port, route_inventory_path=route_inventory_path)
     finally:
         if producers_stopped.is_set():
             log_relay.stop()
@@ -44,7 +45,8 @@ async def main(force_preferred_port:bool=True, *, reload_stop=None) -> None:
             logger.error("Worker shutdown incomplete; log reader remains active until process exit")
 
 
-async def _run_application(force_preferred_port, log_relay, producers_stopped, *, reload_stop=None) -> None:
+async def _run_application(force_preferred_port, log_relay, producers_stopped, *, reload_stop=None,
+                           server_port: int | None = None, route_inventory_path: str | None = None) -> None:
     # Heavy imports are here (not at module level) so that multiprocessing
     # child processes don't re-import the entire app tree on Windows.
     # Windows uses the `spawn` start method, which re-executes this file
@@ -67,7 +69,11 @@ async def _run_application(force_preferred_port, log_relay, producers_stopped, *
     from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
 
 
-    if force_preferred_port:
+    if server_port is not None:
+        if not 1 <= server_port <= 65535:
+            raise ValueError("Explicit server port must be between 1 and 65535")
+        port = server_port
+    elif force_preferred_port:
         port = PREFERRED_PORT
         kill_process_on_port(port=port)
     else:
@@ -104,8 +110,6 @@ async def _run_application(force_preferred_port, log_relay, producers_stopped, *
     try:
         producers_stopped.clear()
         worker_registry.start_heartbeat()
-        kill_process_on_port(port=port)
-
         app = create_fastapi_app(
             global_kill_flag=global_kill_flag,
             worker_registry=worker_registry,
@@ -114,12 +118,19 @@ async def _run_application(force_preferred_port, log_relay, producers_stopped, *
 
         app.state.log_relay = log_relay
 
+        if route_inventory_path is not None:
+            from freemocap.api.route_inventory import write_route_inventory
+            write_route_inventory(app, route_inventory_path)
+
         config = uvicorn.Config(
             app=app,
             host=HOSTNAME,
             port=port,
             log_level="warning",
             ws=ClosingAwareWebSocketProtocol,
+            # Live images are already JPEG-compressed. Compressing the complete
+            # CBOR frame again adds synchronous send work on the API event loop.
+            ws_per_message_deflate=False,
             reload=False,
         )
         server = uvicorn.Server(config)
@@ -149,14 +160,18 @@ def run_main() -> None:
     multiprocessing.freeze_support()
     parser = argparse.ArgumentParser(description='FreeMoCap backend')
     parser.add_argument('--reload', action='store_true', help='Developer mode: restart after Python edits; interrupts active jobs')
+    parser.add_argument('--port', type=int, help='Bind this port without terminating another server')
+    parser.add_argument('--route-inventory', help='Write the registered HTTP and WebSocket route inventory as JSON')
     args = parser.parse_args()
     if args.reload:
+        if args.port is not None or args.route_inventory is not None:
+            parser.error('--reload cannot be combined with --port or --route-inventory')
         if getattr(sys, 'frozen', False):
             parser.error('--reload is only available when running Python source')
         from freemocap.app.dev_reload import run_reload
         run_reload()
         return
-    asyncio.run(main())
+    asyncio.run(main(server_port=args.port, route_inventory_path=args.route_inventory))
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for PyInstaller + multiprocessing on Windows
     try:

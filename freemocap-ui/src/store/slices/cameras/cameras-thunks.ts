@@ -83,11 +83,13 @@ export const detectCameras = createAsyncThunk<
                 serverCamera.name,
             );
 
-            // Priority: persisted localStorage > defaults
+            // An already-running camera is authoritative when reconnecting.
+            // Saved preferences apply when opening a camera, not when inspecting it.
             // (in-memory state for an already-known camera is merged in by the
             // reducer, using the state at fulfillment time rather than this
             // stale dispatch-time snapshot)
-            const desiredConfig: CameraConfig = saved
+            const liveConfig = liveConfigs.get(cameraId) as CameraConfig | undefined;
+            const desiredConfig: CameraConfig = liveConfig ? {...liveConfig} : saved
                 ? { ...defaultConfig, ...saved.desiredConfig }
                 : { ...defaultConfig };
 
@@ -98,7 +100,7 @@ export const detectCameras = createAsyncThunk<
                 id: cameraId,
                 name: serverCamera.name,
                 index: serverCamera.index,
-                actualConfig: (liveConfigs.get(cameraId) as CameraConfig | undefined) ?? defaultConfig,
+                actualConfig: liveConfig ?? defaultConfig,
                 desiredConfig,
                 hasConfigMismatch: false,
                 connectionStatus: liveConfigs.has(cameraId) ? 'connected' : 'available',

@@ -40,15 +40,16 @@ export const CameraConfigTreeView: React.FC = () => {
 
     return (
         <div className="camera-config-sidebar-panel flex flex-col flex-1 bg-middark br-2 p-1 min-h-0 order-1">
-            <label className="flex items-center gap-1 p-1">
-                Camera backend
+            <div className="camera-backend-control flex items-center gap-2 p-1">
+                <label htmlFor="camera-backend" className="text sm text-gray text-nowrap">Camera backend</label>
                 <select id="camera-backend" value={backend} disabled={isLoading || connectedCameras.length > 0}
+                        className="camera-backend-select text sm"
                         title="Close cameras before choosing a different backend"
                         onChange={event => dispatch(cameraBackendSelected(event.target.value as CameraBackend))}>
                     <option value="python">Python / OpenCV</option>
                     <option value="rust">Rust / OpenPNP</option>
                 </select>
-            </label>
+            </div>
             {/* Header */}
             <div className="camera-group-header flex flex-row flex-wrap items-center gap-1 p-1 pos-rel z-2">
                 <p className="flex flex-row text md text-gray">{cameras.length} {t('cameras')}</p>

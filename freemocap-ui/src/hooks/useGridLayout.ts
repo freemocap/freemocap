@@ -120,11 +120,14 @@ export function useGridLayout(options: UseGridLayoutOptions): UseGridLayoutResul
     // null = auto-compute; non-null = user has dragged or resized
     const [userLayout, setUserLayout] = useState<LayoutItem[] | null>(null);
 
+    // Server/config updates can republish the same ordered IDs in a new array.
+    // Only a change in their values should discard the user's camera arrangement.
+    const itemIdentity = JSON.stringify(itemIds);
     // Reset user overrides when the auto layout would change
     useEffect(() => {
         setUserLayout(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [itemIds, tiling, resetKey, ...extraResetDeps]);
+    }, [itemIdentity, tiling, resetKey, ...extraResetDeps]);
 
     const layout = useMemo(() => {
         if (userLayout !== null) return userLayout;

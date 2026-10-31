@@ -222,8 +222,30 @@ export const cameraSlice = createSlice({
                 for (const group of groups) {
                     if (group.paused) anyPaused = true;
                     if (group.alive) {
-                        for (const cameraId of Object.keys(group.configs)) {
+                        for (const [cameraId, receivedConfig] of Object.entries(group.configs)) {
                             connectedIds.add(cameraId);
+                            const config = receivedConfig as CameraConfig;
+                            const camera = state.cameras.find(item => item.id === cameraId);
+                            if (!camera) {
+                                state.cameras.push({id: cameraId, index: config.camera_index,
+                                    name: config.camera_name, actualConfig: config, desiredConfig: {...config},
+                                    hasConfigMismatch: false, connectionStatus: 'connected', selected: true,
+                                    realtimeEnabled: true, deviceInfo: {}});
+                                continue;
+                            }
+                            // Preserve explicit edits awaiting Apply, while keeping observed
+                            // settings current. Equal snapshots must not replace object identities.
+                            if (!camera.hasConfigMismatch && !areConfigsEqual(camera.desiredConfig, config)) {
+                                camera.desiredConfig = {...config};
+                            }
+                            if (!areConfigsEqual(camera.actualConfig, config)
+                                || camera.actualConfig.camera_index !== config.camera_index
+                                || camera.actualConfig.camera_name !== config.camera_name) camera.actualConfig = config;
+                            camera.desiredConfig.camera_index = config.camera_index;
+                            camera.desiredConfig.camera_name = config.camera_name;
+                            camera.index = config.camera_index;
+                            camera.name = config.camera_name;
+                            camera.hasConfigMismatch = !areConfigsEqual(camera.desiredConfig, config);
                         }
                     }
                 }

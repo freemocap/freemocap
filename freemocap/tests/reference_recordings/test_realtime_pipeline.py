@@ -27,7 +27,7 @@ from freemocap.core.skeletons.standard_human_skeleton import STANDARD_HUMAN_MODE
 from freemocap.core.tasks.calibration.shared.calibration_paths import find_recording_calibration
 from freemocap.tests.pipelines.mocks.mock_camera_group import MockCameraGroup
 from freemocap.tests.pipelines.mocks.realtime_driver import drive_realtime_lockstep
-from freemocap.tests.recording_datasets import synchronized_video_directory
+from freemocap.tests.recording_datasets import TEST_DATA, SAMPLE_DATA, synchronized_video_directory
 from freemocap.tests.test_tensor_pipeline_integration import reference_structure
 from freemocap.tools.datasets.preparation import file_digest
 
@@ -40,10 +40,10 @@ def shared_memory_names(group):
     return names
 
 
-@pytest.fixture(scope='module')
-def replay_reference():
+@pytest.fixture(scope='module', params=[TEST_DATA, SAMPLE_DATA], ids=['test-data', 'sample-data'])
+def replay_reference(request):
     """Replay needs validated numerical data and video, not a Blender export."""
-    structure = reference_structure()
+    structure = reference_structure(request.param)
     paths = [structure.data_parquet_path, *structure.full_path.glob('*calibration*.toml')]
     original_hashes = {path: file_digest(path) for path in paths}
     yield structure
@@ -84,7 +84,8 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
             global_kill_flag=flag,
         )
         names = shared_memory_names(group)
-        assert group.frame_count == 222
+        frame_count = group.frame_count
+        assert frame_count > 65, 'Replay must include the live filter update'
         service.start()
         capture = CaptureGroup(group, flag)
         pipeline = manager.create_pipeline(camera_group=capture, pipeline_config=config)
@@ -96,7 +97,7 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
                 updated.aggregator_config.realtime_filter_config = updated_filter
                 active_pipeline.update_config(updated)
         driven = drive_realtime_lockstep(pipeline=pipeline, mock_group=group,
-                                        num_frames=222, per_frame_timeout=120.0, before_frame=change_filters)
+                                        num_frames=frame_count, per_frame_timeout=120.0, before_frame=change_filters)
         assert original_nodes == tuple(pipeline.camera_nodes.values()) + (pipeline.aggregation_node, pipeline.skeleton_inference_node)
         assert driven.outputs[40].pipeline_config.aggregator_config.realtime_filter_config == RealtimeFilterConfig()
         assert driven.outputs[65].pipeline_config.aggregator_config.realtime_filter_config == updated_filter
@@ -106,8 +107,8 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
         if human_enabled:
             assert any(output.raw_skeleton_observation is not None and output.raw_skeleton_observation is not output.skeleton_observation
                 for frame in driven.outputs[65:] for output in frame.camera_node_outputs.values())
-        assert [output.frame_number for output in driven.outputs] == list(range(222))
-        assert driven.frames_written == driven.frames_processed == 222
+        assert [output.frame_number for output in driven.outputs] == list(range(frame_count))
+        assert driven.frames_written == driven.frames_processed == frame_count
         assert pipeline.failure is None
         assert all(output.pipeline_id == pipeline.id for output in driven.outputs)
         assert all(set(output.camera_node_outputs) == set(group.camera_ids) for output in driven.outputs)

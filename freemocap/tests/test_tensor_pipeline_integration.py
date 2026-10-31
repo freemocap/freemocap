@@ -27,13 +27,13 @@ from freemocap.tools.datasets.catalog import TEST_DATA
 from freemocap.tools.datasets.preparation import file_digest, validate_parquet
 
 
-def reference_structure() -> RecordingStructure:
-    root = prepared_root() / TEST_DATA.name
+def reference_structure(dataset=TEST_DATA) -> RecordingStructure:
+    root = prepared_root() / dataset.name
     ready = json.loads((root / "ready.json").read_text(encoding="utf-8"))
     recording = Path(ready["recording"])
     if not recording.resolve().is_relative_to((root / "current").resolve()):
         raise ValueError("Reference recording escapes the selected prepared root")
-    validate_parquet(recording, expected_frames=222)
+    validate_parquet(recording, expected_frames=dataset.expected_frame_count)
     return RecordingStructure(base_directory=recording.parent, recording_name=recording.name)
 
 

@@ -1,5 +1,27 @@
 # Reference recordings
 
+## Realtime replay after tracker changes
+
+`test_realtime_pipeline.py` replays both prepared reference recordings through
+the production realtime workers: 222 synchronized frames for test data and 1,108
+for sample data. Its 16 cases cover centralized/per-camera inference,
+explicit/latest calibration selection, and board-only/board-plus-human tracking.
+Checks include source timestamps, frame identity, reconstruction, live filter
+updates, worker shutdown, and shared-memory release. Replay runs in lockstep;
+its elapsed time is not live-camera or GUI frame rate.
+
+Prepare both datasets with the dataset CLI below, then set
+`FREEMOCAP_PROVENANCE_PREPARED_ROOT` to that isolated output root and run:
+
+```powershell
+python -B -m pytest freemocap/tests/reference_recordings/test_realtime_pipeline.py -q -p no:cacheprovider
+```
+
+Use `-k test-data` for the smaller recording only. These replay checks accept the
+explicit `numerical` processing profile; they do not certify Blender exports.
+`test_sidecar_factory_contract.py` separately verifies that Core and Tracker
+produce identical session requests without loading models.
+
 The [complete-run acceptance contract](../../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09)
 now requires Blender output and its saved-scene validation for a standard run,
 with CSV/NPY/NPZ joining as implemented. Standard dataset processing now exports

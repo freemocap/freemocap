@@ -21,7 +21,7 @@ retention, compatibility, and reproducible validation.
    - Windows: `.venv/bin/activate`
    - Mac/Linux: `source .venv/bin/activate`
 6. Install dependencies
-  - `uv sync` — installs skellytracker with NVIDIA GPU acceleration on Windows/Linux, or CPU-only on macOS, automatically
+  - `uv sync` — installs skellytracker with TensorRT and CUDA on Windows/Linux, or CPU-only on macOS, automatically
   - No supported GPU on Windows/Linux? Force the CPU-only build instead: `uv sync --no-default-groups --group cpu`
 ### React GUI
 0. Install Node.js
@@ -167,8 +167,15 @@ uv venv
 uv sync
 ```
 
-This installs `skellytracker` with NVIDIA GPU acceleration on Windows/Linux, or
-CPU-only on macOS, automatically. If you're on Windows/Linux without a
+This installs `skellytracker` with TensorRT and CUDA on Windows/Linux, or
+CPU-only on macOS, automatically. TensorRT is declared in the default dependency
+group and locked in `uv.lock`; later syncs retain it. Auto provider selection uses
+TensorRT when available. The first start can take several minutes to compile
+engines for the selected models and camera count; later starts reuse the cache.
+
+For CUDA without TensorRT, use `uv sync --no-default-groups --group cuda`.
+Use the same group selection with `uv run` when launching that environment.
+If you're on Windows/Linux without a
 supported GPU, force the CPU-only build instead:
 
 ```bash

@@ -678,6 +678,9 @@ cpu = [
 cuda = [
     { name = "skellytracker", extra = ["all-cuda"] },
 ]
+trt = [
+    { name = "skellytracker", extra = ["all-trt"] },
+]
 
 [package.dev-dependencies]
 cpu = [
@@ -701,7 +704,10 @@ dev = [
 tracker-default = [
     { name = "skellytracker" },
     { name = "skellytracker", extra = ["all-cpu"], marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "skellytracker", extra = ["all-cuda"], marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "skellytracker", extra = ["all-trt"], marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+trt = [
+    { name = "skellytracker", extra = ["all-trt"] },
 ]
 
 [package.metadata]
@@ -731,9 +737,10 @@ requires-dist = [
     { name = "skellypings", editable = "../utils/skellypings" },
     { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", editable = "../skellytracker" },
     { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", editable = "../skellytracker" },
+    { name = "skellytracker", extras = ["all-trt"], marker = "extra == 'trt'", editable = "../skellytracker" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
-provides-extras = ["cuda", "cpu"]
+provides-extras = ["cuda", "trt", "cpu"]
 
 [package.metadata.requires-dev]
 cpu = [{ name = "skellytracker", extras = ["all-cpu"], editable = "../skellytracker" }]
@@ -752,8 +759,9 @@ dev = [
 ]
 tracker-default = [
     { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", editable = "../skellytracker" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", editable = "../skellytracker" },
+    { name = "skellytracker", extras = ["all-trt"], marker = "sys_platform != 'darwin'", editable = "../skellytracker" },
 ]
+trt = [{ name = "skellytracker", extras = ["all-trt"], editable = "../skellytracker" }]
 
 [[package]]
 name = "freemocap-blender-addon"
@@ -2597,6 +2605,16 @@ all-cuda = [
     { name = "onnx" },
     { name = "onnxruntime-gpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
+all-trt = [
+    { name = "mediapipe", marker = "platform_machine != 'x86_64' or sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "onnx" },
+    { name = "onnxruntime-gpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "tensorrt-cu12", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2756,6 +2774,38 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/46/58/8c37dea7bbf769b20d58e7ace7e5edfe65b849442b00ffcdd56be88697c6/tabulate-0.10.0.tar.gz", hash = "sha256:e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d", size = 91754, upload-time = "2026-03-04T18:55:34.402Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/55/db07de81b5c630da5cbf5c7df646580ca26dfaefa593667fc6f2fe016d2e/tabulate-0.10.0-py3-none-any.whl", hash = "sha256:f0b0622e567335c8fabaaa659f1b33bcb6ddfe2e496071b743aa113f8774f2d3", size = 39814, upload-time = "2026-03-04T18:55:31.284Z" },
+]
+
+[[package]]
+name = "tensorrt-cu12"
+version = "10.16.1.11"
+source = { registry = "https://pypi.nvidia.com/" }
+dependencies = [
+    { name = "tensorrt-cu12-bindings" },
+    { name = "tensorrt-cu12-libs" },
+]
+sdist = { url = "https://pypi.nvidia.com/tensorrt-cu12/tensorrt_cu12-10.16.1.11.tar.gz", hash = "sha256:a044fe4a2e2e51fc205d806534102529c6f744402350b7730d221c99ffa6d269" }
+
+[[package]]
+name = "tensorrt-cu12-bindings"
+version = "10.16.1.11"
+source = { registry = "https://pypi.nvidia.com/" }
+wheels = [
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-bindings/tensorrt_cu12_bindings-10.16.1.11-cp311-none-manylinux_2_28_x86_64.whl", hash = "sha256:150ef2b672487e29a8ea916353467c3e199994fb33589167e3641a928e243aa7" },
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-bindings/tensorrt_cu12_bindings-10.16.1.11-cp311-none-win_amd64.whl", hash = "sha256:425382e26ea149ac4a3cba3ae9b1abb4187a14c0cf9add58206d9bb1a236aa26" },
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-bindings/tensorrt_cu12_bindings-10.16.1.11-cp312-none-manylinux_2_28_x86_64.whl", hash = "sha256:8e339335e7255b3fb3954eca61b4acbbdfcf7b28505bd711914519647ba310c8" },
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-bindings/tensorrt_cu12_bindings-10.16.1.11-cp312-none-win_amd64.whl", hash = "sha256:e4d7105b9700987b4fd9362adacc0dfa7bee3025c8ad147a86a4316b6362a85b" },
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-bindings/tensorrt_cu12_bindings-10.16.1.11-cp313-none-manylinux_2_28_x86_64.whl", hash = "sha256:f2a08cedfa48e300720e5bed070a45e390ea67dbcf475ffce725d10e0a2b3ba7" },
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-bindings/tensorrt_cu12_bindings-10.16.1.11-cp313-none-win_amd64.whl", hash = "sha256:9794032093940924429957c89ebf27f893a7823b3daf48fd9427bfa23a9a52de" },
+]
+
+[[package]]
+name = "tensorrt-cu12-libs"
+version = "10.16.1.11"
+source = { registry = "https://pypi.nvidia.com/" }
+wheels = [
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-libs/tensorrt_cu12_libs-10.16.1.11-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:8e45036efeb964d323231544442a73619201136ccc84392560254cc8f0d516e4" },
+    { url = "https://pypi.nvidia.com/tensorrt-cu12-libs/tensorrt_cu12_libs-10.16.1.11-py3-none-win_amd64.whl", hash = "sha256:ed0d4536f1322aa2f76da54feb3f9bd2d14d89e4325cef02165a98f3a2c1a493" },
 ]
 
 [[package]]

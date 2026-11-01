@@ -40,9 +40,11 @@ dependencies = [
 # group below; dependency-groups aren't part of a package's published metadata,
 # so this is the only channel pip users have):
 #   pip install freemocap[cuda]   (Windows/Linux, NVIDIA GPU acceleration)
+#   pip install freemocap[trt]    (Windows/Linux, TensorRT with CUDA fallback)
 #   pip install freemocap[cpu]    (macOS, or Windows/Linux without a supported GPU)
 [project.optional-dependencies]
 cuda = ["skellytracker[all-cuda]"]
+trt = ["skellytracker[all-trt]"]
 cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
@@ -81,7 +83,7 @@ freemocap = ["tests/streaming_fixtures/*.bin", "tests/fixtures/*.md", "tests/con
       "sys_platform == 'win32' and platform_machine == 'AMD64'",
   ]
   # Plain `uv sync` always installs a working skellytracker via the "tracker-default"
-  # group below, which platform-switches between CUDA (Windows/Linux) and CPU
+  # group below, which platform-switches between TensorRT/CUDA (Windows/Linux) and CPU
   # (macOS) automatically. To force a specific variant regardless of platform —
   # e.g. the CI build matrix building a CPU installer on a Windows/Linux runner —
   # bypass the default and pick a group explicitly:
@@ -156,14 +158,15 @@ push = true
 # =============================================================================
 
 [dependency-groups]
-# skellytracker's CUDA vs. CPU onnxruntime backend — mutually exclusive, select
+# skellytracker's TensorRT, CUDA-only or CPU backend — select
 # exactly one via --group (see the default-groups note under [tool.uv] above).
 cuda = ["skellytracker[all-cuda]"]
+trt = ["skellytracker[all-trt]"]
 cpu = ["skellytracker[all-cpu]"]
 # Platform-switched default used by plain `uv sync` (via [tool.uv] default-groups):
-# CUDA on Windows/Linux, CPU on macOS — mirrors the old sys_platform-marker setup.
+# TensorRT with CUDA fallback on Windows/Linux, CPU on macOS.
 tracker-default = [
-    "skellytracker[all-cuda]; sys_platform != 'darwin'",
+    "skellytracker[all-trt]; sys_platform != 'darwin'",
     "skellytracker[all-cpu]; sys_platform == 'darwin'",
 ]
 dev = [

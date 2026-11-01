@@ -68,7 +68,7 @@ test('occurrence identities, reordered channels, same-count definitions, and vis
     expect(hidden(mesh(result, 'landmark'), 2)).toBe(true);
     expect(mesh(result, 'segment').count).toBe(2);
     expect(mesh(result, 'landmark').count).toBe(2);
-    expect(result.dots).toEqual([1e5, 1e5, 1e5]);
+    expect(result.dots).toEqual([]); // Missing face points are excluded from the draw range.
     expect(result.lines[1].every((value: number) => value === 0)).toBe(true);
     result = await render({frames: [second, frame(1)]});
     expect(origin(mesh(result, 'landmark'), 2)).toEqual([1010, 20, 30]);
@@ -105,7 +105,7 @@ test('axes preserve scalar-first world rotations and face contours clear on layo
     const rotated = frame();
     rotated.rotations.worldQuaternions = [Math.SQRT1_2, 0, 0, Math.SQRT1_2, 1, 0, 0, 0];
     const contours = ['face.lips_61', 'face.lips_146'];
-    let result = await render({definitions: [definition()], frames: [rotated], points: {pointNames: contours, interleaved: [1, 2, 3, 4, 5, 6]}});
+    let result = await render({definitions: [{...definition(), tracker_connections: [[contours[0], contours[1]]]}], frames: [rotated], points: {pointNames: contours, interleaved: [1, 2, 3, 4, 5, 6]}});
     expect(result.lines[0]).toEqual([1, 2, 3, 4, 5, 6]);
     // 90 degrees about +Z maps +X onto +Y, with the triad length 1000 * .1 * .3 = 30 mm.
     expect(result.lines[1][3]).toBeCloseTo(0, 4);
@@ -113,7 +113,7 @@ test('axes preserve scalar-first world rotations and face contours clear on layo
     expect(result.lines[1][9]).toBeCloseTo(-30, 4);
     expect(result.lines[1][10]).toBeCloseTo(0, 4);
     result = await render({points: {pointNames: contours, interleaved: [1, 2, 3, null, 5, 6]}});
-    expect(result.lines[0]).toEqual(Array(6).fill(1e5));
+    expect(result.lines[0]).toEqual([]); // Invalid edges are compacted out of the draw range.
     result = await render({points: {pointNames: ['face_0000'], interleaved: [10, 20, 30]}});
     expect(result.lines[0]).toEqual([]);
     expect(result.dots).toEqual([10, 20, 30]);
@@ -127,8 +127,11 @@ test('live retention and playback missing-data behavior feed identical renderer 
     const live = await render({live: true, ...valid});
     expect(mesh(live, 'segment').matrices).toEqual(mesh(playback, 'segment').matrices);
     expect(live.connections).toEqual(playback.connections);
-    const held = await render({frames: [], points: {pointNames: [], interleaved: []}});
+    const held = await render({}); // No incoming frame briefly holds the last valid presentation.
     expect(mesh(held, 'segment').matrices).toEqual(mesh(live, 'segment').matrices);
+    const missingLive = await render({frames: [], points: {pointNames: [], interleaved: []}});
+    expect(hidden(mesh(missingLive, 'segment'), 0)).toBe(true);
+    await render(valid);
     await page.waitForTimeout(1100);
     const expired = await render({});
     expect(hidden(mesh(expired, 'segment'), 0)).toBe(true);

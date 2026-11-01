@@ -32,7 +32,7 @@ def test_invalid_metadata_blocks_workers_and_reports_file(tmp_path: Path) -> Non
         with pytest.raises(ValueError, match="Recording metadata is incompatible or invalid"):
             manager.create_mocap_pipeline(
                 recording_info=RecordingInfo(recording_directory=str(tmp_path), recording_name=folder.name, mic_device_index=-1),
-                mocap_config=PosthocMocapPipelineConfig(),
+                mocap_config=PosthocMocapPipelineConfig(start_stage="filtering"),
             )
         create.assert_not_called()
     app = FastAPI()

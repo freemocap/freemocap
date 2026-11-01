@@ -15,7 +15,7 @@ for (const compatibility of [false, true]) test(`app playback plays, seeks, swit
         for (let index = 0; index < 2; index++) await copyFile('e2e/fixtures/numbered-bframes.mp4', join(folder, `camera${index}${annotated ? '_annotated' : ''}.mp4`));
     }
     const portFile = join(temporary, 'port.txt');
-    const backend = spawn(resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),
+    const backend = spawn(process.env.FREEMOCAP_TEST_PYTHON ?? resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),
         ['-m', 'freemocap.tests.playback_test_server', portFile], {cwd: resolve('..'), windowsHide: true});
     let errors = '';
     backend.stderr.on('data', chunk => {errors += String(chunk);}); backend.stdout.resume();
@@ -39,7 +39,7 @@ for (const compatibility of [false, true]) test(`app playback plays, seeks, swit
                     if (compatibility && !filename.endsWith('/browser')) return '/unsupported-test-source';
                     url.searchParams.set('source', filename.includes('_annotated') ? 'annotated' : 'synchronized');
                     url.searchParams.set('recording_parent_directory', temporary);
-                    return `/playback/test/videos/${filename}?${url.searchParams}`;
+                    return `/recordings/test/videos/${filename}?${url.searchParams}`;
                 }}}}, plugins: [{name: 'recording-bundle', configureServer(server) {
                     server.middlewares.use((request, response, next) => {
                         if (!request.url?.includes('/bundle')) return next();
@@ -56,7 +56,8 @@ for (const compatibility of [false, true]) test(`app playback plays, seeks, swit
         await build({entryPoints: ['tools/media-electron.ts'], bundle: true, platform: 'node', format: 'cjs', external: ['electron'], outfile: entry});
         await server.listen();
         try {
-            const app = await electron.launch({args: [entry, server.resolvedUrls!.local[0]], env: {...process.env, MEDIA_TEST: '1'}});
+            const app = await electron.launch({executablePath: process.env.FREEMOCAP_TEST_ELECTRON,
+                args: [entry, server.resolvedUrls!.local[0]], env: {...process.env, MEDIA_TEST: '1'}});
             try {
                 const page = await app.firstWindow();
                 await expect(page.locator('#bundle-ready')).toHaveText('true');

@@ -87,6 +87,7 @@ class ObservationBuffer:
             confidence = self.camera_series.confidence_scores()[:, indices]
             return visible_coordinates(coordinates, confidence, in_place=True)
         arrays: list[NDArray[np.float64]] = []
+        first_names = None
         for obs in self.observations:
             stage = obs.stages.get(stage_name)
             if stage is None or stage.keypoints is None:

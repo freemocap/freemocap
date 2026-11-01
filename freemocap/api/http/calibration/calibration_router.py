@@ -1,3 +1,5 @@
+from skellycam.core.camera_group.camera_errors import CameraStateConflict
+from freemocap.api.http.capture.capture_models import LegacyCaptureStopped
 from freemocap.core.recording.recording_access import RecordingBusyError
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 import json
@@ -5,7 +7,7 @@ import logging
 from copy import deepcopy
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from filelock import Timeout
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, ConfigDict
@@ -25,7 +27,7 @@ from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
 
-calibration_router = APIRouter(prefix="/calibration", tags=["Capture Volume Calibration"])
+calibration_router = APIRouter(prefix="/calibration", tags=["Calibration tools"])
 
 
 class CalibrationFileOptions(BaseModel):
@@ -58,7 +60,19 @@ def calibration_content(path: Path) -> LoadedCalibration:
 
 
 @calibration_router.post("/transform")
-async def transform_calibration(request: CalibrationUpdateRequest) -> LoadedCalibration:
+async def transform_calibration(request: CalibrationUpdateRequest, http_request: Request) -> LoadedCalibration:
+    # A short file-locked write must finish before queued processing can take over.
+    # The existing calibration revision check serializes competing edits.
+    try:
+        with http_request.app.state.recording_access.read(path=request.path, cancel=lambda: None):
+            return await _save_calibration_transform(request)
+    except RecordingBusyError as error:
+        raise HTTPException(status_code=409, detail={
+            'code': 'recording_busy', 'owner': error.owner.model_dump(mode='json'),
+        }) from error
+
+
+async def _save_calibration_transform(request: CalibrationUpdateRequest) -> LoadedCalibration:
     pipelines = [
         pipeline
         for pipeline in get_freemocap_app().realtime_pipeline_manager.pipelines.values()
@@ -203,7 +217,7 @@ def _reject_if_recording_directory_not_empty(recording_info: RecordingInfo) -> N
 # ==================== Endpoints ====================
 
 
-@calibration_router.post("/recording/start")
+@calibration_router.post("/recording/start", include_in_schema=False, deprecated=True)
 async def start_calibration_recording(
         request: CalibrateRecordingRequest,
 ) -> StartCalibrationRecordingResponse:
@@ -245,22 +259,24 @@ async def start_calibration_recording(
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except HTTPException:
         raise
+    except CameraStateConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except Exception as e:
         logger.exception(f"Error starting calibration recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@calibration_router.post("/recording/stop")
+@calibration_router.post("/recording/stop", include_in_schema=False, deprecated=True)
 async def stop_calibration_recording(
         request: StopCalibrationRecordingRequest,
-) -> dict:
+) -> LegacyCaptureStopped:
     """Stop current calibration recording and launch posthoc calibration pipeline."""
     app = get_freemocap_app()
     try:
         recording_info = await app.stop_recording_all()
         if recording_info is None:
             logger.warning("No active recording to stop")
-            return {"success": True}
+            return LegacyCaptureStopped()
 
         # Notify realtime pipelines that calibration recording has stopped
         # so the CharucoRecorderNode flushes its buffer to the cache file.
@@ -286,20 +302,17 @@ async def stop_calibration_recording(
             calibration_config=request.calibration_config,
         )
         logger.info("Calibration recording stopped, posthoc calibration pipeline launched")
-        return {
-            "success": True,
-            "pipeline_id": pipeline.id,
-            "recording_name": recording_info.recording_name,
-            "recording_path": str(recording_info.full_recording_path),
-        }
+        return LegacyCaptureStopped.completed(recording_info=recording_info, pipeline_id=pipeline.id)
     except RecordingBusyError as error:
         raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
+    except CameraStateConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except Exception as e:
         logger.exception(f"Error stopping calibration recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@calibration_router.post("/recording/calibrate")
+@calibration_router.post("/recording/calibrate", include_in_schema=False, deprecated=True)
 async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRecordingResponse:
     """Process and calibrate a previously recorded session."""
     app = get_freemocap_app()
@@ -323,7 +336,7 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
         logger.exception(f"Error calibrating recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@calibration_router.delete("/posthoc/pipelines/{pipeline_id}")
+@calibration_router.delete("/posthoc/pipelines/{pipeline_id}", include_in_schema=False, deprecated=True)
 def cancel_posthoc_pipeline(pipeline_id: str) -> None:
     if not get_freemocap_app().posthoc_pipeline_manager.stop_pipeline(
         pipeline_id=pipeline_id, pipeline_type=PosthocPipelineType.CALIBRATION,
@@ -331,7 +344,7 @@ def cancel_posthoc_pipeline(pipeline_id: str) -> None:
         raise HTTPException(status_code=404, detail="Pipeline not found in calibration/posthoc")
 
 
-@calibration_router.delete("/posthoc/pipelines")
+@calibration_router.delete("/posthoc/pipelines", include_in_schema=False, deprecated=True)
 def cancel_posthoc_pipelines() -> None:
     get_freemocap_app().posthoc_pipeline_manager.stop_all_pipelines(pipeline_type=PosthocPipelineType.CALIBRATION)
 

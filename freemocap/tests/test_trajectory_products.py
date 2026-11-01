@@ -109,7 +109,7 @@ def test_observations_survive_unsolved_pose_and_missing_scale_without_stale_poin
     assert not no_scale.landmarks and not no_scale.segment_origins and not no_scale.segment_rotations_world
 
 
-def test_missing_ancestor_suppresses_descendants_without_hiding_other_branches(monkeypatch):
+def test_missing_ancestor_preserves_independently_solved_segments(monkeypatch):
     import importlib
     module = importlib.import_module('freemocap.core.skeletons.reconstruct_skeleton')
     bundle = build_standard_human_bundle(detector_type='rtmpose')
@@ -132,13 +132,9 @@ def test_missing_ancestor_suppresses_descendants_without_hiding_other_branches(m
         monkeypatch.setattr(LandmarkPoseGeometry, 'recover_tensor', lambda *args, **kwargs: tensor)
         result = reconstruct_skeleton(bundle=bundle, state=state_for(bundle, full_state.scale_source.current_fit()),
             filtered_keypoints=points, compute_center_of_mass=False)
-        expected = set()
-        for name in complete.segment_origins:
-            ancestor = name
-            while ancestor is not None and ancestor != absent:
-                ancestor = parents[ancestor]
-            if ancestor is None:
-                expected.add(name)
+        # Weighted attachment retains independently observed components, including
+        # descendants disconnected by a missing parent or anchor.
+        expected = set(complete.segment_origins) - {absent}
         assert set(result.segment_origins) == expected
         assert result.mapped_keypoints.keys() == complete.mapped_keypoints.keys()
         if absent != root:
@@ -153,7 +149,7 @@ def test_streaming_keeps_all_products_and_segment_origins_independent():
     # Publishing translations must never look those names up in the landmark output.
     result = replace(result, segment_origins={name: value + [11, 22, 33] for name, value in result.segment_origins.items()})
     context = FrameContext(frame_number=5, timestamp=1.25, aggregator_output=SimpleNamespace(
-        keypoints_arrays=points, reconstructions={bundle.model_id: result}))
+        keypoints_arrays=points, keypoint_status=None, reconstructions={bundle.model_id: result}))
     blocks = {block.kind: block for block in KeypointsProducer().fill(context, bundle) + SegmentProducer().fill(context, bundle)}
     for kind, names, expected, width in (
         (ChannelKind.KEYPOINTS_3D, bundle.tracker_keypoint_names, points, 4),

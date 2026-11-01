@@ -1,4 +1,4 @@
-"""Execution reports retain failures without claiming scientific acceptance."""
+"""Execution reports retain failures without claiming acceptance."""
 import copy
 from pathlib import Path
 import subprocess

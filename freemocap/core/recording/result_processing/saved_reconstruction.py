@@ -1,4 +1,4 @@
-"""Load an explicit saved point stream, scientific model and fit without media access."""
+"""Load an explicit saved point stream, model and fit without media access."""
 
 from dataclasses import dataclass, field
 from contextlib import nullcontext
@@ -109,7 +109,7 @@ def read_saved_reconstruction(
 ) -> SavedReconstruction:
     """Load the explicitly selected raw or filtered input stream without filtering it again.
 
-    The fit must describe these exact numeric inputs and scientific model. Returned fingerprints
+    The fit must describe these exact numeric inputs and model. Returned fingerprints
     identify the selection; worker-level completion reuse requires stage-planner validation.
     """
     with recording_write_lock(structure=request.structure), (

@@ -53,7 +53,7 @@ for (const cardWidth of [440, 900]) test(`styled stacked operations remain reada
               operation('Save annotated camera video 1',{status:'complete',progress_fraction:1}),
               operation('Save annotated camera video 2',{status:'complete',progress_fraction:1}),
               operation('Save annotated camera video 3',{status:'complete',progress_fraction:1}),
-              operation('Save scientific files (CSV, NPY and NPZ)',{progress_fraction:1/3,completed:5,total:15,unit:'channels',detail:'Writing landmark coordinates and validating saved values.'}),
+              operation('Save files (CSV, NPY and NPZ)',{progress_fraction:1/3,completed:5,total:15,unit:'channels',detail:'Writing landmark coordinates and validating saved values.'}),
               operation('Create Blender scene, FBX and BVH files',{detail:'Blender is running in a separate process.'})
             ]}/>
           </div>

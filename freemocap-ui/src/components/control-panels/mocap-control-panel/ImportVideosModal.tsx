@@ -147,7 +147,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
         setError(null);
     }, []);
 
-    // Poll the sync job until it finishes (HTTP 425 while running, 200 once done).
+    // Poll retained task state until synchronization returns its result.
     const pollSyncResult = useCallback(async (jobId: string): Promise<SyncResult> => {
         for (;;) {
             const action = await dispatch(getSyncResult({jobId}));

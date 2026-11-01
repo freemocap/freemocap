@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-onnx_router = APIRouter(prefix="/onnx", tags=["Onnx"])
+onnx_router = APIRouter(prefix="/onnx", tags=["ONNX"])
 
 
 class AvailableExecutionProvidersResponse(BaseModel):

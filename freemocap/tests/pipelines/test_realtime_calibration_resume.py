@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from skellycam.core.types.numpy_record_dtypes import FRAME_METADATA_DTYPE
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.realtime import realtime_skeleton_inference_node as inference_module
@@ -97,13 +98,21 @@ def test_inference_loop_skips_paused_frames_and_resumes_without_reregistering() 
     client.submit.return_value = future
     service = Mock()
     service.register.return_value = client
+
+    def read_frames(*, frame_recarrays, requested_frame_number, **kwargs):
+        record = np.zeros(1, dtype=[('frame_metadata', FRAME_METADATA_DTYPE)]).view(np.recarray)
+        record.frame_metadata.timestamps.pre_frame_grab_ns = requested_frame_number * 100_000_000
+        record.frame_metadata.timestamps.post_frame_grab_ns = requested_frame_number * 100_000_000 + 2_000_000
+        frame_recarrays['selected'] = record
+        return [np.zeros((2, 2, 3), dtype=np.uint8)], ['selected']
+
     with (
         patch.object(inference_module, 'wait_1ms', side_effect=tick),
         patch.object(inference_module.CameraGroupSharedMemory, 'recreate', return_value=Mock(valid=True)),
         patch.object(inference_module.CameraSharedMemoryRingBuffer, 'recreate', return_value=Mock(spec=inference_module.CameraSharedMemoryRingBuffer)),
         patch.object(inference_module, 'InferenceRegistration'),
         patch.object(inference_module, 'tracker_session_requests', return_value=()),
-        patch.object(inference_module, '_read_frames', return_value=([np.zeros((2, 2, 3), dtype=np.uint8)], ['selected'])) as read,
+        patch.object(inference_module, '_read_frames', side_effect=read_frames) as read,
     ):
         unwrap(RealtimeSkeletonInferenceNode._run)(
             camera_group_id='group', camera_ids=['selected'], pipeline_config=config,
@@ -114,6 +123,7 @@ def test_inference_loop_skips_paused_frames_and_resumes_without_reregistering() 
         )
     assert [call.kwargs['requested_frame_number'] for call in read.call_args_list] == [1, 3]
     assert [call.args[0].frame_number for call in client.submit.call_args_list] == [1, 3]
+    assert [call.args[0].timestamp_ms for call in client.submit.call_args_list] == [101, 301]
     assert [outputs.get_nowait().frame_number for _ in range(3)] == [1, 2, 3]
     service.register.assert_called_once()
     client.close.assert_called_once()

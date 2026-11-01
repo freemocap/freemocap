@@ -1,4 +1,6 @@
 import React, {useState} from 'react';
+import {Provider} from 'react-redux';
+import {store} from '../../src/store/store';
 import {createRoot} from 'react-dom/client';
 import {defaultRealtimePipelineConfig} from '../../src/store/slices/realtime/realtime-types';
 import CaptureSettings from '../../src/components/mocap-setup/mocap-3dreconstruction-settings';
@@ -28,4 +30,4 @@ export function useMocap() {
 }
 
 const Settings = location.search === '?pipeline' ? PipelineSettings : CaptureSettings;
-createRoot(document.getElementById('root')!).render(<Settings open onClose={() => {}}/>);
+createRoot(document.getElementById('root')!).render(<Provider store={store}><Settings open onClose={() => {}}/></Provider>);

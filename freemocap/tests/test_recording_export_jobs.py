@@ -2,6 +2,7 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from freemocap.core.recording.recording_access import RecordingAccess
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
@@ -12,12 +13,13 @@ from freemocap.core.pipeline.performance_report import PerformanceReport
 from freemocap.core.pipeline.posthoc.mocap_pipeline import complete_mocap, MocapWorkerRequest
 from freemocap.core.recording.exports import wide_csv
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-from freemocap.tests.test_wide_csv_export import scientific_recording  # noqa: F401
+from freemocap.tests.test_wide_csv_export import recording_processing  # noqa: F401
 
 
-def test_api_selection_selected_run_stale_and_failed_retry(scientific_recording, monkeypatch):
-    structure, _ = scientific_recording
+def test_api_selection_selected_run_stale_and_failed_retry(recording_processing, monkeypatch):
+    structure, _ = recording_processing
     app = FastAPI()
+    app.state.recording_access = RecordingAccess()
     app.include_router(exports_router)
     with TestClient(app) as client:
         preview = client.get('/exports/scientific', params=dict(recording_path=str(structure.full_path))).json()
@@ -34,39 +36,39 @@ def test_api_selection_selected_run_stale_and_failed_retry(scientific_recording,
         assert client.post('/exports/scientific', json=dict(body, wide_csv=[])).status_code == 422
         assert client.post('/exports/scientific', json=dict(body, formats=['unsupported'])).status_code == 422
         assert client.post('/exports/scientific', json=dict(body, wide_csv=[dict(selected, source='unknown')])).status_code == 409
-        original = export_jobs.export_scientific
-        monkeypatch.setattr(export_jobs, 'export_scientific', Mock(side_effect=OSError('Disk full')))
+        original = export_jobs.export_recording
+        monkeypatch.setattr(export_jobs, 'export_recording', Mock(side_effect=OSError('Disk full')))
         failed = client.post('/exports/scientific', json=body).json()
         state = client.get('/exports/jobs/' + failed['job_id']).json()
         assert state['status'] == 'failed' and state['detail'] == 'Disk full'
-        monkeypatch.setattr(export_jobs, 'export_scientific', original)
+        monkeypatch.setattr(export_jobs, 'export_recording', original)
         retry = client.post('/exports/scientific', json=body).json()
         assert client.get('/exports/jobs/' + retry['job_id']).json()['status'] == 'complete'
 
 
-def test_job_cancellation_before_work(scientific_recording):
-    from freemocap.core.recording.exports.requests import ScientificExportRequest
-    structure, _ = scientific_recording
+def test_job_cancellation_before_work(recording_processing):
+    from freemocap.core.recording.exports.requests import ExportRequest
+    structure, _ = recording_processing
     key = export_jobs.create_job()
     export_jobs.cancel_job(key)
-    export_jobs.run_job(key, structure, ScientificExportRequest(formats=('wide_csv',)))
+    export_jobs.run_job(key, structure, ExportRequest(formats=('wide_csv',)))
     assert export_jobs.job_state(key)['status'] == 'cancelled'
     assert not structure.exports_dir.exists()
 
 
 @pytest.mark.parametrize('stage', ['observations', 'filtering', 'reconstruction'])
 @pytest.mark.parametrize('fails', [False, True])
-def test_automatic_export_binds_produced_run_and_separates_failure(scientific_recording, monkeypatch, stage, fails):
-    structure, _ = scientific_recording
+def test_automatic_export_binds_produced_run_and_separates_failure(recording_processing, monkeypatch, stage, fails):
+    structure, _ = recording_processing
     config = PosthocMocapPipelineConfig(startStage=stage, baseRunId=0, exportToBlender=False,
-        scientificExports=dict(formats=['wide_csv']))
+        exportOptions=dict(formats=['wide_csv']))
     reports, calls = [], []
     def writer(**kwargs):
         calls.append(kwargs['request'])
         if fails:
             raise OSError('Disk full')
         return SimpleNamespace(manifest_path=structure.exports_dir / 'metadata.json')
-    monkeypatch.setattr(wide_csv, 'export_scientific', writer)
+    monkeypatch.setattr(wide_csv, 'export_recording', writer)
     request = Mock(spec=MocapWorkerRequest, config=config, recording=SimpleNamespace(full_recording_path=structure.full_path),
         ipc=SimpleNamespace(should_continue=True), performance=PerformanceReport(), report=lambda *args: reports.append(args))
     before = structure.data_parquet_path.read_bytes()

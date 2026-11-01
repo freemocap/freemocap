@@ -47,11 +47,9 @@ def assert_saved_weighted_geometry(*, bundle, fit, mapped, landmarks, origins, r
         mapped_values = mapped.values[start:stop]
         recovered = recovery.recover_tensor(positions=mapped_values,
             landmark_present=np.isfinite(mapped_values).all(axis=-1))
-        selected = np.zeros_like(recovered.segment_present)
-        selected[:, anchor] = recovered.segment_present[:, anchor]
-        for traversal_parents, traversal_children, _, _ in geometry.traversal_levels:
-            selected[:, traversal_children] = (selected[:, traversal_parents]
-                                               & recovered.segment_present[:, traversal_children])
+        # Weighted placement preserves all independently recovered components;
+        # missing ancestors remove attachment edges, not observed descendants.
+        selected = recovered.segment_present
         positions = origins.values[start:stop, origin_columns]
         orientations = rotations.values[start:stop, rotation_columns]
         model_landmarks = landmarks.values[start:stop, landmark_columns]

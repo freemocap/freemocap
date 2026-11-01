@@ -54,7 +54,7 @@ def load_saved_spatial_source(*, path: Path, config: PosthocMocapPipelineConfig)
         bundles = tuple(replace(b, anchor_segment_name=config.anchor_segment_name)
                         if b.model_id == 'standard_human' else b for b in bundles)
         if not bundles:
-            raise ValueError('Saved scientific models are missing')
+            raise ValueError('Saved models are missing')
         saved_report = base.processing.get(group, {}).get('filtering')
         report = PosthocFilterReport.model_validate(saved_report) if saved_report is not None and kind == ChannelKind.KEYPOINTS_3D else None
         if kind == ChannelKind.KEYPOINTS_3D and report is None:

@@ -107,7 +107,7 @@ memory cleanup. Its 28.17-second test walltime is not a throughput benchmark.
 Independent Forge NumPy/recording/ownership tests passed 83 tests and 7 subtests.
 The accepted Parquet digest remains unchanged.
 
-Remaining intentional boundaries: scientific Float64 arrays become Float32
+Remaining intentional boundaries: Float64 arrays become Float32
 presentation arrays once; manifest arrays become tuples/JSON for transport;
 saved arrays adapt into Forge runtime tensors; CSV/notebook `SEGMENT_POSES`
 projects component channels that NumPy retains separately. Camera annotation
@@ -186,7 +186,7 @@ triangulation, filtering and publication are excluded. Historical processing
 measurements are not controlled comparators for this run, so no processing
 speedup or full-pipeline throughput claim follows from this table.
 
-Memory tradeoffs: retained decoded scientific values remain 4,722,384 bytes;
+Memory tradeoffs: retained decoded values remain 4,722,384 bytes;
 decoder row-index scratch uses 14,923,728 bytes. Float32 presentation storage is
 additional. Post-decode JS heap samples are 88.83–155.28 MB versus baseline
 56.95–143.79 MB, dependent on GC and not peak/RSS measurements. No peak-memory
@@ -200,7 +200,7 @@ separate first/repeat format reports. All owned processes exited; focused diff
 checks passed; no generated artifacts are tracked. Changes remain unstaged and
 uncommitted for human review. SkellyTracker and trails remain outside this work.
 
-## Global 4 ownership and scientific dataset scope — 2026-10-30
+## Global 4 ownership and dataset scope — 2026-10-30
 
 Global 4 is complete. SkellyForge now owns the reusable
 `core/data_tensors` definitions and generic contract tests. FreeMoCap imports
@@ -212,10 +212,10 @@ timeline class/module/attribute names. Existing editable dependencies resolve
 the Forge implementation directly, under the owner's explicit authorization
 to integrate locally without commit/push pauses for this work.
 
-The public scientific dataset includes values, axes, identities, timing,
+The public dataset includes values, axes, identities, timing,
 quality/evidence companions, units, reference definitions and model definitions.
 Solver/hydration execution status and caches are excluded. Existing internal
-companions can remain in runtime objects; export selects scientific content.
+companions can remain in runtime objects; export selects content.
 No Parquet schema or companion-publication changes are part of this step.
 NPY/NPZ serialize the selected runtime dataset, not every internal object or an
 identical copy of Parquet's representation. Saved Parquet remains a valid input
@@ -238,11 +238,11 @@ also remain unchanged by the ownership move.
 ### Completed NumPy export integration and validation
 
 Forge now owns the versioned NPY/NPZ writers and loaders. Core's saved-data
-adapter streams one scientific channel at a time to both requested writers;
+adapter streams one channel at a time to both requested writers;
 the optional `runtime_dataset` input bypasses numerical Parquet reads. Tests
 verify that source channel arrays are released before the next channel is read.
 Both formats restore owned tensor-backed objects without pickle or an open file
-lifetime. Scientific definitions, native dtypes, signed zeros, original timing,
+lifetime. Definitions, native dtypes, signed zeros, original timing,
 presence, supplied validity/confidence and fitting evidence are preserved.
 Execution status is excluded rather than fabricated from saved data.
 
@@ -282,7 +282,7 @@ them. No verification or edited-file protections were removed.
 ### Separate format costs — 2026-10-30
 
 Each format ran alone against an isolated copy of the accepted 222-frame test
-recording, selecting all five public scientific products: 11 time series and six
+recording, selecting all five public products: 11 time series and six
 static tensors. One warm-up preceded five measured same-run replacements and
 five measured loads. Export includes channel assembly, readback verification,
 hashing and publication; source copying is excluded. Loading reconstructs owned
@@ -296,7 +296,7 @@ immutable runtime objects, without memory mapping.
 Counts and sizes exclude the outer inventory and guides. Tracemalloc does not
 measure total process RSS or all native allocation. These small-recording
 measurements are not a general throughput claim. The earlier 0.881 s baseline
-selected both formats and stored less scientific context; it is not a per-format
+selected both formats and stored less context; it is not a per-format
 baseline. The initial expanded combined-format result was 1.366 s before the
 final I/O reuse changes, so no overall speedup is claimed from these comparisons.
 
@@ -365,7 +365,7 @@ Validation: the combined regression run passed **204 tests and 29 subtests**;
 one notebook execution test was skipped because pandas and Plotly are absent.
 All **six reference consumer, integration and realtime replay tests** passed.
 Production restarts from saved triangulation and reconstruction each reproduced
-all **36 scientific channels exactly**, including NaNs, declared identities,
+all **36 channels exactly**, including NaNs, declared identities,
 components, units, frame IDs and timestamps. Publishing three retained copies
 of the reference run plus one derived run passed writer validation and exact
 comparison of **129 channels across four runs**. The accepted source file's
@@ -455,7 +455,7 @@ The isolated reference workflow at `C:/tmp/fmc-g2-cf01255c` passed fresh numeric
 processing of 222 frames from three cameras, saved-reconstruction reuse, and
 live replay. Six reference consumer/replay tests passed. The saved-stage restart
 matched all 36 channels exactly, including missingness, sample identities,
-timestamps and scientific metadata. Independent comparisons with the previous
+timestamps and metadata. Independent comparisons with the previous
 core implementation preserved fitted scales exactly; coordinate differences
 were below 8e-13. The accepted original reference file was unchanged.
 
@@ -510,7 +510,7 @@ and clean sibling checkout all matched `development-streaming` at commit
 Validation includes a fresh production numerical-profile run at
 `C:/tmp/fmc-g2-1028` (222 frames, three cameras), 131 passing integration/observation
 tests including live replay and saved-stage reuse, plus a final 37-test reconstruction
-suite covering scalar parity, publication, admission and review consumers. All 38 scientific channels match the prior reference output
+suite covering scalar parity, publication, admission and review consumers. All 38 channels match the prior reference output
 within 1e-6 absolute / 1e-8 relative tolerance; human values match exactly and the
 largest board difference is 2.28e-13. Identities, timestamps, presence and source
 file hashes match. Processing-duration channels are deliberately excluded.
@@ -539,8 +539,8 @@ No GUI or full Blender acceptance ran.
 | Location | Observed behavior | Contract-aligned replacement / proof |
 | --- | --- | --- |
 | Tracker `Observation.to_keypoints` and core `ObservationBuffer.to_keypoints_array` | Repeated stage concatenation followed by per-frame/per-point name routing. | Normalize a known stage layout into an observation tensor once; batch assignments and validity masks; preserve late/missing stages and detector confidence semantics. |
-| Core `dataflow/scientific_recording.py:ObservationCollection.accept` | Calls flattening for validation, then deep-copies observations into camera/frame dictionaries. | Explicit owned observation builder and shared normalized measurement tensors; verify producer mutation cannot corrupt retained data. |
-| Core `dataflow/scientific_recording.py:CompletedScientificRecording` | Deep-copies the scientific payload and pickles it to hash in-process integrity. | Controlled immutable ownership plus explicit publication identity; retain the existing mutation-detection guarantee until replacement is proven. |
+| Core `dataflow/recording_processing.py:ObservationCollection.accept` | Calls flattening for validation, then deep-copies observations into camera/frame dictionaries. | Explicit owned observation builder and shared normalized measurement tensors; verify producer mutation cannot corrupt retained data. |
+| Core `dataflow/recording_processing.py:CompletedRecording` | Deep-copies the payload and pickles it to hash in-process integrity. | Controlled immutable ownership plus explicit publication identity; retain the existing mutation-detection guarantee until replacement is proven. |
 | Core `posthoc_reconstruction.py:reconstruct_skeletons_with_fits` | Batch mapping/hydration -> per-frame landmark dictionaries and per-segment pose objects. | Pass hydrated/mapped measurement tensors through a numeric temporal resolver; compare every output and reset state against the existing implementation. |
 | Forge `pose/roll_resolution.py:ContinuousRollResolver` | Numeric orientations are carried in dictionaries of quaternion objects and recursive per-pose dictionaries. | Prepared parent/topology arrays and numeric rolling state; keep chronological and parent-before-child dependencies. Separate Forge repository stage if its interface changes. |
 | Core `recording_pose_outputs.py:RecordingPoseOutputs.calculate` | Pose objects -> dense arrays -> batch geometry -> per-frame dictionaries/objects; copies static lengths into each frame. | Accept/return composed tensor batches and shared static fit data; preserve raw mapped observations versus reconstructed landmarks. |
@@ -549,7 +549,7 @@ No GUI or full Blender acceptance ran.
 | Core `streaming/channel_helpers.py:assemble_channel_bytes` and segment/keypoint producers | Rebuild Float32 rows from per-name dictionaries; lengths are converted to individual small arrays. | Stream frame views using prepared wire layouts and explicit bulk conversion; keep wire protocol compatibility during migration. |
 | Core `parquet_storage/parquet_reader.py:read_batches` and `result_processing/saved_reconstruction.py:read_saved_channel` | Filter after reading batches; requested channels/runs can cause repeated full scans. | Shared selective tensor reader retaining one recording dataset and row-group pruning. Numeric assembly already uses Arrow/NumPy and should be retained. |
 | Core `result_processing/saved_observations.py:read_saved_observations` | Loaded channel tensors are rebuilt into frame/stage/Keypoints object collections. | Return observation tensors directly to batch consumers; an annotation compatibility adapter must be explicit and bounded. |
-| Core `exports/wide_csv.py:_export_scientific` | Global shared timeline required; NumPy exports omit entry presence; current convenience pose export combines positions/rotations. | Versioned strict tensor archive with explicit sample timelines and companion tensors; keep convenience projections explicitly separate. |
+| Core `exports/wide_csv.py:_export_recording` | Global shared timeline required; NumPy exports omit entry presence; current convenience pose export combines positions/rotations. | Versioned strict tensor archive with explicit sample timelines and companion tensors; keep convenience projections explicitly separate. |
 | Core `exports/arrays.py:ordered_arrays` | Composite poses concatenate full arrays even when inputs are disk-backed; timelines are assembled in memory. | Bound composite and timeline allocation; strict tensor export need not combine separate runtime buffers. |
 | UI `services/recording/playback-parquet.ts:decodePlaybackParquet` | Column chunks -> per-scalar object/Zod validation -> per-frame arrays -> final arrays. | Batch validation and direct typed-array assembly with no scalar object materialization. |
 | UI `services/recording/playback-data.ts` and `ThreeJsCanvas.tsx` | Frame copies, repeated layout lookup/reordering and structured cloning into the renderer worker. | Prepared display buffers, shared metadata, frame views and explicit worker buffer ownership. |
@@ -570,7 +570,7 @@ each listed site is the dominant measured performance cost.
   GPU data perform real work. Name the allocation and reuse its result; do not
   promise that all boundaries are zero-copy.
 - Synchronization, interpolation, filtering, measured support and solver status
-  change or qualify scientific meaning. They must not be hidden in a generic
+  change or qualify meaning. They must not be hidden in a generic
   array conversion helper.
 - Ragged detections and changing layouts must retain identity. Do not impose a
   fixed global person-count axis or drop missing points to simplify packing.
@@ -586,7 +586,7 @@ SkellyForge owns reusable tensor types; Core imports them and owns cross-package
 adapters and tests. Tracker remains independent and unchanged. For the approved
 Global 4 work, the owner authorized integration through existing editable
 dependencies without commit/push pauses. This does not authorize Git mutations.
-Browser buffers mirror scientific semantics but need not reproduce Python classes.
+Browser buffers mirror semantics but need not reproduce Python classes.
 
 The initial contract-definition outcome was a reviewed interface plus this change
 map and the acceptance examples in the contract. Current implementation and measured
@@ -656,7 +656,7 @@ recording publication path. Cached stage traversal preserves duplicate-name
 precedence and detector flags. Generic ChannelSeries row bounds are unchanged.
 
 Validation: 28 focused tests passed, plus 50 independent checkpoint, retention and
-scientific-product tests. Fresh save, run-zero overwrite and retained publication
+data-product tests. Fresh save, run-zero overwrite and retained publication
 each validated 3,774 rows columnarly with scalar fallback patched to fail. Every
 value, identity, time and null in all three reference box channels and four timing
 channels matched exactly: 8,880 rows across 222 frames. Malformed grids, duplicate

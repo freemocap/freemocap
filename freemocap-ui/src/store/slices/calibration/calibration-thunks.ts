@@ -1,3 +1,4 @@
+import {recordingProcessingUrl} from '@/services/recording/posthoc-processing';
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState} from "@/store";
 import {selectCalibrationRecordingPath} from "./calibration-slice";
@@ -51,7 +52,7 @@ export const loadCalibrationForRecording = createAsyncThunk<
                 params.set('recording_parent_directory', recordingParentDirectory);
             }
             const qs = params.toString();
-            const url = `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}/calibration${qs ? `?${qs}` : ''}`;
+            const url = `${serverUrls.getHttpUrl()}/freemocap/recordings/${encodeURIComponent(recordingId)}/calibration${qs ? `?${qs}` : ''}`;
             const resp = await fetch(url);
             if (resp.status === 404) {
                 return null;
@@ -181,8 +182,8 @@ export const startCalibrationRecording = createAsyncThunk<
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    calibrationRecordingDirectory,
-                    calibrationTaskConfig,
+                    kind: 'calibration',
+                    config: calibrationTaskConfig,
                 }),
             });
 
@@ -228,7 +229,8 @@ export const stopCalibrationRecording = createAsyncThunk<
                 return rejectWithValue(errorMessage);
             }
 
-            const result = await response.json();
+            const accepted = await response.json();
+            const result = {...accepted, success: true, pipeline_id: accepted.task_id, recording_name: accepted.recording_id};
             console.log('✅ Stopped calibration recording:', result);
             if (result.pipeline_id) {
                 void dispatch(fetchTaskSnapshot());
@@ -261,12 +263,12 @@ export const calibrateRecording = createAsyncThunk<
                 calibrationTaskConfig,
             });
 
-            const response = await fetch(serverUrls.endpoints.calibrateRecording, {
+            const response = await fetch(recordingProcessingUrl(calibrationRecordingDirectory), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    calibrationRecordingDirectory,
-                    calibrationTaskConfig,
+                    kind: 'calibration',
+                    config: calibrationTaskConfig,
                 }),
             });
 
@@ -275,7 +277,8 @@ export const calibrateRecording = createAsyncThunk<
                 return rejectWithValue(errorMessage);
             }
 
-            const result = await response.json();
+            const accepted = await response.json();
+            const result = {...accepted, success: true, pipeline_id: accepted.task_id, recording_name: accepted.recording_id};
             console.log('✅ Calibration completed:', result);
             if (result.pipeline_id) {
                 void dispatch(fetchTaskSnapshot());

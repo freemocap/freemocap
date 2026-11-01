@@ -39,11 +39,11 @@ for the first two cameras versus 29.11 ms for the last camera. These overlapping
 wall measurements are consistent with contention, not independent CPU-time estimates.
 
 The graph still runs tracking as one recording-sized operation before downstream
-scientific operations. Automatic matching and recording-wide fitting constrain
+operations. Automatic matching and recording-wide fitting constrain
 readiness; present execution is not a fully overlapped frame-token graph. Moreover,
 already-collected frames are fed through `FrameTriangulation` individually and each
 call constructs a triangulation helper. Compare existing batch triangulation against
-that path before changing it; no scientific solver change was made in this pass.
+that path before changing it; no solver change was made in this pass.
 
 A concurrent cProfile experiment was rejected: the runtime raised "Another profiling
 tool is already active" and produced unusable overlapping call evidence. Its failed
@@ -66,7 +66,7 @@ not a claim that retries identify or eliminate its cause.
 ### Latest full-pipeline measurements
 
 One motion-capture frame includes all three cameras. Wall time includes tracking,
-scientific processing, complete saves, NPZ export and all annotated videos; input
+processing, complete saves, NPZ export and all annotated videos; input
 copying and comparison-harness verification are excluded.
 
 | Dataset | Stage | Total s | Seconds/mocap frame | Mocap frames/s |
@@ -101,7 +101,7 @@ The first complete graph had real avoidable overhead. The available evidence doe
 not support blaming video loading or inference-queue blocking. On the 3 x 1,108
 frame run, video-batch waits totaled 0.104 s, inference-queue waits 0.219 s and
 tracking calls 92.994 s (body plus board). Annotation and recording publication
-ran concurrently with scientific reconstruction, but sharing an interpreter still
+ran concurrently with reconstruction, but sharing an interpreter still
 allows their Python work to delay it.
 
 ### Tracker behavior
@@ -163,7 +163,7 @@ operations. Separate thread pools enforce admission capacity, not Python isolati
   estimates inferred from configured redetection intervals.
 
 No numerical reconstruction algorithms, confidence thresholds, frame counts or
-scientific acceptance requirements were relaxed.
+acceptance requirements were relaxed.
 
 ## Full-loop evidence and limitations
 
@@ -193,7 +193,7 @@ improved timings, but machine variability prevents attributing every difference
 to this change. Tracking was slower in this run. All three annotated videos
 contain 1,108 frames. Evidence: `.test-artifacts/full-recording-loop/sample-columnar/`.
 The completed comparison passed all 36 saved channels, with maximum absolute
-difference 1.3642420526593924e-12. The existing scientific task took 121.577 s;
+difference 1.3642420526593924e-12. The existing task took 121.577 s;
 its narrower workload remains unsuitable as a whole-graph speedup denominator.
 
 ### Execution topology experiment
@@ -218,7 +218,7 @@ Arrow and numerical libraries can own additional native threads. Increasing the
 application counts without measuring native work and contention is not warranted.
 
 76 focused unittest tests passed, including differential scalar/columnar validation,
-malformed scientific data, arbitrary chunk boundaries, signed-zero timestamps,
+malformed data, arbitrary chunk boundaries, signed-zero timestamps,
 permuted component order and buffer ownership. The existing pytest-based storage
 suite is unavailable in this environment; no dependencies were installed.
 
@@ -271,7 +271,7 @@ Two further changes remove scalar Python loops without changing publication poli
 
 - Saved-channel assembly now maps Arrow name/component indices and scatters numeric
   columns into NumPy in batches. Frame/timestamp bookkeeping remains per distinct
-  frame; complete scientific validation still precedes assembly. Three real-file
+  frame; complete validation still precedes assembly. Three real-file
   reads fell from median 4.598 s to 3.762 s (18.2% lower observed time), with identical
   point-array and timing fingerprints. Evidence: `saved-read-before.json` and
   `saved-read-after.json` under `.test-artifacts/performance/`.
@@ -298,7 +298,7 @@ also remain. Do not conflate these microbenchmarks with new full-graph wall timi
    isolation for Python-heavy terminal work against thread execution, including startup
    and serialization cost; do not move image arrays between processes unnecessarily.
 2. Reduce repeated canonical-file rewrites without discarding independent durable
-   checkpoints or scientific verification. This requires a storage/publication design
+   checkpoints or verification. This requires a storage/publication design
    decision, not silently skipping validation on retained rows.
 3. Expose finer readiness where camera assignment is already known. Automatic matching,
    full-trajectory filtering and recording-wide fitting currently require complete
@@ -312,7 +312,7 @@ The latest audit found an avoidable recording-to-event-to-recording round trip:
 the graph already held complete observations, replayed them into a second
 collection, then replayed them again through singleton triangulation. The offline
 entry point now accepts the completed collection directly and calls the existing
-batch helper once. Scientific camera preconditions, completeness, coordinate
+batch helper once. Camera preconditions, completeness, coordinate
 conversion, outlier rejection and diagnostics remain enforced. The separately
 supported resolved streaming operation remains unchanged.
 
@@ -369,11 +369,11 @@ No blanket claim is made about the whole development branch.
 **Spec:** unnecessary singleton offline triangulation is addressed. A separate
 gap remains: failed-camera annotation rejects even its usable prefix and partial
 encodes are deleted, rather than preserving explicitly incomplete diagnostics.
-Healthy cameras still produce complete annotation videos. Scientific completeness
+Healthy cameras still produce complete annotation videos. Completeness
 must never be weakened to solve this diagnostic gap.
 
 Annotation has no outgoing edges. The scheduler waits for FIRST_COMPLETED and
-admits ready scientific nodes independently. However all pools share one Python
+admits ready nodes independently. However all pools share one Python
 interpreter; separate pools do not eliminate GIL/CPU contention. The final run
 join waits for all requested sinks, which is not a science dependency on annotation.
 The next material experiment should isolate actual annotation execution, measuring
@@ -388,11 +388,11 @@ its comparison to HEAD spans 879 files of broader development and pins different
 dependency branches. Running that code in the current environment would mix
 versions. No checkout, dependencies, Git state or main code was changed. Per the
 owner's direction, investigation continued locally without building baseline
-infrastructure. The existing scientific-task comparison is not a main benchmark.
+infrastructure. The existing processing-task comparison is not a main benchmark.
 
 # Annotation isolation experiment â€” 2026-10-11
 
-Checkpoint commit: `7e963af5` (typed graph, scientific parity and prior performance
+Checkpoint commit: `7e963af5` (typed graph, parity and prior performance
 improvements). Subsequent measurements below are exploratory and do not change
 the application's worker topology or dependency code.
 
@@ -410,8 +410,8 @@ there is no cross-process image transport. Three rotated repetitions per mode:
 These are medians, not whole-pipeline times. Fitted numerical values and input
 fingerprints matched exactly, as did every rendered-pixel digest. Encoded outputs
 opened with all 222 frames. Encoded bitstreams were not compared; codec output is
-not the scientific parity target. This focused replay restores skeleton points,
-not detector boxes, and excludes tracking, third-camera annotation, scientific
+not the parity target. This focused replay restores skeleton points,
+not detector boxes, and excludes tracking, third-camera annotation,
 saves and reconstruction. It uses the actual annotator and PyAV writer.
 
 Process startup and observation transfer cost 8.23 s in the drawing experiment
@@ -423,7 +423,7 @@ startup-inclusive timing and full graph parity before changing defaults.
 The drawing result demonstrates substantial shared-interpreter contention:
 fitting with threads is 2.57 times its isolated duration. Process isolation largely
 removes that penalty for drawing. Encoding still competes for CPU resources across
-processes; process isolation alone does not make scientific work immune to sinks.
+processes; process isolation alone does not make work immune to sinks.
 The installed writer sets libx264 CRF 18 / preset fast and leaves codec thread count
 unspecified [@skellycamVideoWriter2026]. An explicit encoder-thread-budget diagnostic
 is separate from changing that dependency's public API.
@@ -433,7 +433,7 @@ reads use an exclusive, nonwaiting recording lock and failed when launched toget
 the retained experiment videos use `synchronized_videos`, whereas the saved reader
 constructs the newer `videos/synchronized` path. The diagnostic loads once and
 explicitly resolves its known historical fixture directory. Neither observation
-establishes a lock wait in the running scientific graph.
+establishes a lock wait in the running graph.
 
 Local evidence: `.test-artifacts/performance/annotation-isolation.py`,
 `annotation-isolation.json`, `annotation-isolation-encoded.json` and their logs.
@@ -451,8 +451,8 @@ candidate, not a clean causal speedup/regression estimate. Evidence:
 
 Next implementation target: isolate annotation using the existing managed worker
 lifecycle, retaining its terminal-sink contract and per-camera failure ownership.
-Measure cold and reused workers, scientific completion and all-sink completion,
-including real annotation/encoding and every scientific output. Do not replace the
+Measure cold and reused workers, completion and all-sink completion,
+including real annotation/encoding and every output. Do not replace the
 existing worker registry with the diagnostic ProcessPoolExecutor, silently cap
 encoder threads, or send video images through multiprocessing serialization.
 
@@ -470,10 +470,10 @@ Fresh test-data pair (222 motion-capture frames, three cameras, CUDA RTMPose):
 | Full graph, including requested sinks and worker lifecycle | 31.681 s | 24.061 s |
 | Seconds per motion-capture frame | 0.142708 | 0.108382 |
 | Motion-capture frames per second | 7.007 | 9.227 |
-| Scientific completion | 30.776 s | 23.697 s |
+| Completion | 30.776 s | 23.697 s |
 
 This single pair reduced full elapsed time by 24.1%; it is not a repeated-trial
-confidence estimate. Both runs passed 29 scientific-channel comparisons with
+confidence estimate. Both runs passed 29 channel comparisons with
 maximum error 0.0. All three corresponding encoded annotation files also had
 identical SHA256 hashes. Evidence: `.test-artifacts/full-recording-loop/` directories
 `test-thread-control` and `test-managed-annotation`.
@@ -481,14 +481,14 @@ identical SHA256 hashes. Evidence: `.test-artifacts/full-recording-loop/` direct
 The 1,108-frame, three-camera sample with board tracking completed graph execution
 in 177.434 s (0.160139 s/motion-capture frame; 6.245 frames/s). Annotation took
 22.380-27.032 s per camera, with all 1,108 frames written for each camera and zero
-workers alive afterward. Saved scientific parity verification passed all 36 channels with maximum
+workers alive afterward. Saved parity verification passed all 36 channels with maximum
 absolute error 0.0; evidence: `sample-managed-annotation/report.json`. The historical 218.877 s sample run predates the batched triangulation
 change, so that comparison cannot isolate annotation process effects.
 
 The next measured target is spatial checkpoint saving: 77.237 s elapsed, alongside
 50.489 s reconstruction. These overlap and cannot be summed. Separate validation,
 array/table construction, compression and write time before attributing that cost
-to disk or changing concurrency. Scientific completion was 176.994 s, so annotation
+to disk or changing concurrency. Completion was 176.994 s, so annotation
 was not the final sink delaying completion in this run.
 
 Validation: 24 focused worker/graph/science tests passed, including decoded-pixel
@@ -503,7 +503,7 @@ promise execution of Python cleanup and can leave an unpublished partial file.
 
 The owner clarified that one second was illustrative, not an acceptance threshold.
 Removed the scratch timing assertions. Performance judgments must use comparable
-workloads and measured throughput, with scientific validity tested independently.
+workloads and measured throughput, with validity tested independently.
 
 Primary guidance: PyArrow exposes row-group size, dictionary encoding and codecs
 [@arrowParquetWriter]. Parquet recommends larger groups for sequential IO, at a
@@ -583,22 +583,22 @@ The controlled contention experiment uses only two Python task threads. It does 
 | REPROJECTION_ERROR | 4.553 | 21.75% | 11.85% |
 | RECONSTRUCTION_COVERAGE | 0.227 | 1.08% | 0.59% |
 | TRIANGULATION_WEIGHTS | 0.273 | 1.31% | 0.71% |
-| RIGID_BODY_RESIDUALS | — | — | 2.31% |
-| MAPPED_KEYPOINTS_3D | — | — | 9.02% |
-| LANDMARKS_3D | — | — | 11.45% |
-| SEGMENT_ORIGINS | — | — | 4.75% |
-| ROTATIONS_WORLD | — | — | 6.61% |
-| ROTATIONS_LOCAL | — | — | 6.36% |
-| JOINT_ANGLES | — | — | 4.82% |
-| DERIVED_POINTS | — | — | 0.17% |
+| RIGID_BODY_RESIDUALS | â€” | â€” | 2.31% |
+| MAPPED_KEYPOINTS_3D | â€” | â€” | 9.02% |
+| LANDMARKS_3D | â€” | â€” | 11.45% |
+| SEGMENT_ORIGINS | â€” | â€” | 4.75% |
+| ROTATIONS_WORLD | â€” | â€” | 6.61% |
+| ROTATIONS_LOCAL | â€” | â€” | 6.36% |
+| JOINT_ANGLES | â€” | â€” | 4.82% |
+| DERIVED_POINTS | â€” | â€” | 0.17% |
 | RAW_KEYPOINTS_3D | 4.691 | 22.41% | 12.22% |
 | KEYPOINTS_3D | 4.841 | 23.13% | 12.60% |
 
 Shares sum compressed column-chunk payload, excluding file footer metadata. Spatial file: 21.657 MB, payload 20.931 MB. Final file: 39.346 MB, payload 38.405 MB. Results are for the sample recording, not a universal channel distribution.
 
-The spatial Arrow batches occupy 1,497,107,376 bytes. The value column is 55,050,360 bytes; repeated strings and row identifiers dominate decoded size. On disk, value-column chunks occupy 19,962,314 of 20,931,000 payload bytes (95.4%). Thus repeated labels have small compressed size but large decoded memory/processing footprint. Investigate dictionary-preserving or numeric-array representations before deleting scientific outputs. Raw/filtered coordinates, reprojection errors and camera observations serve distinct reproducibility or diagnostic purposes.
+The spatial Arrow batches occupy 1,497,107,376 bytes. The value column is 55,050,360 bytes; repeated strings and row identifiers dominate decoded size. On disk, value-column chunks occupy 19,962,314 of 20,931,000 payload bytes (95.4%). Thus repeated labels have small compressed size but large decoded memory/processing footprint. Investigate dictionary-preserving or numeric-array representations before deleting outputs. Raw/filtered coordinates, reprojection errors and camera observations serve distinct reproducibility or diagnostic purposes.
 
-Detailed evidence: `.test-artifacts/performance/spatial-capture/channel-storage.json`. No channels or saved scientific precision were removed. A process-isolation diagnostic uses a single warmed spawn worker; startup and shutdown are timed separately and total work time includes request transfer. Its results are in `process-comparison.json`. This is a diagnostic ProcessPoolExecutor, not a second production worker-lifecycle system.
+Detailed evidence: `.test-artifacts/performance/spatial-capture/channel-storage.json`. No channels or saved precision were removed. A process-isolation diagnostic uses a single warmed spawn worker; startup and shutdown are timed separately and total work time includes request transfer. Its results are in `process-comparison.json`. This is a diagnostic ProcessPoolExecutor, not a second production worker-lifecycle system.
 
 Process diagnostic result (one fresh pair; sample human-model reconstruction):
 
@@ -631,7 +631,7 @@ The completed sample-data measurement and profiling pass is recorded in
 [Isolated component measurements](component-measurements.md). It includes every
 graph handler, wall/process CPU times, historical concurrent comparisons,
 three-trial video reading, annotation substeps, downstream call profiles and
-explicit profiling limitations. All 36 saved scientific channels matched exactly.
+explicit profiling limitations. All 36 saved channels matched exactly.
 Use `--isolate-components --annotation-execution thread` with the existing comparison
 CLI to repeat it; `--profile-components` is a separate, overhead-bearing diagnostic.
 

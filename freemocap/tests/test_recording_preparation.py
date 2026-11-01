@@ -238,9 +238,9 @@ def test_fresh_assertion_failure_retains_scratch_and_prepared_results(lifecycle)
     def reject(recording, result):
         assert recording != current
         assert result["validation"]["parquet_sha256"]
-        raise AssertionError("scientific check failed")
+        raise AssertionError("check failed")
 
-    with pytest.raises(AssertionError, match="scientific check failed"):
+    with pytest.raises(AssertionError, match="check failed"):
         preparation.prepare(TEST_DATA, fresh=True, validate_fresh=reject, **args)
     assert (args["prepared_root"] / TEST_DATA.name / "scratch" / "result.json").is_file()
     assert preparation.prepare(TEST_DATA, fresh=False, **args) == current

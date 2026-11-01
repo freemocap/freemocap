@@ -18,7 +18,7 @@ test('streaming calibration editor applies and resets the live reference offset'
         }
         requests.push(route.request().postDataJSON());
         await applyResponse;
-        await route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live'}});
+        await route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live', resolved_config: route.request().postDataJSON().realtimeConfig}});
     });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<div id="root"></div>'}));
     await page.goto('http://localhost:53117/');
@@ -64,7 +64,7 @@ test('streaming calibration editor applies and resets the live reference offset'
                     <button onClick={() => {
                         setCalibrationPath('C:/calibration.toml');
                         store.dispatch(calibrationLoadedFromBundle(calibration));
-                        store.dispatch({type: 'realtime/apply/fulfilled', payload: {camera_group_id: 'cameras', pipeline_id: 'live'},
+                        store.dispatch({type: 'realtime/apply/fulfilled', payload: {camera_group_id: 'cameras', pipeline_id: 'live', resolved_config: store.getState().realtime.pipelineConfig},
                             meta: {arg: store.getState().realtime.pipelineConfig}});
                     }}>Load test calibration</button>
                     <Controls calibrationPath={calibrationPath}/>

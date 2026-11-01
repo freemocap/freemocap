@@ -159,7 +159,7 @@ def test_the_global_fit_is_the_streaming_fitter_with_a_whole_recording_window(
     streamed_fit = state.scale_source.current_fit()
     batch_fit = fit_model_scale(
         skeleton=human_bundle.skeleton,
-        # Hydrate independently; compare scientific output rather than private storage.
+        # Hydrate independently; compare output rather than private storage.
         scale_samples={name: [segment.scale_estimate] * frame_count
                        for name, segment in _hydrated_pose(human_bundle).segment_poses.items()},
         voting_segment_names=voting,

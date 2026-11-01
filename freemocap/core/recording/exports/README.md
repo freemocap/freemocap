@@ -1,4 +1,4 @@
-# Scientific exports
+# Recording exports
 
 In **Open Mocap Processing > Exports**, select data independently of formats.
 **3D landmarks** is the default data selection; all export formats are optional.
@@ -42,12 +42,13 @@ would make the dataset inventory ambiguous. Unselected formats remain unchanged.
 CSV publication replaces selected table paths and updates its inventory; older
 unselected CSV files may remain on disk. The inventory identifies active outputs.
 
-## Scientific arrays and display tables
+## Arrays and display tables
 
 Parquet is the primary durable recording. SkellyForge owns the reusable
 `RecordingDataset`, `TimeSeries`, `DataTensor`, `SampleTiming` and NumPy format.
 See [the implemented NumPy contract](../../../../../skellyforge/skellyforge/core/data_tensors/NUMPY_FORMAT.md)
-for the complete `skellyforge.numpy_dataset` version-1 schema.
+for the complete `skellyforge.numpy_dataset` version-2 schema. Readers also
+accept version-1 datasets and migrate their provenance field when saving a new copy.
 
 NPY and NPZ preserve the selected tensor representation: dtype, logical values,
 axes and their authored identities, component units, coordinate references,
@@ -66,7 +67,7 @@ named `qw,qx,qy,qz` columns. These projections do not redefine runtime storage.
 
 `entry_presence` from saved Parquet means a component row exists, including a
 recorded null. Values may therefore be NaN while presence is true. It is not a
-quality score or independent scientific-validity declaration. Explicit runtime
+quality score or independent measurement-validity declaration. Explicit runtime
 `value_validity`, confidence and evidence arrays are preserved when supplied;
 the saved schema's absent quality information is not fabricated. Selected model
 fits include static scales/lengths, measured/voting support, model definitions and
@@ -116,10 +117,10 @@ executable examples. Plain NPY consumers may explicitly choose memory mapping.
 
 ## Core export API and bounded memory
 
-`export_scientific(structure=..., request=..., runtime_dataset=None)` uses the
+`export_recording(structure=..., request=..., runtime_dataset=None)` uses the
 existing selected-run, revision, cancellation and recoverable publication path.
 Without runtime data, Core reads selected Parquet channels and admits one borrowed
-scientific tensor at a time. If NPY and NPZ are both selected, both writers consume
+tensor at a time. If NPY and NPZ are both selected, both writers consume
 that tensor before its reader storage is released. NumPy-only export does not
 construct CSV projections or concatenate pose components.
 
@@ -191,7 +192,7 @@ Large tall files can exceed Excel's row limit; no rows are truncated.
 
 Metadata contains the exact embedded recording descriptor, static definitions,
 source SHA-256/revision, selected run per artifact, file hashes, row counts, column
-names and CSV conventions. The recording descriptor supplies scientific names,
+names and CSV conventions. The recording descriptor supplies names,
 units, coordinate references and processing provenance. Reading with
 `verified_manifest(path)` checks pending publication and artifact hashes first.
 
@@ -230,13 +231,13 @@ landmark residuals are not appended as invented components.
 
 ## Student guides and Notebook Explorer
 
-Scientific exports create static `README.md` tutorials in the export directory
+Exports create static `README.md` tutorials in the export directory
 and selected `csv/` and `npy/` folders. They explain provenance, coordinates,
 array axes, missing values, metadata, and loading/plotting with Matplotlib.
 Normal exports refresh only byte-identical recognized older generated guides.
 Annotated or unknown READMEs are preserved. Kept exports preserve every existing
 guide; missing guides can still be created. Tutorials are
-published with the export transaction but are not scientific data artifacts.
+published with the export transaction but are not data artifacts.
 
 The optional `<recording>.explorer.ipynb` is saved in the recording folder beside
 the Parquet file, rather than under `exports/`. Kept exports and nonzero runs use
@@ -281,9 +282,18 @@ the slider preserves exact frame IDs and elapsed timestamps.
 
 ### Previewing an unprocessed recording
 
-The scientific and tall-CSV preview GET endpoints return HTTP 204 when the
-recording folder exists but has no saved Parquet result. Both UI panels show
-"No saved result yet" and keep saved-result export disabled; after-processing
-export settings remain available. Finishing processing or reloading scientific
-results refreshes the preview. Invalid folders, unreadable/corrupt results and
-explicit export requests without Parquet remain errors.
+`GET /freemocap/recordings/{recording_id}/export-options` returns the saved
+run/channel choices. An existing folder with no Parquet result returns an empty
+selection and a null revision. The UI shows "No saved result yet" and leaves
+after-processing settings available. Invalid folders and unreadable results
+remain errors.
+
+`GET /freemocap/recordings/{recording_id}/exports` discovers published artifacts
+independently of task history. `POST` to that URL accepts `kind: channels`,
+`tall_csv`, or `blender` and returns a task ID and status URL. Channel exports
+retain the four formats: `wide_csv`, `npy`, `npz`, and `notebook`. Supply
+`recording_parent_directory` in the query to select a non-default recording parent.
+Observe or cancel the accepted work through `/freemocap/tasks`.
+
+Legacy export endpoints remain hidden compatibility adapters. Their empty-result
+preview response remains HTTP 204. New clients use the recording resources above.

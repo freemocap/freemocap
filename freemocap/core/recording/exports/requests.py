@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from freemocap.core.recording.parquet_storage.channel_selection import ChannelSelection
 
 
-class ScientificExportOptions(BaseModel):
+class ExportOptions(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
     # Compatibility override for older clients. New clients share data across formats.
     wide_csv: tuple[ChannelSelection, ...] | None = None
@@ -26,7 +26,7 @@ class ScientificExportOptions(BaseModel):
         return self
 
 
-class ScientificExportRequest(ScientificExportOptions):
+class ExportRequest(ExportOptions):
     run_id: int | None = Field(default=None, ge=0)
     expected_revision: str | None = None
     keep: bool = False

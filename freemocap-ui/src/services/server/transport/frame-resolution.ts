@@ -55,7 +55,7 @@ function overlayValues(channel: ChannelBlock, names: readonly string[]): Float32
     return float32(channel.data);
 }
 
-/** Retain owned scientific values and select XYZ using declared component names. */
+/** Retain owned values and select XYZ using declared component names. */
 function pointView(channel: ChannelBlock, names: readonly string[]): PointsFrame {
     const stride = channel.columns.length;
     if (new Set(channel.columns).size !== stride || channel.data.byteLength !== names.length * stride * Float32Array.BYTES_PER_ELEMENT)

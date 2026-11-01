@@ -19,7 +19,7 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
     }}));
     await page.route('http://localhost:53117/freemocap/realtime/apply', route => {
         livePaths.push(route.request().postDataJSON().realtimeConfig.aggregator_config.calibration_toml_path);
-        return route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live'}});
+        return route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live', resolved_config: route.request().postDataJSON().realtimeConfig}});
     });
     await page.route('http://localhost:53117/freemocap/calibration/most-recent', route => {
         discoveries += 1;
@@ -45,7 +45,7 @@ test(`startup restores ${runningPath} without writing and explicit selection upd
             import {electronIpc} from './src/services/electron-ipc/electron-ipc';
             if (electronIpc !== null) throw new Error('This test must run without Electron');
             store.dispatch(wsConnectionChanged(true));
-            store.dispatch({type: 'realtime/apply/fulfilled', payload: {camera_group_id: 'cameras', pipeline_id: 'live'},
+            store.dispatch({type: 'realtime/apply/fulfilled', payload: {camera_group_id: 'cameras', pipeline_id: 'live', resolved_config: store.getState().realtime.pipelineConfig},
                 meta: {arg: store.getState().realtime.pipelineConfig}});
             function Harness() {
                 useCalibrationTomlLoader(true);

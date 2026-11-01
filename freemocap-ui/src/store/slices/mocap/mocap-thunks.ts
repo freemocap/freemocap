@@ -1,3 +1,4 @@
+import {recordingProcessingUrl} from '@/services/recording/posthoc-processing';
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import type {RootState} from "@/store";
 import {selectMocapRecordingPath} from "./mocap-slice";
@@ -23,9 +24,10 @@ function buildPosthocConfig(state: RootState) {
         cameraMatching: config.cameraMatching,
         anchorSegmentName: config.anchorSegmentName,
         exportTallCsv: config.exportTallCsv ?? false,
-        scientificExports: {
-            formats: config.scientificExportAfterProcessing ? (config.scientificExportFormats ?? []) : [],
-            data: config.scientificExportData ?? ['LANDMARKS_3D'],
+        exportOptions: {
+            formats: config.exportAfterProcessing ? (config.exportFormats ?? []) : [],
+            data: config.exportChannels ?? ['LANDMARKS_3D'],
+            ...(config.exportChannelOverrides ? {wide_csv: config.exportChannelOverrides} : {}),
         },
         charucoTrackingEnabled: config.charucoTrackingEnabled,
         boardMode: state.calibration.config.boardMode,
@@ -129,7 +131,8 @@ export const stopMocapRecording = createAsyncThunk<
                 return rejectWithValue(errorMessage);
             }
 
-            const result = await response.json();
+            const accepted = await response.json();
+            const result = {...accepted, success: true, pipeline_id: accepted.task_id, recording_name: accepted.recording_id};
             console.log('✅ Stopped mocap recording:', result);
             if (result.pipeline_id) {
                 void dispatch(fetchTaskSnapshot());
@@ -271,8 +274,7 @@ export const startVideoSync = createAsyncThunk<
     }
 );
 
-// Discriminated union so callers can poll without treating "still running" (HTTP 425)
-// as an error — only a real failure (job not found, sync error) rejects the thunk.
+// Poll the common task state; completion includes the synchronization result.
 export const getSyncResult = createAsyncThunk<
     { status: 'pending' } | { status: 'done'; result: SyncResult },
     { jobId: string },
@@ -283,15 +285,15 @@ export const getSyncResult = createAsyncThunk<
         try {
             const response = await fetch(serverUrls.endpoints.synchronizeVideosResult(jobId));
 
-            if (response.status === 425) {
-                return { status: 'pending' as const };
-            }
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
                 return rejectWithValue(errorMessage);
             }
 
-            const result = await response.json();
+            const task = await response.json();
+            if (task.status === 'queued' || task.status === 'running') return {status: 'pending' as const};
+            if (task.status !== 'complete' || !task.result) return rejectWithValue(task.error ?? task.progress.detail);
+            const result = task.result;
             return {
                 status: 'done' as const,
                 result: {
@@ -335,12 +337,12 @@ export const processMocapRecording = createAsyncThunk<
                 mocapTaskConfig: {...configWithCalibration, ...selection},
             });
 
-            const response = await fetch(serverUrls.endpoints.processMocapRecording, {
+            const response = await fetch(recordingProcessingUrl(mocapRecordingDirectory), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    mocapRecordingDirectory,
-                    mocapTaskConfig: {...configWithCalibration, ...selection},
+                    kind: 'mocap',
+                    config: {...configWithCalibration, ...selection},
                 }),
             });
 
@@ -349,7 +351,8 @@ export const processMocapRecording = createAsyncThunk<
                 return rejectWithValue(errorMessage);
             }
 
-            const result = await response.json();
+            const accepted = await response.json();
+            const result = {...accepted, success: true, pipeline_id: accepted.task_id, recording_name: accepted.recording_id};
             console.log('✅ Mocap completed:', result);
             if (result.pipeline_id) {
                 void dispatch(fetchTaskSnapshot());

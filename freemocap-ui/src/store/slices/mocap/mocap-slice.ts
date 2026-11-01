@@ -1,8 +1,9 @@
 import type {ExecutionProviderName} from '@/types/execution-provider';
+import {migrateExportSettings} from '@/store/export-settings-migration';
 import {CameraMatchingOptions, defaultCameraMatchingOptions} from '@/types/camera-matching';
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
-import type {ExportChannel, ScientificExportFormat, ScientificExportData} from '@/types/scientific-exports';
+import type {ExportChannel, ExportFormat, ExportChannelKind} from '@/types/recording-exports';
 import {loadFromStorage} from '@/store/persistence';
 import {matchesSavedManualOffset, saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
 import {
@@ -89,10 +90,10 @@ export interface MocapConfig {
     bodyAlignmentMode: 'auto' | 'calibration' | 'person';
     anchorSegmentName: string;
     exportTallCsv: boolean;
-    scientificExportFormats: ScientificExportFormat[];
-    scientificExportData: ScientificExportData[];
-    scientificExportChannels: ExportChannel[] | null;
-    scientificExportAfterProcessing: boolean;
+    exportFormats: ExportFormat[];
+    exportChannels: ExportChannelKind[];
+    exportChannelOverrides: ExportChannel[] | null;
+    exportAfterProcessing: boolean;
     /** Row-major rigid offset applied after posthoc alignment, with translation in mm. */
     referenceTransform: number[] | null;
     referenceTransformEnabled: boolean;
@@ -173,6 +174,7 @@ export interface MocapDirectoryInfo {
 
 export interface MocapState {
     config: MocapConfig;
+    exportSettingsError: string | null;
     isRecording: boolean;
     recordingProgress: number;
     isLoading: boolean;
@@ -203,17 +205,18 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     bodyAlignmentMode: 'auto',
     anchorSegmentName: "pelvis",
     exportTallCsv: false,
-    scientificExportFormats: [],
-    scientificExportData: ['LANDMARKS_3D'],
-    scientificExportChannels: null,
-    scientificExportAfterProcessing: false,
+    exportFormats: [],
+    exportChannels: ['LANDMARKS_3D'],
+    exportChannelOverrides: null,
+    exportAfterProcessing: false,
     referenceTransform: null,
     referenceTransformEnabled: false,
 };
 
 // ==================== Initial State ====================
 
-const _persistedMocapConfig = loadFromStorage<Partial<MocapConfig> | null>( "mocap.config", null, );
+const exportSettingsMigration = migrateExportSettings(loadFromStorage<Record<string, unknown> | null>('mocap.config', null));
+const _persistedMocapConfig = exportSettingsMigration.config as Partial<MocapConfig>;
 
 const initialMocapConfig: MocapConfig = {
     ...DEFAULT_MOCAP_CONFIG,
@@ -237,6 +240,7 @@ const initialMocapConfig: MocapConfig = {
 
 const initialState: MocapState = {
     config: initialMocapConfig,
+    exportSettingsError: exportSettingsMigration.error,
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,
@@ -252,17 +256,25 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
-        scientificExportDataUpdated: (state, action: PayloadAction<ScientificExportData[]>) => {
-            state.config.scientificExportData = action.payload;
+        exportSettingsReset: (state) => {
+            state.config.exportFormats = [];
+            state.config.exportChannels = ['LANDMARKS_3D'];
+            state.config.exportChannelOverrides = null;
+            state.config.exportAfterProcessing = false;
+            state.exportSettingsError = null;
         },
-        scientificExportFormatsUpdated: (state, action: PayloadAction<ScientificExportFormat[]>) => {
-            state.config.scientificExportFormats = action.payload;
+        exportChannelsUpdated: (state, action: PayloadAction<ExportChannelKind[]>) => {
+            state.config.exportChannels = action.payload;
+            state.config.exportChannelOverrides = null;
         },
-        scientificExportChannelsUpdated: (state, action: PayloadAction<ExportChannel[] | null>) => {
-            state.config.scientificExportChannels = action.payload;
+        exportFormatsUpdated: (state, action: PayloadAction<ExportFormat[]>) => {
+            state.config.exportFormats = action.payload;
         },
-        scientificExportAfterProcessingUpdated: (state, action: PayloadAction<boolean>) => {
-            state.config.scientificExportAfterProcessing = action.payload;
+        exportChannelOverridesUpdated: (state, action: PayloadAction<ExportChannel[] | null>) => {
+            state.config.exportChannelOverrides = action.payload;
+        },
+        exportAfterProcessingUpdated: (state, action: PayloadAction<boolean>) => {
+            state.config.exportAfterProcessing = action.payload;
         },
         exportTallCsvUpdated: (state, action: PayloadAction<boolean>) => {
             state.config.exportTallCsv = action.payload;
@@ -481,10 +493,11 @@ export const {
     bodyAlignmentModeUpdated,
     anchorSegmentNameUpdated,
     exportTallCsvUpdated,
-    scientificExportFormatsUpdated,
-    scientificExportDataUpdated,
-    scientificExportChannelsUpdated,
-    scientificExportAfterProcessingUpdated,
+    exportSettingsReset,
+    exportFormatsUpdated,
+    exportChannelsUpdated,
+    exportChannelOverridesUpdated,
+    exportAfterProcessingUpdated,
     referenceTransformUpdated,
     referenceTransformEnabledUpdated,
     cameraMatchingUpdated,

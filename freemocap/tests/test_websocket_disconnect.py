@@ -18,10 +18,83 @@ from websockets.asyncio.client import connect
 
 from freemocap.api.websocket import websocket_server
 from freemocap.api.websocket import websocket_connect
+from freemocap.core.tasks.background_task_state import BackgroundTaskState
 from freemocap.core.pipeline.posthoc.task_snapshot import TaskRegistry
 from freemocap.api.websocket.closing_aware_protocol import ClosingAwareWebSocketProtocol
 from freemocap.api.websocket.websocket_server import WebsocketServer
 from freemocap.api.websocket.send_serializer import SendSerializer
+
+
+@pytest.mark.parametrize('invalid', ['{', '[]', '{"frameNumber": 1, "displayImageSizes": []}',
+    '{"frameNumber": 1, "displayImageSizes": {"camera": {"width": "bad", "height": 20}}}',
+    '{"frameNumber": 1, "displayImageSizes": {"camera": {"width": NaN, "height": 20}}}'])
+def test_invalid_client_does_not_interrupt_other_client_or_reconnect(monkeypatch, invalid):
+    import cbor2
+    from fastapi.testclient import TestClient
+
+    app = FastAPI()
+    app.state.global_kill_flag = SimpleNamespace(value=False)
+    app.state.fatal_error = None
+    app.include_router(websocket_connect.websocket_router)
+    service = SimpleNamespace(to_state_dict=lambda: {},
+        posthoc_pipeline_manager=SimpleNamespace(task_snapshot=TaskRegistry().snapshot),
+        sync_job_manager=SimpleNamespace(task_state=BackgroundTaskState()))
+    connections = []
+
+    async def idle():
+        await asyncio.Event().wait()
+
+    def connection_server(*, websocket, fastapi_app):
+        server = WebsocketServer.__new__(WebsocketServer)
+        server.websocket = websocket
+        server._global_kill_flag = fastapi_app.state.global_kill_flag
+        server._websocket_should_continue = True
+        server._serializer = SendSerializer(websocket)
+        server._display_image_sizes = None
+        server.ws_tasks = []
+        server._app = service
+        server._relay = SimpleNamespace(run=idle)
+        server._log_relay = ClientLogBuffer(Queue())
+        connections.append(server)
+        return server
+
+    def ping(client):
+        client.send_text('ping')
+        for _ in range(20):
+            message = client.receive()
+            assert message['type'] != 'websocket.close'
+            if message.get('text') == 'pong':
+                return
+        pytest.fail('Client stopped responding')
+
+    monkeypatch.setattr(websocket_connect, 'WebsocketServer', connection_server)
+    with TestClient(app) as client, client.websocket_connect('/websocket/connect') as healthy:
+        with client.websocket_connect('/websocket/connect') as invalid_client:
+            invalid_client.send_text(invalid)
+            for _ in range(20):
+                message = invalid_client.receive()
+                if message['type'] == 'websocket.close':
+                    assert message['code'] == 1008
+                    break
+            else:
+                pytest.fail('Invalid client was not closed')
+        assert app.state.fatal_error is None
+        assert not app.state.global_kill_flag.value
+        ping(healthy)
+        service.sync_job_manager.task_state.register('sync:after-failure', 'sync')
+        for _ in range(20):
+            message = healthy.receive()
+            assert message['type'] != 'websocket.close'
+            if 'bytes' in message:
+                snapshot = cbor2.loads(message['bytes']).get('snapshot', {})
+                if any(task['task_id'] == 'sync:after-failure' for task in snapshot.get('tasks', [])):
+                    break
+        else:
+            pytest.fail('Healthy client stopped receiving task updates')
+        with client.websocket_connect('/websocket/connect') as reconnected:
+            ping(reconnected)
+        ping(healthy)
+    assert all(task.done() for connection in connections for task in connection.ws_tasks)
 
 
 class ClientLogBuffer:
@@ -130,6 +203,7 @@ async def test_startup_senders_disconnect_without_fatal_server_shutdown(monkeypa
     server._app = SimpleNamespace(
         to_state_dict=lambda: {},
         posthoc_pipeline_manager=SimpleNamespace(task_snapshot=TaskRegistry().snapshot),
+        sync_job_manager=SimpleNamespace(task_state=BackgroundTaskState()),
     )
 
     async def idle():

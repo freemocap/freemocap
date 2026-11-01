@@ -34,16 +34,16 @@ _Avoid_: Frame count without identifying whether it counts camera images or grou
 **Camera annotation**:
 A video representation of one camera's images with the requested tracking and
 board observations drawn on them. It is an independent output, not a prerequisite
-for scientific reconstruction.
+for reconstruction.
 _Avoid_: Tracking when referring only to drawing or video encoding.
 
-**Scientific completion**:
-Successful completion and validation of all requested scientific products for the
-declared inputs. Failure of a required camera prevents complete scientific output.
+**Processing completion**:
+Successful completion and validation of all requested products for the
+declared inputs. Failure of a required camera prevents complete output.
 _Avoid_: Treating some available 3D points as a complete recording.
 
 **Recording-run completion**:
-The terminal outcome of every requested product, including scientific products,
+The terminal outcome of every requested product, including computed results,
 annotations and exports. A finished run can contain explicitly reported failures.
 _Avoid_: Calling a run successful while requested products remain unfinished or failed.
 
@@ -53,12 +53,12 @@ own completion or failure outcome.
 _Avoid_: Using camera identity alone to identify work across different recording runs.
 
 **Saved stage**:
-A complete, validated scientific result that can supply inputs to a later processing
+A complete, validated result that can supply inputs to a later processing
 attempt. It is a durable restart boundary, not a requirement to pause downstream computation.
 _Avoid_: Using stage to mean a global scheduling barrier.
 
 **Stage restart**:
-A new processing attempt that reuses explicitly selected saved scientific inputs
+A new processing attempt that reuses explicitly selected saved inputs
 and recomputes the requested dependent results.
 _Avoid_: Resume when implying continuation of an interrupted worker's in-memory state.
 
@@ -78,7 +78,7 @@ domain. Sources sharing a clock can have different sample timelines.
 _Avoid_: Using one global frame index for every source in a recording.
 
 **Recording dataset**:
-An identified collection of scientific measurements with their axes, timelines,
+An identified collection of measurements with their axes, timelines,
 missingness, definitions and provenance. A recording dataset can contain multiple independent sample timelines.
 _Avoid_: Treating a single synchronized array as the whole recording.
 
@@ -98,12 +98,12 @@ Use the same term in prose, type names and serialization descriptions.
 A numeric array with explicit ordered axis definitions; each dimension derives
 from its identifiers. Neither time nor empirical origin is implicit. Live and
 post-hoc processing use the same authored entity and declared component order.
-_Avoid_: Block as a name for scientific data, or fixed coordinate counts in generic storage.
+_Avoid_: Block as a name for data, or fixed coordinate counts in generic storage.
 
 **Time series**:
 A data tensor whose designated sample axis binds to sample identifiers and
 timestamps. It may carry measurements, estimates, predictions or generated data;
-scientific provenance preserves those distinctions. Current timestamp production
+data provenance preserves those distinctions. Current timestamp production
 is unchanged by the initial layout implementation.
 _Avoid_: Measurement series as the generic container name.
 
@@ -112,4 +112,4 @@ Separate typed arrays describing entry presence, value validity, confidence,
 measurement support or solver status. Declare their axes and semantics explicitly.
 Component metadata matches measurement shape; entity metadata omits the component
 axis and can broadcast without allocating duplicate values.
-_Avoid_: One ambiguous quality mask combining unrelated scientific meanings.
+_Avoid_: One ambiguous quality mask combining unrelated meanings.

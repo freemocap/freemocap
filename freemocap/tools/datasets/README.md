@@ -30,7 +30,7 @@ operation checks reject replay of excluded stages. RTMPose uses automatic device
 selection; ChArUco, annotation, automatic alignment and filtering are enabled.
 Filtering uses a 1 Hz cutoff, below this 6 FPS recording's 3 Hz Nyquist limit.
 It is enabled here deliberately, even though ordinary test-data processing
-defaults to filtering disabled. Blender is excluded: this checks scientific stage
+defaults to filtering disabled. Blender is excluded: this checks stage
 boundaries, not final-export acceptance or every detector/device configuration.
 
 Each case checks complete saved sample grids, exactly the expected channels and
@@ -242,7 +242,7 @@ The chosen path is printed before work. Starts after triangulation reuse saved
 3D coordinates and their calibration provenance; calibration and alignment
 overrides are rejected there. Missing inputs cause an error, not a hidden full run.
 
-Saved-stage processing retains the saved scientific model definitions. To update
+Saved-stage processing retains the saved model definitions. To update
 tracker mappings or skeleton definitions, use a full run or the existing explicit
 reconstruction-refresh helper; merely rerunning the fit is a different operation.
 
@@ -345,7 +345,7 @@ MediaPipe body/hands/face; the default ChArUco board), not every model variant.
 Both paths use the same complete recording and tracker configuration. The baseline
 uses the existing inference service with sequential camera reads; the adapter uses
 bounded threaded readers. This is **tracking-boundary regression parity**, not
-full posthoc pipeline acceptance or scientific accuracy validation. Both paths
+full posthoc pipeline acceptance or measurement accuracy validation. Both paths
 receive the recording timeline, measured where available or inferred from video
 FPS. Reports identify the timing methods. This intentionally corrects MediaPipe's
 processing-wall-time fallback, so it is not an assertion of numerical identity
@@ -370,12 +370,12 @@ python -B -m unittest freemocap.tests.test_dataflow_contracts freemocap.tests.te
 
 ## Raw triangulation comparison
 
-The experimental backend scientific slice adds real camera matching, per-frame
+The experimental backend slice adds real camera matching, per-frame
 triangulation and the canonical recording writer. Run it against a complete
 recording and an explicit existing calibration, using a fresh ignored directory:
 
 ```powershell
-python -B -m freemocap.tools.datasets.scientific_comparison RECORDING_DIRECTORY --calibration CALIBRATION.toml --provider cuda --output .test-artifacts/scientific-slice/new-run
+python -B -m freemocap.tools.datasets.recording_comparison RECORDING_DIRECTORY --calibration CALIBRATION.toml --provider cuda --output .test-artifacts/recording-processing/new-run
 ```
 
 `report.txt` is the readable summary; `report.json` preserves configuration,
@@ -389,10 +389,10 @@ triangulation, checks missing-value masks, solver contributions and reprojection
 diagnostics, then attempts a canonical raw-3D save and exact read-back. It creates
 a private recording copy; original recordings remain unchanged. Automatic camera
 matching uses the existing recording-wide sampling algorithm. For already resolved
-assignment, `process_resolved_scientific_recording` computes each joined frame while
+assignment, `process_resolved_recording` computes each joined frame while
 consuming tracking events. Neither route is yet connected to the production API.
 
-Scientific saving requires every declared camera to finish successfully and an
+Saving requires every declared camera to finish successfully and an
 available camera assignment. Matching uses the established posthoc `continue`/`stop`
 policy at both computation and saving: a fitness warning does not become an extra
 unconfigured stopping rule. The saved tracker metadata retains assignment status,
@@ -454,7 +454,7 @@ encoding operation. Process workers belong to one recording and shut down after
 it finishes; `--annotation-workers` bounds simultaneous camera annotation jobs.
 
 `graph_wall_seconds` includes worker launch and shutdown. The report separately
-records `scientific_completion_seconds`, worker readiness waits, per-camera
+records `processing_completion_seconds`, worker readiness waits, per-camera
 drawing/encoding timings, and the number of workers still alive after cleanup.
 Compare variants sequentially; overlapping benchmark runs compete for resources.
 
@@ -462,14 +462,14 @@ Compare variants sequentially; overlapping benchmark runs compete for resources.
 
 Add `--isolate-components --annotation-execution thread` to the full recording
 comparison command to measure the existing graph handlers one at a time. It still
-uses the same input bindings, scientific code, complete recording, save operations,
+uses the same input bindings, code, complete recording, save operations,
 and output-parity checks. Internal camera batching/native-library workers remain
 active. This is diagnostic execution, not a production concurrency policy.
 
 `components/components.json` records each handler's wall time and process CPU time;
 the normal report includes those values and explicitly labels isolated execution.
 CPU time sums threads in this process and excludes GPU/child-process CPU. A serial
-scientific-completion timestamp can include earlier annotation jobs, so use the
+processing-completion timestamp can include earlier annotation jobs, so use the
 individual stage rows for this experiment.
 
 For a separate call-profile run, also add `--profile-components`. It writes one

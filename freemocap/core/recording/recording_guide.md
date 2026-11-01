@@ -1,6 +1,6 @@
 # Recording package guide
 
-A recording describes a capture volume. Its subjects, trackers and scientific models describe
+A recording describes a capture volume. Its subjects, trackers and models describe
 particular measurement sources. Capture metadata JSON is separate from the descriptor in Parquet.
 
 For the maintained on-disk folder and per-run settings target, start with the
@@ -60,7 +60,7 @@ Python packages also contain the required `__init__.py` files, with no forwardin
 
 ## Ownership
 
-Scientific calculations belong in SkellyForge, detection in SkellyTracker, and camera media/timing
+Calculations belong in SkellyForge, detection in SkellyTracker, and camera media/timing
 in SkellyCam. This package describes, serializes, publishes and reads their results. Publication
 writes canonical Parquet and a compact recording-info companion, preserving capture fields.
 The companion summarizes identity, clocks, ordering and conventions; measurements remain in Parquet.

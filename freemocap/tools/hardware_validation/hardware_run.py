@@ -107,7 +107,7 @@ def run_baseline(output_directory: Path, capture_backend: str, selected_ids: tup
                 api.request('POST', '/skellycam/camera/group/all/record/start', {
                     'recording_name': 'capture-baseline', 'recording_directory': str((output_directory / 'recordings').resolve()), 'mic_device_index': -1})
                 samples = stream.collect_frames(5.0)
-                recordings = api.request('GET', '/skellycam/camera/group/all/record/stop')
+                recordings = api.request('POST', '/skellycam/camera/group/all/record/stop')
                 api.request('DELETE', '/skellycam/camera/group/close/all')
                 report['recording_response'] = recordings
                 report['recordings'] = [audit_recording(Path(recording['recording_path']), selected) for recording in recordings]

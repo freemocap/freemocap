@@ -1,3 +1,4 @@
+import {createRecordingExport, waitForTaskResult} from '@/services/recording/recording-exports';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
@@ -61,24 +62,12 @@ export const exportRecordingToBlender = createAsyncThunk<
 
             const blenderExePath = blender.blenderExePath ?? blender.detectedBlenderExePath;
 
-            const response = await fetch(serverUrls.endpoints.blenderExport, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    recordingFolderPath,
-                    blenderExePath,
-                    autoOpenBlendFile: blender.autoOpenBlendFile,
-                    route: blender.importRoute,
-                    package: blender.packageName,
-                    developmentBuildHash: blender.developmentBuildHash,
-                    blenderExportConfig: blender.exportConfig,
-                }),
+            const task = await createRecordingExport(recordingFolderPath, {
+                kind: 'blender', blenderExePath, autoOpenBlendFile: blender.autoOpenBlendFile,
+                route: blender.importRoute, package: blender.packageName,
+                developmentBuildHash: blender.developmentBuildHash, blenderExportConfig: blender.exportConfig,
             });
-
-            if (!response.ok) {
-                return rejectWithValue(await getDetailedErrorMessage(response));
-            }
-            const data = await response.json();
+            const data = await waitForTaskResult<{success: boolean; message?: string; blender_file_path?: string}>(task.task_id);
             return {
                 success: !!data.success,
                 message: data.message ?? null,

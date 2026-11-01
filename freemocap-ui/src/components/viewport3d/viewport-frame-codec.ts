@@ -107,7 +107,7 @@ export function prepareFrameLayout(type: NumericalStream, frame: NumericalFrame)
         return {points: layout, models: [], byteLength};
     }
     const models = (frame as ResolvedModelFrame[]).map(model => {
-        // Byte alignment only; no padding components are added to scientific values.
+        // Byte alignment only; no padding components are added to values.
         byteLength = Math.ceil(byteLength / Float64Array.BYTES_PER_ELEMENT) * Float64Array.BYTES_PER_ELEMENT;
         const scalarOffset = byteLength;
         byteLength += FrameScalar.Count * Float64Array.BYTES_PER_ELEMENT;

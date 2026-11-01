@@ -66,7 +66,7 @@ def test_fit_only_retention_allows_anchor_change(tmp_path, monkeypatch, model_co
     {"scale_reference_name": "different_reference"},
     {"tracker_keypoint_names": ("different_keypoint",)},
 ])
-def test_fit_only_retention_rejects_scientific_model_changes(tmp_path, monkeypatch, model_context, model_updates):
+def test_fit_only_retention_rejects_recording_model_changes(tmp_path, monkeypatch, model_context, model_updates):
     run, _ = model_context
     with pytest.raises(ValueError, match="models used by retained scale fits"):
         _publish_changed_model(tmp_path, monkeypatch, run, model_updates=model_updates)

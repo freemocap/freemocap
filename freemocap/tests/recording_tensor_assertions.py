@@ -1,5 +1,7 @@
 """Explicit scalar materialization only for comparison with the live solver oracle."""
 import numpy as np
+from skellyforge.core.data_tensors.channel_values import ChannelValues
+from skellyforge.core.skeleton.pose.pose_tensor import HydrationStatus
 from skellyforge.core.skeleton.pose.rigid_body_diagnostics import RigidBodyResidual
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 
@@ -13,9 +15,10 @@ def reconstruction_frame(result, index, bundle):
     mapped = named("MAPPED_KEYPOINTS_3D")
     if not mapped:
         return None
-    status = result.channel_tensor("SEGMENT_ORIGINS").companion_values("solver_status")[index]
-    if not np.any(status == 1):
-        return SkeletonReconstruction(model_id=result.model_id, mapped_keypoints=mapped)
+    origins = result.channel_tensor("SEGMENT_ORIGINS")
+    status = origins.companion_values("solver_status")[index]
+    segment_status = ChannelValues(origins.tensor_layout.axes[1].identifiers,
+        (status == HydrationStatus.VALID).astype(np.uint8), component_names=())
     diagnostics = result.channel_tensor("RIGID_BODY_RESIDUALS")
     def optional(value):
         return float(value) if np.isfinite(value) else None
@@ -31,6 +34,7 @@ def reconstruction_frame(result, index, bundle):
                   for name, joint in bundle.skeleton.joints.items() if all(angle in flattened for angle in joint.angle_names)}
     center = named("DERIVED_POINTS").get("center_of_mass") if result.compute_center_of_mass else None
     return SkeletonReconstruction(model_id=result.model_id, mapped_keypoints=mapped,
+        segment_status=segment_status,
         landmarks=named("LANDMARKS_3D"), segment_origins=named("SEGMENT_ORIGINS"),
         segment_rotations_world=named("ROTATIONS_WORLD"), segment_rotations_local=named("ROTATIONS_LOCAL"),
         segment_lengths=dict(fit.segment_lengths) if fit else {}, fitted_scale_mm=fit.fitted_scale if fit else None,

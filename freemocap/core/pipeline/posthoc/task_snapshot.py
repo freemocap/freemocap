@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from freemocap.core.pipeline.posthoc.progress_messages import (
     PipelineProgressMessage,
@@ -68,10 +68,31 @@ class TaskSnapshot(SnapshotModel):
         return self
 
 
+class BackgroundTaskSnapshot(SnapshotModel):
+    """Retained status for a job whose executor is not a processing pipeline."""
+
+    task_id: str = Field(min_length=1)
+    revision: int = Field(ge=1)
+    task_type: Literal["export", "sync"]
+    recording: RecordingStructure | None = None
+    source_run_id: int | None = None
+    source_revision: str | None = None
+    status: Literal["queued", "running", "complete", "failed", "cancelled"]
+    progress: TaskProgress
+    cancellation_requested: bool = False
+    error: str | None = None
+    result: dict[str, JsonValue] | None = None
+    cameras: tuple[CameraTaskSnapshot, ...] = ()
+    operations: tuple[OperationProgressSnapshot, ...] = ()
+    timing: RunTimingSnapshot | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class TaskRegistrySnapshot(SnapshotModel):
     server_instance_id: UUID
     revision: int = Field(ge=0)
-    tasks: tuple[TaskSnapshot, ...]
+    tasks: tuple[TaskSnapshot | BackgroundTaskSnapshot, ...]
     recording_owners: tuple[RecordingOwner, ...]
 
 

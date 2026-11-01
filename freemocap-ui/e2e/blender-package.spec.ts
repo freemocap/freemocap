@@ -41,6 +41,15 @@ test('package setup and route options reach the export request', async ({page}) 
             }
             else if (request.url.endsWith('/addon/install')) {installed=input; response.end(JSON.stringify({package:'bl_ext.freemocap_local.freemocap_blender_addon',success:true}));}
             else {exported=input; response.end(JSON.stringify({success:true,blender_file_path:'C:/recording/recording.blend'}));}
+        } else if (request.url?.startsWith('/freemocap/recordings/recording/exports')) {
+            let body = ''; for await (const chunk of request) body += chunk;
+            exported = JSON.parse(body);
+            expect(exported.kind).toBe('blender');
+            response.writeHead(202, {'Content-Type': 'application/json'});
+            response.end(JSON.stringify({task_id: 'export:blender'}));
+        } else if (request.url?.startsWith('/freemocap/tasks/')) {
+            response.setHeader('Content-Type', 'application/json');
+            response.end(JSON.stringify({status: 'complete', result: {success: true, blender_file_path: 'C:/recording/recording.blend'}}));
         } else if (request.url === '/entry.js') {
             response.setHeader('Content-Type','text/javascript'); response.end(bundle.outputFiles.find(file => file.path.endsWith('.js'))!.text);
         } else if (request.url === '/entry.css') {

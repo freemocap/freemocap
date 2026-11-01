@@ -42,7 +42,7 @@ def recording_work(recording: str, operation: str) -> dict:
         result = fit_skeletons_for_recording(saved.numerical_input)
         finished = perf_counter()
         evidence = TypeAdapter(dict[str, FittedRecordingScale]).dump_python(result, mode="json")
-        # These two fields are declared frozensets, not ordered scientific axes.
+        # These two fields are declared frozensets, not ordered axes.
         # Spawned interpreters legitimately serialize their iteration order differently.
         for fitted in evidence.values():
             if fitted["fit"] is not None:
@@ -93,7 +93,7 @@ def benchmark(*, recording: Path, output: Path, repeats: int = 3) -> dict:
                 key = result["operation"]
                 expected.setdefault(key, result["fingerprint"])
                 if result["fingerprint"] != expected[key]:
-                    raise ValueError(f"Scientific output changed under {mode}: {key}")
+                    raise ValueError(f"Output changed under {mode}: {key}")
             print(f"{mode}: {row['wall_seconds']:.3f} s; exact fingerprints match", flush=True)
             (output / "measurements.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     report = dict(recording=str(recording), repetitions=rows, exact_parity=True,

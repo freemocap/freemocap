@@ -20,7 +20,7 @@ def save_aligned_calibration(*, source_path: Path, source: CalibrationResult,
     """Save only changed geometry; reuse an identical validated export on reruns.
 
     The source is the in-memory snapshot actually used for reconstruction. No
-    rounding/tolerance is used to discard small scientific changes. The original
+    rounding/tolerance is used to discard small changes. The original
     calibration and the explicit apply-transforms UI remain separate from this
     derived export. Names preserve the source stem and UTC creation time.
     """

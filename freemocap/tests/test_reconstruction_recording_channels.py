@@ -56,7 +56,7 @@ def test_partial_pose_preserves_world_orientation_and_missing_local_rotation() -
         assert item.values is recording.result.channel_tensor(channel_kind).data_values
         assert np.shares_memory(item.values, recording.result.channel_tensor(channel_kind).data_values)
         # Publication reads the existing channel array and allocates only bounded
-        # Arrow columns; the immutable scientific tensor remains the owner.
+        # Arrow columns; the immutable tensor remains the owner.
         published = list(item.batches(SeriesSampling(
             frame_numbers=(7,), timestamps_s=(0.25,), run_id=4, batch_size=5)))
         assert all(batch.num_rows <= 5 for batch in published)

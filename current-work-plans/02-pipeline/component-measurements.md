@@ -1,8 +1,8 @@
 # Isolated component measurements
 
-Measured 2026-10-11 on the complete sample: 1,108 motion-capture frames, three cameras, RTMPose CUDA plus board tracking, human and board reconstruction, NPZ export, and three annotated videos. No frame cap. Existing handlers and scientific algorithms, executed one at a time for diagnosis. Internal native workers and camera batching remain enabled.
+Measured 2026-10-11 on the complete sample: 1,108 motion-capture frames, three cameras, RTMPose CUDA plus board tracking, human and board reconstruction, NPZ export, and three annotated videos. No frame cap. Existing handlers and algorithms, executed one at a time for diagnosis. Internal native workers and camera batching remain enabled.
 
-**Scientific check:** 36 saved channels matched the current scientific task exactly (maximum absolute error 0.0). All three annotated videos contain 1,108 frames.
+**Check:** 36 saved channels matched the current task exactly (maximum absolute error 0.0). All three annotated videos contain 1,108 frames.
 
 ## Unprofiled stage timings
 
@@ -23,11 +23,11 @@ Measured 2026-10-11 on the complete sample: 1,108 motion-capture frames, three c
 | Save 3D tracking results | 4.787 | 5.172 | 77.237 |
 | Reconstruct skeletons | 32.254 | 31.828 | 50.489 |
 | Save complete recording | 7.336 | 8.781 | 20.304 |
-| Export scientific arrays | 4.230 | 12.062 | 6.673 |
+| Export arrays | 4.230 | 12.062 | 6.673 |
 
 CPU sums all native/Python threads in this process; it excludes GPU execution and child processes. The historical concurrent column is orientation, not a controlled speedup estimate: it predates the two save-path fixes, uses annotation processes, and was measured under different host conditions. Isolated timings are single full-recording measurements, not distributions. No other diagnostic workload was intentionally run beside the timed graph.
 
-Serial diagnostic wall time: 170.411 seconds. This deliberately includes all three annotation jobs sequentially and is not a production scheduling recommendation or a theoretical optimized runtime. The reported scientific-completion timestamp also includes earlier serial annotation work and must not be interpreted as scientific-only cost.
+Serial diagnostic wall time: 170.411 seconds. This deliberately includes all three annotation jobs sequentially and is not a production scheduling recommendation or a theoretical optimized runtime. The reported processing-completion timestamp also includes earlier serial annotation work and must not be interpreted as processing-only cost.
 
 ## Loading and tracking
 
@@ -61,11 +61,11 @@ Encode/write timers include submissions to the encoder, not all final flush/clos
 
 ## Current interpretation
 
-The measured 3D-save cost in isolation is 4.787 seconds, not 77 seconds. Reconstruction is 32.254 seconds with 31.828 process CPU seconds, consistent with roughly one CPU core worth of work despite many present native threads. This does not by itself prove which code holds the GIL. The strongest remaining targets are interference between concurrently scheduled operations, reconstruction internals, and avoiding expanded repeated identifiers/repeated whole-recording save passes. Preserve all scientific checks and outputs while testing changes.
+The measured 3D-save cost in isolation is 4.787 seconds, not 77 seconds. Reconstruction is 32.254 seconds with 31.828 process CPU seconds, consistent with roughly one CPU core worth of work despite many present native threads. This does not by itself prove which code holds the GIL. The strongest remaining targets are interference between concurrently scheduled operations, reconstruction internals, and avoiding expanded repeated identifiers/repeated whole-recording save passes. Preserve all checks and outputs while testing changes.
 
 ## Separate call-profile findings
 
-A second replay used the previously captured real observations, both scientific
+A second replay used the previously captured real observations, both
 models and the actual graph handlers, one at a time. Tracking was replaced only
 by that validated observation input; no tracking measurement is claimed for this
 replay. All handlers completed. Profiles are under
@@ -85,7 +85,7 @@ Profiler timings below include overhead and nested cumulative times overlap:
   includes those upstream generators; do not sum overlapping wrapper totals.
 - Save complete recording: 7.94 s profiled, including 3.48 s in Parquet writing,
   1.28 s in sample validation and 2.66 s in checkpoint batch production.
-- Scientific NPZ export: 4.21 s profiled, with 3.77 s in loading/ordering arrays and
+- NPZ export: 4.21 s profiled, with 3.77 s in loading/ordering arrays and
   only about 0.15 s in NumPy array writing. Investigate repeat scans/materialization
   before tuning the zip compressor.
 
@@ -114,7 +114,7 @@ profiler. Do not infer a precise board/GPU split from those exploratory profiles
 ## Validation and scope
 
 Nine focused diagnostic/executor/pipeline tests passed. Production graph scheduling,
-scientific algorithms, dependencies and storage format were not changed in this
+algorithms, dependencies and storage format were not changed in this
 measurement pass. The optional diagnostic CLI, reports and tests remain uncommitted.
 The full parity run covers the sample dataset and this CUDA/body/board configuration;
 it is not a new CPU/MediaPipe matrix or a repeated-trial whole-pipeline benchmark.

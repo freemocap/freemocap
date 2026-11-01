@@ -116,12 +116,12 @@ class ServerSession:
                 try:
                     health = self.api_client.request('GET', '/health', timeout_seconds=1.0)
                     if health.get('pid') == self.server_pid and self.owns_server_pid(self.server_pid):
-                        cleanup_routes = [('DELETE', '/freemocap/mocap/realtime/pipelines'),
-                                       ('DELETE', '/skellycam/camera/group/close/all'), ('GET', '/shutdown')]
+                        cleanup_routes = [('DELETE', '/freemocap/realtime/pipelines'),
+                                       ('DELETE', '/skellycam/camera/group/close/all'), ('POST', '/shutdown')]
                 except Exception as error:
                     cleanup_errors.append(f'Cannot verify owned server before cleanup: {error}')
             if cleanup_routes and self.api_client.recording_active:
-                cleanup_routes.insert(0, ('GET', '/skellycam/camera/group/all/record/stop'))
+                cleanup_routes.insert(0, ('POST', '/skellycam/camera/group/all/record/stop'))
             for method, route_path in cleanup_routes:
                 try:
                     self.api_client.request(method, route_path, timeout_seconds=20.0)

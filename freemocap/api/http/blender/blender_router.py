@@ -1,12 +1,17 @@
 import logging
-import subprocess
 from pathlib import Path
 from typing import Literal
 
 from freemocap.core.blender.runtime import inspect_blender, executable, environment, start_external
 from freemocap.core.blender.preparation import prepare_blender
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from concurrent.futures import CancelledError
+from threading import Event
+from filelock import FileLock
+from freemocap.api.http.recordings.recording_location import recording_path_location
+from freemocap.core.recording.recording_access import RecordingBusyError
+from freemocap.core.recording.exports.publication import artifact_path
 from pydantic import BaseModel, ConfigDict, Field
 
 from freemocap.core.blender.export_to_blender import export_to_blender
@@ -158,8 +163,8 @@ def install_addon(request: InstallAddonRequest) -> InstallAddonResponse:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
 
-@blender_router.post("/export")
-def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlenderResponse:
+@blender_router.post("/export", include_in_schema=False, deprecated=True)
+def export_to_blender_endpoint(request: ExportToBlenderRequest, http_request: Request) -> ExportToBlenderResponse:
     """Automatically prepare the required Blender package and export the recording."""
     try:
         recording_folder = Path(request.recording_folder_path)
@@ -167,21 +172,28 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
             raise HTTPException(status_code=400, detail=f"Recording folder not found: {request.recording_folder_path}")
         blender_exe = executable(request.blender_exe_path)
 
-        export_to_blender(
-            recording_folder_path=str(recording_folder),
-            blend_file_path=request.blend_file_path,
-            blender_exe_path=str(blender_exe),
-            route=request.route, package=request.package, trajectory_channel=request.trajectory_channel,
-            run_id=request.run_id, sensor_group=request.sensor_group,
-            development_build_hash=request.development_build_hash,
-            blender_export_config=request.blender_export_config.model_dump(),
-            open_file_on_completion=request.auto_open_blend_file,
-        )
+        structure = recording_path_location(str(recording_folder))
+        cancelled = Event()
+        with http_request.app.state.recording_access.read(path=structure.full_path, cancel=cancelled.set):
+            structure.exports_dir.mkdir(parents=True, exist_ok=True)
+            with FileLock(artifact_path(structure.exports_dir, '.blender-export.lock'), timeout=0):
+                export_to_blender(
+                    recording_folder_path=str(recording_folder),
+                    blend_file_path=request.blend_file_path,
+                    blender_exe_path=str(blender_exe),
+                    route=request.route, package=request.package, trajectory_channel=request.trajectory_channel,
+                    run_id=request.run_id, sensor_group=request.sensor_group,
+                    development_build_hash=request.development_build_hash,
+                    blender_export_config=request.blender_export_config.model_dump(),
+                    open_file_on_completion=request.auto_open_blend_file, cancelled=cancelled.is_set,
+                )
         return ExportToBlenderResponse(
             success=True,
             message="Export to Blender completed",
             blender_file_path=request.blend_file_path,
         )
+    except (RecordingBusyError, CancelledError) as error:
+        raise HTTPException(409, str(error)) from error
     except HTTPException:
         raise
     except (ValueError, FileNotFoundError) as e:
@@ -193,7 +205,18 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
 
 
 @blender_router.post("/open")
-def open_in_blender_endpoint(request: OpenInBlenderRequest) -> OpenInBlenderResponse:
+def open_in_blender_endpoint(request: OpenInBlenderRequest, http_request: Request) -> OpenInBlenderResponse:
+    # Protect discovery and launch; the external Blender session has its own lifetime.
+    try:
+        with http_request.app.state.recording_access.read(path=Path(request.recording_folder_path), cancel=lambda: None):
+            return _open_in_blender(request)
+    except RecordingBusyError as error:
+        raise HTTPException(status_code=409, detail={
+            'code': 'recording_busy', 'owner': error.owner.model_dump(mode='json'),
+        }) from error
+
+
+def _open_in_blender(request: OpenInBlenderRequest) -> OpenInBlenderResponse:
     """Open an existing .blend file in the given recording folder with Blender (GUI, non-blocking)."""
     try:
         recording_folder = Path(request.recording_folder_path)

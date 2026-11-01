@@ -83,7 +83,8 @@ persistenceListenerMiddleware.startListening({
     effect: async (_, api) => {
         api.cancelActiveListeners();
         await api.delay(DEBOUNCE_MS);
-        saveToStorage('mocap.config', (api.getState() as RootState).mocap.config);
+        const mocap = (api.getState() as RootState).mocap;
+        if (!mocap.exportSettingsError) saveToStorage('mocap.config', mocap.config);
     },
 });
 

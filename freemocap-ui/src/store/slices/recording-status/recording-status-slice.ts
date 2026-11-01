@@ -1,3 +1,4 @@
+import {recordingLocationKey} from '@/services/recording/recording-location';
 import {createSlice} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
 import {RecordingStatus} from '@/types/recording-status';
@@ -38,13 +39,14 @@ export const recordingStatusSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(fetchRecordingStatus.pending, (state, action) => {
-                const id = action.meta.arg.recordingId;
+                const id = recordingLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
                 const prev = state.byRecordingId[id] ?? emptyEntry();
                 state.byRecordingId[id] = {...prev, isLoading: true, error: null};
             })
             .addCase(fetchRecordingStatus.fulfilled, (state, action) => {
-                const {recordingId, status} = action.payload;
-                state.byRecordingId[recordingId] = {
+                const {status} = action.payload;
+                const id = recordingLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
+                state.byRecordingId[id] = {
                     status,
                     isLoading: false,
                     error: null,
@@ -52,7 +54,7 @@ export const recordingStatusSlice = createSlice({
                 };
             })
             .addCase(fetchRecordingStatus.rejected, (state, action) => {
-                const id = action.meta.arg.recordingId;
+                const id = recordingLocationKey(action.meta.arg.recordingId, action.meta.arg.recordingParentDirectory);
                 const prev = state.byRecordingId[id] ?? emptyEntry();
                 state.byRecordingId[id] = {
                     ...prev,
@@ -71,7 +73,7 @@ export const recordingStatusSlice = createSlice({
                 // Populate per-recording status entries from the batch response
                 for (const rec of recordings) {
                     if (rec.status) {
-                        state.byRecordingId[rec.name] = {
+                        state.byRecordingId[recordingLocationKey(rec.name, action.meta.arg?.recordingParentDirectory)] = {
                             status: rec.status,
                             isLoading: false,
                             error: null,
@@ -86,10 +88,10 @@ export const recordingStatusSlice = createSlice({
     },
 });
 
-export const selectRecordingStatusEntry = (recordingId: string | null | undefined) =>
+export const selectRecordingStatusEntry = (recordingId: string | null | undefined, parent?: string | null) =>
     (state: RootState): PerRecordingStatusState | null => {
         if (!recordingId) return null;
-        return state.recordingStatus.byRecordingId[recordingId] ?? null;
+        return state.recordingStatus.byRecordingId[recordingLocationKey(recordingId, parent)] ?? null;
     };
 
 export const selectRecordingsList = (state: RootState) =>

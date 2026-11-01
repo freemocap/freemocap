@@ -1,4 +1,4 @@
-"""Deterministic fingerprints of scientific definitions and numeric stage inputs."""
+"""Deterministic fingerprints of definitions and numeric stage inputs."""
 
 from dataclasses import dataclass
 from enum import Enum

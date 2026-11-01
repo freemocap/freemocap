@@ -1,4 +1,4 @@
-"""Exercise generated tutorials and the notebook through scientific publication.
+"""Exercise generated tutorials and the notebook through publication.
 
 Run with unittest; notebook execution uses the core Polars and Plotly dependencies.
 """
@@ -19,8 +19,8 @@ import pyarrow.parquet as pq
 
 from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata
 from freemocap.core.recording.exports.publication import verified_manifest
-from freemocap.core.recording.exports.requests import ScientificExportRequest
-from freemocap.core.recording.exports.wide_csv import export_scientific
+from freemocap.core.recording.exports.requests import ExportRequest
+from freemocap.core.recording.exports.wide_csv import export_recording
 from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 from skellyforge.core.data_tensors import read_numpy_dataset
@@ -100,7 +100,7 @@ class ExplorerExportTests(unittest.TestCase):
         pq.write_table(table, self.structure.data_parquet_path)
 
     def export(self, formats, **kwargs):
-        return export_scientific(structure=self.structure, request=ScientificExportRequest(
+        return export_recording(structure=self.structure, request=ExportRequest(
             formats=formats, data=('LANDMARKS_3D', 'OVERLAY_2D', 'SEGMENT_POSES'), **kwargs))
 
     def test_publication_relative_paths_and_preserved_guides(self):
@@ -219,7 +219,7 @@ class ExplorerExportTests(unittest.TestCase):
     def test_generated_guide_refresh_preserves_annotations_and_kept_exports(self):
         import hashlib
         from freemocap.core.recording.exports.guides import NPY, PREVIOUS_GUIDE_HASHES
-        previous = (Path(__file__).parent / 'fixtures' / 'previous_numpy_guide.md').read_bytes()
+        previous = (Path(__file__).parent / 'fixtures' / 'previous_numpy_guide.md').read_bytes().replace(b'\r\n', b'\n')
         result = self.export(('npy',))
         guide_path = result.manifest_path.parent / 'npy/README.md'
         for contents in (previous, previous.replace(b'\n', b'\r\n')):

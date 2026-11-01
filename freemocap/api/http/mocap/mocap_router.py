@@ -1,3 +1,5 @@
+from skellycam.core.camera_group.camera_errors import CameraStateConflict
+from freemocap.api.http.capture.capture_models import LegacyCaptureStopped
 from freemocap.core.recording.recording_access import RecordingBusyError
 from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 import logging
@@ -6,7 +8,7 @@ import tempfile
 from copy import deepcopy
 from pathlib import Path, PureWindowsPath
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.recorders.videos.video_file_metadata import probe_video_files
 from skellycam.core.recorders.videos.video_copy_plan import VideoCopyPlan
@@ -20,7 +22,7 @@ from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH, default_rec
 
 logger = logging.getLogger(__name__)
 
-mocap_router = APIRouter(prefix="/mocap", tags=["Mocap"])
+mocap_router = APIRouter(prefix="/mocap", tags=["Mocap"], include_in_schema=False, deprecated=True)
 
 
 # ==================== Request/Response Models ====================
@@ -191,13 +193,15 @@ async def start_mocap_recording(
         await get_freemocap_app().start_recording_all(recording_info=recording_info)
         logger.info(f"Starting mocap recording: {recording_info}")
         return StartMocapRecordingResponse(success=True, message="Mocap recording started")
+    except CameraStateConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except Exception as e:
         logger.exception(f"Error starting mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @mocap_router.post("/recording/stop")
-async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, bool]:
+async def stop_mocap_recording(request: StopMocapRecordingRequest) -> LegacyCaptureStopped:
     """Stop current mocap recording and launch posthoc mocap pipeline."""
     app = get_freemocap_app()
     try:
@@ -209,14 +213,11 @@ async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, 
             mocap_config=request.mocap_config,
         )
         logger.info("Mocap recording stopped, posthoc mocap pipeline launched")
-        return {
-            "success": True,
-            "pipeline_id": pipeline.id,
-            "recording_name": recording_info.recording_name,
-            "recording_path": str(recording_info.full_recording_path),
-        }
+        return LegacyCaptureStopped.completed(recording_info=recording_info, pipeline_id=pipeline.id)
     except RecordingBusyError as error:
         raise HTTPException(status_code=409, detail=error.owner.model_dump(mode='json')) from error
+    except CameraStateConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except Exception as e:
         logger.exception(f"Error stopping mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -387,22 +388,24 @@ async def import_videos(request: ImportVideosRequest) -> ImportVideosResponse:
 
 
 @mocap_router.post("/recording/process")
-async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> MocapRecordingResponse:
+async def process_mocap_recording(request: ProcessMocapRecordingRequest, http_request: Request) -> MocapRecordingResponse:
     """Process a previously recorded session with mocap pipeline."""
     app = get_freemocap_app()
     try:
         recording_info = request.to_recording_info()
-        if request.mocap_config.start_stage != 'observations':
-            from freemocap.core.pipeline.posthoc.saved_stage_processing import inspect_saved_stages, RESUME_STAGES
-            inventory = inspect_saved_stages(request.mocap_recording_directory)
-            run = next((r for r in inventory['runs'] if r['run_id'] == request.mocap_config.base_run_id), None)
-            groups = [] if run is None else [g for g in run['groups']
-                if request.mocap_config.sensor_group is None or g['sensor_group'] == request.mocap_config.sensor_group]
-            if len(groups) != 1:
-                raise HTTPException(status_code=400, detail='Select a saved run and sensor group for reprocessing')
-            prerequisite = RESUME_STAGES[RESUME_STAGES.index(request.mocap_config.start_stage) - 1]
-            if not groups[0]['stages'][prerequisite]:
-                raise HTTPException(status_code=400, detail=f'Saved {prerequisite} is missing; rerun that stage first')
+        with http_request.app.state.recording_access.read(
+                path=Path(recording_info.recording_directory) / recording_info.recording_name, cancel=lambda: None):
+            if request.mocap_config.start_stage != 'observations':
+                from freemocap.core.pipeline.posthoc.saved_stage_processing import inspect_saved_stages, RESUME_STAGES
+                inventory = inspect_saved_stages(request.mocap_recording_directory)
+                run = next((r for r in inventory['runs'] if r['run_id'] == request.mocap_config.base_run_id), None)
+                groups = [] if run is None else [g for g in run['groups']
+                    if request.mocap_config.sensor_group is None or g['sensor_group'] == request.mocap_config.sensor_group]
+                if len(groups) != 1:
+                    raise HTTPException(status_code=400, detail='Select a saved run and sensor group for reprocessing')
+                prerequisite = RESUME_STAGES[RESUME_STAGES.index(request.mocap_config.start_stage) - 1]
+                if not groups[0]['stages'][prerequisite]:
+                    raise HTTPException(status_code=400, detail=f'Saved {prerequisite} is missing; rerun that stage first')
         logger.info(
             f"Processing mocap recording with detector_type='{request.mocap_config.detector_type}', "
             f"tracker_config stages: {[s.name for s in request.mocap_config.tracker_config.stages]}, "

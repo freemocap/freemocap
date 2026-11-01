@@ -1,4 +1,4 @@
-"""Scientific definitions restore without a filesystem or a particular skeleton type."""
+"""Definitions restore without a filesystem or a particular skeleton type."""
 
 from pathlib import Path
 
@@ -10,6 +10,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_board_defin
 )
 
 from freemocap.core.recording.data_descriptors.recording_model import RecordedModel
+from freemocap.core.recording.result_processing.input_signatures import definition_signature
 from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
 
 
@@ -43,3 +44,19 @@ def test_board_definition_and_passthrough_mapping_round_trip(
             restored.rest_pose.landmark_positions[name].array,
             bundle.rest_pose.landmark_positions[name].array,
         )
+
+
+@pytest.mark.parametrize('declared', [False, True], ids=['historical-absent', 'declared'])
+def test_optional_presentation_preserves_recorded_definition_fingerprint(declared):
+    bundle = build_charuco_board_bundle(board=CharucoBoardDefinition.create_letter_size_5x3())
+    payload = RecordedModel.from_bundle(bundle).model_dump(mode='json')
+    if declared:
+        payload['skeleton']['presentation'] = {
+            'contours': [], 'excluded_origin_edges': [], 'excluded_bones': [], 'connection_materials': [],
+        }
+    else:
+        payload['skeleton'].pop('presentation', None)
+    expected = definition_signature(payload)
+    loaded = RecordedModel.model_validate(payload)
+    assert definition_signature(loaded) == expected
+    assert definition_signature(RecordedModel.from_bundle(loaded.to_bundle())) == expected

@@ -5,14 +5,14 @@ from time import perf_counter
 from skellyforge.core.data_tensors import NumpyDatasetWriter, TimeSeries
 from freemocap.core.recording.exports.arrays import check_cancelled
 from freemocap.core.recording.exports.numpy_dataset import (
-    channel_definitions, runtime_channels, saved_channel_tensor, scientific_selection, tensor_description,
+    channel_definitions, runtime_channels, saved_channel_tensor, export_selection, tensor_description,
 )
 from freemocap.core.recording.exports.publication import ExportArtifact, digest, artifact_path
 
 
 def stage_numpy_exports(*, view, run_id, selected, formats, staging, directory, prefix, source_hash,
                         timings, runtime_dataset=None, cancelled=None, progress=None):
-    native = scientific_selection(view.metadata.runs[run_id], selected)
+    native = export_selection(view.metadata.runs[run_id], selected)
     runtime = None if runtime_dataset is None else runtime_channels(runtime_dataset,
         metadata=view.metadata, run_id=run_id, selected=native)
     definitions = {document.definition_id: document for document in channel_definitions(view.metadata, run_id, native)}

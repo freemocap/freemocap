@@ -6,15 +6,15 @@ and focused/full-recording validation complete in the experimental runner.
 ## Settled requirements
 
 - Annotation remains a terminal graph branch. Its success, failure, admission or
-  progress delivery must not be a prerequisite for scientific computation.
-- Preserve existing drawing, video encoding and scientific algorithms. Keep the
+  progress delivery must not be a prerequisite for computation.
+- Preserve existing drawing, video encoding and algorithms. Keep the
   realtime pipeline and dependency repositories unchanged.
 - Reuse managed worker lifecycle machinery. A process-isolation experiment is not
   justification for a second application-wide worker registry.
 - Pass camera observations and source-video identity to annotation work. Load
   pixels inside the annotation worker; do not serialize video frames between
   processes or retain whole decoded videos.
-- Distinguish scientific completion from all-requested-products completion. A
+- Distinguish completion from all-requested-products completion. A
   full-run throughput claim includes startup and every requested sink.
 - A failed annotation job must not stop healthy cameras or science. Worker owner
   shutdown flags must not accidentally become the recording's global cancel flag.
@@ -40,14 +40,14 @@ and focused/full-recording validation complete in the experimental runner.
 
 - Two recordings processed successively cannot exchange observations, cancellation
   state, result messages or output paths.
-- One annotation failure leaves scientific work and another camera runnable.
+- One annotation failure leaves work and another camera runnable.
 - Cancellation during drawing/encoding produces a terminal outcome and closes
   owned video resources. Shutdown leaves no owned worker alive.
-- Slow annotation does not hold compute capacity or change scientific readiness.
-- Compare all saved scientific channels; verify every annotation's full frame
+- Slow annotation does not hold compute capacity or change readiness.
+- Compare all saved channels; verify every annotation's full frame
   coverage and drawing parity. Report numerical, image and encoded-file checks
   separately rather than implying encoded bitstream equality.
-- Report worker startup/input-transfer time, scientific finish time, all-sink
+- Report worker startup/input-transfer time, finish time, all-sink
   finish time and per-operation durations. Run variants sequentially on the same
   observations and configuration to avoid competing benchmarks.
 
@@ -83,12 +83,12 @@ operation; constructing a graph alone does not launch processes.
 
 ## Validation status
 
-The focused worker/graph/scientific suite passes 24 tests. The fresh test-data
-thread/process comparison passes all 29 scientific channels with zero numerical
+The focused worker/graph/suite passes 24 tests. The fresh test-data
+thread/process comparison passes all 29 channels with zero numerical
 difference and identical encoded-video hashes. See the performance audit for
 full-run timings and the longer sample's verification status. Abrupt process
 termination can leave an unpublished temporary video; it does not certify or
 publish an incomplete result.
 
-The longer sample also passed all 36 saved scientific channels with maximum
+The longer sample also passed all 36 saved channels with maximum
 absolute error 0.0; all three annotation videos contain 1,108 frames.

@@ -67,7 +67,7 @@ def run_application_graph(*, request) -> None:
 def _run_application_graph(*, request) -> None:
     # Import here to preserve the pipeline's existing lifecycle without a module cycle.
     from freemocap.core.pipeline.posthoc.mocap_pipeline import complete_mocap
-    from freemocap.core.recording.exports.requests import ScientificExportOptions
+    from freemocap.core.recording.exports.requests import ExportOptions
     validate_application_graph(config=request.config)
     from freemocap.core.recording.result_processing.run_save_session import RunSaveSession
     from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure
@@ -96,10 +96,10 @@ def _run_application_graph(*, request) -> None:
             report=lambda detail: request.report('setting_up', detail, 0.0))
     provider = resolve_tracking_provider(request.config)
     # Processing reads the selected calibration without modifying it. Changed
-    # geometry is exported only when the final scientific result is saved.
+    # geometry is exported only when the final result is saved.
     config = resolved_config.model_copy(update={
         'export_to_blender': False,
-        'scientific_exports': ScientificExportOptions(), 'export_tall_csv': False,
+        'export_options': ExportOptions(), 'export_tall_csv': False,
     })
     lock = Lock()
     active: set[str] = set()

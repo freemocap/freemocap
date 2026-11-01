@@ -9,9 +9,8 @@ let url: string;
 test.beforeAll(async () => {
     const fixture = resolve('e2e/fixtures/reconstruction-settings.tsx');
     const bundle = await build({entryPoints: [fixture], bundle: true, write: false,
-        format: 'esm', platform: 'browser', jsx: 'automatic', loader: {'.css': 'empty'}, alias: {
-            '@/hooks/useRealtimePipelineSync': fixture, '@/hooks/useMocap': fixture,
-            '@/store/slices/mocap': fixture, '@': resolve('src'),
+        format: 'esm', platform: 'browser', jsx: 'automatic', loader: {'.css': 'empty', '.yaml': 'text'}, alias: {
+            '@/hooks/useRealtimePipelineSync': fixture, '@': resolve('src'),
         }});
     server = createServer((request, response) => {
         response.setHeader('Content-Type', request.url === '/entry.js' ? 'text/javascript' : 'text/html');
@@ -26,9 +25,14 @@ test.afterAll(async () => {
 });
 
 for (const panel of ['capture', 'pipeline']) {
-    test(`${panel} Skeleton switch controls the backend reconstruction flag`, async ({page}) => {
+    test(`${panel} settings expose the appropriate reconstruction controls`, async ({page}) => {
         await page.goto(`${url}?${panel}`);
-        const toggle = page.locator('.toggle-button').filter({has: page.getByText('Skeleton', {exact: true})});
+        if (panel === 'capture') {
+            await expect(page.getByText('Recording reconstruction', {exact: true})).toBeVisible();
+            await expect(page.getByLabel('Fit skeleton', {exact: true})).toHaveCount(0);
+            return;
+        }
+        const toggle = page.getByLabel('Fit skeleton', {exact: true});
         await expect(toggle).toBeVisible();
         // Start from the shipped defaults, turn the control off, then on.
         await toggle.click();

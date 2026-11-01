@@ -30,7 +30,7 @@ const source: KeypointsSource & Pick<typeof workerDataStore, 'dispatch'> = {
 
 const api = window as any;
 let state: any;
-function Observe() {const current = useThree(); const inspection = useViewportState(); useEffect(() => {state = current; api.inspectionState = {hovered: inspection.hovered, pinned: inspection.pinned};}, [current, inspection.hovered, inspection.pinned]); return null;}
+function Observe() {const current = useThree(); const inspection = useViewportState(); useEffect(() => {inspection.setVisibility(value => ({...value, landmarks: true, rawKeypoints: true, faceConnections: true}));}, []); useEffect(() => {state = current; api.inspectionState = {hovered: inspection.hovered, pinned: inspection.pinned};}, [current, inspection.hovered, inspection.pinned]); return null;}
 createRoot(document.getElementById('root')!).render(<Canvas frameloop="never">
     <KeypointsSourceProvider source={source}><ViewportStateProvider>
         <KeypointsRenderer/><RigidBodyBoneRenderer/><ModelConnectionRenderer/><FaceRenderer/><SegmentAxesRenderer/><ViewportPicker/><Observe/>
@@ -63,7 +63,7 @@ api.renderFixture = async (input: any) => {
             result.meshes.push({kind: entry?.kind, uuid: object.uuid, names: [...entry?.instanceTargets ?? []].map(([slot, target]) => [slot, target.name]), targets: [...entry?.instanceTargets ?? []],
                 matrices: Array.from(object.instanceMatrix.array), colors: Array.from(object.instanceColor.array),
                 capacity: object.instanceMatrix.count, count: object.count, matrixVersion: object.instanceMatrix.version, colorVersion: object.instanceColor.version});
-        } else if (object.isLineSegments2) result.connections = {positions: Array.from(object.geometry.attributes.instanceStart.data.array), colors: Array.from(object.geometry.attributes.instanceColorStart.data.array)};
+        } else if (object.isLineSegments2) result.connections = {positions: Array.from(object.geometry.attributes.instanceStart.data.array), colors: Array.from(object.geometry.attributes.instanceColorStart.data.array as Float32Array).filter((_, index) => index % 4 !== 3)};
         else if (object.isPoints) result.dots = Array.from(object.geometry.attributes.position.array).slice(0, object.geometry.drawRange.count * 3);
         else if (object.isLineSegments) result.lines.push(Array.from(object.geometry.attributes.position?.array ?? []).slice(0, object.geometry.drawRange.count * 3));
     });

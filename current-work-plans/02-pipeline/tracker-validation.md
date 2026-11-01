@@ -8,7 +8,7 @@ numeric differences and zero structural/missingness differences. RTMPose used
 RTMW-x-l 256×192 plus YOLOX-m; MediaPipe included body, hands and face.
 
 This validates the loading-to-tracking boundary against the existing inference
-service, not full posthoc scientific acceptance. No accepted recording outputs
+service, not full posthoc acceptance. No accepted recording outputs
 were saved. The existing production pipeline and realtime callers are unchanged.
 
 | Recording | Backend | Baseline diagnostic wall seconds | Adapter diagnostic wall seconds |
@@ -47,7 +47,7 @@ sample data, XY distance was median 1.203 px, p95 3.855 px, p99 8.195 px and max
 outlier was camera 2, frame 117, `left_hand_middle_finger3` (CPU visibility 0.592,
 CUDA 0.516). Detector-schedule flags did not differ. This has not been attributed
 to a specific kernel, precision setting or downstream decision. Do not dismiss
-it as harmless roundoff or claim cross-backend scientific equivalence. Investigation
+it as harmless roundoff or claim cross-backend equivalence. Investigation
 belongs at the existing detector/provider boundary before making that claim.
 
 **MediaPipe CUDA is unsupported.** Installed detector options do not select a GPU
@@ -70,5 +70,5 @@ original failing `test-mediapipe_cpu` comparison, and
 The reusable comparison code and tests are source files awaiting review.
 
 The next acceptance boundary remains saving tracking products through the existing
-recording acceptance machinery, followed by complete scientific and annotation
+recording acceptance machinery, followed by complete processing and annotation
 graph comparisons. This experiment does not authorize replacing production routes.

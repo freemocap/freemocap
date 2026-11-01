@@ -26,6 +26,7 @@ def drive_realtime_lockstep(
     mock_group,
     num_frames: int,
     per_frame_timeout: float = 30.0,
+    startup_timeout: float | None = None,
     before_frame: Callable | None = None,
 ) -> RealtimeDriveResult:
     logger.info(
@@ -44,7 +45,10 @@ def drive_realtime_lockstep(
         mock_group.write_frame(frame_index)
 
         got: AggregationNodeOutputMessage | None = None
-        deadline = time.perf_counter() + per_frame_timeout
+        # A cold native model/engine build is startup work, not steady-state
+        # frame processing. Keep both waits bounded and independently visible.
+        frame_timeout = startup_timeout if frame_index == 0 and startup_timeout is not None else per_frame_timeout
+        deadline = time.perf_counter() + frame_timeout
         while time.perf_counter() < deadline:
             if not pipeline.alive:
                 raise RuntimeError(
@@ -68,7 +72,7 @@ def drive_realtime_lockstep(
         if got is None:
             raise TimeoutError(
                 f"No aggregation output for frame {frame_index} within "
-                f"{per_frame_timeout}s (processed {len(outputs)} frames)."
+                f"{frame_timeout}s (processed {len(outputs)} frames)."
             )
         outputs.append(got)
 

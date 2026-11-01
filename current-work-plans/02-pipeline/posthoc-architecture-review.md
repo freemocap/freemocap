@@ -11,20 +11,20 @@ associations must be reviewed together before resuming the request-level walkthr
 
 | Task | Realtime | Posthoc |
 | --- | --- | --- |
-| Mocap | Implemented; shares scientific computation with posthoc | **Current architecture/refactor scope** |
+| Mocap | Implemented; shares computation with posthoc | **Current architecture/refactor scope** |
 | Calibration | Not implemented; deferred | Existing separate task; not being redesigned here |
 
 Task and execution mode are independent axes. Other tasks may be added later; do not build a
 framework for hypothetical tasks now. The mocap interface may launch calibration/posthoc first,
 then load its geometry artifact. That does not make calibration a mocap stage. Shared media/input
-improvements may benefit both tasks without merging their lifecycle or scientific responsibilities.
+improvements may benefit both tasks without merging their lifecycle or responsibilities.
 The current realtime pipeline is mocap/realtime even where the implementation omits that qualifier.
 
 ## Purpose and scope
 
 A recording describes a captured volume and its observations. People, boards, animals and other
 objects are possible subjects; no singular human/tracker is the recording's defining entity.
-The goal is a coherent posthoc path that shares scientific computation and vocabulary with realtime,
+The goal is a coherent posthoc path that shares computation and vocabulary with realtime,
 while allowing inspection, partial processing, reprocessing and deliberate retention of results.
 
 Playback is accepted for the current checkpoint. Its bundle/cache implementation is a consumer,
@@ -95,7 +95,7 @@ clock metadata to recording_info need the capture-versus-derived distinction app
 may belong there; processing-derived alignment belongs with the corresponding result. Existing
 plans naming default exports do not authorize rebuilding exports before their contract is reviewed.
 
-Playback now consumes a shared bundle. That bundle is an API view, not a new scientific entity or
+Playback now consumes a shared bundle. That bundle is an API view, not a new entity or
 on-disk manifest requirement. A request-scoped inventory can avoid repeated probing without becoming
 a permanent duplicate recording model. SkellyCam probing is integrated in some playback callers;
 raw timing association, filename-stem collisions and explicit derived-media links remain unresolved.

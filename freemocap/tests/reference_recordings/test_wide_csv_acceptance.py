@@ -11,9 +11,9 @@ import psutil
 import numpy as np
 import pytest
 
-from freemocap.core.recording.exports.arrays import scientific_channels, channel_batches
-from freemocap.core.recording.exports.requests import ScientificExportRequest, ChannelSelection
-from freemocap.core.recording.exports.wide_csv import export_scientific
+from freemocap.core.recording.exports.arrays import data_channels, channel_batches
+from freemocap.core.recording.exports.requests import ExportRequest, ChannelSelection
+from freemocap.core.recording.exports.wide_csv import export_recording
 from freemocap.core.recording.exports.publication import digest, verified_manifest
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
@@ -44,7 +44,7 @@ def test_reference_wide_csv_values_and_metadata(tmp_path, name):
     sampler.start()
     started = time.monotonic()
     try:
-        result = export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv', 'npy', 'npz'), data=('LANDMARKS_3D', 'RAW_KEYPOINTS_3D', 'KEYPOINTS_3D', 'OVERLAY_2D', 'SEGMENT_POSES')))
+        result = export_recording(structure=structure, request=ExportRequest(formats=('wide_csv', 'npy', 'npz'), data=('LANDMARKS_3D', 'RAW_KEYPOINTS_3D', 'KEYPOINTS_3D', 'OVERLAY_2D', 'SEGMENT_POSES')))
     finally:
         stop.set()
         sampler.join()
@@ -55,7 +55,7 @@ def test_reference_wide_csv_values_and_metadata(tmp_path, name):
     archived_dataset = read_numpy_dataset(next(path for path in result.files if path.suffix == '.npz'))
     assert numpy_dataset.channel_identities == archived_dataset.channel_identities
     with recording_view(structure.data_parquet_path) as view:
-        declarations = {context.key: (channel, values) for context, channel, values in scientific_channels(view.metadata.runs[result.run_id])}
+        declarations = {context.key: (channel, values) for context, channel, values in data_channels(view.metadata.runs[result.run_id])}
         csv_contexts = {artifact.details['context_key'] for artifact in manifest.artifacts.values() if artifact.format == 'wide_csv'}
         assert csv_contexts == set(declarations)
         assert set(declarations).issubset(contexts)

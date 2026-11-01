@@ -5,6 +5,7 @@ import path from 'node:path';
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
 test('graph controls use settings styling and board dialog escapes the scrolling modal', async ({page}) => {
+    page.on('pageerror', error => {throw error;});
     await page.setViewportSize({width:1280,height:720});
     await page.route('http://localhost:53117/', route => route.fulfill({contentType:'text/html',body:'<main id="root"></main>'}));
     await page.goto('http://localhost:53117/');
@@ -33,7 +34,7 @@ test('graph controls use settings styling and board dialog escapes the scrolling
             builder.onResolve({filter: /useCalibration$/}, () => ({path: 'calibration', namespace: 'mock'}));
             builder.onResolve({filter: /ImportVideosModal$/}, () => ({path: 'import', namespace: 'mock'}));
             builder.onLoad({filter: /.*/, namespace: 'mock'}, args => ({loader: 'ts', resolveDir: path.resolve('.'), contents:
-                args.path === 'services' ? `export const useElectronIPC=()=>({api:null,isElectron:false}); export const useServer=()=>({connectedCameraIds:[],isConnected:true,isFailed:false}); export const serverUrls={};` :
+                args.path === 'services' ? `export const useElectronIPC=()=>({api:null,isElectron:false}); export const useServer=()=>({connectedCameraIds:[],isConnected:true,isFailed:false}); export const serverUrls={endpoints:{onnxExecutionProviders:'http://localhost:53117/freemocap/onnx/execution_providers'}};` :
                 args.path === 'import' ? 'export default function ImportModal(){return null;}' :
                 `import {useAppSelector} from '@/store'; export const useCalibration=()=>({config:useAppSelector(state=>state.calibration.config),isLoading:false,isRecording:false,updateCalibrationConfig:()=>{}});`
             }));
@@ -45,15 +46,12 @@ test('graph controls use settings styling and board dialog escapes the scrolling
         else await page.addScriptTag({content:file.text,type:'module'});
     }
     await page.getByRole('navigation',{name:'Mocap setup sections'}).getByRole('button',{name:'Processing stages',exact:true}).click();
-    const pipeline=page.getByRole('combobox',{name:'Processing pipeline',exact:true});
-    await expect(pipeline).toHaveValue('typed_dataflow');
-    await expect(pipeline.locator('option')).toHaveText(['Typed data flow graph V1', 'Legacy post hoc pipeline']);
-    await pipeline.selectOption('current');
-    await expect(pipeline).toHaveValue('current');
-    await expect(page.getByRole('combobox',{name:'Tracking device',exact:true})).toHaveCount(0);
-    await pipeline.selectOption('typed_dataflow');
-    expect(await pipeline.evaluate(el=>!!el.closest('.setting-select-input'))).toBe(true);
-    await expect(page.getByRole('combobox',{name:'Tracking device',exact:true})).toBeVisible();
+    const pipeline = page.getByRole('group', {name: 'Processing pipeline', exact: true});
+    await pipeline.getByRole('button', {name: 'Typed data flow graph V1'}).click();
+    await expect(pipeline.getByRole('option', {name: 'Typed data flow graph V1'})).toHaveAttribute('aria-selected', 'true');
+    await expect(pipeline.getByRole('option', {name: 'Add custom pipeline…'})).toHaveAttribute('aria-disabled', 'true');
+    await pipeline.getByRole('button', {name: 'Typed data flow graph V1'}).click();
+    await expect(page.getByRole('combobox',{name:'Execution provider',exact:true})).toBeVisible();
     await page.getByRole('button',{name:/^Configure board/}).click();
     const board=page.getByRole('dialog',{name:'ChArUco board settings',exact:true});
     await expect(board).toBeVisible();

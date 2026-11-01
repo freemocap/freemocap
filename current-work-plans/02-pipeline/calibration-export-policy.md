@@ -5,7 +5,7 @@ modifying it. Previously the application created an identical hash/UUID-named
 file before every run. The graph only recorded a proposed calibration update in
 the recording metadata; processing did not actually apply that update to the copy.
 
-When a completed scientific result changes camera geometry, the graph now saves
+When a completed result changes camera geometry, the graph now saves
 that derived calibration under `exports/calibration_copies/`. The filename is
 `<original-stem>__aligned__<UTC-timestamp>__<12-character-content-hash>.toml`.
 No file or directory is created if there are no transforms or the cameras remain

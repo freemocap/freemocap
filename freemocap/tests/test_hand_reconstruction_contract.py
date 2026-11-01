@@ -94,7 +94,7 @@ def test_complete_hands_in_live_posthoc_and_recorded_model(tracker, anchor):
 
 
 @pytest.mark.parametrize('tracker', ['rtmpose', 'mediapipe'])
-def test_missing_palm_evidence_removes_that_hand_and_reentry_restores_it(tracker):
+def test_missing_palm_preserves_observed_fingers_and_reentry_restores_palm(tracker):
     bundle = build_standard_human_bundle(detector_type=tracker)
     points = tracked_hands(bundle)
     state = state_for(bundle)
@@ -107,5 +107,9 @@ def test_missing_palm_evidence_removes_that_hand_and_reentry_restores_it(tracker
             assert_hand_geometry(bundle, result, 'left')
         else:
             assert 'left_lower_arm' in result.segment_origins
-            assert not any(n.startswith('left_') and s.anatomical_segment == 'hand'
-                           for n, s in bundle.skeleton.segments.items() if n in result.segment_origins)
+            assert 'left_carpals' not in result.segment_origins
+            assert 'left_index_proximal_phalanx' not in result.segment_origins
+            # The remaining PIP/DIP/tip observations still solve the distal
+            # segments independently of the missing palm and MCP evidence.
+            assert 'left_index_middle_phalanx' in result.segment_origins
+            assert 'left_index_distal_phalanx' in result.segment_origins

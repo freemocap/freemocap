@@ -85,7 +85,7 @@ configuration was changed to bypass it.
 Before installing the rotation change upstream: retain the public validation
 contract; add focused synthesis tests for empty/partial/disconnected selections,
 invalid fits, backward traversal and landmark ownership; test the board model;
-then repeat complete-pipeline scientific parity and timing. The current experiment
+then repeat complete-pipeline parity and timing. The current experiment
 proves the human reconstruction speedup on this recording, not all those cases.
 
 The previous single-vector arithmetic experiment and this batching experiment

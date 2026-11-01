@@ -1,13 +1,12 @@
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {serverUrls} from '@/constants/server-urls';
 import type {RootState} from '@/store/root-state-types';
-import {PipelineType} from './pipelines-slice';
 import {TaskRegistrySnapshotSchema} from '@/services/server/transport/message-contract';
 import {applyTaskSnapshot} from '@/services/server/task-progress';
 
 export const fetchTaskSnapshot = createAsyncThunk<void, void, {state: RootState}>('pipelines/fetchTaskSnapshot', async (_, {dispatch, getState, signal}) => {
     const initialInstance = getState().pipelines.serverInstanceId;
-    const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/posthoc/tasks`, {signal});
+    const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/tasks`, {signal});
     if (!response.ok) throw new Error(await response.text());
     const snapshot = TaskRegistrySnapshotSchema.parse(await response.json());
     const current = getState().pipelines;
@@ -22,12 +21,7 @@ export const stopPipeline = createAsyncThunk<string, string, {state: RootState}>
             .find(item => item.basePipelineId === pipelineId);
         if (!pipeline?.pipelineType) throw new Error(`Missing task type for pipeline ${pipelineId}`);
         const base = serverUrls.getHttpUrl();
-        const routes: Record<PipelineType, string> = {
-            [PipelineType.MOCAP]: '/freemocap/mocap/posthoc/pipelines',
-            [PipelineType.CALIBRATION]: '/freemocap/calibration/posthoc/pipelines',
-            [PipelineType.SYNC]: '/freemocap/mocap/synchronization/jobs',
-        };
-        const response = await fetch(`${base}${routes[pipeline.pipelineType]}/${encodeURIComponent(pipelineId)}`, {method: 'DELETE'});
+        const response = await fetch(`${base}/freemocap/tasks/${encodeURIComponent(pipelineId)}/cancel`, {method: 'POST'});
         if (!response.ok) throw new Error(await response.text());
         await dispatch(fetchTaskSnapshot()).unwrap();
         return pipelineId;

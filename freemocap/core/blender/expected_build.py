@@ -1,5 +1,6 @@
 """Expected source is core's installed, pinned add-on, not Blender's installation."""
 import importlib.metadata
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -30,4 +31,13 @@ def write_bundled_build(destination):
 def addon_source():
     if getattr(sys, 'frozen', False):
         return Path(__file__).with_name('addon_source') / 'freemocap_blender_addon'
-    return Path(importlib.metadata.distribution('freemocap_blender_addon').locate_file('freemocap_blender_addon'))
+    distribution = importlib.metadata.distribution('freemocap_blender_addon')
+    direct = json.loads(distribution.read_text('direct_url.json') or '{}')
+    if not direct.get('dir_info', {}).get('editable', False):
+        return Path(distribution.locate_file('freemocap_blender_addon'))
+    # Editable distributions keep metadata in site-packages and source elsewhere.
+    # Resolve the installed package without importing Blender's bpy-dependent code.
+    specification = importlib.util.find_spec('freemocap_blender_addon')
+    if specification is None or specification.origin is None:
+        raise RuntimeError('The installed FreeMoCap Blender add-on source could not be located')
+    return Path(specification.origin).parent

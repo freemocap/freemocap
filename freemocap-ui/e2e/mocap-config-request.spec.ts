@@ -11,8 +11,13 @@ test('Mocap requests keep person alignment and custom transforms independent of 
         filterConfig: {enabled: boolean; method: string; cutoff: number; order: number};
     }}[] = [];
     await page.route('http://localhost:53117/**', async route => {
-        requests.push(route.request().postDataJSON());
-        await route.fulfill({json: {success: true}, headers: {'Access-Control-Allow-Origin': '*'}});
+        if (route.request().method() === 'GET') {
+            await route.fulfill({json: {server_instance_id: '11111111-1111-4111-8111-111111111111', revision: 0, recording_owners: [], tasks: []}});
+            return;
+        }
+        const body = route.request().postDataJSON();
+        requests.push({mocapTaskConfig: body.mocapTaskConfig ?? body.config});
+        await route.fulfill({json: {success: true, task_id: 'task', recording_id: 'sample', recording_parent_directory: 'C:/recordings'}, headers: {'Access-Control-Allow-Origin': '*'}});
     });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<output id="result"></output>'}));
     await page.goto('http://localhost:53117/');

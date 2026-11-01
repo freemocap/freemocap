@@ -1,4 +1,4 @@
-"""Static channel views derived from the single stored scientific scale fit."""
+"""Static channel views derived from the single stored scale fit."""
 
 from collections.abc import Iterator
 

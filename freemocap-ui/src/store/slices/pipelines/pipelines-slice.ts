@@ -14,6 +14,9 @@ export function phaseForTask(phase: string): PipelinePhase {
         exporting_blender: PipelinePhase.FINALIZING, validating_observations: PipelinePhase.SOLVING,
         running_solver: PipelinePhase.SOLVING, saving_calibration: PipelinePhase.SAVING,
         complete: PipelinePhase.COMPLETE, failed: PipelinePhase.FAILED,
+        cancelled: PipelinePhase.FAILED, running: PipelinePhase.FINALIZING,
+        probing: PipelinePhase.SETTING_UP, detecting_lag: PipelinePhase.SOLVING,
+        trimming: PipelinePhase.PROCESSING_VIDEOS, verifying: PipelinePhase.COLLECTING,
     };
     const value = phases[phase];
     if (!value) throw new Error(`Unknown task phase: ${phase}`);
@@ -26,6 +29,7 @@ export const PipelineType = {
     CALIBRATION: 'calibration',
     MOCAP: 'mocap',
     SYNC: 'sync',
+    EXPORT: 'export',
 } as const;
 export type PipelineType = (typeof PipelineType)[keyof typeof PipelineType];
 
@@ -52,6 +56,7 @@ export const PIPELINE_TYPE_CONFIG: Record<PipelineType, PipelineTypeConfig> = {
     [PipelineType.CALIBRATION]: {label: 'Calibration', color: '#26C6DA'},
     [PipelineType.MOCAP]:       {label: 'Mocap',        color: '#AB47BC'},
     [PipelineType.SYNC]:        {label: 'Synchronize',  color: '#66BB6A'},
+    [PipelineType.EXPORT]:      {label: 'Export',       color: '#FFA726'},
 };
 
 export const PHASE_LABELS: Record<PipelinePhase, string> = {
@@ -141,19 +146,19 @@ export const pipelinesSlice = createSlice({
             state.registryRevision = snapshot.revision;
             state.recordingOwners = snapshot.recording_owners;
             if (!sameServer) state.dismissedBasePipelineIds = [];
-            const newTaskStarted = snapshot.tasks.some(task => task.status === 'running' && !previous[task.task_id]);
+            const newTaskStarted = snapshot.tasks.some(task => ['queued', 'running'].includes(task.status) && !previous[task.task_id]);
             if (newTaskStarted) {
                 state.dismissedBasePipelineIds = [...new Set([
                     ...state.dismissedBasePipelineIds,
-                    ...snapshot.tasks.filter(task => task.status !== 'running').map(task => task.task_id),
+                    ...snapshot.tasks.filter(task => !['queued', 'running'].includes(task.status)).map(task => task.task_id),
                 ])];
             }
             state.activePipelines = {};
             for (const task of snapshot.tasks) {
-                const common = {pipelineType: task.task_type, recordingName: task.recording.recording_name,
-                    recordingPath: task.recording.full_path, basePipelineId: task.task_id};
+                const common = {pipelineType: task.task_type, recordingName: task.recording?.recording_name ?? '',
+                    recordingPath: task.recording?.full_path ?? '', basePipelineId: task.task_id};
                 const phase = phaseForTask(task.progress.phase);
-                const terminal = task.status !== 'running';
+                const terminal = !['queued', 'running'].includes(task.status);
                 state.activePipelines[task.task_id] = {...common, pipelineId: task.task_id, cameraId: null,
                     operations: task.operations, taskStatus: task.status, timing: task.timing,
                     phase, progress: task.progress.progress_fraction === null ? null : Math.round(task.progress.progress_fraction * 100),
@@ -308,7 +313,7 @@ const selectAllGroupsUnfiltered = createSelector(
             group.isComplete = group.aggregator?.taskStatus !== undefined
                 ? group.aggregator.taskStatus === 'complete' : !!group.aggregator && group.aggregator.phase === PipelinePhase.COMPLETE;
             group.isActive = group.aggregator?.taskStatus !== undefined
-                ? group.aggregator.taskStatus === 'running'
+                ? ['queued', 'running'].includes(group.aggregator.taskStatus)
                 : !group.isFailed && !group.isComplete && allMembers.some((p) => !isTerminalPhase(p));
             group.recordingName = group.aggregator?.recordingName || group.videoNodes[0]?.recordingName || '';
             group.recordingPath = group.aggregator?.recordingPath || group.videoNodes[0]?.recordingPath || '';

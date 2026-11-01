@@ -1,5 +1,5 @@
 from freemocap.core.recording.recording_access import RecordingAccess
-"""Playback projects canonical samples without executing the scientific pipeline."""
+"""Playback projects canonical samples without executing the pipeline."""
 
 from pathlib import Path
 

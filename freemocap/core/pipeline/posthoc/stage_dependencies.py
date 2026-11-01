@@ -1,4 +1,4 @@
-"""Scientific dependencies used for checkpoint reuse and invalidation."""
+"""Dependencies used for checkpoint reuse and invalidation."""
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 

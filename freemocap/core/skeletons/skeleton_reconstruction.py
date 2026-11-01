@@ -33,8 +33,8 @@ class SkeletonReconstruction:
         landmarks: scaled model-local geometry transformed by its owning solved segment.
         segment_origins: translations keyed by segment with the anchor fixed to its recovered
             origin. Standard-human placement balances recovered origins against attachment
-            gaps; other models use exact attachments. Presence requires a measured path to
-            the anchor. Each segment's own landmark geometry stays rigid.
+            gaps and retains independently solved components; other models use exact
+            attachments with a measured path to the anchor. Each segment stays rigid.
         segment_rotations_world: per-segment world quaternions (wxyz).
         segment_rotations_local: per-segment parent-relative quaternions (wxyz).
         segment_lengths: fitted length per segment, in millimetres, for EVERY segment -

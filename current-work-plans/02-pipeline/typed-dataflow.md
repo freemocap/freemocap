@@ -31,7 +31,7 @@ from those definitions, independent server execution, and measurable comparison
 with the current posthoc pipeline. Realtime should eventually share the language,
 but its scheduling and loss policies are outside the first implementation.
 
-The module boundaries and protocols below are proposals. Existing scientific
+The module boundaries and protocols below are proposals. Existing
 models, recording identities, checkpoint provenance, and saved-stage restart
 rules remain authoritative. Follow [the recording contract](../../RECORDING_CONTRACT.md)
 and coordinate with [ongoing export work](secondary-exports.md). Do not replace
@@ -63,9 +63,9 @@ Verified current FreeMoCap behavior (paths relative to `freemocap/`):
 | Source | Finding and consequence |
 | --- | --- |
 | `core/pipeline/dataflow/recording_pipeline.py` | Camera reads are dispatched together; next-frame reads overlap current inference. The coordinator then waits for every `AnnotateFrame` result before advancing. This is partial concurrency with a real barrier, not wholly serial loading. |
-| `core/pipeline/dataflow/video_sources.py` | A camera thread owns loading, board detection, observation mutation, drawing and encoding. Removing the wait without separating board results would change scientific outputs. |
+| `core/pipeline/dataflow/video_sources.py` | A camera thread owns loading, board detection, observation mutation, drawing and encoding. Removing the wait without separating board results would change outputs. |
 | `core/pipeline/inference_service.py` | One outstanding request per client, ordered posthoc ordinals, shared model lifetime, and bounded realtime preference. More graph workers do not automatically create more GPU capacity. |
-| `core/pipeline/posthoc/mocap_pipeline.py` | Observations accumulate before subsequent scientific processing; requested exports run after saved processing. Preserve their outcome semantics. |
+| `core/pipeline/posthoc/mocap_pipeline.py` | Observations accumulate before subsequent processing; requested exports run after saved processing. Preserve their outcome semantics. |
 | `core/pipeline/posthoc/stage_dependencies.py`, `stage_execution_plan.py` | Existing prerequisite closure, checkpoint reuse and invalidation must survive migration. |
 | `api/http/mocap/mocap_router.py`, `app/app.py` | HTTP already launches processing; an application background collector refreshes progress even with no connected client. A separate browser is not itself proof of execution isolation. |
 | `core/pipeline/performance_report.py` | Existing bounded timing summaries distinguish coordinator waits and worker work. They overlap and are not GPU kernel timings. Extend this evidence rather than discard it. |
@@ -95,18 +95,18 @@ mapping and collection rule. Matching types permit a binding; they do not create
 **Source / sink**: boundary roles for acquiring data and delivering effects.
 Loading a video is a source; saving results is a sink. Configuration is a bound
 value, not a fictitious processing node. Resource acquisition has a lifecycle,
-not a pretend scientific data product.
+not a pretend data product.
 
 **Partition**: an independently ordered subset of work, such as one camera.
 **Firing**: one invocation for a particular key. **Attempt**: one execution try
 of that firing. **Executor**: the mechanism that runs attempts on allocated resources.
 
 **Artifact**: the immutable compiled graph with resolved operations, bindings,
-contract versions and implementation identities. Scientific output artifacts are
+contract versions and implementation identities. Output artifacts are
 separately identified; they are not the executable graph artifact.
 
 **Execution run**: one operational execution of an artifact. It is distinct from
-the retained scientific run ID and recording revision in the recording contract.
+the retained run ID and recording revision in the recording contract.
 
 ## Static graph and repeated execution
 
@@ -158,27 +158,27 @@ topology. Production inspection must instead come from the compiled artifact.
 flowchart LR
     V[Load video frames per camera] --> P[Track poses: camera batch]
     V --> B[Detect board per camera]
-    P --> J[Join scientific observations by frame]
+    P --> J[Join observations by frame]
     B --> J
     J --> T[Triangulate with camera geometry]
     J --> S[Save 2D observations]
     T --> N[Whole-record and numerical stages]
-    N --> R[Save scientific results]
+    N --> R[Save results]
     J --> D[Draw annotations per camera]
     AV[Load annotation source frames] --> D
     D --> E[Encode and save videos]
-    R --> X[Requested scientific exports]
+    R --> X[Requested exports]
 ```
 
 Board selection, geometry and timing are declared inputs/dependencies, not hidden
 reads. Board selection may itself require a discovery operation; preserve its
 selection semantics before attempting parallelization. A task without board
 tracking resolves without that required join input. Annotation has no outgoing
-scientific dependency. Requested annotation/export failures remain visible in
-the overall outcome even when scientific results have already been saved.
+dependency. Requested annotation/export failures remain visible in
+the overall outcome even when results have already been saved.
 
 Initial annotation proposal: a separately ordered source reader consumes the same
-video and keyed saved/buffered observations. This avoids retaining scientific pixel
+video and keyed saved/buffered observations. This avoids retaining pixel
 buffers until a slow encoder catches up. Measure the extra read cost. Any alternative
 shared-frame fanout must declare bounded storage or spooling and its pressure policy;
 a lossless slow consumer cannot be both unbounded and free of backpressure.
@@ -193,7 +193,7 @@ The proposed graph core exposes compile, submit, control and inspect interfaces.
 It owns contract validation, keyed readiness, bounded admission, lifecycle and
 causal runtime facts. It knows nothing about FastAPI, React or recording folder layouts.
 
-FreeMoCap composition owns scientific adapters, stage reuse/invalidation, recording
+FreeMoCap composition owns adapters, stage reuse/invalidation, recording
 leases, output transactions and the shared inference-service integration. Handlers
 receive declared data and explicitly owned resource capabilities. They must not
 invoke downstream handlers or conceal a pipeline inside a generic operation.
@@ -203,7 +203,7 @@ Choose boundaries from measured GIL, copying, memory and device behavior. Preser
 the existing shared inference owner initially; benchmark any proposed replacement
 separately rather than bypassing its fairness and session-lifetime policies.
 
-Output sinks have explicit ownership and temporary/final paths. A scientific result
+Output sinks have explicit ownership and temporary/final paths. A result
 becomes reusable only after successful validation and recording-contract publication.
 Do not promise exactly-once external effects after a crash; use idempotent destination
 identity and reconcile interrupted attempts. Cancellation stops admission, drains or
@@ -226,7 +226,7 @@ cancel a run. Controls and reports are separately authorized server operations.
 
 Workers maintain bounded local aggregates and offer compact reports without waiting
 for subscribers. The server owns a projection cache; every client has a bounded
-mailbox. Superseded progress reports may be coalesced. Scientific outputs may not.
+mailbox. Superseded progress reports may be coalesced. Outputs may not.
 Terminal outcomes and accepted output references must be recoverable from server
 state/persistence even when notification delivery fails. Diagnostic event storage
 has an explicit bounded retention and dropped-event count; it is not an unbounded
@@ -274,7 +274,7 @@ Use “load” and “save” in user labels where those describe the actual ope
    as a reviewable slice; run real datasets offline through the new entry point.
    Keep the current application route until output and resource tests pass. This is
    a temporary comparison boundary, not a legacy node inside the new graph.
-5. Map saved-stage restart, numerical stages and exports; preserve scientific
+5. Map saved-stage restart, numerical stages and exports; preserve
    provenance and invalidation. Hook existing HTTP control and WebSocket reporting
    to the same execution owner, then verify the actual generic UI against it.
 6. Switch the application route and delete superseded coordination once coverage,

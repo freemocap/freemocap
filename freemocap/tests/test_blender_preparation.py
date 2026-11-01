@@ -84,7 +84,7 @@ def test_export_and_open_share_managed_profile(tmp_path, monkeypatch):
     monkeypatch.setattr(module, 'run_blender', export)
     launch = Mock()
     monkeypatch.setattr(module.subprocess, 'Popen', launch)
-    export_to_blender(tmp_path, blender_exe_path=blender)
+    export_to_blender(tmp_path, blender_exe_path=blender, run_id=0)
     assert launch.call_args.kwargs['env']['BLENDER_USER_CONFIG'] == str(profile/'config')
 
 

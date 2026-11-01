@@ -1,4 +1,4 @@
-"""Scientific exports preserve context, order, missingness and exact saved values."""
+"""Exports preserve context, order, missingness and exact saved values."""
 from concurrent.futures import CancelledError
 import csv
 import json
@@ -10,14 +10,14 @@ import pytest
 
 from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata
 from freemocap.core.recording.exports import arrays, publication, wide_csv
-from freemocap.core.recording.exports.requests import ScientificExportRequest
+from freemocap.core.recording.exports.requests import ExportRequest
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 
 @pytest.fixture
-def scientific_recording(tmp_path):
+def recording_processing(tmp_path):
     structure = RecordingStructure(base_directory=tmp_path, recording_name='recording')
     structure.full_path.mkdir()
     channels = [dict(sensor_group='a', source='points', reference_frame='world', kind='RAW_KEYPOINTS_3D',
@@ -55,11 +55,11 @@ def export(structure, **kwargs):
     if 'wide_csv' not in kwargs:
         with recording_view(structure.data_parquet_path) as view:
             kwargs['wide_csv'] = tuple(item[0] for item in arrays.available_channels(view.metadata.runs[3]))
-    return wide_csv.export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',), **kwargs))
+    return wide_csv.export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',), **kwargs))
 
 
-def test_arrays_and_csv_match_source_rows_with_split_tables(scientific_recording, monkeypatch):
-    structure, rows = scientific_recording
+def test_arrays_and_csv_match_source_rows_with_split_tables(recording_processing, monkeypatch):
+    structure, rows = recording_processing
     original = structure.data_parquet_path.read_bytes()
     monkeypatch.setattr(wide_csv, 'MAX_ROWS', 1)
     monkeypatch.setattr(wide_csv, 'MAX_VALUE_COLUMNS', 2)
@@ -99,8 +99,8 @@ def test_arrays_and_csv_match_source_rows_with_split_tables(scientific_recording
     assert structure.data_parquet_path.read_bytes() == original
 
 
-def test_selection_replacement_retention_and_failure(scientific_recording, monkeypatch):
-    structure, _ = scientific_recording
+def test_selection_replacement_retention_and_failure(recording_processing, monkeypatch):
+    structure, _ = recording_processing
     first = export(structure)
     with recording_view(structure.data_parquet_path) as view:
         channel = arrays.available_channels(view.metadata.runs[3])[0][0]
@@ -121,13 +121,13 @@ def test_selection_replacement_retention_and_failure(scientific_recording, monke
     assert not list(structure.exports_dir.glob('.staging-*'))
 
 
-def test_cancel_duplicates_unknown_and_stale(scientific_recording):
-    structure, _ = scientific_recording
+def test_cancel_duplicates_unknown_and_stale(recording_processing):
+    structure, _ = recording_processing
     for options in (dict(expected_revision='stale'), dict(run_id=99), dict(wide_csv=())):
         with pytest.raises(ValueError):
             export(structure, **options)
     with pytest.raises(CancelledError):
-        wide_csv.export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',), data=('RAW_KEYPOINTS_3D',)), cancelled=lambda: True)
+        wide_csv.export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',), data=('RAW_KEYPOINTS_3D',)), cancelled=lambda: True)
     table = pq.read_table(structure.data_parquet_path)
     pq.write_table(pa.concat_tables([table, table]), structure.data_parquet_path)
     with pytest.raises(ValueError, match='Duplicate'):
@@ -135,9 +135,9 @@ def test_cancel_duplicates_unknown_and_stale(scientific_recording):
     assert not list(structure.exports_dir.glob('*.wide.csv'))
 
 
-def test_partial_publication_recovers(scientific_recording, monkeypatch):
+def test_partial_publication_recovers(recording_processing, monkeypatch):
     from freemocap.core.recording.exports.tall_csv import recover_tall_export
-    structure, _ = scientific_recording
+    structure, _ = recording_processing
     replace = publication.os.replace
     def fail(source, target):
         if str(target).endswith('_recording_info.json'):
@@ -151,8 +151,8 @@ def test_partial_publication_recovers(scientific_recording, monkeypatch):
     assert len(publication.verified_manifest(structure.exports_dir / 'run-3' / 'recording.run-3_recording_info.json').artifacts) == 4
 
 
-def test_empty_context_and_ordered_array_shape(scientific_recording, tmp_path):
-    structure, _ = scientific_recording
+def test_empty_context_and_ordered_array_shape(recording_processing, tmp_path):
+    structure, _ = recording_processing
     with recording_view(structure.data_parquet_path) as view:
         for item, shape in zip(arrays.available_channels(view.metadata.runs[3]), [(2, 2, 3), (2, 1, 4), (2, 1, 1), (1, 1)], strict=True):
             with arrays.ordered_arrays(view, 3, item, scratch=tmp_path) as data:
@@ -167,8 +167,8 @@ def test_empty_context_and_ordered_array_shape(scientific_recording, tmp_path):
     assert [a.rows for a in manifest.artifacts.values()] == [0, 0, 0, 1]
 
 
-def test_disk_arrays_close_and_cancel_during_generation_preserves_outputs(scientific_recording, monkeypatch, tmp_path):
-    structure, _ = scientific_recording
+def test_disk_arrays_close_and_cancel_during_generation_preserves_outputs(recording_processing, monkeypatch, tmp_path):
+    structure, _ = recording_processing
     monkeypatch.setattr(arrays, 'MAX_RESIDENT_ARRAY_BYTES', 1)
     with recording_view(structure.data_parquet_path) as view:
         item = arrays.available_channels(view.metadata.runs[3])[0]
@@ -186,14 +186,14 @@ def test_disk_arrays_close_and_cancel_during_generation_preserves_outputs(scient
         stopped = True
     monkeypatch.setattr(wide_csv, 'validate_table', cancel_after_first_table)
     with pytest.raises(CancelledError):
-        wide_csv.export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',), data=('RAW_KEYPOINTS_3D',)), cancelled=lambda: stopped)
+        wide_csv.export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',), data=('RAW_KEYPOINTS_3D',)), cancelled=lambda: stopped)
     assert all(p.read_bytes() == content for p, content in before.items())
     assert not list(structure.exports_dir.glob('.staging-*'))
 
 
-def test_replacement_keeps_one_source_snapshot(scientific_recording):
+def test_replacement_keeps_one_source_snapshot(recording_processing):
     from freemocap.core.recording.parquet_storage.shared_file import replace_recording_file
-    structure, _ = scientific_recording
+    structure, _ = recording_processing
     path = structure.data_parquet_path
     before = publication.digest(path)
     table = pq.read_table(path)
@@ -206,15 +206,15 @@ def test_replacement_keeps_one_source_snapshot(scientific_recording):
     def replace(*_):
         if replacement.exists():
             replace_recording_file(source=replacement, destination=path)
-    result = wide_csv.export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',), data=('RAW_KEYPOINTS_3D',)), progress=replace)
+    result = wide_csv.export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',), data=('RAW_KEYPOINTS_3D',)), progress=replace)
     assert result.source_sha256 == before != publication.digest(path)
     snapshot = publication.verified_manifest(result.manifest_path).snapshots[before]
     assert snapshot['revision'] == result.source_revision
     assert 'recording_descriptor' not in snapshot
 
 
-def test_readable_names_and_compact_metadata(scientific_recording):
-    structure, _ = scientific_recording
+def test_readable_names_and_compact_metadata(recording_processing):
+    structure, _ = recording_processing
     result = export(structure)
     assert {p.name for p in result.files} == {
         'recording.run-3.3d_keypoints_raw--points.csv', 'recording.run-3.rotations_world--points.csv',
@@ -227,8 +227,8 @@ def test_readable_names_and_compact_metadata(scientific_recording):
     assert 'recording_descriptor' not in snapshot
 
 
-def test_filename_collisions_are_safe_and_independent_of_selection(scientific_recording):
-    structure, _ = scientific_recording
+def test_filename_collisions_are_safe_and_independent_of_selection(recording_processing):
+    structure, _ = recording_processing
     with recording_view(structure.data_parquet_path) as view:
         run = view.metadata.runs[3]
         original = run.channels[0]
@@ -247,13 +247,13 @@ def test_recovery_ignores_old_deletion_instructions(tmp_path):
     import json
     from freemocap.core.recording.exports import publication
     saved = tmp_path / 'existing-result.csv'
-    saved.write_bytes(b'original scientific result')
+    saved.write_bytes(b'original result')
     staging = tmp_path / '.staging-test'
     staging.mkdir()
     journal = tmp_path / '.publication.json'
     journal.write_text(json.dumps(dict(version=1, staging=staging.name, files=[],
         remove=[dict(filename=saved.name, sha256=publication.digest(saved))])))
     publication.finish_publication(tmp_path)
-    assert saved.read_bytes() == b'original scientific result'
+    assert saved.read_bytes() == b'original result'
     assert not journal.exists()
     assert not staging.exists()

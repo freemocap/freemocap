@@ -13,6 +13,7 @@ from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import Re
 from freemocap.pubsub.pubsub_topics import ProcessFrameNumberMessage
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemoryDTO
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
+from skellycam.core.types.numpy_record_dtypes import FRAME_METADATA_DTYPE
 from skellytracker.core.data_primitives.observation import Observation
 
 
@@ -33,6 +34,14 @@ class RealtimeInferenceAdapterTests(unittest.TestCase):
                 dto.camera_shm_dtos = dict.fromkeys(camera_ids, Mock())
                 images = [np.zeros((8, 12, 3), dtype=np.uint8) for _ in camera_ids]
 
+                def read_frames(*, frame_recarrays, **kwargs):
+                    for index, camera_id in enumerate(camera_ids):
+                        record = np.zeros(1, dtype=[('frame_metadata', FRAME_METADATA_DTYPE)]).view(np.recarray)
+                        record.frame_metadata.timestamps.pre_frame_grab_ns = 1_000_000_000 + index * 2_000_000
+                        record.frame_metadata.timestamps.post_frame_grab_ns = 1_002_000_000 + index * 2_000_000
+                        frame_recarrays[camera_id] = record
+                    return images, camera_ids
+
                 def infer(request: InferenceRequest) -> Future[dict[str, Observation]]:
                     future: Future[dict[str, Observation]] = Future()
                     future.set_result({key: Observation(frame_number=request.frame_number,
@@ -47,7 +56,7 @@ class RealtimeInferenceAdapterTests(unittest.TestCase):
                 try:
                     with patch("freemocap.core.pipeline.realtime.realtime_skeleton_inference_node.CameraGroupSharedMemory.recreate"), \
                          patch("freemocap.core.pipeline.realtime.realtime_skeleton_inference_node.CameraSharedMemoryRingBuffer.recreate", return_value=Mock(spec=CameraSharedMemoryRingBuffer)), \
-                         patch("freemocap.core.pipeline.realtime.realtime_skeleton_inference_node._read_frames", return_value=(images, camera_ids)):
+                         patch("freemocap.core.pipeline.realtime.realtime_skeleton_inference_node._read_frames", side_effect=read_frames):
                         RealtimeSkeletonInferenceNode._run(camera_group_id="group", camera_ids=camera_ids,
                             pipeline_config=config, ipc=ipc, shutdown_self_flag=multiprocessing.Value("b", False),
                             camera_group_shm_dto=dto, process_frame_number_sub=requests,
@@ -56,6 +65,7 @@ class RealtimeInferenceAdapterTests(unittest.TestCase):
                     result = results.get(timeout=2)
                     self.assertEqual(result.frame_number, 7)
                     self.assertEqual(set(result.per_camera_skeleton), set(camera_ids))
+                    self.assertEqual(client.submit.call_args.args[0].timestamp_ms, 1003)
                     registration = service.register.call_args.args[0]
                     self.assertEqual(registration.mode, InferenceMode.REALTIME)
                     self.assertEqual(registration.pipeline_id, ipc.pipeline_id)

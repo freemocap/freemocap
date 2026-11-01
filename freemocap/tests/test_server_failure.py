@@ -25,7 +25,7 @@ def app() -> FastAPI:
     return application
 
 
-async def test_constructor_failure_stops_app_and_rejects_reconnect(
+async def test_connection_constructor_failure_does_not_stop_app_or_reject_reconnect(
     app: FastAPI, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     error = FileNotFoundError("human_skeleton.yaml")
@@ -34,15 +34,14 @@ async def test_constructor_failure_stops_app_and_rejects_reconnect(
     send = AsyncMock()
     scope = {"type": "websocket", "app": app, "path": "/websocket/connect", "headers": []}
     socket = WebSocket(scope=scope, receive=AsyncMock(return_value={"type": "websocket.connect"}), send=send)
-    with pytest.raises(FileNotFoundError, match="human_skeleton.yaml"):
-        await websocket_connect.websocket_server_connect(websocket=socket)
-    assert app.state.global_kill_flag.value
-    assert app.state.fatal_error is error
+    await websocket_connect.websocket_server_connect(websocket=socket)
+    assert not app.state.global_kill_flag.value
+    assert app.state.fatal_error is None
     assert send.call_args.args[0]["code"] == 1011
     await websocket_connect.websocket_server_connect(
-        websocket=WebSocket(scope=scope, receive=AsyncMock(), send=send),
+        websocket=WebSocket(scope=scope, receive=AsyncMock(return_value={"type": "websocket.connect"}), send=send),
     )
-    assert constructor.call_count == 1
+    assert constructor.call_count == 2
 
 
 async def test_disconnect_does_not_stop_app(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> None:

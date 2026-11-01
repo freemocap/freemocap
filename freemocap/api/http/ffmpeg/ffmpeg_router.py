@@ -7,7 +7,7 @@ from freemocap.core.ffmpeg.check_ffmpeg import check_ffmpeg_available
 
 logger = logging.getLogger(__name__)
 
-ffmpeg_router = APIRouter(prefix="/ffmpeg", tags=["Ffmpeg"])
+ffmpeg_router = APIRouter(prefix="/ffmpeg", tags=["FFmpeg"])
 
 
 class DetectFfmpegResponse(BaseModel):

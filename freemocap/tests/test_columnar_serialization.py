@@ -104,7 +104,7 @@ class ColumnarValidationTests(unittest.TestCase):
             self.assertEqual(fast.timing_digests,scalar.timing_digests)
             self.assertEqual(fast.pending_rotations,scalar.pending_rotations)
 
-    def test_malformed_scientific_samples_rejected_by_both_paths(self):
+    def test_malformed_recording_samples_rejected_by_both_paths(self):
         mutations=[("value",0,.5),("value",0,None),("value",0,float("inf")),("value",0,float("nan")),
             ("timestamp_s",1,0.0),("timestamp_s",9,.31),("timestamp_s",0,float("nan")),("frame_number",9,1),
             ("frame_number",0,-1),("name",0,"unknown"),("component",0,"bad"),("units",0,"mm"),

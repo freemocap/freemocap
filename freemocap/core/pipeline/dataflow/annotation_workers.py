@@ -98,7 +98,7 @@ def _annotation_worker(*, connection, shutdown_flag) -> None:
 class RecordingAnnotationWorkers:
     """One recording's bounded worker set; close only this owner's workers.
 
-    Blocking IPC stays on annotation handler threads, never on scientific handlers.
+    Blocking IPC stays on annotation handler threads, never on handlers.
     Each worker has its own failure flag. No dropped-message progress channel is
     used for terminal results; one correlated job occupies one worker at a time.
     """

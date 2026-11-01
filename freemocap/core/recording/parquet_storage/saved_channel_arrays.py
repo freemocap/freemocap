@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from skellyforge.core.data_tensors.layout_definitions import AxisDefinition, SourceIdentity, TensorLayout
-from skellyforge.core.data_tensors.data_tensor import CompanionTensor, DataTensor, ScientificProvenance
+from skellyforge.core.data_tensors.data_tensor import CompanionTensor, DataTensor, DataProvenance
 from skellyforge.core.data_tensors.sample_timing import SampleTiming
 from skellyforge.core.data_tensors.time_series import TimeSeries
 from freemocap.core.recording.parquet_storage.channel_selection import ChannelSelection
@@ -23,7 +23,7 @@ class ChannelArrays:
     source_components: tuple[str, ...] | None = None
 
     def to_data_tensor(
-        self, *, scientific_provenance: ScientificProvenance,
+        self, *, data_provenance: DataProvenance,
         source_identity: SourceIdentity | None = None,
     ) -> DataTensor:
         """Bind saved channel identities without copying its numerical buffers.
@@ -46,10 +46,10 @@ class ChannelArrays:
         presence = CompanionTensor(metadata_name="entry_presence", data_values=self.present,
                                    tensor_layout=TensorLayout(axes=tensor_axes, dtype=bool))
         return DataTensor(data_values=self.values, tensor_layout=layout,
-                          scientific_provenance=scientific_provenance, companion_tensors=(presence,))
+                          data_provenance=data_provenance, companion_tensors=(presence,))
 
     def to_time_series(
-        self, *, sample_timing: SampleTiming, scientific_provenance: ScientificProvenance,
+        self, *, sample_timing: SampleTiming, data_provenance: DataProvenance,
         source_identity: SourceIdentity | None = None,
     ) -> TimeSeries:
         """Bind exact saved sampling; matching counts alone do not establish timing."""
@@ -58,7 +58,7 @@ class ChannelArrays:
         if (not np.array_equal(self.frames, sample_timing.sample_ids)
                 or not np.array_equal(self.timestamps, sample_timing.timestamps_s)):
             raise ValueError("Sample timing differs from saved channel IDs or timestamps")
-        return TimeSeries(data_tensor=self.to_data_tensor(scientific_provenance=scientific_provenance,
+        return TimeSeries(data_tensor=self.to_data_tensor(data_provenance=data_provenance,
                           source_identity=source_identity), sample_timing=sample_timing)
 
     def descriptor(self):

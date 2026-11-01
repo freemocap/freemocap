@@ -4,7 +4,7 @@
 the owner's decisions in [foundations](dataflow-foundations.md) and the
 [operation audit](operation-readiness-inventory.md). Work stays in the isolated
 worktree. Keep realtime unchanged and retain the current posthoc route for
-separate parity/performance comparisons. Scientific validity is mandatory.
+separate parity/performance comparisons. Validity is mandatory.
 
 Implementation progress: `freemocap/core/pipeline/dataflow/` now contains immutable,
 JSON-serializable graph definitions, a structural compiler and a single-owner camera
@@ -35,7 +35,7 @@ whatever the consumer retains. Native decoding cancellation is cooperative.
 
 All six source outcomes succeeded. Timing covers reader startup, decoding, event
 consumption and shutdown, excluding metadata/timing resolution, tracking and
-scientific output processing. Cache state was uncontrolled; these are single-run
+output processing. Cache state was uncontrolled; these are single-run
 source diagnostics, not paired end-to-end performance claims. Ignored report:
 `.test-artifacts/source-tests/source-loading-report.json`. Tests additionally
 exercise forced overlapping reads, isolated early EOF, equal-count rejection,
@@ -51,7 +51,7 @@ accumulates a recording of images. Read-ahead uses independently drainable queue
 and `read_camera_event(camera_id)`, avoiding a shared-FIFO batch-assembly deadlock.
 
 Inference cancellation is client-local. Source failure removes only that source
-from later tracking batches; it does not change the declared scientific camera
+from later tracking batches; it does not change the declared camera
 join or authorize reduced-camera triangulation. Installed ONNX `run_batched`
 accepts a variable camera dictionary and warns on configured batch-size mismatch;
 specific GPU model/provider behavior with reduced batches remains to be validated.
@@ -77,13 +77,13 @@ driven by WebSocket client acknowledgements.
 | SkellyCam `SequentialVideoReader`, already used by `video_sources.py` | Reuse sequential BGR loading; give each reader one owner. |
 | `freemocap/core/reconstruction/recording_timing.py` | Reuse recorded camera/group timestamps and existing fallback rules. Preserve timing provenance. |
 | `freemocap/core/pipeline/inference_service.py` and `freemocap/core/tracking/tracker_factory.py` | Reuse tracker/session construction and supported camera batching; preserve camera-specific tracker state. Current service permits one outstanding request/client, so do not promise arbitrary concurrent GPU calls. |
-| Camera matching, triangulation and reconstruction modules | Reuse scientific algorithms through explicit graph operations, not an old-coordinator wrapper. |
-| Recording descriptors, sample validation and saved-stage processing | Reuse scientific identities, accepted formats and restart validation. Separate numerical handlers from orchestration where necessary. |
+| Camera matching, triangulation and reconstruction modules | Reuse algorithms through explicit graph operations, not an old-coordinator wrapper. |
+| Recording descriptors, sample validation and saved-stage processing | Reuse identities, accepted formats and restart validation. Separate numerical handlers from orchestration where necessary. |
 | Existing worker registry, pubsub, HTTP/WebSocket and dataset tooling | Adapt these services; do not create a second application or benchmark framework. Verify transport guarantees before use. |
 
 Current detection already overlaps next-frame reading with camera-batched
 inference. Its loop then waits for annotation commands, which also perform board
-detection, before yielding observations. The new graph separates these scientific
+detection, before yielding observations. The new graph separates these
 results from drawing/encoding. This is a coordination change, not replacement of
 SkellyTracker's numerical algorithms.
 
@@ -103,9 +103,9 @@ one data item represents), `DataContract`, `GraphNode`, `GraphPort`,
 | Port | Named input or output with a semantic data contract: payload kind, identity axes, units/reference frame where applicable, and delivery/coverage requirements. |
 | Edge | Output-port to input-port binding with an explicit matching rule: same camera/frame, all declared cameras for a frame, broadcast configuration, or declared collection coverage. |
 | Source | Supplies external data: videos, timing, calibration, configuration or validated saved results. |
-| Sink | Performs an external effect, such as saving or reporting. Scientific work does not depend on annotation/display completion. |
+| Sink | Performs an external effect, such as saving or reporting. Work does not depend on annotation/display completion. |
 | Work item | One invocation identified by execution, operation and applicable camera/group/frame/model partition. |
-| Execution | One running instance, with fixed scientific configuration and its own state; distinct from a saved run ID. |
+| Execution | One running instance, with fixed configuration and its own state; distinct from a saved run ID. |
 | Stage | Validated durable restart boundary, not a global scheduling barrier. |
 | Ready | Required data and state predecessors are satisfied; resource capacity governs dispatch. |
 | Complete | Declared coverage and all required dependency outcomes succeeded; eager intermediate work alone is insufficient. |
@@ -141,7 +141,7 @@ Equal frame counts establish compatible coverage, not proof that arbitrary video
 were physically synchronized. Retain the recording's synchronization assumptions
 and timing checks; do not silently resynchronize, drop, pad or interpolate frames.
 
-Conceptual payloads reference existing scientific types:
+Conceptual payloads reference existing types:
 
 ```python
 FrameKey(recording, sensor_group, camera_source, frame_number)
@@ -214,7 +214,7 @@ the lock, not whether the remote branch has advanced.
   per-camera inference pool or reproduce preprocessing/postprocessing.
 - The graph adapter owns identity validation, bounded admission/batch assembly,
   image lifetime until the inference future is terminal, and observation routing.
-  It does not own detection algorithms, model weights or scientific state updates.
+  It does not own detection algorithms, model weights or state updates.
 - One request uses one frame ordinal, and posthoc ordinals must be consecutive
   from zero. The service allows one outstanding request/client, and does not merge
   requests across clients. Preserve these constraints during initial integration.
@@ -224,7 +224,7 @@ the lock, not whether the remote branch has advanced.
   never invent individual successful results or unsafe stateful retries.
 - A camera source failure and inference failure are different. Continuing healthy
   cameras after source failure may require smaller supported batches; verify model
-  session batch handling before enabling that behavior. The scientific join still
+  session batch handling before enabling that behavior. The join still
   requires the original declared camera set and cannot accept reduced-camera output.
 - Source queue bounds alone do not bound unmatched frames in the adapter. Add
   per-camera admission/credits or independently drainable camera buffers before
@@ -266,28 +266,28 @@ No single frame loop waits for all operations to finish before admitting the nex
 frame. Resource bounds may limit read-ahead; stateful operations may require prior
 frames. Those waits must be attributable to resource/data/state requirements.
 
-Use explicit reliable completion/failure delivery for scientific work. Existing
+Use explicit reliable completion/failure delivery for work. Existing
 pubsub's lossy paths are unsuitable without an adapter; an empty queue is not EOF.
 Use bounded image storage with explicit release responsibility after consumers
 finish; process placement requires appropriate shared-memory ownership. Current
 shared rings are not automatically safe multi-consumer leases.
 
 Annotation joins requested overlays per camera/frame, draws all of them and writes
-in order. Keep its image access independent of scientific buffer release, using
+in order. Keep its image access independent of buffer release, using
 re-reading or private temporary storage as appropriate. Slow encoding must not
-hold scientific producers hostage. Retain valid partial videos as explicitly
+hold producers hostage. Retain valid partial videos as explicitly
 incomplete diagnostics when possible. Do not invent missing overlays.
 
-Accepted scientific saves require complete declared coverage and scientific
+Accepted saves require complete declared coverage and
 validation, including camera-assignment evidence. Intermediate private files are
-allowed. If a camera fails, discard incomplete scientific products from acceptance;
+allowed. If a camera fails, discard incomplete products from acceptance;
 continue satisfiable branches. Report partial failure, not global success.
 
 ## Server and inspection
 
 Use the application's HTTP boundary to configure/start/control execution. Backend
 execution owns its lifetime independently of browser connections. WebSocket sends
-self-describing backend state; no client acknowledgement releases scientific work.
+self-describing backend state; no client acknowledgement releases work.
 Keep reporting off the critical path with bounded/coalesced progress snapshots;
 preserve authoritative outcomes server-side for reconnect and final reports.
 
@@ -308,7 +308,7 @@ case, not an execution prerequisite.
    Run full reference recordings, save observations through existing acceptance,
    and measure camera concurrency/provider/batching. Test early EOF and preserve
    per-camera state. This is the first end-to-end implementation slice.
-3. **Scientific graph and independent annotation.** Add matching, triangulation,
+3. **Graph and independent annotation.** Add matching, triangulation,
    trajectory/model operations and annotation as declared operations. Implement
    completion/failure propagation and temporary/accepted sink boundaries. Test a
    failed camera, slow encoder and requested board-plus-skeleton overlays.
@@ -318,12 +318,12 @@ case, not an execution prerequisite.
 5. **Parity and performance gate.** Extend the existing dataset implementation
    selector with the real graph route. Run current/graph separately on identical
    input/configuration/calibration into separate destinations. Validate each,
-   compare scientific keys, masks and numerical values with justified tolerances,
+   compare keys, masks and numerical values with justified tolerances,
    then report throughput, waits, memory and output coverage. Keep realtime untouched.
 
 Steps 2–5 incrementally use the reporting foundation already added to
 `freemocap.tools.datasets`. Historical reports are context, not a fresh benchmark.
-No speedup is claimed until measured. A regression in scientific behavior blocks
+No speedup is claimed until measured. A regression in behavior blocks
 acceptance regardless of speed. Human review owns later cutover and Git changes.
 
 ## Tracking-boundary validation implementation
@@ -342,7 +342,7 @@ and verify requested ONNX provider registration. Their baseline is the existing
 inference service plus sequential video reads, not the old full coordinator.
 See [dataset tool commands](../../freemocap/tools/datasets/README.md#tracker-adapter-parity-and-timing).
 
-The MediaPipe test uncovered a scientific reproducibility problem: without an
+The MediaPipe test uncovered a reproducibility problem: without an
 explicit timestamp, its video detectors fall back to processing wall time.
 Changing the loading schedule therefore changes temporal results. The graph
 adapter now supplies relative recording-group milliseconds, using the established
@@ -360,15 +360,15 @@ execution evidence. Changes to expose another delegate belong in an independentl
 reviewed SkellyTracker change. ONNX provider evidence also does not certify that
 every kernel ran on CUDA.
 
-Same-backend parity, CPU-versus-CUDA differences, and scientific acceptance are
+Same-backend parity, CPU-versus-CUDA differences, and acceptance are
 separate questions. Diagnostic arrays are not accepted recording products. This
 slice does not yet certify saved 2D/3D products, annotations or the full posthoc
 graph. Wall times include asymmetric diagnostic I/O and fixed baseline-first
 setup effects; performance acceptance still needs repeated, symmetric measurement.
 
-## Raw scientific slice — 2026-10-11
+## Raw slice — 2026-10-11
 
-`dataflow/scientific_recording.py` now owns camera/frame observation collection,
+`dataflow/recording_processing.py` now owns camera/frame observation collection,
 eager all-camera frame triangulation and completion-gated canonical saving. It
 reuses the existing camera matcher, triangulator, coordinate conversion and writer.
 The numerical helper has an additive explicit point-name axis for incremental
@@ -380,7 +380,7 @@ can triangulate during tracking as each complete camera/frame join becomes ready
 Tests demonstrate first-frame computation before iterator exhaustion, late camera
 failure invalidating completion, healthy-camera draining, numerical parity including
 outliers/missing detections, canonical raw-3D save/read-back, and rejection of changed
-scientific payloads. This is an executable backend slice, not a completed generic
+payloads. This is an executable backend slice, not a completed generic
 graph scheduler or HTTP/WebSocket integration.
 
 Real RTMPose CUDA-requested recordings (3 x 222 and 3 x 1108 frames) passed the
@@ -391,7 +391,7 @@ reviewed rerun took 20.35 s. These are single diagnostic executions, not speedup
 benchmarks or evidence of stable throughput. The separate batch solver measurements
 are not equivalent to end-to-end old-pipeline times.
 
-Initial real-data scientific saves were rejected because matching returned `poor`.
+Initial real-data saves were rejected because matching returned `poor`.
 The reviewed small run retained original camera order, but two cameras exceeded
 the configured 5 normalized-pixel p90 threshold (approximately 5.65); median errors
 remained below 2. Units are pixels at a 1000-pixel image diagonal, not native image
@@ -408,7 +408,7 @@ The corrected policy passed both complete reference recordings (3 x 222 and
 status remained `poor` in the on-disk metadata; source mapping and per-camera
 fitness were also read back and checked. Numerical differences versus the existing
 batch solver remained at most 4.84e-13 and 1.37e-12. Reports are retained locally in
-`.test-artifacts/scientific-slice/{test,sample}-policy-validated/report.txt` and
+`.test-artifacts/recording-processing/{test,sample}-policy-validated/report.txt` and
 `report.json`. Focused validation passed 55 tests; the save tests additionally
 exercise persisted warning metadata, strict stopping and absent assignments.
 

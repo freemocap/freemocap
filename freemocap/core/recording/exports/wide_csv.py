@@ -14,7 +14,7 @@ from filelock import FileLock
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
-from freemocap.core.recording.exports.arrays import ScientificExportRequest, resolve_selection, ordered_arrays, check_cancelled, available_channels, scientific_channels
+from freemocap.core.recording.exports.arrays import ExportRequest, resolve_selection, ordered_arrays, check_cancelled, available_channels, data_channels
 from freemocap.core.recording.exports.publication import ExportArtifact, ExportManifest, digest, verified_manifest, publish, remove_staging, published_artifact_path
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 
@@ -38,7 +38,7 @@ DATA_LABELS = {
 def table_names(run):
     """Stable across selection changes; exact identities remain in metadata."""
     names, used = {}, set()
-    for context, _, _ in sorted(available_channels(run) + scientific_channels(run), key=lambda item: item[0].model_dump_json()):
+    for context, _, _ in sorted(available_channels(run) + data_channels(run), key=lambda item: item[0].model_dump_json()):
         if context.key in names:
             continue
         source = context.source.split(':', 1)[-1]
@@ -56,7 +56,7 @@ def table_names(run):
     return names
 
 
-class ScientificExportResult(BaseModel):
+class ExportResult(BaseModel):
     model_config = ConfigDict(extra='forbid')
     run_id: int
     source_revision: str
@@ -133,7 +133,7 @@ def validate_table(path, arrays, columns, bounds, cancelled):
             raise ValueError('Wide CSV contains unexpected rows')
 
 
-def _export_scientific(*, structure, request: ScientificExportRequest, cancelled=None, progress=None, runtime_dataset=None):
+def _export_recording(*, structure, request: ExportRequest, cancelled=None, progress=None, runtime_dataset=None):
     started = perf_counter()
     timings = dict(array_assembly=0.0, csv_write=0.0, csv_validation=0.0)
     if runtime_dataset is not None and set(request.formats) - {'npy', 'npz'}:
@@ -301,17 +301,17 @@ def _export_scientific(*, structure, request: ScientificExportRequest, cancelled
                 timings['other'] = max(0.0, elapsed - sum(timings.values()))
                 timings['total'] = elapsed
                 logging.getLogger(__name__).info(
-                    'Scientific exports saved and validated: %s',
+                    'Exports saved and validated: %s',
                     '; '.join(f'{name}={seconds:.3f}s' for name, seconds in timings.items()))
-                return ScientificExportResult(run_id=run_id, source_revision=view.revision, source_sha256=source_hash,
+                return ExportResult(run_id=run_id, source_revision=view.revision, source_sha256=source_hash,
                     manifest_path=manifest_path, files=tuple(published_artifact_path(directory, name, artifacts[name].location) for name in generated), timings_s=timings)
             finally:
                 if staging.exists() and not (directory / '.publication.json').exists():
                     remove_staging(directory, staging)
 
 
-def export_scientific(*, structure, request: ScientificExportRequest, cancelled=None, progress=None, runtime_dataset=None):
-    result = _export_scientific(structure=structure, request=request, cancelled=cancelled, progress=progress, runtime_dataset=runtime_dataset)
+def export_recording(*, structure, request: ExportRequest, cancelled=None, progress=None, runtime_dataset=None):
+    result = _export_recording(structure=structure, request=request, cancelled=cancelled, progress=progress, runtime_dataset=runtime_dataset)
     from freemocap.core.recording.parquet_storage.parquet_writer import recording_write_lock
     from freemocap.core.recording.recording_info import write_recording_info
     with recording_write_lock(structure=structure):

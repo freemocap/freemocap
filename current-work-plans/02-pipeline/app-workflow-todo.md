@@ -158,7 +158,7 @@ Before expanding exports or advanced restart UI:
 - Remove unnecessary playback dependence on full streaming message composition by sharing only
   the model-definition projection. Consolidate repeated recording-channel array decoding.
 - Consolidate live/posthoc coordinate conversion and remove the posthoc dependency on calibration's
-  private keypoint-name helper. Neither warrants duplicating scientific computation in FreeMoCap.
+  private keypoint-name helper. Neither warrants duplicating computation in FreeMoCap.
 - Validate actual published output in the app, including camera geometry display, missing samples,
   switching recordings/results, and video/3D alignment. Automated reader tests do not cover these.
 
@@ -250,7 +250,7 @@ Working budget for one engineer/agent working through implementation, review and
 
 These are planning ranges, not measured completion forecasts or promises about unattended agent
 runtime. Re-estimate after the first real recording passes step 1. Camera/codec failures or substantial
-worker lifecycle defects could extend them. No additional scientific features or non-identity
+worker lifecycle defects could extend them. No additional features or non-identity
 filtering are included in these ranges.
 
 Recommended priority is A first, then B and C. This deliberately brings a narrow fresh-processing

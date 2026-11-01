@@ -24,6 +24,8 @@ from freemocap.core.pipeline.posthoc.pipeline_phases import SyncStage
 from freemocap.core.pipeline.posthoc.progress_messages import SyncJobProgressMessage
 from freemocap.core.pipeline.posthoc.sync_job import SyncJob
 from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.core.tasks.background_task_state import BackgroundTaskState
+from freemocap.core.pipeline.posthoc.task_snapshot import TaskProgress
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ class SyncJobManager(PipelineManagerABC):
     worker_registry: WorkerRegistry
     lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
     jobs: dict[PipelineIdString, SyncJob] = field(default_factory=dict)
+    task_state: BackgroundTaskState = field(default_factory=BackgroundTaskState)
     _reaped: set[PipelineIdString] = field(default_factory=set)
     pending_stop_messages: list[SyncJobProgressMessage] = field(default_factory=list)
 
@@ -58,6 +61,7 @@ class SyncJobManager(PipelineManagerABC):
         job.start()
         with self.lock:
             self.jobs[job.id] = job
+            self.task_state.register(f'sync:{job.id}', 'sync')
         logger.info(f"Created sync job [{job.id}]")
         return job
 
@@ -65,7 +69,8 @@ class SyncJobManager(PipelineManagerABC):
         return self.jobs.get(job_id)
 
     def cleanup_job(self, job_id: PipelineIdString) -> None:
-        """Remove a job once the caller is done consuming its result."""
+        """Remove the executor, preserving its final task observation."""
+        self.refresh_progress()
         with self.lock:
             job = self.jobs.pop(job_id, None)
             self._reaped.discard(job_id)
@@ -86,25 +91,44 @@ class SyncJobManager(PipelineManagerABC):
                 self._reaped.add(job_id)
 
     def get_progress_updates(self) -> list[SyncJobProgressMessage]:
+        """Drain once into retained state; delivery clients read snapshots only."""
         with self.lock:
-            stop_messages, self.pending_stop_messages = self.pending_stop_messages, []
+            progress_messages, self.pending_stop_messages = self.pending_stop_messages, []
             self._reap_dead()
-            jobs = list(self.jobs.values())
+            for job in self.jobs.values():
+                key = f'sync:{job.id}'
+                messages = []
+                if job.queued_message is not None:
+                    messages.append(job.queued_message)
+                    job.queued_message = None
+                messages.extend(job.get_progress_messages())
+                progress_messages.extend(messages)
+                for message in messages:
+                    # A complete progress marker can precede the result queue.
+                    # Keep the task active until its result is actually available.
+                    status = 'queued' if message.phase == 'queued' else 'running'
+                    self.task_state.update(key, status=status,
+                        progress=TaskProgress(phase=message.phase,
+                            progress_fraction=message.progress_fraction if message.phase in ('trimming', 'complete') else None,
+                            detail=message.detail))
+                if job.finished:
+                    error, result = job.error, job.result
+                    status = 'failed' if error else 'complete'
+                    self.task_state.update(key, status=status, error=error,
+                        result=result.model_dump(mode='json') if result is not None else None,
+                        progress=TaskProgress(phase=status, progress_fraction=None if error else 1,
+                                              detail=error or 'Synchronization complete'))
+            return progress_messages
 
-        progress_messages: list[SyncJobProgressMessage] = list(stop_messages)
-        for job in jobs:
-            queued = getattr(job, "queued_message", None)
-            if queued is not None:
-                progress_messages.append(queued)
-                job.queued_message = None
-            progress_messages.extend(job.get_progress_messages())
-        return progress_messages
+    def refresh_progress(self) -> None:
+        self.get_progress_updates()
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
     def stop_job(self, job_id: PipelineIdString) -> bool:
+        self.refresh_progress()
         with self.lock:
             job = self.jobs.pop(job_id, None)
             self._reaped.discard(job_id)
@@ -118,8 +142,10 @@ class SyncJobManager(PipelineManagerABC):
                 ))
         if job is None:
             logger.warning(f"stop_job: sync job [{job_id}] not found")
-            return False
+            return any(task.task_id == f'sync:{job_id}' for task in self.task_state.snapshot()[1])
         job.shutdown()
+        self.task_state.update(f'sync:{job_id}', status='cancelled', cancellation_requested=True,
+                               progress=TaskProgress(phase='cancelled', progress_fraction=None, detail='Stopped by user'))
         logger.info(f"Stopped sync job [{job_id}]")
         return True
 

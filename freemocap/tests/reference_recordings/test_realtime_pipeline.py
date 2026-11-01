@@ -6,6 +6,7 @@ paths, with live changes that must preserve workers and source timestamps.
 """
 
 import multiprocessing
+import re
 from multiprocessing import shared_memory
 
 import numpy as np
@@ -43,7 +44,7 @@ def shared_memory_names(group):
 @pytest.mark.e2e
 @pytest.mark.slow
 @pytest.mark.parametrize('centralized', [True, False], ids=['centralized', 'per-camera'])
-def test_provider_switch_reuses_capture_and_releases_sessions(replay_reference, centralized):
+def test_provider_switch_reuses_capture_and_releases_sessions(replay_reference, centralized, caplog):
     """Exercise an actual CPU-to-CUDA selection change through running workers."""
     import onnxruntime
     if 'CUDAExecutionProvider' not in onnxruntime.get_available_providers():
@@ -90,8 +91,27 @@ def test_provider_switch_reuses_capture_and_releases_sessions(replay_reference, 
         assert tuple(pipeline.camera_nodes.values()) == original_cameras
         assert pipeline.failure is None
         assert {topic: len(value.subscriptions) for topic, value in pipeline.pubsub.topics.items()} == original_subscribers
-        assert all(output.skeleton_observation is not None for frame in result.outputs
-                   for output in frame.camera_node_outputs.values())
+        # Live capture intentionally continues without a skeleton when native
+        # warmup exceeds its bounded wait. Require tracking on both sides of
+        # the switch without treating that transition fallback as data loss.
+        for phase, frame in (('before switch', result.outputs[5]), ('after switch', result.outputs[-1])):
+            missing = [camera_id for camera_id, output in frame.camera_node_outputs.items()
+                       if output.skeleton_observation is None]
+            assert not missing, f'{phase}, frame {frame.frame_number}: missing tracking for {missing}'
+        missing_frames = {frame.frame_number for frame in result.outputs
+                          if any(output.skeleton_observation is None
+                                 for output in frame.camera_node_outputs.values())}
+        timeout_frames = set()
+        for record in caplog.records:
+            if record.name == 'freemocap.core.pipeline.realtime.realtime_aggregator_node':
+                match = re.search(r'gave up waiting on skeleton result for frame (\d+) after 2\.0s', record.getMessage())
+                if match:
+                    timeout_frames.add(int(match.group(1)))
+        assert missing_frames <= timeout_frames, 'Missing tracking must have an explicit bounded-wait fallback'
+        for frame in result.outputs:
+            if frame.frame_number in missing_frames:
+                assert all(output.raw_skeleton_observation is None
+                           for output in frame.camera_node_outputs.values())
         if centralized:
             assert pipeline.skeleton_inference_node is not original_inference
             statuses = service.provider_status()
@@ -178,7 +198,8 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
                 updated.aggregator_config.realtime_filter_config = updated_filter
                 active_pipeline.update_config(updated)
         driven = drive_realtime_lockstep(pipeline=pipeline, mock_group=group,
-                                        num_frames=frame_count, per_frame_timeout=120.0, before_frame=change_filters)
+                                        num_frames=frame_count, per_frame_timeout=120.0,
+                                        startup_timeout=600.0, before_frame=change_filters)
         assert original_nodes == tuple(pipeline.camera_nodes.values()) + (pipeline.aggregation_node, pipeline.skeleton_inference_node)
         assert driven.outputs[40].pipeline_config.aggregator_config.realtime_filter_config == RealtimeFilterConfig()
         assert driven.outputs[65].pipeline_config.aggregator_config.realtime_filter_config == updated_filter

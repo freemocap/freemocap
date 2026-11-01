@@ -23,7 +23,7 @@ execution clock [@leeNeuendorfferZhou2014].
 Graph theory gives connectivity and reachability; type contracts constrain legal
 composition; execution semantics define readiness, invocation and completion.
 The proposed FreeMoCap design additionally needs resource ownership, bounded
-delivery, external effects, scientific provenance and durable restart boundaries.
+delivery, external effects, data provenance and durable restart boundaries.
 These additions are project design requirements, not guarantees inherited from
 calling the system a graph. A DAG is a restricted graph topology, not a synonym
 for dataflow. Feedback would require further explicit semantics.
@@ -71,7 +71,7 @@ Owner clarification, 2026-10-10: this is a ground-up reconstruction of the
 processing model. Existing and historical implementations are evidence about
 required capabilities and successful or failed boundaries, not compatibility
 requirements. No legacy execution wrapper is desired. Compatibility with older
-pipeline APIs is not a goal; any proposed changes to scientific data semantics
+pipeline APIs is not a goal; any proposed changes to data semantics
 must still be explicit and tested rather than accidental.
 
 Rollout update, 2026-10-11: preserve realtime as implemented and retain the current
@@ -104,7 +104,7 @@ hardware capabilities and SkellyTracker's supported mechanisms. Users choose the
 work, not GPU batch topology. Preserve logical camera/frame identity and expose
 actual batches/providers in execution inspection. Model-declared ordering and
 batch compatibility constrain this policy; changing placement must not silently
-change scientific results. Existing posthoc already submits camera batches through
+change results. Existing posthoc already submits camera batches through
 the shared inference service (`recording_pipeline.py`, `inference_service.py`);
 its orchestration constraints must not be confused with an absence of batching.
 
@@ -115,7 +115,7 @@ collection waits for explicitly declared coverage. Disk save completion is a
 separate event from either form of data readiness. Durable run branching/reuse
 governs accepted artifacts, not artificial barriers between every processing step.
 
-The interview settled fixed scientific settings/topology per execution: changing
+The interview settled fixed settings/topology per execution: changing
 them starts a new execution that may reuse valid saved results. Independent branches
 retain independent outcomes; failed annotation does not erase successful science.
 
@@ -131,23 +131,23 @@ successful or discard valid independent products. A valid empty detection remain
 distinct from a failed or missing producer result.
 
 Sink acceptance (agreed): eager in-memory computation does not imply permission
-to save a scientific product. A scientific save sink validates required coverage,
+to save a product. A save sink validates required coverage,
 completeness and validity before accepting that product. If one camera fails
 partway through, already-computed triangulated frames do not become a saved
-partial scientific result; the incomplete product is discarded. Independently
+partial result; the incomplete product is discarded. Independently
 complete products, such as annotated videos from successful cameras, can still
 be saved. This replaces the earlier suggestion to persist partial triangulation.
 Input/type/key validation still applies during computation; sink validation is
 an additional external-effect boundary, not the only validation in the graph.
 Display authority (agreed, 2026-10-11): the backend sends self-describing messages
 representing the state it wants displayed. The frontend faithfully reflects each
-received update; it does not independently judge scientific validity/completeness
+received update; it does not independently judge validity/completeness
 or wait for other results before displaying it. Any completeness, failure or
 intermediate-result status is supplied by the backend, not inferred by the client.
-Scientific save acceptance remains a separate backend responsibility and does not
+Save acceptance remains a separate backend responsibility and does not
 gate display. This resolves the display question without adding a client-side
 preview approval policy. Temporary storage mechanics remain undecided; temporary
-bytes must never be mistaken for accepted scientific output.
+bytes must never be mistaken for accepted output.
 
 Thread/process placement is separate from operation identity. Message transport is
 separate from delivery guarantees. Image storage is separate from ownership and
@@ -160,15 +160,15 @@ Owner clarification on readiness and completion: optional inputs become required
 once selected in the graph definition. Ready items may compute before producer
 stages finish, but stage success requires all required dependencies to succeed.
 Annotation is a terminal sink, joining all requested overlays per camera/frame
-and encoding in order; scientific processing never depends on its completion.
+and encoding in order; processing never depends on its completion.
 Partial annotation videos may be retained as explicitly incomplete debugging
-artifacts. This does not authorize accepted partial scientific products or a
+artifacts. This does not authorize accepted partial products or a
 successful completion status for an incomplete annotation task.
-Owner clarification: scientific veracity is an unconditional requirement, never
+Owner clarification: veracity is an unconditional requirement, never
 a performance trade-off or temporary comparison setting. Coordinate frames are
 part of data identity. Private temporary files are permitted; they are distinct
-from accepted scientific outputs. Reuse the existing camera-assignment machinery;
-its provisional continuation policy requires explicit consideration at scientific
+from accepted outputs. Reuse the existing camera-assignment machinery;
+its provisional continuation policy requires explicit consideration at
 save acceptance. See [the operation inventory and camera-assignment review](operation-readiness-inventory.md).
 See [the architecture proposal](typed-dataflow.md), whose unconfirmed choices
 remain proposals. No speedup or formal correctness proof is claimed by this note.

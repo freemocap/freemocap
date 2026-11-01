@@ -70,7 +70,7 @@ for (const mode of [
         const button = page.getByRole('button', {name: 'Stop server', exact: true}).first();
         await expect(button).toBeEnabled();
         await button.click();
-        await expect.poll(() => requests).toEqual(['GET']);
+        await expect.poll(() => requests).toEqual(['POST']);
         expect(await page.evaluate(() => (window as any).panelTest.ipcStops)).toBe(0);
         await expect(page.getByRole('status')).toContainText('Shutdown requested');
     });

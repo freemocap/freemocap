@@ -16,7 +16,7 @@ from freemocap.pubsub.pubsub_topics import (
 
 logger = logging.getLogger(__name__)
 
-realtime_router = APIRouter(prefix="/realtime", tags=["Realtime Processing Pipeline"])
+realtime_router = APIRouter(prefix="/realtime", tags=["Realtime processing"])
 
 
 class TemporalConfigStatus(BaseModel):
@@ -163,8 +163,7 @@ async def reset_skeleton_fitter_endpoint() -> None:
     Each pipeline's fitter clears its learned bone lengths and enters the ritual:
     a countdown (so the subject can get into view and hold still), a quality-gated
     capture window (only consecutive good frames count), then a freeze that
-    re-anchors each bone's trust region on the captured length. Poll
-    `GET /realtime/skeleton-fitter-state` for progress. Fire-and-forget: 204 No Content.
+    re-anchors each bone's trust region on the captured length. Observe fitter state in WebSocket frames. The command returns 204 No Content.
     """
     logger.api("Received `realtime/reset-skeleton-fitter` POST request")
     try:
@@ -185,3 +184,12 @@ async def reset_skeleton_fitter_endpoint() -> None:
             status_code=500,
             detail=f"Error resetting skeleton fitter: {type(e).__name__} - {e}",
         )
+
+
+# These commands stop the same realtime manager used by apply/config.
+from freemocap.api.http.mocap.mocap_router import cancel_realtime_pipeline, cancel_realtime_pipelines
+
+realtime_router.add_api_route('/pipelines/{pipeline_id}', cancel_realtime_pipeline, methods=['DELETE'],
+                              operation_id='stop_realtime_pipeline')
+realtime_router.add_api_route('/pipelines', cancel_realtime_pipelines, methods=['DELETE'],
+                              operation_id='stop_realtime_pipelines')

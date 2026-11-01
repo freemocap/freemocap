@@ -14,8 +14,8 @@ test('PyAV fragments play and restart in Electron without converted files', asyn
         ? (await readdir(directory)).filter(name => name.endsWith('.mp4')).map(name => join(directory, name))
         : [resolve('e2e/fixtures/numbered-bframes.mp4')];
     expect(videos.length).toBeGreaterThan(0);
-    const skellycam = resolve('../../skellycam');
-    const backend = spawn(join(skellycam, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python'),
+    const skellycam = resolve('..');
+    const backend = spawn(process.env.FREEMOCAP_TEST_PYTHON ?? join(skellycam, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python'),
         ['-m', 'skellycam.tests.browser_stream_server', portFile, ...videos], {cwd: skellycam, windowsHide: true});
     let errors = '';
     backend.stderr.on('data', chunk => {errors += String(chunk);});
@@ -31,7 +31,7 @@ test('PyAV fragments play and restart in Electron without converted files', asyn
             app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
             app.whenReady().then(() => { const window = new BrowserWindow({show: false}); window.loadURL('about:blank'); });`,
             loader: 'ts'}, bundle: true, platform: 'node', external: ['electron'], outfile: entry});
-        const application = await electron.launch({args: [entry]});
+        const application = await electron.launch({executablePath: process.env.FREEMOCAP_TEST_ELECTRON, args: [entry]});
         try {
             const page = await application.firstWindow();
             const result = await page.evaluate(async ({port, count}) => {

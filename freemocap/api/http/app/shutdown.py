@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 shutdown_router = APIRouter(tags=["App"])
 
 
-@shutdown_router.get(
+@shutdown_router.post(
     "/shutdown",
     summary="Gracefully shutdown the server",
     response_model=dict[str, str]
@@ -29,7 +29,7 @@ async def shutdown_server(
     Returns:
         JSON response confirming shutdown initiation
     """
-    logger.api(f"Shutdown requested via API - {request.url}")
+    logger.info(f"Shutdown requested via API - {request.url}")
 
     # The server supervisor observes this flag and runs graceful shutdown.
     await close_native_camera_groups()

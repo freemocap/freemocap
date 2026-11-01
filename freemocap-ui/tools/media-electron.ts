@@ -1,6 +1,7 @@
 import {app, BrowserWindow} from 'electron';
 
-const url = process.argv[2];
+// Playwright adds inspector switches before the application arguments.
+const url = process.argv.find(argument => argument.startsWith('http://127.0.0.1:'));
 if (!url || !url.startsWith('http://127.0.0.1:')) throw new Error('A local prototype URL is required');
 void app.whenReady().then(async () => {
     const window = new BrowserWindow({width: 1200, height: 900, show: process.env.MEDIA_TEST !== '1',

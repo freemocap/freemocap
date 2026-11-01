@@ -8,12 +8,12 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from freemocap.core.recording.exports.requests import ScientificExportRequest
-from freemocap.core.recording.exports.wide_csv import export_scientific
+from freemocap.core.recording.exports.requests import ExportRequest
+from freemocap.core.recording.exports.wide_csv import export_recording
 from freemocap.core.recording.exports.publication import verified_manifest, digest
 from freemocap.core.recording.result_processing.observation_publication import publish_posthoc_observations
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
-from freemocap.tests.test_wide_csv_export import scientific_recording  # noqa: F401
+from freemocap.tests.test_wide_csv_export import recording_processing  # noqa: F401
 from skellyforge.core.data_tensors import read_numpy_dataset
 from freemocap.tests.numpy_export_assertions import display_projection
 
@@ -27,13 +27,13 @@ def test_defaults_numpy_segments_and_capture_preservation(publication, tmp_path)
     structure.recording_info_path.write_text(json.dumps(capture))
     publish_posthoc_observations(publication)
     source_hash = digest(structure.data_parquet_path)
-    default = export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',)))
+    default = export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',)))
     assert len(default.files) == 1
     assert default.files[0].parent.name == 'csv'
     assert '3d_landmarks' in default.files[0].name
     assert not list(structure.full_path.rglob('*.yaml'))
     assert not structure.output_dir.exists()
-    result = export_scientific(structure=structure, request=ScientificExportRequest(
+    result = export_recording(structure=structure, request=ExportRequest(
         formats=('wide_csv', 'npy', 'npz'), data=('LANDMARKS_3D', 'SEGMENT_POSES', 'OVERLAY_2D')))
     assert all(p.parent.name == ('npy' if p.suffix in ('.npy', '.json') else 'csv')
                for p in result.files if p.suffix != '.npz')
@@ -108,23 +108,23 @@ def test_defaults_numpy_segments_and_capture_preservation(publication, tmp_path)
     assert digest(structure.data_parquet_path) == source_hash
     # Replacing only CSV leaves the existing NumPy files bound to their original data.
     numpy_before = {p: p.read_bytes() for p in result.files if p.suffix in ('.npy', '.npz')}
-    smaller = export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',)))
+    smaller = export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',)))
     assert all(p.read_bytes() == content for p, content in numpy_before.items())
     assert sum(a.format == 'wide_csv' for a in verified_manifest(smaller.manifest_path).artifacts.values()) == 1
     assert len(list((structure.exports_dir / 'csv').glob('*.csv'))) == 3
     assert {a.format for a in verified_manifest(smaller.manifest_path).artifacts.values()} == {'wide_csv', 'npy', 'npz'}
-    kept = export_scientific(structure=structure, request=ScientificExportRequest(formats=('npz',), keep=True))
+    kept = export_recording(structure=structure, request=ExportRequest(formats=('npz',), keep=True))
     assert kept.files[0].parent.name == 'run-0' and '.run-0.' in kept.files[0].name
-    added = export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',), keep=True))
+    added = export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',), keep=True))
     assert {a.format for a in verified_manifest(added.manifest_path).artifacts.values()} == {'npz', 'wide_csv'}
     with pytest.raises(FileExistsError):
-        export_scientific(structure=structure, request=ScientificExportRequest(formats=('npz',), keep=True))
+        export_recording(structure=structure, request=ExportRequest(formats=('npz',), keep=True))
 
 
 def test_legacy_wide_inventory_replacement_preserves_unknown_files(publication, tmp_path):
     structure = RecordingStructure(base_directory=tmp_path, recording_name='recording')
     publish_posthoc_observations(publication)
-    result = export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',)))
+    result = export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',)))
     old_path = structure.exports_dir / 'recording.wide.metadata.json'
     payload = json.loads(result.manifest_path.read_text())
     old_csv = structure.exports_dir / 'recording.landmarks.deadbeef.r1.c1.wide.csv'
@@ -137,7 +137,7 @@ def test_legacy_wide_inventory_replacement_preserves_unknown_files(publication, 
     result.manifest_path.unlink()
     note = structure.exports_dir / 'my-analysis.txt'
     note.write_text('keep this')
-    updated = export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv',)))
+    updated = export_recording(structure=structure, request=ExportRequest(formats=('wide_csv',)))
     assert old_path.read_text() == json.dumps(payload)
     assert digest(old_csv) == artifact['sha256']
     assert note.read_text() == 'keep this'
@@ -148,7 +148,7 @@ def test_organize_existing_files_preserves_bytes_and_updates_inventory(publicati
     from freemocap.core.recording.exports.organize import organize_exports
     structure = RecordingStructure(base_directory=tmp_path, recording_name='recording')
     publish_posthoc_observations(publication)
-    result = export_scientific(structure=structure, request=ScientificExportRequest(formats=('wide_csv', 'npy', 'npz')))
+    result = export_recording(structure=structure, request=ExportRequest(formats=('wide_csv', 'npy', 'npz')))
     payload = json.loads(result.manifest_path.read_text())
     flattened = {}
     original_hashes = {}
@@ -179,14 +179,14 @@ def test_nested_artifact_paths_cannot_escape(name):
 
 
 @pytest.mark.parametrize('mismatch', ['length', 'frame_number', 'timestamp'])
-def test_independent_channel_timing_is_preserved_without_alignment(scientific_recording, mismatch):
+def test_independent_channel_timing_is_preserved_without_alignment(recording_processing, mismatch):
     from freemocap.core.recording.exports.arrays import available_channels
     from freemocap.core.recording.parquet_storage.recording_view import recording_view
-    structure, _ = scientific_recording
+    structure, _ = recording_processing
     with recording_view(structure.data_parquet_path) as view:
         contexts = tuple(item[0] for item in available_channels(view.metadata.runs[3])[:2])
-    request = ScientificExportRequest(formats=('npy', 'npz'), wide_csv=contexts)
-    before = export_scientific(structure=structure, request=request)
+    request = ExportRequest(formats=('npy', 'npz'), wide_csv=contexts)
+    before = export_recording(structure=structure, request=request)
     table = pq.read_table(structure.data_parquet_path)
     rows = table.to_pylist()
     for row in rows:
@@ -198,7 +198,7 @@ def test_independent_channel_timing_is_preserved_without_alignment(scientific_re
     if mismatch == 'length':
         rows = [r for r in rows if not (r['run_id'] == 3 and r['channel'] == 'ROTATIONS_WORLD' and r['frame_number'] == 42)]
     pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), structure.data_parquet_path)
-    result = export_scientific(structure=structure, request=request)
+    result = export_recording(structure=structure, request=request)
     dataset = read_numpy_dataset(result.manifest_path.parent / 'npy')
     first, second = dataset.time_series
     np.testing.assert_array_equal(first.sample_timing.sample_ids, [10, 42])

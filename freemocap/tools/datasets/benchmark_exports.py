@@ -1,4 +1,4 @@
-"""Measure scientific exports from an untouched saved recording.
+"""Measure exports from an untouched saved recording.
 
 Example (output must be a new directory, outside the source recording)::
 
@@ -6,7 +6,7 @@ Example (output must be a new directory, outside the source recording)::
         --recording PATH_TO_RECORDING --output .test-artifacts/export-benchmark
 
 Repeat on the same saved Parquet before/after a change; pass the earlier exports
-folder with --compare-exports to check CSV/NPY bytes and NPZ scientific dataset members.
+folder with --compare-exports to check CSV/NPY bytes and NPZ dataset members.
 Compare only exports using the same format contract; older unversioned NumPy
 inventories cannot match the versioned dataset byte-for-byte. Recording copying
 and parity checks are excluded from the reported export time.
@@ -24,10 +24,10 @@ import shutil
 from time import perf_counter
 from zipfile import ZipFile
 
-from freemocap.core.recording.exports.arrays import scientific_channels
+from freemocap.core.recording.exports.arrays import data_channels
 from freemocap.core.recording.exports.publication import digest, verified_manifest
-from freemocap.core.recording.exports.requests import ScientificExportRequest
-from freemocap.core.recording.exports.wide_csv import export_scientific
+from freemocap.core.recording.exports.requests import ExportRequest
+from freemocap.core.recording.exports.wide_csv import export_recording
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
@@ -47,7 +47,7 @@ def compare_exports(actual: Path, expected: Path, recording_name: str) -> dict:
                     if member == 'recording_info.json':
                         continue  # Export date and source revision are intentionally different.
                     if hashlib.sha256(left.read(member)).digest() != hashlib.sha256(right.read(member)).digest():
-                        raise AssertionError(f'NPZ scientific dataset member changed: {member}')
+                        raise AssertionError(f'NPZ dataset member changed: {member}')
                     checked_members += 1
         else:
             if digest(actual / name) != digest(expected / name):
@@ -74,11 +74,11 @@ def main():
     shutil.copy2(source, structure.data_parquet_path)
     with recording_view(structure.data_parquet_path) as view:
         run_id = view.metadata.selected_run_id
-        data = tuple(dict.fromkeys(context.channel for context, _, _ in scientific_channels(view.metadata.runs[run_id])))
+        data = tuple(dict.fromkeys(context.channel for context, _, _ in data_channels(view.metadata.runs[run_id])))
         rows = view.parquet.metadata.num_rows
     started = perf_counter()
-    result = export_scientific(structure=structure,
-        request=ScientificExportRequest(formats=('wide_csv', 'npy', 'npz'), data=data))
+    result = export_recording(structure=structure,
+        request=ExportRequest(formats=('wide_csv', 'npy', 'npz'), data=data))
     elapsed = perf_counter() - started
     if digest(source) != source_hash:
         raise AssertionError('Source recording changed during benchmark')

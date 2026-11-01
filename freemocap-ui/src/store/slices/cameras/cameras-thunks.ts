@@ -184,15 +184,18 @@ export const closeCameras = createAsyncThunk<void, void, { state: RootState }>(
     }
 );
 
-export const pauseUnpauseCameras = createAsyncThunk<void, void, { state: RootState }>(
+export const pauseUnpauseCameras = createAsyncThunk<boolean, void, { state: RootState }>(
     'cameras/pause',
-    async () => {
+    async (_, {getState}) => {
         const response = await fetch(serverUrls.endpoints.pauseUnpauseCameras, {
-            method: 'GET',
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({paused: !getState().cameras.isPaused}),
         });
 
         if (!response.ok) {
             throw new Error(`Failed to pause/unpause cameras: ${response.statusText}`);
         }
+        return (await response.json()).paused;
     }
 );

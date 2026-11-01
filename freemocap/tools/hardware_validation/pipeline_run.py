@@ -54,10 +54,10 @@ def run_pipeline(output_directory: Path, backend: str, calibration_path: Path, r
             report['camera_configs'] = configs
             save_json(output_directory / 'requested-camera-configs.json', configs)
             api.request('POST', '/skellycam/camera/group/apply', {'camera_configs': configs, 'backend': backend})
-            configuration = RealtimePipelineConfig()
             board = tomllib.loads(calibration_path.read_text(encoding='utf-8')).get('metadata', {}).get('board')
-            if board is not None:
-                configuration.camera_node_config.charuco_board = type(configuration.camera_node_config.charuco_board).model_validate(board)
+            # Construct once so Tracker's derived recipe uses the calibrated board.
+            configuration = RealtimePipelineConfig(
+                camera_node_config={} if board is None else {'charuco_board': board})
             configuration.aggregator_config.skeleton_fitting_enabled = True
             configuration.skeleton_inference_node_config.execution_provider = 'cuda'
             report['pipeline_config'] = configuration.model_dump(mode='json', exclude_computed_fields=True)
@@ -106,7 +106,7 @@ def run_pipeline(output_directory: Path, backend: str, calibration_path: Path, r
                         'recording_name': 'tracked-capture', 'recording_directory': str((output_directory / 'data' / 'recordings').resolve()),
                         'mic_device_index': -1})
                     samples = stream.collect_frames(5.0)
-                    recordings = api.request('GET', '/skellycam/camera/group/all/record/stop')
+                    recordings = api.request('POST', '/skellycam/camera/group/all/record/stop')
                     report['recording_response'] = recordings
                     timestamps = np.asarray([received for received, _ in samples])
                     frame_numbers = np.asarray([message['frame_number'] for _, message in samples])
@@ -115,7 +115,7 @@ def run_pipeline(output_directory: Path, backend: str, calibration_path: Path, r
                     np.savez(output_directory / 'processed-timing.npz', arrival_seconds=timestamps,
                         frame_numbers=frame_numbers, source_timestamp_ns=np.asarray([message['timestamp'] for _, message in samples]))
             # Release GPU/capture workers before decoding recordings for verification.
-            api.request('DELETE', '/freemocap/mocap/realtime/pipelines')
+            api.request('DELETE', '/freemocap/realtime/pipelines')
             api.request('DELETE', '/skellycam/camera/group/close/all')
             report['recordings'] = [audit_recording(Path(recording['recording_path']), tuple(configs))
                 for recording in report.get('recording_response', ())]

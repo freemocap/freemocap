@@ -1,4 +1,4 @@
-"""Resolved scientific inputs for reconstructing a recorded skeleton instance."""
+"""Resolved inputs for reconstructing a recorded skeleton instance."""
 
 from pydantic import BaseModel, ConfigDict, model_serializer, model_validator
 from skellyforge.core.biomechanics.center_of_mass import CenterOfMassDefinitions
@@ -34,12 +34,16 @@ class RecordedModel(BaseModel):
         Old snapshots did not have this field. Absence still means no declared
         observation frame; never substitute today's model defaults. Present
         definitions must be serialized so they participate in fit signatures.
-        Tracker topology is likewise omitted when absent in historical records.
+        Tracker topology and presentation are likewise omitted when absent in
+        historical records.
         """
         result = handler(self)
         if not self.tracker_connections:
             result.pop("tracker_connections", None)
-        for segment in result.get("skeleton", {}).get("segments", ()):
+        skeleton = result.get("skeleton", {})
+        if skeleton.get("presentation") is None:
+            skeleton.pop("presentation", None)
+        for segment in skeleton.get("segments", ()):
             if segment.get("observation_frame") is None:
                 segment.pop("observation_frame", None)
         return result

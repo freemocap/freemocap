@@ -1,4 +1,4 @@
-"""Saved image predictions retain tensors through the actual scientific consumers."""
+"""Saved image predictions retain tensors through the actual consumers."""
 from dataclasses import replace
 from unittest.mock import patch
 
@@ -9,7 +9,7 @@ from skellycam.core.timestamps.recording_timing_reader import RecordingTiming, T
 from skellytracker.core.data_primitives.observation import Observation, StageObservation
 
 from freemocap.core.pipeline.dataflow.saved_observation_source import load_saved_observation_source
-from freemocap.core.pipeline.dataflow.scientific_recording import triangulate_completed_observations
+from freemocap.core.pipeline.dataflow.recording_processing import triangulate_completed_observations
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
 from freemocap.core.reconstruction.posthoc_reconstruction import triangulate_observation_buffers
 from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
@@ -201,7 +201,7 @@ def test_dense_declared_component_order_stage_selection_and_confidence_policy():
 
 
 def test_saved_admission_checks_source_timing_and_frame_identity(saved_predictions):
-    from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection
+    from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection
     from freemocap.core.recording.result_processing import saved_observations as reader
     _, structure, config, _, _ = saved_predictions
     with patch.object(reader, 'recording_view', wraps=reader.recording_view) as opened:

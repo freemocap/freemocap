@@ -18,10 +18,10 @@ const realParquet = process.env.FREEMOCAP_PLAYBACK_PARQUET;
 
 test.beforeAll(async () => {
     directory = await mkdtemp(join(tmpdir(), 'freemocap-parquet-'));
-    execFileSync(resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),
+    execFileSync(process.env.FREEMOCAP_TEST_PYTHON ?? resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),
         ['-B', '-m', 'freemocap.tests.playback_parquet_fixture', directory], {cwd: resolve('..'), windowsHide: true});
     const manifest = JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8'));
-    if (realParquet) realManifest = JSON.parse(execFileSync(resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),
+    if (realParquet) realManifest = JSON.parse(execFileSync(process.env.FREEMOCAP_TEST_PYTHON ?? resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),
         ['-B', '-c', 'import sys; from pathlib import Path; from freemocap.core.recording.playback_queries import playback_manifest; print(playback_manifest(Path(sys.argv[1])).model_dump_json())', realParquet],
         {cwd: resolve('..'), windowsHide: true, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024}));
     const worker = await build({entryPoints: ['src/services/recording/playback-parquet.worker.ts'], bundle: true,
@@ -223,7 +223,7 @@ test('one download supplies bones, backward seeks and retained results', async (
     }
     await page.getByLabel('Saved run').selectOption('1');
     await expect(page.locator('#frame')).toHaveText('bones:61');
-    expect(downloads).toEqual(['/freemocap/playback/recording/parquet']);
+    expect(downloads).toEqual(['/freemocap/recordings/recording/parquet']);
     await page.getByRole('button', {name: 'Reload result', exact: true}).click();
     await expect.poll(() => downloads.length).toBe(2);
     await expect(page.locator('#frame')).toHaveText('bones:61');
@@ -246,7 +246,7 @@ test('switching recording cancels the previous worker', async ({page}) => {
     await expect.poll(() => downloads.length).toBe(1);
     await page.locator('#switch').click();
     await expect(page.locator('#frame')).toHaveText('bones:61');
-    expect(downloads).toEqual(['/freemocap/playback/slow/parquet', '/freemocap/playback/recording/parquet']);
+    expect(downloads).toEqual(['/freemocap/recordings/slow/parquet', '/freemocap/recordings/recording/parquet']);
     await expect(page.getByRole('alert')).toHaveCount(0);
 });
 

@@ -32,6 +32,8 @@ const config: PlaywrightTestConfig = {
     reporter: "html",
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {
+        // Allow an already-installed browser in isolated worktrees.
+        channel: process.env.FREEMOCAP_TEST_BROWSER_CHANNEL,
         /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
         actionTimeout: 0,
         /* Base URL to use in actions like `await page.goto('/')`. */

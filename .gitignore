@@ -174,3 +174,6 @@ freemocap-ui/freemocap_server
 /.codex/*
 
 freemocap-ui/tsconfig.node.tsbuildinfo
+# Isolated editable-install metadata
+/freemocap.egg-info/
+/build/

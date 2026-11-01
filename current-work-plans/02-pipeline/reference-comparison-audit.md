@@ -16,14 +16,14 @@ Paths below are relative to this repository. Read implementations as well as doc
 | `freemocap/tools/datasets/validation.py`, `output_acceptance.py` | Recording/channel/frame validity, alignment and stage provenance; artifact hashes and versioned output acceptance. Standard currently requires Parquet and Blender; numerical-only is explicitly incomplete relative to standard. |
 | `freemocap/tools/datasets/progress.py` | Existing rate displays, stage milestones and durations, plus diagnostic table rendering. Rates derive from observed progress intervals and are not precise operation timing. |
 | `freemocap/core/pipeline/performance_report.py` | Worker/coordinator timing aggregates; overlapping wall-clock intervals are explicitly non-additive. |
-| `freemocap/tests/reference_recordings/` | Production-output consumers, upstream-preserving reprocessing checks, annotated-video coverage, Blender saved-scene validation, and scientific CSV/NumPy comparisons. |
+| `freemocap/tests/reference_recordings/` | Production-output consumers, upstream-preserving reprocessing checks, annotated-video coverage, Blender saved-scene validation, and CSV/NumPy comparisons. |
 
 `test_data` is three cameras, 222 frames at 6 fps; `sample_data` is three
 cameras, 1,108 frames at 30 fps. Their filtering settings intentionally differ.
 Compare each dataset against itself; do not infer speedup by comparing the two.
 Full fresh workflow attempts copy inputs without the realtime observation cache.
 
-The scientific export consumers already exercise CSV/NPY/NPZ. At this audited
+The export consumers already exercise CSV/NPY/NPZ. At this audited
 revision, that does not mean every format is part of the default standard producer
 profile: `required_outputs('standard')` returns Parquet and Blender. Keep required
 outputs and acceptance coverage explicit as the export work evolves.
@@ -43,7 +43,7 @@ outputs and acceptance coverage explicit as the export work evolves.
 3. Extend existing result reports with a versioned performance section. Persist
    structured counters/timings directly from execution rather than scraping terminal
    progress. Keep the present terminal diagnostics and full processing logs.
-4. Add a paired scientific-output consumer beside existing reference consumers.
+4. Add a paired output consumer beside existing reference consumers.
    Validate each result through existing acceptance first, then compare their
    semantic keys, coverage, validity masks and values. Reuse current export checks
    to verify each exported format against its canonical data.
@@ -57,15 +57,15 @@ twice introduces another source of numerical variation. Retain separate full fre
 production acceptance runs to exercise the end-to-end workflow.
 
 Do not use whole-file equality as numerical parity: recording paths, provenance,
-timestamps and container serialization can differ. Compare canonical scientific
+timestamps and container serialization can differ. Compare canonical
 rows by semantic identity with explicit expected provenance differences. Require
 exact coverage, schema, units and missingness agreement; define per-channel exact
 or justified tolerance comparisons and report first mismatch, counts and maximum
 errors. Never silently drop unmatched rows or ignore non-finite differences.
 Matching one another is insufficient: both variants must independently pass the
-existing scientific and output acceptance checks.
+existing numerical and output acceptance checks.
 
-Measure preparation/copying, model setup, processing, scientific sink completion,
+Measure preparation/copying, model setup, processing, sink completion,
 annotation/export completion and acceptance-validation time separately. Report
 total command wall time as well. Preserve full standard acceptance even when a
 focused numerical profile is used to diagnose a bottleneck.

@@ -10,7 +10,7 @@ runtime and frontend described below are not implemented by this document.
 
 The owner requests a graph-first redesign, informed by SkellySpeak: the graph
 that determines execution must also determine the graph the user inspects.
-Start with mocap/posthoc. Share vocabulary and scientific handlers with realtime;
+Start with mocap/posthoc. Share vocabulary and handlers with realtime;
 do not force realtime and posthoc into identical scheduling or filtering semantics.
 Calibration remains a separate task. Preserve the [recording contract](../../RECORDING_CONTRACT.md).
 
@@ -41,7 +41,7 @@ were executed and no SkellySpeak files were changed for this audit.
 ## Application execution ownership
 
 `dataflow/application_pipeline.py` manages recording runs and exports.
-`dataflow/recording_pipeline.py` defines the executable scientific operations and
+`dataflow/recording_pipeline.py` defines the executable operations and
 checkpoint publications. `dataflow/video_sources.py` owns concurrent video reads;
 `dataflow/annotation_workers.py` owns independent annotation work.
 `posthoc/mocap_pipeline.py` manages the worker lifecycle and progress reporting.
@@ -81,7 +81,7 @@ Keep distinct concepts explicit:
 Use existing observation, geometry, timing, reconstruction, and recording models
 as port payloads. Avoid a parallel generic dictionary data model or a new recording
 identity hierarchy. Operational task/attempt identities are distinct from retained
-scientific run IDs already defined in the recording contract.
+run IDs already defined in the recording contract.
 
 ## Readiness is about data, not completion of an entire producer
 
@@ -107,7 +107,7 @@ explicit missing-data policy; it cannot leave a join waiting forever.
 
 Hydration resolves declared input bindings to ready artifacts and supplies only those
 inputs plus narrow execution capabilities. Handlers must not wait on another node's
-future, fetch undeclared scientific inputs from a global store, or schedule hidden
+future, fetch undeclared inputs from a global store, or schedule hidden
 child work. Opaque third-party execution is allowed, but its boundary must be labeled.
 Output publication releases matching dependent work immediately.
 
@@ -133,7 +133,7 @@ flowchart TD
     ALIGN --> SCALE[Recording scale estimation]
     ALIGN --> RECON[Ordered reconstruction with frozen fit]
     SCALE --> RECON
-    OBS --> PUB[Single scientific publication owner]
+    OBS --> PUB[Single publication owner]
     RAW --> PUB
     RECON --> PUB
     OBS --> ANN[Join available observations and source image]
@@ -154,7 +154,7 @@ Preserve existing algorithms initially:
 - Tracker state remains ordered per source. The first implementation retains the
   synchronized camera batch contract supported by `InferenceService`; independently
   advancing camera inference requires a later explicit service/state API change.
-- GPU batching is resource scheduling, not a scientific fan-in requirement. All
+- GPU batching is resource scheduling, not a fan-in requirement. All
   camera observations are required by a join, not intrinsically by each pose model.
 - Current automatic camera matching samples the whole recording. Use an explicit
   matching prepass or retain that barrier. Do not claim immediate triangulation while
@@ -173,7 +173,7 @@ Sending each frame to two bounded queues does not guarantee annotation independe
 the slow annotation queue can fill and backpressure the producer anyway. Declare this
 effect and expose it. Unbounded queues merely trade the stall for memory exhaustion.
 
-Recommended first policy: scientific observations enter bounded staging with disk
+Recommended first policy: observations enter bounded staging with disk
 spill; annotation consumes those observations and independently rereads source video.
 This spends decoding work to avoid retaining full-resolution pixels for a slow encoder.
 A later bounded shared-frame cache may optimize reads, with rereading as fallback.
@@ -183,12 +183,12 @@ Staging is operational scratch, not an alternative canonical recording store. Sp
 its ownership, budget, cleanup, and whether it survives process restart before writing
 it. All generated paths must be ignored or outside the source checkout. Persistent
 restart semantics remain based on validated canonical checkpoints unless separately
-implemented and tested. Preserve completed scientific outputs if annotation fails;
+implemented and tested. Preserve completed outputs if annotation fails;
 report the overall task as partial/failed-derived-output when requested videos are
 incomplete, not as an unqualified success.
 
 Only the publication owner replaces canonical Parquet and allocates retained runs.
-Do not let concurrent scientific nodes write that file. Separate computation readiness
+Do not let concurrent nodes write that file. Separate computation readiness
 from checkpoint durability. A stage requiring durable input must declare that condition;
 others consume immutable in-memory/staged results. Preserve atomic replacement,
 validation, provenance, source geometry, and human keep/overwrite semantics.
@@ -243,13 +243,13 @@ An event timeline can explain concurrency without displaying every frame as a no
 These are proposed UI capabilities. Current phase bars and the recently added timing
 report do not implement this inspector or fully expose queue/resource state.
 
-## Derive invalidation from the same scientific bindings
+## Derive invalidation from the same bindings
 
-Tag reusable scientific outputs with their existing processing stage and provenance.
+Tag reusable outputs with their existing processing stage and provenance.
 Derive prerequisite closure from their input bindings, including settings/geometry
 artifacts, so execution and saved-stage invalidation do not drift. Encoding/resource
-edges must not invalidate scientific results. A graph digest is execution identity,
-not a replacement for scientific provenance: changing layout, descriptions, or worker
+edges must not invalidate results. A graph digest is execution identity,
+not a replacement for data provenance: changing layout, descriptions, or worker
 count must not automatically invalidate identical numerical outputs.
 
 During migration, test this projection against `stage_dependencies.py`. Replace that
@@ -268,16 +268,16 @@ a dependency API need a separate repository stage and the owner's commit/push ha
    Execute synthetic per-camera producers, inference, join, and a deliberately slow
    annotation branch through it. Serve that exact compiled graph to a generic UI.
    Label this a development harness until production handlers are migrated. Acceptance:
-   hold annotation indefinitely and observe continued scientific work within declared
+   hold annotation indefinitely and observe continued work within declared
    budgets; the UI explains both branches without any hardcoded node names or edges.
 2. Replace the mocap observation loop. Split ChArUco from rendering, publish immutable
    observations, connect real decoding/tracker/annotation handlers, preserve synchronized
    GPU batches initially, and eliminate the old coordinator scheduling for this path.
    Use one explicit legacy composite node for unmigrated downstream work.
-3. Replace downstream composite work with real scientific nodes and one publication
+3. Replace downstream composite work with real nodes and one publication
    owner. Make matching/filtering/scale barriers explicit; support resolved-geometry
    chunked triangulation and existing restart/retention behavior.
-4. Derive scientific invalidation/reuse from bindings and migrate saved-stage execution.
+4. Derive invalidation/reuse from bindings and migrate saved-stage execution.
    Remove superseded dependency definitions, manual phase orchestration, and obsolete
    source comments when their callers have moved.
 5. Evaluate realtime and calibration adoption independently. Share contracts, handlers,
@@ -302,7 +302,7 @@ environment changes are part of this design document.
 - State tests: per-camera monotonic tracker calls and independent state; preserved
   deterministic frame order for encoders and reconstruction.
 - Failure tests: revoked/cancelled generations cannot publish late results; annotation
-  failures preserve scientific checkpoints; scientific failure blocks dependent work.
+  failures preserve checkpoints; failure blocks dependent work.
 - Publication tests: one writer, atomic files, valid prior checkpoint after failure,
   retained runs/groups preserved, restart and provenance equivalent to current behavior.
 - Numerical tests: compare migrated outputs to existing reference recordings with
@@ -319,4 +319,4 @@ Adopt the SkellySpeak principle: one backend-authored definition governs executi
 and inspection. Extend it for keyed streams, temporal state, finite resources,
 durability, and fan-out lifetime. Migrate the actual executor together with its
 frontend projection; never maintain a parallel descriptive topology. Start with a
-real, testable graph slice before converting the entire scientific pipeline.
+real, testable graph slice before converting the entire pipeline.

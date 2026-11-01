@@ -6,6 +6,7 @@ import tempfile
 import zipfile
 
 import pytest
+from freemocap.core.recording.recording_access import RecordingAccess
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -39,7 +40,7 @@ def installed_blender():
         env.delenv('FREEMOCAP_BLENDER_DEVELOPMENT_BUILD_HASH', raising=False)
         import urllib.request
         env.setattr(urllib.request, 'urlopen', lambda *a, **kw: (_ for _ in ()).throw(AssertionError('offline: no release/catalog/download allowed')))
-        app = FastAPI(); app.include_router(blender_router)
+        app = FastAPI(); app.state.recording_access = RecordingAccess(); app.include_router(blender_router)
         yield TestClient(app), blender, None
         assert not inspect_blender(blender)['packages'], 'Normal profile was modified'
         assert not (normal/'config/userpref.blend').exists()

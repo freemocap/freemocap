@@ -1,7 +1,7 @@
 """Restore the graph's observation source without opening videos or detectors."""
 from pathlib import Path
 
-from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection
+from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection
 from freemocap.core.pipeline.dataflow.video_sources import CameraVideoSource, RecordingVideoSources
 from freemocap.core.pipeline.posthoc.saved_stage_processing import recording_structure
 from freemocap.core.recording.result_processing.saved_observations import read_saved_observations

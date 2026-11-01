@@ -15,7 +15,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.pipeline.dataflow.video_sources import RecordingVideoSources
 from freemocap.core.pipeline.dataflow.tracker_adapter import SkellyTrackerAdapter
-from freemocap.core.pipeline.dataflow.scientific_recording import process_scientific_recording, observation_buffers
+from freemocap.core.pipeline.dataflow.recording_processing import process_recording, observation_buffers
 from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.performance_report import PerformanceReport
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
@@ -31,7 +31,7 @@ from freemocap.tools.datasets.preparation import file_digest, software_identity
 
 
 def render_report(report: dict) -> str:
-    lines = ["SCIENTIFIC RECORDING COMPARISON", "=" * 40,
+    lines = ["RECORDING OUTPUT COMPARISON", "=" * 40,
              f"Recording: {report['recording']}", f"Requested provider: {report['provider']}",
              f"Status: {report['status']}", f"Scope: {report['scope']}"]
     counts = report.get("frame_counts", {})
@@ -90,8 +90,8 @@ def run_comparison(*, recording: Path, calibration: Path, output: Path, provider
         try:
             adapter = SkellyTrackerAdapter(inference_service=service, tracker_config=config.tracker_config,
                 performance_report=performance, execution_provider=provider)
-            with closing(adapter.track_recording(sources=sources, execution_id="scientific-comparison", shutdown_flag=flag)) as events:
-                result = process_scientific_recording(events=events, sources=sources, execution_id="scientific-comparison",
+            with closing(adapter.track_recording(sources=sources, execution_id="recording-comparison", shutdown_flag=flag)) as events:
+                result = process_recording(events=events, sources=sources, execution_id="recording-comparison",
                     calibration_cameras=cameras, matching_config=config.camera_matching, triangulation_config=config.triangulation_config)
         finally:
             service.close()

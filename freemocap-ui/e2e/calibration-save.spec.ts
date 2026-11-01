@@ -13,7 +13,7 @@ for (const success of [true, false]) {
         let applies = 0;
         await page.route('**/freemocap/realtime/apply', async route => {
             applies++;
-            await route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live'}});
+            await route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live', resolved_config: route.request().postDataJSON().realtimeConfig}});
         });
         await page.route('**/calibration/transform', async route => {
             saves++;
@@ -61,7 +61,7 @@ for (const success of [true, false]) {
                 };
                 store.dispatch(pipelineConfigUpdated(config));
                 store.dispatch(applyRealtimePipeline.fulfilled(
-                    {camera_group_id: 'cameras', pipeline_id: 'live'}, 'setup', config,
+                    {camera_group_id: 'cameras', pipeline_id: 'live', resolved_config: config}, 'setup', config,
                 ));
                 const target = {
                     postMessage(message: {type: 'calibrationScene'; data: CalibrationScene}) {

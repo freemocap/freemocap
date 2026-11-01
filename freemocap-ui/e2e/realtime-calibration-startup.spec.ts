@@ -15,7 +15,7 @@ test(`starting live capture resolves ${scenario} calibration without the calibra
         : {json: scenario === 'missing' ? null : calibrationFixture('C:/latest.toml')}));
     await page.route('**/realtime/apply', route => {
         requests.push(route.request().postDataJSON());
-        return route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live'}});
+        return route.fulfill({json: {camera_group_id: 'cameras', pipeline_id: 'live', resolved_config: route.request().postDataJSON().realtimeConfig}});
     });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<div id="root"></div>'}));
     await page.goto('http://localhost:53117/');

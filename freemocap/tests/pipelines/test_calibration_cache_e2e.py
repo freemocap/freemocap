@@ -16,6 +16,7 @@ from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import RealtimeAggregatorNodeConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
+from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 from freemocap.tests.pipelines.mocks.mock_camera_group import MockCameraGroup
 from freemocap.tests.pipelines.mocks.realtime_driver import drive_realtime_lockstep
 
@@ -50,7 +51,7 @@ def test_realtime_charuco_observations_preserve_recording_frames(
         assert group.frame_count == 222
         assert len(group.camera_ids) == 3
         service.start()
-        pipeline = manager.create_pipeline(camera_group=group, pipeline_config=config)
+        pipeline = manager.create_pipeline(camera_group=CaptureGroup(group, flag), pipeline_config=config)
         assert pipeline.charuco_recorder_node is None
         result = drive_realtime_lockstep(
             pipeline=pipeline, mock_group=group, num_frames=group.frame_count,

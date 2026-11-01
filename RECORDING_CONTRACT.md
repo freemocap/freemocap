@@ -19,7 +19,7 @@ not required lookup paths after a recording is moved.
 <recording-id>/
     <recording-id>_recording_info.json  # preserved capture + compact processed summary
     <recording-id>_calibration.toml    # calibration convenience/input artifact
-    <recording-id>_data.parquet        # all retained scientific runs
+    <recording-id>_data.parquet        # all retained runs
     videos/
         synchronized/                # original synchronized media; optional audio
             timestamps/              # capture timing sidecars, when available
@@ -63,7 +63,7 @@ operational state, not user results.
 | Information | Authority | Owner |
 | --- | --- | --- |
 | Capture identity, camera settings, media/timing associations | Capture recording-info JSON and original sidecars | SkellyCam; FreeMoCap reads/adapts |
-| Processed samples, scientific definitions, retained runs, stage provenance | Embedded descriptor and rows in the recording Parquet | FreeMoCap recording package |
+| Processed samples, definitions, retained runs, stage provenance | Embedded descriptor and rows in the recording Parquet | FreeMoCap recording package |
 | Calibration solution | Calibration TOML; actual geometry used is frozen into each consuming run | FreeMoCap calibration |
 | Default settings for a future operation | Application/package configuration | Relevant processing component |
 | Settings actually used for saved output | That output's saved stage provenance | FreeMoCap publication |
@@ -99,7 +99,7 @@ commit/push handoff. FreeMoCap must continue accepting installed capture output.
   `selected_run_id`; every numerical row includes `run_id`.
 - A run is a retained result slot. An overwrite updates that slot; keep allocates
   a new ID and retains the base. A kept result is independently readable, including
-  reused input rows and scientific definitions. No dependency on a mutable base.
+  reused input rows and definitions. No dependency on a mutable base.
 - A revision identifies particular published content. A run ID alone does not
   identify immutable content. Export retention binds both the ID and revision.
 - An attempt is an execution that may fail or be cancelled. It does not become
@@ -127,7 +127,7 @@ and contains:
 | Effective settings | Complete resolved stage settings, including default-valued fields |
 | Defaults baseline | The applicable defaults at execution, with schema/algorithm identity |
 | Submitted request | Original request where useful, distinct from resolved settings |
-| Input identity | Content/checkpoint fingerprints and referenced scientific definitions |
+| Input identity | Content/checkpoint fingerprints and referenced definitions |
 | Software identity | Actual package/algorithm versions and relevant model/native code identities |
 | Execution/publication identity | UTC time, attempt identity and base run/revision where applicable |
 | Output binding | Stage, sensor group and produced sources/channels/checkpoint |
@@ -135,7 +135,7 @@ and contains:
 Differences from defaults are derived from that saved baseline. A changed value
 does not prove a human deliberately edited it: a preset or automatic resolution
 may have supplied it. Do not claim user-edit attribution without explicit evidence.
-Export checkboxes, Blender paths and UI preferences are not scientific stage
+Export checkboxes, Blender paths and UI preferences are not stage
 settings. Persist them in request/export provenance at their own scope.
 
 For example, after a filter-only restart:
@@ -160,7 +160,7 @@ There is no silent rewrite of existing recordings on read.
 
 Current coverage includes observations, timing, triangulation, filtering, scale,
 reconstruction and biomechanics. Numerical restarts bind the base run
-and descriptor fingerprint. Input fingerprints identify saved scientific inputs;
+and descriptor fingerprint. Input fingerprints identify saved inputs;
 they do not yet provide a complete raw-video/model-weight dependency manifest.
 Tracker provider settings describe the request: actual runtime provider fallback
 is not exposed by the current adapter and is recorded as a limitation. Defaults
@@ -186,7 +186,7 @@ Export metadata contains compact format/axis/reference descriptions,
 per-artifact revision/hash and status. NPZ embeds its own descriptions. A new NPZ
 must not cause an old CSV to be described as current. Exporting does not allocate
 a processing run or modify Parquet. Retaining exports alone does not retain a
-historical scientific Parquet revision.
+historical Parquet revision.
 
 Use owned staging and an export publication lock. Individual replacements can be
 atomic; a multi-file set is not a single filesystem transaction. Metadata and
@@ -213,7 +213,7 @@ can supply an ignored `--basetemp` for local reports.
 | Area | Status |
 | --- | --- |
 | Canonical path examples, cross-language drift checks, lazy exports path | Implemented with this contract |
-| Embedded runs, scientific snapshots, keep/overwrite storage primitives | Existing implementation |
+| Embedded runs, snapshots, keep/overwrite storage primitives | Existing implementation |
 | Versioned stage provenance and saved defaults | Implemented for posthoc publication and saved-stage replay; coverage limitations above |
 | Consistent app keep/overwrite and run lineage | Pending |
 | Canonical capture/calibration writer migration and complete hybrid resolution | Pending staged work |
@@ -237,7 +237,7 @@ fast check for invariants and failure handling; they do not certify integration.
 
 For changes to saved data or processing, run fresh processing in an isolated
 prepared root, then reload and reprocess its actual Parquet files. Check the
-existing ready marker, hashes, frame grids, stage settings and scientific output
+existing ready marker, hashes, frame grids, stage settings and output
 validation. Preserve original recordings and accepted prepared results. A missing
 dataset or unavailable native dependency is an explicit skip/blocker, never a pass.
 
@@ -250,7 +250,7 @@ As csv/NPZ writers land, extend these consumers to compare exported values,
 missing-data masks, frame/entity ordering, units and axis descriptions against the
 same verified Parquet. Exercise default replacement, retained-run exports and
 partial failure with these outputs. Blender becomes another consumer of this
-fixture chain. Scientific comparisons use appropriate numerical tolerances;
+fixture chain. Comparisons use appropriate numerical tolerances;
 file hashes bind a particular artifact, not a promise of bitwise deterministic
 GPU results across fresh runs. Dataset validation is an integration benchmark,
 not proof of anatomical accuracy.
@@ -282,7 +282,7 @@ hash, validator version, and validation outcome. Blender reports also identify
 the Blender runtime and add-on build. File existence and hashes establish artifact
 identity; consumer checks establish content validity:
 
-- Parquet: existing frame/channel coverage, scientific geometry and provenance checks.
+- Parquet: existing frame/channel coverage, geometry and provenance checks.
 - Blender: reopen the produced `.blend` in a fresh Blender process; verify the
   selected recording and run, expected scene/model structure, frame/time mapping,
   units and coordinate conversion, and evaluated point/segment transforms against

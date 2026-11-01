@@ -28,14 +28,14 @@ FreeMoCap owns cross-project adapters and recording publication. The owner has
 authorized integration through the existing editable dependencies without a
 commit/push pause for this task. SkellyTracker remains unchanged.
 
-The public NumPy dataset represents scientific output: numerical values, declared
+The public NumPy dataset represents output: numerical values, declared
 axes and identities, original timing, applicable quality/evidence arrays, units,
 reference definitions and model definitions. Solver/hydration execution status
 and caches are excluded from this public dataset. The generic tensor classes may
 still carry such execution metadata internally; export eligibility does not
 require removing it from runtime computations.
 
-NPY/NPZ must round-trip the selected scientific dataset. They are not required to
+NPY/NPZ must round-trip the selected dataset. They are not required to
 reproduce every internal object or exactly mirror Parquet's representation.
 Parquet remains the durable recording, and the existing saved-data reader remains
 a valid source for constructing runtime datasets. This decision does not authorize
@@ -45,11 +45,11 @@ the meaning of each declared mask rather than claim an unavailable round trip.
 
 ### Implemented NumPy boundary
 
-SkellyForge's `NumpyDatasetWriter` writes selected scientific channels as they
+SkellyForge's `NumpyDatasetWriter` writes selected channels as they
 arrive; `RecordingDataset.save_numpy()` and `load_numpy()` provide the complete
 dataset interface. Both NPY and NPZ contain `dataset.json` plus plain numerical
 arrays, loaded without pickle. The manifest binds each channel to its own timing,
-axes, source identity, units, reference definitions and scientific companions.
+axes, source identity, units, reference definitions and companions.
 Static fitted values have no sample axis. The versioned format is specified in
 SkellyForge's `core/data_tensors/NUMPY_FORMAT.md`.
 
@@ -84,7 +84,7 @@ views share numerical storage without rescanning values or recomputing timing.
 Presence and validity use the full value layout. Confidence, measured support
 and solver status may use explicitly matching subset axes. Their numeric dtypes
 are checked; valid entries must be present when presence is supplied and must
-contain finite values. Scientific provenance is explicit and does not classify
+contain finite values. Provenance is explicit and does not classify
 every numerical output as an empirical measurement.
 
 `RecordingDataset` holds already published time series and static tensors by
@@ -167,7 +167,7 @@ recordings with array operations instead of point-by-point assignments.
 produces immutable numeric channels with presence and solver-status companions.
 `ReconstructionRecording.series()` publishes those buffers directly. Sample axes
 use recording positions until the publisher binds existing frame IDs/timestamps;
-they do not manufacture a timeline. Scientific units/reference context stays at
+they do not manufacture a timeline. Units/reference context stays at
 the existing publication boundary. Live and recorded paths retain the same
 quaternion, angle, scale-fit and temporal-roll conventions.
 
@@ -179,7 +179,7 @@ before Global 2 is complete. That requires the human-owned repository handoff;
 no dependency checkout or environment was changed during this core stage.
 
 The [updated compliance map](tensor-contract-audit.md) records the fresh reference
-processing, live/saved-stage tests, scientific-output comparison and limited
+processing, live/saved-stage tests, output comparison and limited
 observation-assembly benchmark. This work does not change the Parquet/NPZ/CSV
 formats or the frontend.
 
@@ -192,20 +192,20 @@ until implementation and migration explicitly update it.
 
 ## Responsibilities
 
-- Parquet is the primary durable record of published scientific results and their
+- Parquet is the primary durable record of published results and their
   interpretation/provenance. It is not the numerical working representation.
-- Runtime scientific objects wrap dense numeric arrays with explicit axes,
+- Runtime objects wrap dense numeric arrays with explicit axes,
   timelines, masks, units, and reference frames. Helpers operate on these arrays.
 - NPY plus a manifest, or NPZ with an embedded manifest, serializes those same
-  scientific tensor payloads. Loading recreates equivalent tensor-backed objects.
+  tensor payloads. Loading recreates equivalent tensor-backed objects.
 - Wide CSV is a spreadsheet projection, one compatible timeline per table.
   Tall CSV remains an optional existing interchange projection.
 - Browser display buffers are derived representations. Float32 conversion,
   renderer ordering and GPU layout are explicit, cached adaptations; they do not
-  redefine the scientific values saved in Parquet or NumPy exports.
+  redefine the values saved in Parquet or NumPy exports.
 
 Strict parity means the same numeric values, dtype, shape, axis identities,
-missingness, timing, units and scientific meaning for the selected recording dataset.
+missingness, timing, units and meaning for the selected recording dataset.
 It does not mean preserving Python class identity, caches, memory addresses,
 arbitrary strides, or aliasing. No Python object arrays or pickle in exports.
 NPZ is a packaged recording dataset, not the incremental runtime working store.
@@ -275,7 +275,7 @@ must preserve this distinction.
 
 ## Layout, missingness and ownership
 
-- Scientific coordinates retain float64; IDs use int64, masks bool and statuses
+- Coordinates retain float64; IDs use int64, masks bool and statuses
   explicit integer enums. Other sensor quantities declare their own numeric dtype.
   Conversion must be explicit, not blanket float64 coercion of arbitrary signals.
 - Canonical owned payloads use documented sample-major ordering. Slices may be
@@ -422,13 +422,13 @@ them explicitly rather than treating them as interchangeable:
 
 | Meaning | Contract |
 | --- | --- |
-| Entry presence | `entry_presence` says that a component entry exists in this scientific product. False means absent; float payload is canonical NaN. |
+| Entry presence | `entry_presence` says that a component entry exists in this product. False means absent; float payload is canonical NaN. |
 | Null/unavailable value | A present float entry with NaN is explicitly unavailable. Nullable integer buffers require a separate component validity mask. |
 | Geometric availability | `point_valid[F,P]` or `pose_valid[F,S]` states that a complete point/pose satisfies the operation's requirements. It does not replace component presence. |
 | Measurement support | `measured_support[F,P]` distinguishes measured support from interpolated/inferred results even when both are finite. |
 | Confidence and solver status | Numeric confidence and enum codes carry quality and provenance; zero confidence is not the same as a missing row. |
 
-Float infinities are rejected for the current scientific coordinate channels.
+Float infinities are rejected for the current coordinate channels.
 Position operations requiring a complete XYZ triple reject or mask partial
 triples explicitly. Generic saved-channel loading preserves component-level
 missingness for inspection. Mapping's current `MappedLandmarkBatch.present` is
@@ -446,7 +446,7 @@ with identical observable semantics; it must not be guessed from finite values.
 | `select_entities(plan)` | Reuses a prepared index plan. Contiguous ranges may be views; arbitrary gathers explicitly allocate one bounded output or fill a caller-owned destination. |
 | `mutable_copy()` | Explicit owned writable result; mutations cannot change a published input. |
 | `iterate_measurements(selection, budget)` | Selects contexts/time windows with bounded decoded memory; includes scratch/output costs in the budget. |
-| `to_display(plan, out)` | Explicit precision/order conversion into reusable display buffers; no change to scientific inputs. |
+| `to_display(plan, out)` | Explicit precision/order conversion into reusable display buffers; no change to inputs. |
 
 These names describe interface behavior, not finalized signatures. Frame helpers
 are lightweight facades over the same tensors, not a second per-frame numeric
@@ -492,13 +492,13 @@ These are specified tests, not tests already implemented or run:
 6. A clock reset starts another epoch. A request to combine unrelated clocks
    fails clearly until an explicit relation and sampling policy is provided.
 7. Processing the same sequence as one measurement tensor or uneven chunks produces equivalent
-   roll state and scientific results, including empty frames and missing parents.
+   roll state and results, including empty frames and missing parents.
 8. Loading a selected Parquet context skips provably unrelated row groups; adding
    another retained run does not force full numeric decoding for that selection.
 9. Runtime-to-NPZ-to-runtime preserves dtype, shape, finite values, NaN positions,
    masks, timelines, layouts and static definitions. Bitwise NaN payload identity
    and storage aliasing are not promised. No object arrays/pickle are required.
-10. Scientific float64 -> display float32 is tested as an explicit lossy conversion;
+10. Float64 -> display float32 is tested as an explicit lossy conversion;
     the original remains unchanged and finite values outside float32 range have
     a declared failure/masking policy rather than silently becoming infinity.
 11. Repeated access to a loaded frame allocates no numeric payload or name maps;
@@ -566,7 +566,7 @@ with one sub-agent at a time and reference-data validation. Reprint this entire
 checklist after every completed step. Cross-repository changes in Core and Forge
 are authorized without commit/push pauses. SkellyTracker edits are not authorized;
 Git mutations remain prohibited. Preserve self-describing messages, timing,
-buffer ownership and exact scientific values.
+buffer ownership and exact values.
 
 - [x] **1. Remove repeated WebSocket preparation:** reuse unchanged model, camera, and coordinate definitions; replace temporary coordinate arrays with safely reusable storage; test repeated messages, changed layouts, reconnects, and live freshness.
 - [x] **2. Replace fresh observation retention with recording tensors:** populate preallocated numerical arrays in `ObservationCollection` and adapt `ObservationBuffer` consumers, verifying fresh/saved processing parity against reference data.
@@ -584,16 +584,16 @@ the owner retains all Git actions. No SkellyTracker files were edited.
 
 The owner authorized steps 4.1–4.6 with local editable integration between
 FreeMoCap and SkellyForge, without repository publication pauses. SkellyTracker
-is outside the authorized edit scope. NPY/NPZ preserve selected scientific
+is outside the authorized edit scope. NPY/NPZ preserve selected
 runtime data; parity with Parquet's representation is not required. Temporary
-solver execution state is not public scientific output.
+solver execution state is not public output.
 
-- [x] **4.1 — Audit runtime data and resolve tensor ownership:** identify the scientific arrays and context suitable for NumPy storage, distinguish temporary processing state, and complete the SkellyForge ownership migration.
+- [x] **4.1 — Audit runtime data and resolve tensor ownership:** identify the arrays and context suitable for NumPy storage, distinguish temporary processing state, and complete the SkellyForge ownership migration.
 - [x] **4.2 — Define the NPY/NPZ recording contract:** specify array names, dtypes, axes, selected companion arrays, independent timing, definitions, and format versioning.
-- [x] **4.3 — Implement NumPy writers and loaders in SkellyForge:** save scientific runtime data and reconstruct equivalent tensor-backed objects without pickle.
+- [x] **4.3 — Implement NumPy writers and loaders in SkellyForge:** save runtime data and reconstruct equivalent tensor-backed objects without pickle.
 - [x] **4.4 — Connect FreeMoCap’s NumPy exports to those writers:** replace the existing NumPy export implementation with the agreed runtime-data representation.
 - [x] **4.5 — Update wide CSV and analysis consumers:** align CSV generation, export validation, manifests, notebooks, and guides with the agreed formats.
-- [x] **4.6 — Verify NumPy round trips and measure export costs:** test preservation of the selected scientific data and context using reference data and independent-clock fixtures.
+- [x] **4.6 — Verify NumPy round trips and measure export costs:** test preservation of the selected data and context using reference data and independent-clock fixtures.
 
 One sub-agent per approved task, with integration review and validation before
 starting the next. Core owns integration contracts. Tracker and Forge remain

@@ -6,6 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from freemocap.core.recording.data_descriptors.recording_descriptor import RecordingMetadata
 from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA
+from freemocap.core.recording.recording_access import RecordingAccess
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from freemocap.api.http.posthoc.exports_router import exports_router
@@ -15,6 +16,7 @@ from freemocap.system.recording_structure.recording_structure import RecordingSt
 class ExportPreviewTests(unittest.TestCase):
     def test_missing_result_is_empty_but_invalid_folder_and_export_are_errors(self):
         app = FastAPI()
+        app.state.recording_access = RecordingAccess()
         app.include_router(exports_router)
         with tempfile.TemporaryDirectory() as temporary, TestClient(app) as client:
             for route in ('scientific', 'tall-csv'):
@@ -30,6 +32,7 @@ class ExportPreviewTests(unittest.TestCase):
 
     def test_preview_becomes_available_after_parquet_is_published(self):
         app = FastAPI()
+        app.state.recording_access = RecordingAccess()
         app.include_router(exports_router)
         with tempfile.TemporaryDirectory() as temporary, TestClient(app) as client:
             folder = Path(temporary)
@@ -49,6 +52,7 @@ class ExportPreviewTests(unittest.TestCase):
 
     def test_corrupt_result_is_not_reported_as_absent(self):
         app = FastAPI()
+        app.state.recording_access = RecordingAccess()
         app.include_router(exports_router)
         with tempfile.TemporaryDirectory() as temporary, TestClient(app, raise_server_exceptions=False) as client:
             folder = Path(temporary)

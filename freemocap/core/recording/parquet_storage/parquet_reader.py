@@ -1,4 +1,4 @@
-"""Read the exact recording file and its embedded scientific description."""
+"""Read the exact recording file and its embedded description."""
 
 from collections.abc import Iterator
 from pathlib import Path

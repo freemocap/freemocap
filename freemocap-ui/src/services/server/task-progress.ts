@@ -23,12 +23,13 @@ export function applyTaskSnapshot(
         }
     }
     for (const task of snapshot.tasks) {
+        if (!task.recording || (task.task_type !== PipelineType.MOCAP && task.task_type !== PipelineType.CALIBRATION)) continue;
+        const recording = task.recording;
         const previous = before.serverInstanceId === snapshot.server_instance_id ? before.activePipelines[task.task_id] : undefined;
         const previouslyTerminal = previous?.phase === PipelinePhase.COMPLETE || previous?.phase === PipelinePhase.FAILED;
-        const blocked = snapshot.recording_owners.some(owner => owner.recording.full_path === task.recording.full_path);
-        const wasBlocked = before.recordingOwners.some(owner => owner.recording.full_path === task.recording.full_path);
+        const blocked = snapshot.recording_owners.some(owner => owner.recording.full_path === recording.full_path);
+        const wasBlocked = before.recordingOwners.some(owner => owner.recording.full_path === recording.full_path);
         if (task.status === 'complete' && !blocked && (!previouslyTerminal || wasBlocked)) {
-            const recording = task.recording;
             void dispatch(fetchPlaybackBundle({recordingId: recording.recording_name,
                 recordingParentDirectory: recording.base_directory}));
             if (task.task_type === PipelineType.CALIBRATION) {

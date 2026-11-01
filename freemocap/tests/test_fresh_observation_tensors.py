@@ -13,7 +13,7 @@ from skellytracker.core.data_primitives.bounding_box import BoundingBox
 from freemocap.core.tracking.observation_series import RecordingObservationSeries, ObservationFrames
 from freemocap.core.tracking.observation_arrays import observation_arrays, ambiguous_instances
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
-from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection
+from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection
 from freemocap.core.pipeline.dataflow.camera_join import ProducerOutcome
 
 
@@ -164,8 +164,8 @@ def test_stage_extraction_rejects_reordered_authored_stage_names():
 
 
 def test_failed_admission_does_not_count_delivery_or_poison_retry():
-    from freemocap.tests.test_dataflow_scientific_recording import ScientificRecordingTests
-    fixture = ScientificRecordingTests()
+    from freemocap.tests.test_dataflow_recording_processing import RecordingProcessingTests
+    fixture = RecordingProcessingTests()
     fixture.setUp()
     try:
         collection = ObservationCollection(sources=fixture.sources, execution_id='run')

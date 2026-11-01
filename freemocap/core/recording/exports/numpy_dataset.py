@@ -1,4 +1,4 @@
-"""Compose declared recording channels into Forge scientific tensors for export."""
+"""Compose declared recording channels into Forge tensors for export."""
 from contextlib import contextmanager
 from dataclasses import replace
 import json
@@ -7,7 +7,7 @@ import numpy as np
 
 from skellyforge.core.data_tensors import (
     CompanionTensor, DefinitionDocument, RecordingDataset, SampleTiming,
-    ScientificProvenance, SourceIdentity, TensorLayout, TimeSeries,
+    DataProvenance, SourceIdentity, TensorLayout, TimeSeries,
 )
 from freemocap.core.recording.exports.arrays import available_channels, MAX_RESIDENT_ARRAY_BYTES
 from freemocap.core.recording.parquet_storage.channel_arrays import read_channel_arrays
@@ -18,7 +18,7 @@ def axis_definition(layout, name):
     return layout.axes[layout.axis_index(name)]
 
 
-def scientific_selection(run, selected):
+def export_selection(run, selected):
     """Expand the public pose projection and include its model's static outputs."""
     result = {}
     for item in selected:
@@ -46,14 +46,14 @@ def declared_source(run, context):
 
 
 def channel_definitions(metadata, run_id, selected):
-    """Export scientific definitions, excluding pipeline execution configuration."""
+    """Export definitions, excluding pipeline execution configuration."""
     run = metadata.runs[run_id]
     documents = {}
     def retain(name, value):
         documents[name] = DefinitionDocument(name, json.dumps(value, ensure_ascii=False, allow_nan=False))
     retain('recording:context', dict(recording_id=metadata.recording_id, run_id=run_id,
         saved_presence='entry_presence means a recorded component row exists, including recorded null',
-        saved_validity='No independent scientific validity mask is present in this recording schema',
+        saved_validity='No independent validity mask is present in this recording schema',
         timing_identity='A channel-specific saved time series; group clock describes recorded seconds, not a hardware-clock claim',
         clock_epoch='Zero identifies this saved run; no hardware reset epoch is inferred'))
     public_source_fields = {'camera_id', 'video_filename', 'timing_method', 'nominal_fps', 'inferred_offset_s',
@@ -103,12 +103,12 @@ def saved_channel_tensor(view, run_id, item, *, source_hash, scratch, cancelled=
     context, channel, static_values = item
     run = view.metadata.runs[run_id]
     source = declared_source(run, context)
-    provenance = ScientificProvenance(
+    provenance = DataProvenance(
         meaning='saved_model_output' if source.model_id is not None else 'saved_processing_output',
         operation_id=f'saved_stage:{channel.stage}', input_refs=(f'parquet_sha256:{source_hash}',), model_id=source.model_id)
     with read_channel_arrays(view, run_id, context, channel, static_values=static_values,
             scratch=scratch, max_resident_bytes=MAX_RESIDENT_ARRAY_BYTES, cancelled=cancelled) as arrays:
-        tensor = arrays.to_data_tensor(scientific_provenance=provenance, source_identity=source)
+        tensor = arrays.to_data_tensor(data_provenance=provenance, source_identity=source)
         if context.static and context.channel in {'SEGMENT_SCALES', 'SEGMENT_LENGTHS'}:
             saved_fit = next((fit for fit in run.scale_fits if fit.fit is not None
                 and (fit.sensor_group, fit.source) == (context.sensor_group, context.source)), None)
@@ -147,7 +147,7 @@ def runtime_channels(dataset, *, metadata, run_id, selected):
         context = ChannelSelection(sensor_group=source.sensor_group, source=source.source_id,
             reference_frame=layout.reference_id, channel=layout.channel_kind, static=not isinstance(data, TimeSeries))
         if context.key not in expected:
-            raise ValueError('Runtime dataset contains an unselected scientific channel')
+            raise ValueError('Runtime dataset contains an unselected channel')
         declared_context, channel = expected[context.key]
         if source != declared_source(run, declared_context):
             raise ValueError('Runtime source identity differs from the declared recording source')
@@ -157,7 +157,7 @@ def runtime_channels(dataset, *, metadata, run_id, selected):
             raise ValueError('Runtime channel layout differs from the declared recording channel')
         result[context.key] = data
     if set(result) != set(expected):
-        raise ValueError('Runtime dataset does not contain every selected scientific channel/static fit')
+        raise ValueError('Runtime dataset does not contain every selected channel/static fit')
     return result
 
 

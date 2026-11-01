@@ -1,6 +1,6 @@
 from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker_config
 from freemocap.core.blender.blender_export_config import BlenderExportConfig
-from freemocap.core.recording.exports.requests import ScientificExportOptions
+from freemocap.core.recording.exports.requests import ExportOptions
 from typing import Literal
 from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterConfig
@@ -28,6 +28,23 @@ class PosthocMocapPipelineConfig(BaseModel):
     anchor_segment_name: str = Field(default="pelvis", min_length=1, alias="anchorSegmentName")
     model_config = ConfigDict(populate_by_name=True)
 
+    @model_validator(mode='before')
+    @classmethod
+    def migrate_export_settings(cls, value):
+        """Accept historical saved settings; emit only the canonical field names."""
+        if not isinstance(value, dict):
+            return value
+        names = ('export_options', 'exportOptions', 'scientific_exports', 'scientificExports')
+        present = [name for name in names if name in value]
+        if not present:
+            return value
+        options = ExportOptions.model_validate(value[present[0]])
+        if any(ExportOptions.model_validate(value[name]) != options for name in present[1:]):
+            raise ValueError('Conflicting export options in saved settings: ' + ', '.join(present))
+        migrated = {key: item for key, item in value.items() if key not in names}
+        migrated['export_options'] = options
+        return migrated
+
     pipeline_implementation: Literal["current", "typed_dataflow"] = Field(
         default="typed_dataflow", alias="pipelineImplementation",
         description="Typed data flow graph V1 (default), or the legacy post hoc pipeline (current).")
@@ -37,10 +54,10 @@ class PosthocMocapPipelineConfig(BaseModel):
 
     start_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction'] = Field(
         default='observations', alias='startStage')
-    # Keep unsupported finish points explicit until their scientific save contracts
+    # Keep unsupported finish points explicit until their save contracts
     # are implemented. Pydantic otherwise ignores stopStage and runs everything.
     stop_stage: Literal['observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction'] = Field(default='reconstruction', alias='stopStage',
-        description='Last requested scientific stage; early finishes require typed data flow graph V1.')
+        description='Last requested stage; early finishes require typed data flow graph V1.')
     base_run_id: int = Field(default=0, ge=0, alias='baseRunId')
     run_save_mode: Literal['overwrite', 'new_run'] = Field(default='overwrite', alias='runSaveMode')
     sensor_group: str | None = Field(default=None, alias='sensorGroup')
@@ -139,7 +156,7 @@ class PosthocMocapPipelineConfig(BaseModel):
 
 
     export_tall_csv: bool = Field(default=False, alias="exportTallCsv")
-    scientific_exports: ScientificExportOptions = Field(default_factory=ScientificExportOptions, alias='scientificExports')
+    export_options: ExportOptions = Field(default_factory=ExportOptions, alias='exportOptions')
 
     blender_import_route: Literal['auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints'] = Field(default='auto', alias='blenderImportRoute')
     blender_package: str | None = Field(default=None, alias='blenderPackage')

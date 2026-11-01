@@ -6,6 +6,7 @@ from unittest.mock import patch, Mock
 import zipfile
 
 import pytest
+from freemocap.core.recording.recording_access import RecordingAccess
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -66,7 +67,7 @@ def test_archive_traversal_rejected(tmp_path, name):
 
 def test_api_forwards_new_route_without_detector_gate(tmp_path):
     blender = tmp_path / 'blender.exe'; blender.touch()
-    app = FastAPI(); app.include_router(blender_router)
+    app = FastAPI(); app.state.recording_access = RecordingAccess(); app.include_router(blender_router)
     with patch('freemocap.api.http.blender.blender_router.export_to_blender') as export:
         response = TestClient(app).post('/blender/export', json=dict(recordingFolderPath=str(tmp_path),
             blenderExePath=str(blender), autoOpenBlendFile=False, route='parquet_constraints',
@@ -78,7 +79,7 @@ def test_api_forwards_new_route_without_detector_gate(tmp_path):
 
 
 def test_invalid_route_rejected_by_api(tmp_path):
-    app = FastAPI(); app.include_router(blender_router)
+    app = FastAPI(); app.state.recording_access = RecordingAccess(); app.include_router(blender_router)
     response = TestClient(app).post('/blender/export', json=dict(recordingFolderPath=str(tmp_path), route='made_up'))
     assert response.status_code == 422
 

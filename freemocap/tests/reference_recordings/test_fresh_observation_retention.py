@@ -12,7 +12,7 @@ from freemocap.core.pipeline.dataflow.camera_join import CameraFrameKey, Produce
 from freemocap.core.pipeline.dataflow.tracker_adapter import TrackedCameraFrame
 from freemocap.core.pipeline.dataflow.video_sources import VideoSourceFinished
 from freemocap.core.pipeline.dataflow.saved_observation_source import load_saved_observation_source
-from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection
+from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.tracking.observation_buffer import recording_observation_buffers
 from freemocap.core.recording.parquet_storage.recording_view import recording_view

@@ -14,13 +14,13 @@ def complete_recording_exports(request, *, worker_count=2):
     config = request.config
     cancelled = lambda: not request.ipc.should_continue
     revision = None
-    if config.scientific_exports.formats or config.export_tall_csv:
+    if config.export_options.formats or config.export_tall_csv:
         with recording_view(structure.data_parquet_path) as view:
             revision = view.revision
     labels = {}
-    if config.scientific_exports.formats:
-        formats = ', '.join(format.upper().replace('_', ' ') for format in config.scientific_exports.formats)
-        labels['scientific_files'] = f'Save {formats} files'
+    if config.export_options.formats:
+        formats = ', '.join(format.upper().replace('_', ' ') for format in config.export_options.formats)
+        labels['channel_exports'] = f'Save {formats} files'
     if config.export_tall_csv:
         labels['tall_csv'] = 'Save tall CSV files'
     if config.export_to_blender:
@@ -47,15 +47,15 @@ def complete_recording_exports(request, *, worker_count=2):
             request.report_export(task_id, label, 'failed', detail)
             return None, detail, False
 
-    def scientific_export():
-        from freemocap.core.recording.exports.requests import ScientificExportRequest
-        from freemocap.core.recording.exports.wide_csv import export_scientific
-        result = export_scientific(structure=structure,
-            request=ScientificExportRequest(**config.scientific_exports.model_dump(),
+    def channel_export():
+        from freemocap.core.recording.exports.requests import ExportRequest
+        from freemocap.core.recording.exports.wide_csv import export_recording
+        result = export_recording(structure=structure,
+            request=ExportRequest(**config.export_options.model_dump(),
                 run_id=config.base_run_id, expected_revision=revision), cancelled=cancelled,
-            progress=lambda done, total, message: request.report_export('scientific_files',
-                labels['scientific_files'], 'running', message, done, total))
-        return f'Scientific files saved and validated in {result.manifest_path.parent}'
+            progress=lambda done, total, message: request.report_export('channel_exports',
+                labels['channel_exports'], 'running', message, done, total))
+        return f'Files saved and validated in {result.manifest_path.parent}'
 
     def tall_export():
         from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv
@@ -76,11 +76,11 @@ def complete_recording_exports(request, *, worker_count=2):
 
     def file_exports():
         # Both writers publish the same manifest under an exclusive fail-fast lock.
-        # Preserve shared array reuse within scientific exports and serialize these
+        # Preserve shared array reuse within exports and serialize these
         # two transactions; neither depends on Blender's separate output files.
         results = []
-        if 'scientific_files' in labels:
-            results.append(run_export('scientific_files', scientific_export))
+        if 'channel_exports' in labels:
+            results.append(run_export('channel_exports', channel_export))
         if 'tall_csv' in labels:
             results.append(run_export('tall_csv', tall_export))
         return results
@@ -91,7 +91,7 @@ def complete_recording_exports(request, *, worker_count=2):
         # Exiting this context joins both branches, including after cancellation.
         with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix='RecordingExport') as workers:
             futures = []
-            if 'scientific_files' in labels or 'tall_csv' in labels:
+            if 'channel_exports' in labels or 'tall_csv' in labels:
                 futures.append(workers.submit(file_exports))
             if 'blender' in labels:
                 futures.append(workers.submit(lambda: [run_export('blender', blender_export)]))

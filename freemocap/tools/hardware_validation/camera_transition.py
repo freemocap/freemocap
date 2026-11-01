@@ -96,7 +96,7 @@ def run_transition(output_directory, backend, recording_info, calibration):
                     timeout_seconds=180.0)
                 processed, report['phases']['tracked'] = capture_phase(stream, output_directory, 'tracked', True)
                 report['comparisons']['tracked'] = compare_phases(original, processed)
-                api.request('DELETE', '/freemocap/mocap/realtime/pipelines')
+                api.request('DELETE', '/freemocap/realtime/pipelines')
                 restored, report['phases']['raw_after'] = capture_phase(stream, output_directory, 'raw_after', False)
                 report['comparisons']['raw_after'] = compare_phases(original, restored)
             assert all(result['passed'] for phase in report['comparisons'].values() for result in phase.values()), (

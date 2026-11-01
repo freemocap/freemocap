@@ -1,4 +1,4 @@
-"""Resolved scientific inputs for reconstructing a recorded skeleton instance."""
+"""Resolved inputs for reconstructing a recorded skeleton instance."""
 
 from pydantic import BaseModel, ConfigDict, model_serializer, model_validator
 from skellyforge.core.biomechanics.center_of_mass import CenterOfMassDefinitions

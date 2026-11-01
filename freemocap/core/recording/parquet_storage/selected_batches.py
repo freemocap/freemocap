@@ -1,4 +1,4 @@
-"""Select complete scientific channels from one caller-owned recording file."""
+"""Select complete channels from one caller-owned recording file."""
 
 from collections.abc import Callable, Iterator
 from concurrent.futures import CancelledError

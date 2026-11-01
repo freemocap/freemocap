@@ -2,7 +2,8 @@
 import {build, preview} from 'vite';
 import react from '@vitejs/plugin-react';
 import {_electron as electron} from '@playwright/test';
-import electronPath from 'electron';
+import {createRequire} from 'node:module';
+const electronPath = process.env.FREEMOCAP_TEST_ELECTRON ?? createRequire(import.meta.url)('electron');
 import {mkdir, writeFile, access, readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

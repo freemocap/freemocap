@@ -225,7 +225,7 @@ export function useServerPanel(): ServerPanelState {
         setShutdownNotice(null);
         try {
             const response = await fetch(serverUrls.endpoints.shutdown, {
-                method: 'GET', cache: 'no-store', signal: AbortSignal.timeout(15000),
+                method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15000),
             });
             if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
             setShutdownNotice('Shutdown requested.');

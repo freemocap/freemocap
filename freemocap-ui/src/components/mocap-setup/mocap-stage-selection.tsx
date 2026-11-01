@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {serverUrls} from '@/constants/server-urls';
+import {recordingProcessingUrl} from '@/services/recording/posthoc-processing';
 import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
@@ -48,7 +48,7 @@ export default function MocapStageSelection({path, onChange, onSourceRunChange}:
         void (async () => {
             try {
                 const response = await fetch(
-                    `${serverUrls.endpoints.processMocapRecording}/stages?recording_path=${encodeURIComponent(path)}`,
+                    recordingProcessingUrl(path, '/stages'),
                     {signal: controller.signal});
                 if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
                 const data: Inventory = await response.json();

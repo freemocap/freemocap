@@ -64,7 +64,7 @@ class NumericalComparison:
             self.exact_differences += difference != 0
             self.maximum_absolute_error = max(self.maximum_absolute_error, difference)
             self.squared_error += difference * difference
-            # Tight same-backend regression threshold, not a scientific accuracy claim.
+            # Tight same-backend regression threshold, not a measurement accuracy claim.
             if difference > 1e-6:
                 self.outside_tolerance += 1
                 if len(self.examples) < 10:
@@ -253,13 +253,13 @@ def render_comparison(report: dict) -> str:
             f"  Outside absolute tolerance {comparison['absolute_tolerance']:g}: {comparison['outside_tolerance']}",
             f"  Structural/identity/missingness differences: {comparison['structural_differences']}",
             f"  Maximum absolute difference: {comparison['maximum_absolute_error']:g}",
-            "  Aggregate differences span mixed units; this is regression parity, not scientific accuracy."])
+            "  Aggregate differences span mixed units; this is regression parity, not measurement accuracy."])
     for key in ("reason", "error"):
         if key in report:
             lines.extend(["", f"{key.upper()}: {report[key]}"])
     lines.extend(["", "Session provider evidence: " + json.dumps(report.get("provider_evidence", [])),
         "Wall times include unequal diagnostic I/O and cold/warm setup effects; do not infer a speedup ratio.",
-        "Full numerical arrays remain private diagnostic data, not accepted scientific recording outputs."])
+        "Full numerical arrays remain private diagnostic data, not accepted recording outputs."])
     return "\n".join(lines) + "\n"
 
 

@@ -5,7 +5,7 @@ See rotation-output-contract.md for conventions and the endpoint error bound.
 
 import numpy as np
 
-# Deliberate float64 endpoint rounding, not a scientific comparison tolerance.
+# Deliberate float64 endpoint rounding, not a comparison tolerance.
 ANGLE_ENDPOINT_TOLERANCE = 32 * np.finfo(np.float64).eps * np.pi
 
 

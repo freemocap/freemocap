@@ -1,4 +1,4 @@
-"""Ordered scientific arrays from one open recording snapshot; no resampling."""
+"""Ordered arrays from one open recording snapshot; no resampling."""
 from collections.abc import Callable
 from concurrent.futures import CancelledError
 from contextlib import contextmanager
@@ -14,7 +14,7 @@ from freemocap.core.recording.parquet_storage.selected_batches import ChannelQue
 from freemocap.core.recording.parquet_storage.channel_arrays import ChannelArrays, read_channel_arrays
 
 
-from freemocap.core.recording.exports.requests import ChannelSelection, ScientificExportRequest
+from freemocap.core.recording.exports.requests import ChannelSelection, ExportRequest
 
 MAX_RESIDENT_ARRAY_BYTES = 64 * 1024 * 1024
 
@@ -26,7 +26,7 @@ def available_channels(run):
             + [(True, item.channel, item.values) for item in read_static_channels(run)]]
 
 
-def scientific_channels(run):
+def data_channels(run):
     """User-facing data products; segment poses pair saved positions and rotations."""
     available = available_channels(run)
     result = [item for item in available if item[0].channel in
@@ -44,7 +44,7 @@ def scientific_channels(run):
     return result
 
 
-def resolve_selection(view: RecordingView, request: ScientificExportRequest):
+def resolve_selection(view: RecordingView, request: ExportRequest):
     if request.expected_revision is not None and request.expected_revision != view.revision:
         raise ValueError('Recording revision changed; reload the saved result')
     run_id = view.metadata.selected_run_id if request.run_id is None else request.run_id
@@ -53,7 +53,7 @@ def resolve_selection(view: RecordingView, request: ScientificExportRequest):
     if not request.formats:
         raise ValueError('Choose at least one export format')
     available = (available_channels(view.metadata.runs[run_id]) if request.wide_csv is not None
-                 else scientific_channels(view.metadata.runs[run_id]))
+                 else data_channels(view.metadata.runs[run_id]))
     selected = set(request.wide_csv) if request.wide_csv is not None else {item[0] for item in available if item[0].channel in request.data}
     if request.wide_csv is None and set(request.data) - {item[0].channel for item in available}:
         raise ValueError('Selected data is unavailable in this run; update the export selection')
@@ -65,7 +65,7 @@ def resolve_selection(view: RecordingView, request: ScientificExportRequest):
 
 def check_cancelled(cancelled):
     if cancelled is not None and cancelled():
-        raise CancelledError('Scientific export cancelled')
+        raise CancelledError('Export cancelled')
 
 
 def channel_batches(view, run_id, context, cancelled, *, columns=None):

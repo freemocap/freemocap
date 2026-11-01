@@ -1,4 +1,4 @@
-## Naming checkpoint and next PR work — 2026-10-10
+## Naming checkpoint and next PR work â€” 2026-10-10
 
 Implemented export labels: `2d_overlay--<tracker>--<video>`,
 `3d_keypoints_raw--<tracker>`, `3d_keypoints_filtered--<tracker>`,
@@ -12,7 +12,7 @@ headers, overlay confidence present, no retained export folders. The managed
 export inventory contains RTMW rather than the previous MediaPipe products.
 
 Next independently reviewable work, before declaring multi-tracker support:
-1. Specify producer retention for canonical measurements and scientific exports:
+1. Specify producer retention for canonical measurements and exports:
    same producer replaces its previous result, different producer can coexist;
    current downstream reconstruction follows the selected producer. Split ChArUco
    measurements from the human tracker source. Define board/config identity and
@@ -33,13 +33,13 @@ PR preparation for the current export checkpoint (can precede the larger work):
   names, units, confidence, NaNs, and shared timing with loading examples.
 - Resolve the confusing duplicate recording-info/export-inventory naming.
 - Verify the standard-run reference acceptance includes Blender output and the
-  selected scientific exports; explicitly report UI/Blender checks still pending.
+  selected exports; explicitly report UI/Blender checks still pending.
 - Review the accumulated diff and validation evidence, including unrelated dev
   reload changes separately. Human owns commits/pushes and PR publication scope.
 - Keep new reprojection aggregation, landmark residuals, and exporter organization
   as explicit follow-up work, rather than implying they are finished.
 
-## Quality output checkpoint — 2026-10-10
+## Quality output checkpoint â€” 2026-10-10
 
 - Readable CSV headers preserve literal point names (`body.nose.x`), without URL escaping.
 - CSV, NPY and NPZ overlay components use `confidence` for the saved `visibility`
@@ -105,7 +105,7 @@ includes a validated Blender scene.
 Normative details live in the
 [complete-run acceptance contract](../../RECORDING_CONTRACT.md#complete-run-output-acceptance--owner-requirement-2026-10-09).
 The dataset producer now implements the standard Parquet + Blender gate.
-Scientific export writers and the application-wide job lifecycle remain below.
+Export writers and the application-wide job lifecycle remain below.
 
 Validation on 2026-10-09: real calibration/tracking/reconstruction and native
 Blender export completed on isolated copies of both reference recordings.
@@ -151,7 +151,7 @@ complete acceptance for arbitrary Blender cleanup/constraint routes or FBX/BVH.
 
 - [x] NPY: one values array per selected context, plus companion frame/time,
   name/component/unit metadata described by a JSON manifest. An NPY
-  values file alone does not carry its scientific interpretation.
+  values file alone does not carry its interpretation.
 - [x] NPZ: one archive of the selected contexts and their companion arrays,
   embedding the manifest/descriptor so the archive is self-describing.
 - [x] Both formats reuse the same array keys/order/shape contract. Typical 3D
@@ -220,7 +220,7 @@ Export recording-info JSON contains compact interpretation and per-file provenan
 NPZ embeds equivalent descriptions. Full descriptor/per-scalar metadata duplication
 is removed. See the [format guide](../../freemocap/core/recording/exports/README.md).
 
-Current controls: `mocap-scientific-settings.tsx`, with data/format selection,
+Current controls: `mocap-export-settings.tsx`, with data/format selection,
 saved runs, file-count preview, keep/replacement, export after processing,
 progress/cancellation/retry and output-folder access. The lower-level old context
 selection remains accepted for compatibility; the UI exposes the agreed data list.
@@ -235,7 +235,7 @@ recording-info companion. The source Parquet hash remained unchanged.
 
 The earlier measurements and all-available-default claims are superseded by this
 scope. Complete-run reference profiles currently require Parquet and Blender;
-scientific formats have an independent consumer acceptance test, and integrating
+formats have an independent consumer acceptance test, and integrating
 them into required-output profiles remains stage 6 work.
 
 ## Historical implementation plan â€” 2026-09-30
@@ -271,7 +271,7 @@ the same array contract.
   including original reconstruction and fitted channels when present. Advanced
   channel/time-range selection is deferred.
 - Preserve recorded values, timestamps, frame numbers, names, components, units,
-  coordinate references and scientific definitions. Export never filters,
+  coordinate references and definitions. Export never filters,
   interpolates, fits, realigns, resamples or replaces missing measurements.
 - Read metadata and numerical rows from one open Parquet snapshot. Reuse or
   extract `recording_view` into the storage layer rather than introducing a
@@ -330,7 +330,7 @@ A manifest lists only
 complete files as successful. Each format has a separate outcome; one writer's
 failure must not discard another format's successful output. Cancellation stops
 remaining work and cleans only owned incomplete artifacts. Export never changes
-Parquet, capture metadata, or scientific processing checkpoints.
+Parquet, capture metadata, or processing checkpoints.
 
 ### Tall CSV
 
@@ -347,7 +347,7 @@ text identities without automatic date or number conversion by the exporter.
 
 `<recording-id>[.run-<id>].static.tall.csv` has `sensor_group,source,reference_frame,channel,name,component,value,units,run_id`;
 there is no fabricated timestamp or frame number. Record its schema explicitly.
-Tall files may exceed spreadsheet row limits; they remain full scientific exports.
+Tall files may exceed spreadsheet row limits; they remain full exports.
 Both CSV files are emitted, including a header-only static file when no static
 values exist. Replacing an export therefore never leaves an older static table
 appearing current. See the [export usage guide](../../freemocap/core/recording/exports/README.md).
@@ -466,7 +466,7 @@ implementation, as well as a final milestone check; it is not deferred to stage 
    cancellation and unchanged successful mocap status. Run TypeScript checks and
    browser interaction checks for the actual Exports section.
 4. **Reference acceptance and handoff (FreeMoCap).** Export both prepared datasets,
-   reload csv/NPZ and compare all selected scientific values and identities to
+   reload csv/NPZ and compare all selected values and identities to
    source Parquet. Inspect representative wide tables for readability. Confirm
    zero detection/reconstruction calls, source hashes unchanged, repeated default
    exports safely replaced, retained exports protected, and all artifacts beneath
@@ -498,7 +498,7 @@ The first milestone should prove that relationship on a saved recording before b
 - `freemocap/core/tasks/mocap/posthoc_mocap_task.py`: triangulation, alignment, trajectory filtering, reconstruction, then `publish_posthoc_observations`. Successful completion publishes canonical Parquet.
 - `freemocap/core/recording/sample_encoding/arrow_schema.py`: scalar long rows: `timestamp_s, sensor_group, frame_number, source, reference_frame, channel, name, component, value, units, run_id`.
 - `freemocap/core/recording/sample_encoding/reconstruction_samples.py`: landmarks, segment origins, world/local WXYZ quaternions, joint angles, residuals, and optional center of mass. Missing frames/components remain missing.
-- `freemocap/core/recording/data_descriptors/recording_model.py`: saved skeleton and rest-pose snapshots, tracker mappings, and scientific definitions. Recording fits supply segment lengths/scales through static channel views in `parquet_reader.py`.
+- `freemocap/core/recording/data_descriptors/recording_model.py`: saved skeleton and rest-pose snapshots, tracker mappings, and definitions. Recording fits supply segment lengths/scales through static channel views in `parquet_reader.py`.
 - `freemocap/core/recording/playback_queries.py`: `recording_view` binds metadata, revision, and samples to one open file. Reuse/extract that storage-level capability; avoid exporting through three-second playback windows or transport messages.
 - `freemocap-ui/src/components/viewport3d/renderers/RigidBodyBoneInstances.ts`: executable transform is translation times absolute world rotation times primary-axis geometry rotation times scale. World rotation already includes rest orientation. Do not apply rest orientation twice; some renderer header comments are older than the implementation.
 - `RigidBodyBoneGeometry.ts` and `RigidBodyBoneRenderer.tsx`: tapered, flattened bone meshes, region-specific widths, side colors, fitted lengths, and missing-data hiding. GPU instances are updated per frame, not stored as animation clips.
@@ -524,7 +524,7 @@ FreeMoCap owns recording paths, run/group/source/model selection, saved timestam
 
 SkellyForge owns generic hierarchy/rest-frame math, scale-to-offset construction, world/local transform conversion, skeleton motion validation, resampling of poses, and BVH writing. A reusable skeleton glTF writer could also live there; recording-wide cameras, point trajectories, and viewport styling should remain in a FreeMoCap scene adapter unless a broader reusable scene API proves necessary. Keep FastAPI, React, Parquet layout, and recording folders out of SkellyForge.
 
-Use existing skeleton/rest-pose/fit types. Introduce only the small animation input contract actually needed by both writers: names and parents, rest frames/offsets, sample times, transforms, and validity. Avoid creating a second scientific model.
+Use existing skeleton/rest-pose/fit types. Introduce only the small animation input contract actually needed by both writers: names and parents, rest frames/offsets, sample times, transforms, and validity. Avoid creating a second model.
 
 Exports are downstream jobs, not reconstruction stages. An optional export-after-processing setting enqueues the same job only after publication succeeds. Export failure must not invalidate successful mocap results. Existing saved recordings must export without videos, calibration lookup, or detector execution.
 
@@ -541,7 +541,7 @@ Exports are downstream jobs, not reconstruction stages. An optional export-after
 
 CSV proposal: default tall. Preserve the exact selected descriptor in `metadata.json`; export static values as a separate table rather than silently repeating them per frame. Wide headers can be `left_elbow.x`, `left_elbow.y`, `left_elbow.z` inside a file scoped to a single source/channel/reference. Define escaping and collision checks, and provide a column dictionary mapping every header back to its full identity and units. Do not silently merge independent clocks, average duplicate keys, or mix channels in ambiguous headers. Split large selections deliberately for spreadsheet usability. CSV has no workbook sheets or formatting.
 
-NumPy proposal: prefer NPZ as the packaged choice and offer NPY as advanced output. Use numeric arrays with `allow_pickle=False`; store descriptor text as JSON, not pickled Python objects. A spatial channel is `(samples, names, components)`; a quaternion channel has explicit `w,x,y,z` labels. Different sampling grids remain separate. Preserve float64 scientific values and null-to-NaN semantics, with explicit validity where useful. Filenames/array keys map to full identities through the manifest.
+NumPy proposal: prefer NPZ as the packaged choice and offer NPY as advanced output. Use numeric arrays with `allow_pickle=False`; store descriptor text as JSON, not pickled Python objects. A spatial channel is `(samples, names, components)`; a quaternion channel has explicit `w,x,y,z` labels. Different sampling grids remain separate. Preserve float64 values and null-to-NaN semantics, with explicit validity where useful. Filenames/array keys map to full identities through the manifest.
 
 ## BVH/glTF equivalence is the key investigation
 
@@ -618,11 +618,11 @@ Rough effort, not a commitment: the data writers are small; trustworthy hierarch
 Blender exposes BVH rotation order and root-only translation options, supporting the need to make that profile explicit: [Blender BVH export API](https://docs.blender.org/api/5.2/bpy.ops.export_anim.html). Actual interchange behavior still requires the import checks above.
 
 
-### 2026-10-10 — student guides and V1 explorer restoration
+### 2026-10-10 â€” student guides and V1 explorer restoration
 
 - Located the notebook generator/template in local V1.8.2 and its separate
   NPY-to-Pandas example. V2 adds an optional Notebook Explorer format in the
-  existing scientific export selection (saved-result and after-processing paths).
+  existing export selection (saved-result and after-processing paths).
 - Generated notebook uses relative Parquet access, a source-hash guard, selected
   run/data, explicit point/component order, Pandas, NumPy and Matplotlib. It
   does not install packages, change recording data, or archive the source Parquet.

@@ -66,8 +66,8 @@ test('recording calibration defaults on load and recording changes; overrides su
         discoveries.push(directory);
         return route.fulfill({json: {recording_path: `${directory}/camera_calibration.toml`}});
     });
-    await page.route('**/mocap/recording/process', route => {
-        processing.push(route.request().postDataJSON().mocapTaskConfig.calibrationTomlPath);
+    await page.route('**/recordings/*/processing?*', route => {
+        processing.push(route.request().postDataJSON().config.calibrationTomlPath);
         return route.fulfill({json: {success: true}});
     });
     await mount(page);

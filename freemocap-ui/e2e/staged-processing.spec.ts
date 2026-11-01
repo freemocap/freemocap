@@ -19,14 +19,14 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
                 const [path, setPath] = useState('partial'); const [selection, setSelection] = useState(null);
                 return <main><h1>Processing stages</h1><select aria-label="Recording" value={path} onChange={e => setPath(e.target.value)}>
                     <option>partial</option><option>complete</option><option>new</option><option>broken</option></select>
-                    <Stages path={path} onChange={setSelection}/>
+                    <Stages path={'/recordings/' + path} onChange={setSelection}/>
                     <button disabled={!selection}>Process Mocap</button><output>{JSON.stringify(selection)}</output></main>;
             }
             createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
         `}});
     const server = createServer((request, response) => {
-        if (request.url?.includes('/process/stages?')) {
-            const path = new URL(request.url, 'http://localhost').searchParams.get('recording_path');
+        if (request.url?.includes('/stages?')) {
+            const path = new URL(request.url, 'http://localhost').pathname.split('/').at(-2);
             response.writeHead(path === 'broken' ? 400 : 200, {'Content-Type': 'application/json'});
             response.end(JSON.stringify(path === 'broken' ? {detail: 'Unreadable recording'} : {
                 selected_run_id: 2, runs: path === 'new' ? [] : [{run_id: 2, groups: [{sensor_group: 'camera_group:test', stages: {

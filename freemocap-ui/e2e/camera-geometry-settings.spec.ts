@@ -4,7 +4,7 @@ import path from 'node:path';
 
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
-test('camera geometry keeps its summary visible without repeating the calibration panel', async ({page}) => {
+test('camera geometry keeps its summary visible without repeating the calibration panel', async ({page}, testInfo) => {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize({width: 1000, height: 760});
@@ -57,26 +57,26 @@ test('camera geometry keeps its summary visible without repeating the calibratio
     await expect(page.getByRole('button', {name: 'Calibrate from active recording', exact: true})).toHaveClass(/accent-outline/);
     await expect(page.getByText('Mocap capture volume alignment', {exact: true})).toBeVisible();
     const charuco = page.getByRole('switch', {name: 'Align to ChArUco ground plane', exact: true});
-    const person = page.getByRole('switch', {name: 'Align to person', exact: true});
+    const person = page.getByRole('combobox', {name: 'Alignment', exact: true});
     await expect(page.getByRole('radio')).toHaveCount(0);
     await expect(charuco).toBeChecked();
-    await expect(person).not.toBeChecked();
-    await person.click();
-    await expect(person).toBeChecked();
+    await expect(person).toHaveValue('auto');
+    await person.selectOption('person');
+    await expect(person).toHaveValue('person');
     await expect(charuco).toBeChecked();
     await expect(header).toContainText('Mocap: align to person');
     await charuco.click();
     await expect(charuco).not.toBeChecked();
-    await expect(person).toBeChecked();
+    await expect(person).toHaveValue('person');
     await expect(header).toContainText('Calibration: board alignment off');
-    await person.click();
-    await expect(person).not.toBeChecked();
-    await expect(header).toContainText('Mocap: person alignment off');
+    await person.selectOption('calibration');
+    await expect(person).toHaveValue('calibration');
+    await expect(header).toContainText('Mocap: use calibration');
     await charuco.click();
-    await expect(person).not.toBeChecked();
+    await expect(person).toHaveValue('calibration');
     await expect(header).toContainText('Calibration: ChArUco alignment');
-    await person.click();
-    const orderNote = page.getByText('The custom transform is applied after person alignment.', {exact: true});
+    await person.selectOption('person');
+    const orderNote = page.getByText('The custom transform is applied after any person alignment and can tilt or move the aligned floor away from the ground grid.', {exact: true});
     await expect(orderNote).toHaveCount(0);
     await expect(page.getByText('Applied when you process mocap.', {exact: false})).toHaveCount(0);
     await expect(page.getByRole('switch', {name: 'Apply custom transform', exact: true})).not.toBeChecked();
@@ -87,20 +87,20 @@ test('camera geometry keeps its summary visible without repeating the calibratio
     await expect(page.getByRole('switch', {name: 'Apply custom transform', exact: true})).toBeChecked();
     await expect(page.getByLabel('Defined transformation')).toContainText('q (wxyz)');
     await expect(orderNote).toBeVisible();
-    await person.click();
+    await person.selectOption('calibration');
     await expect(orderNote).toHaveCount(0);
     await expect(page.getByRole('switch', {name: 'Apply custom transform', exact: true})).toBeChecked();
-    await person.click();
+    await person.selectOption('person');
     await expect(orderNote).toBeVisible();
-    await page.screenshot({path: 'test-results/camera-geometry-expanded.png'});
+    await page.screenshot({path: testInfo.outputPath('camera-geometry-expanded.png')});
     await page.getByRole('button', {name: 'Set up calibration'}).click();
     await expect(page.getByRole('button', {name: 'Use recording calibration'})).toBeVisible();
-    await page.screenshot({path: 'test-results/camera-geometry-source.png', animations: 'disabled'});
+    await page.screenshot({path: testInfo.outputPath('camera-geometry-source.png'), animations: 'disabled'});
     await page.getByRole('button', {name: 'Set up calibration'}).click();
     await header.click();
     await expect(header).toContainText('Mocap: align to person');
     await expect(person).toBeHidden();
-    await page.screenshot({path: 'test-results/camera-geometry-collapsed.png'});
+    await page.screenshot({path: testInfo.outputPath('camera-geometry-collapsed.png')});
     expect(errors).toEqual([]);
 });
 

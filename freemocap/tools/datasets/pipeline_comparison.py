@@ -64,7 +64,7 @@ def compare_pipelines(*, recordings_root: Path, prepared_root: Path, output: Pat
                     for key in ('pipeline_implementation', 'calibration_toml_path'):
                         config.pop(key)
                 if configs[0] != configs[1]:
-                    raise ValueError('Scientific/export settings differ between runs')
+                    raise ValueError('Processing/export settings differ between runs')
                 channels = compare_saved_channels(recording_structure(old['recording']), recording_structure(new['recording']))
                 entry['parity'] = dict(status='passed', channels=channels)
             except Exception as error:

@@ -27,10 +27,7 @@ export const fetchRecordingStatus = createAsyncThunk<
     'recordingStatus/fetch',
     async ({recordingId, recordingParentDirectory}, {rejectWithValue}) => {
         try {
-            const base = serverUrls.endpoints.playbackRecordingStatus(recordingId);
-            const url = recordingParentDirectory
-                ? `${base}?recording_parent_directory=${encodeURIComponent(recordingParentDirectory)}`
-                : base;
+            const url = serverUrls.recordingResource(recordingId, '/status', recordingParentDirectory);
             const response = await fetch(url);
             if (!response.ok) {
                 return rejectWithValue({recordingId, error: await getDetailedErrorMessage(response)});

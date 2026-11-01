@@ -1,4 +1,4 @@
-"""Executable student guides for scientific arrays, tables and runtime objects."""
+"""Executable student guides for arrays, tables and runtime objects."""
 import hashlib
 from pathlib import Path
 from textwrap import indent
@@ -43,7 +43,7 @@ plt.show()
 OVERVIEW = """# Exploring FreeMoCap data
 
 Parquet is the primary durable recording. CSV, NPY and NPZ expose selected
-scientific outputs without rerunning detection or reconstruction. Detector estimates,
+outputs without rerunning detection or reconstruction. Detector estimates,
 triangulated positions and model predictions have different meanings; reconstructed
 landmarks are not independent empirical measurements of every anatomical location.
 
@@ -65,7 +65,7 @@ scales and lengths have no invented frame axis. Their measured/voting support ar
 identify which segments supplied fitting evidence.
 
 `entry_presence` distinguishes an absent entry from a recorded null. A present row
-can still contain NaN. Presence is not a confidence score or proof of scientific
+can still contain NaN. Presence is not a confidence score or proof of measurement
 validity. Optional `value_validity` and quality/evidence companions have their own
 names and declared layouts. Saved Parquet currently provides row presence, not an
 independent validity mask; the export does not invent one. Keep unavailable values
@@ -89,7 +89,7 @@ run. Each snapshot's `numpy_datasets` describes NPY and NPZ separately, includin
 paths, selection and whether values came from a caller-supplied runtime dataset.
 An unselected format can retain an older selection or source revision. Use its
 own descriptor. Inside NPY/NPZ, `dataset.json` is sufficient to interpret that
-scientific dataset without the original Parquet or the outer export inventory.
+dataset without the original Parquet or the outer export inventory.
 
 ## Load an NPZ with plain NumPy
 
@@ -131,7 +131,7 @@ CSV = """# Reading wide CSV tables
 Run the example from this `csv` folder. Dynamic tables have one row per saved frame, beginning with
 `frame_number` and `timestamp_s`. Remaining columns are `point.component`, for
 example `body.nose.x` or `pelvis.qw`. Names can contain periods: the last period
-separates the component in current scientific exports. Ordinary CSV quoting handles
+separates the component in current exports. Ordinary CSV quoting handles
 commas and quotes; there is no URL decoding step.
 
 Names follow the recorded order. Spatial CSV components use canonical XYZ or WXYZ order; combined segment-pose tables append quaternion components. Other components follow their declared order. Large tables can be split into
@@ -174,7 +174,7 @@ compare landmarks or coordinates. Do not plot confidence as if it were distance.
 
 NPY = """# Reading NumPy datasets
 
-This folder is a standalone scientific dataset: `dataset.json` describes its
+This folder is a standalone dataset: `dataset.json` describes its
 numerical `.npy` files. Channels compose dense values, explicit axes, provenance
 and companion arrays. A time series additionally identifies its sample axis and
 an entry in the timing registry. Other channels are static tensors. No common
@@ -183,7 +183,7 @@ frame count, fixed component width or hardware clock synchronization is assumed.
 Names and components follow the runtime layout, including `visibility` for
 saved detector scores. Origins and world rotations remain separate channels.
 Each layout supplies units and coordinate references. Definition documents carry
-selected model, reference and scientific source settings. Execution status and
+selected model, reference and source settings. Execution status and
 solver caches are excluded. Use companions to preserve missingness and evidence;
 finite values alone are not an independent validity or quality declaration.
 
@@ -238,11 +238,14 @@ arrays directly for NPY/NPZ. Wide CSV and notebooks continue to use saved result
 # Exact previously generated guides, in Windows and LF encodings. Unknown or
 # annotated documents are never overwritten by automatic guide refresh.
 PREVIOUS_GUIDE_HASHES = {
-    'README.md': {'ca700e942eb671851c74c3ed68b23eb1b746b3568d152ce1a0e9e08fd1a57313',
+    'README.md': {'729f378de67cd168a65c5210823b2c026b02a826d6060597d56712299dcb65f2', 'c6a75276e59aa881d661c2396c9d505223720584b208b8dd6f831bbb7a37a86e',
+                  'ca700e942eb671851c74c3ed68b23eb1b746b3568d152ce1a0e9e08fd1a57313',
                   '26c3a86c02c3687a186cef151d350c07d3728840edcb765b6b30fd31c95c5de6'},
-    'csv/README.md': {'b39b6ba813ff036a8c82d958ed1f2f4fb65b0625f822df85d34bd6985b2ffe36',
+    'csv/README.md': {'be634c685898666d99c0895f9dc4010597ff496e1b9eb123373d1eb571fb66b4', '2f138a08aa42cc464489ea82018be2c79466cc92f5939affde13007611c62e14',
+                  'b39b6ba813ff036a8c82d958ed1f2f4fb65b0625f822df85d34bd6985b2ffe36',
                       '7a59bdde48c36eb450c79743a6f1661f94b68d5c0258fb5ef4a30e5ffae575e3'},
-    'npy/README.md': {'1667b502b5806a6105706e8af78144d6cef71e37af9d0ab3a542af4451b872e9',
+    'npy/README.md': {'2fb3972ba114701be43c53299763e6b394647746263739db4a342b0033edf326', '13793fa13fdfecbb672538ad29b23935a95f8c563e7e4332728653066c0282af',
+                  '1667b502b5806a6105706e8af78144d6cef71e37af9d0ab3a542af4451b872e9',
                       '1557ecb8543e6700dac41c82c2e5a7d10d4cde35e837b1d7e83a182067eb0515'},
 }
 

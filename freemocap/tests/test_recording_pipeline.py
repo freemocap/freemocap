@@ -1,6 +1,6 @@
 """Real checkpoint persistence under failed reconstruction and strict graph bindings."""
-from freemocap.tests import test_dataflow_scientific_recording as fixtures
-from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection
+from freemocap.tests import test_dataflow_recording_processing as fixtures
+from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection
 from freemocap.core.pipeline.dataflow.recording_pipeline import build_recording_pipeline
 from freemocap.core.pipeline.dataflow.video_sources import RecordingVideoSources
 from freemocap.core.pipeline.dataflow.recording_executor import execute_recording_graph
@@ -22,7 +22,7 @@ from freemocap.core.pipeline.dataflow.camera_join import ProducerOutcome
 
 class RecordingPipelineTests(unittest.TestCase):
     def setUp(self):
-        self.fixture = fixtures.ScientificRecordingTests()
+        self.fixture = fixtures.RecordingProcessingTests()
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         source = self.fixture

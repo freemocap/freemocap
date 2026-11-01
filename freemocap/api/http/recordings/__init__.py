@@ -1,0 +1,1 @@
+"""Recording resource HTTP adapters."""

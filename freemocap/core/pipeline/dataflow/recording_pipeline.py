@@ -1,4 +1,4 @@
-"""Recording graph composition using the application's existing scientific operations."""
+"""Recording graph composition using the application's existing operations."""
 from freemocap.core.recording.result_processing.run_save_session import RunSaveSession
 from collections.abc import Callable
 from concurrent.futures import CancelledError
@@ -22,7 +22,7 @@ from freemocap.core.pipeline.dataflow.definition import (
 )
 from freemocap.core.pipeline.dataflow.recording_executor import RecordingExecutionResult, execute_recording_graph
 from freemocap.core.pipeline.dataflow.annotation_workers import CameraAnnotationJob, RecordingAnnotationWorkers, write_camera_annotation
-from freemocap.core.pipeline.dataflow.scientific_recording import ObservationCollection, triangulate_completed_observations, camera_assignment_metadata
+from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection, triangulate_completed_observations, camera_assignment_metadata
 from freemocap.core.pipeline.dataflow.tracker_adapter import SkellyTrackerAdapter
 from freemocap.core.pipeline.dataflow.camera_join import ProducerOutcome
 from freemocap.core.pipeline.dataflow.video_sources import RecordingVideoSources
@@ -74,7 +74,7 @@ RECORDING_INPUT_CONTRACTS = {
     "save_spatial": {"request": "spatial_recording_request", "saved_observations": "saved_observations"},
     "save_recording": {"request": "spatial_recording_request", "aligned": "aligned_recording",
                        "reconstructions": "reconstructed_models", "saved_spatial": "saved_spatial"},
-    "export_scientific": {"saved": "saved_recording"},
+    "export_recording": {"saved": "saved_recording"},
     "export_tall_csv": {"saved": "saved_recording"},
     "annotate_camera": {"observations": "camera_observations"},
     "stage_result_request": {"request": "spatial_recording_request"},
@@ -303,14 +303,14 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     operation("save_recording", "saved_recording", {"request": "spatial_request", "saved_spatial": "save_spatial",
         "aligned": "align_reference", "reconstructions": "reconstruct_skeletons"}, save_recording, resource="recording_io")
 
-    if config.scientific_exports.formats:
+    if config.export_options.formats:
         def export_science(_):
-            from freemocap.core.recording.exports.requests import ScientificExportRequest
-            from freemocap.core.recording.exports.wide_csv import export_scientific
-            return export_scientific(structure=RecordingStructure(base_directory=Path(recording.recording_directory), recording_name=recording.recording_name),
-                request=ScientificExportRequest(**config.scientific_exports.model_dump(), run_id=run_session.target_run_id),
+            from freemocap.core.recording.exports.requests import ExportRequest
+            from freemocap.core.recording.exports.wide_csv import export_recording
+            return export_recording(structure=RecordingStructure(base_directory=Path(recording.recording_directory), recording_name=recording.recording_name),
+                request=ExportRequest(**config.export_options.model_dump(), run_id=run_session.target_run_id),
                 cancelled=lambda: bool(shutdown_flag.value))
-        operation("export_scientific", "export_manifest", {"saved": "save_recording"}, export_science)
+        operation("export_recording", "export_manifest", {"saved": "save_recording"}, export_science)
     if config.export_tall_csv:
         def export_tall(_):
             from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv

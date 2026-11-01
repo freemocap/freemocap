@@ -172,3 +172,7 @@ upx.exe
 .aider*
 freemocap-ui/freemocap_server
 /.codex/*
+
+# Isolated editable-install metadata
+/freemocap.egg-info/
+/build/

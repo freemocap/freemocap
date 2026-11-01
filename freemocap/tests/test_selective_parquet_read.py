@@ -9,7 +9,7 @@ import pytest
 
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.core.recording.parquet_storage.selected_batches import ChannelQuery, RunQuery, selected_batches
-from freemocap.tests.test_wide_csv_export import scientific_recording  # noqa: F401
+from freemocap.tests.test_wide_csv_export import recording_processing  # noqa: F401
 
 
 POINT_QUERY = ChannelQuery(3, "a", "points", "RAW_KEYPOINTS_3D", "world")
@@ -40,8 +40,8 @@ def observe_reads(monkeypatch):
 
 
 @pytest.mark.parametrize("statistics", [False, True])
-def test_union_projection_pruning_and_single_open_view(scientific_recording, monkeypatch, statistics):
-    structure, rows = scientific_recording
+def test_union_projection_pruning_and_single_open_view(recording_processing, monkeypatch, statistics):
+    structure, rows = recording_processing
     write_channel_groups(structure, rows, statistics=statistics)
     calls = observe_reads(monkeypatch)
     queries = (POINT_QUERY, CLOCK_QUERY, POINT_QUERY)
@@ -61,8 +61,8 @@ def test_union_projection_pruning_and_single_open_view(scientific_recording, mon
 
 
 @pytest.mark.parametrize("statistics", [False, True])
-def test_mixed_groups_null_references_and_bounded_batches(scientific_recording, statistics):
-    structure, rows = scientific_recording
+def test_mixed_groups_null_references_and_bounded_batches(recording_processing, statistics):
+    structure, rows = recording_processing
     rows = rows[::2] + rows[1::2][::-1]
     schema = pq.read_schema(structure.data_parquet_path)
     pq.write_table(pa.Table.from_pylist(rows, schema=schema), structure.data_parquet_path,
@@ -76,8 +76,8 @@ def test_mixed_groups_null_references_and_bounded_batches(scientific_recording, 
     ]
 
 
-def test_empty_unknown_and_invalid_selections(scientific_recording, monkeypatch):
-    structure, rows = scientific_recording
+def test_empty_unknown_and_invalid_selections(recording_processing, monkeypatch):
+    structure, rows = recording_processing
     write_channel_groups(structure, rows)
     calls = observe_reads(monkeypatch)
     with recording_view(structure.data_parquet_path) as view:
@@ -90,8 +90,8 @@ def test_empty_unknown_and_invalid_selections(scientific_recording, monkeypatch)
             list(selected_batches(view, (POINT_QUERY,), batch_size=0))
 
 
-def test_cancellation_before_decode_and_between_groups(scientific_recording, monkeypatch):
-    structure, rows = scientific_recording
+def test_cancellation_before_decode_and_between_groups(recording_processing, monkeypatch):
+    structure, rows = recording_processing
     write_channel_groups(structure, rows)
     calls = observe_reads(monkeypatch)
     with recording_view(structure.data_parquet_path) as view:
@@ -108,8 +108,8 @@ def test_cancellation_before_decode_and_between_groups(scientific_recording, mon
 
 
 @pytest.mark.parametrize('statistics', [False, True])
-def test_run_queries_include_undeclared_channels_without_duplicate_decode(scientific_recording, monkeypatch, statistics):
-    structure, rows = scientific_recording
+def test_run_queries_include_undeclared_channels_without_duplicate_decode(recording_processing, monkeypatch, statistics):
+    structure, rows = recording_processing
     rows.append(dict(rows[-1], channel='undeclared'))
     write_channel_groups(structure, rows, statistics=statistics)
     queries = (RunQuery(3, 'b'), CLOCK_QUERY, RunQuery(3, 'b'))

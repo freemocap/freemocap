@@ -10,7 +10,7 @@ and [posthoc rebuild](posthoc-rebuild.md).
 Keep worker lifecycle management. Share resolved tracker configuration, session construction,
 batched inference, per-camera tracker state, triangulation and skeleton reconstruction.
 Realtime consumes current camera frames and may drop stale work. Posthoc consumes every selected
-video frame in order with bounded backpressure. Neither mode owns another copy of the scientific
+video frame in order with bounded backpressure. Neither mode owns another copy of the
 algorithms. Posthoc scale estimation consumes the complete recording before reconstruction.
 
 Annotation consumes original images and selected saved observations through the UI overlay renderer.
@@ -60,7 +60,7 @@ the full default-output workflow is complete only when both succeed.
 SkellyForge definitions remain authoritative for skeleton semantics. Shared channel definitions
 declare owner, ordered names, components, units and reference frame. Numeric computation produces
 typed arrays; streaming packs them and recording serialization emits tall Arrow batches. Neither
-serializer calls the other. Model definitions stored on disk include scientific definitions that
+serializer calls the other. Model definitions stored on disk include definitions that
 the renderer does not require.
 
 Every sample carries recording-clock time and its sensor-group frame number. A timestamp is a
@@ -88,7 +88,7 @@ and downstream processing from saved inputs do not require calibration. Restart 
 direct saved prerequisites, rather than requiring inputs of operations that will not execute.
 Observation/timing/raw-3D publication is connected, as are landmarks, segment origins, local/world
 rotations, named joint angles and computed centre of mass. Missing-parent local rotations remain
-null. The complete fit is stored once with static channel views. Saved scientific definitions and
+null. The complete fit is stored once with static channel views. Saved definitions and
 fit restore the numerical reconstruction without current definition files. Raw-input reload preserves
 the saved frame/timestamp grid and rejects fits whose named numeric inputs or model changed.
 Publication binds numerical completion records to those inputs, timing and options, including explicit
@@ -153,7 +153,7 @@ committed result changes, including overwriting the same run_id.
 
 ## Acceptance sequence
 
-1. Shared domain adapters preserve names, units, quaternion ordering and scientific definitions.
+1. Shared domain adapters preserve names, units, quaternion ordering and definitions.
 2. A real recording produces canonical timing, observations and reconstructed channels.
 3. Reconstruction-only reprocessing succeeds with detector construction and video opening forbidden.
 4. Keep/overwrite, failure and cancellation are tested through worker execution and publication.

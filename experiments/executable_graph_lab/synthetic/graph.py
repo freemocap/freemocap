@@ -286,7 +286,7 @@ def definitions(c):
             "Proposed independent source-video decoding for AnnotationVideoOutput. Current MocapVideoNode reuses inference images; decoupled read scheduling is part of the replacement, not current app behavior.", io_role="read", io_files=(source_video,))
         add("draw", "Render observation overlays", "draw", "camera_frame", "cpu", "annotated_image",
             [bind("image", "annotation_decode", "image", "same_key"), annotation_input], False, "annotation",
-            description="Maps to build_observation_annotator and AnnotationVideoOutput.write_frame. Draws tracker and ChArUco overlays; does not generate scientific observations. Separate rendering is a proposed boundary; lab emits a frame descriptor.")
+            description="Maps to build_observation_annotator and AnnotationVideoOutput.write_frame. Draws tracker and ChArUco overlays; does not generate observations. Separate rendering is a proposed boundary; lab emits a frame descriptor.")
         add("encode", "Write annotated video", "encode", "camera_frame", "encoder", "encoded_frame",
             [bind("image", "draw", "annotated_image", "same_key"), bind('plan', 'publication', 'publication', 'broadcast'), bind('timing', 'timing', 'timing', 'broadcast')], True, "annotation",
             "One ordered writer per camera. Last-frame work includes close and publication before its completion receipt is emitted. Cancellation/failure cleanup belongs to the resource owner. All writes, closes and publications here are simulated.", io_role="write",

@@ -52,7 +52,7 @@ def benchmark(*, recording: Path, output: Path, repeats: int = 3) -> dict:
     (output / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     text = ["RECORDING SERIALIZATION BENCHMARK", f"Recording: {recording}",
         f"{report['frames']} frames; {report['scalar_rows']} scalar rows in one 3D channel.",
-        "Input loading is excluded. All scientific checks remain enabled."]
+        "Input loading is excluded. All checks remain enabled."]
     text.extend(f"{name}: {seconds:.6f} s (median of {repeats})" for name, seconds in report["medians"].items())
     text.append("Coverage, exact timestamp/frame digests and validation state match the scalar path.")
     (output / "report.txt").write_text("\n".join(text) + "\n", encoding="utf-8")

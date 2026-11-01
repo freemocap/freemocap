@@ -1,4 +1,4 @@
-"""Organize existing, verified exports without changing their scientific contents."""
+"""Organize existing, verified exports without changing their contents."""
 import os
 from pathlib import Path
 import shutil

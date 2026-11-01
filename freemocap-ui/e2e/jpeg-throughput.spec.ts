@@ -13,7 +13,7 @@ test('measure JPEG decode throughput in Electron', async () => {
     await build({entryPoints: ['tools/media-electron.ts'], bundle: true, platform: 'node', format: 'cjs', external: ['electron'], outfile: entry});
     await server.listen();
     try {
-        const app = await electron.launch({args: [entry, server.resolvedUrls!.local[0]], env: {...process.env, MEDIA_TEST: '1'}});
+        const app = await electron.launch({executablePath: process.env.FREEMOCAP_TEST_ELECTRON, args: [entry, server.resolvedUrls!.local[0]], env: {...process.env, MEDIA_TEST: '1'}});
         try {
             const page = await app.firstWindow();
             const measurements = await page.evaluate(async (workerUrl) => {

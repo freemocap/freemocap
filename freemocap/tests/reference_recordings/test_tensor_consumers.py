@@ -17,7 +17,7 @@ import numpy as np
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from skellyforge.core.data_tensors.data_tensor import ScientificProvenance
+from skellyforge.core.data_tensors.data_tensor import DataProvenance
 from skellyforge.core.data_tensors.layout_definitions import SourceIdentity
 from skellyforge.core.data_tensors.sample_timing import SampleTiming
 from skellyforge.core.data_tensors.recording_dataset import DefinitionDocument, RecordingDataset
@@ -79,10 +79,10 @@ class TensorConsumerTests(unittest.TestCase):
                 context = item[0]
                 if context.channel not in required or context.channel in checked:
                     continue
-                provenance = ScientificProvenance(meaning=f"saved:{context.channel}", operation_id="parquet_read",
+                provenance = DataProvenance(meaning=f"saved:{context.channel}", operation_id="parquet_read",
                                                    input_refs=(view.revision,))
                 with ordered_arrays(view, run_id, item, scratch=Path(temporary)) as arrays:
-                    tensor = arrays.to_data_tensor(scientific_provenance=provenance)
+                    tensor = arrays.to_data_tensor(data_provenance=provenance)
                     self.assertTrue(np.shares_memory(tensor.data_values, arrays.values))
                     self.assertTrue(np.shares_memory(tensor.companion_tensors[0].data_values, arrays.present))
                     self.assertEqual(tensor.tensor_layout.component_units, arrays.units)
@@ -90,7 +90,7 @@ class TensorConsumerTests(unittest.TestCase):
                     self.assertEqual(tensor.tensor_layout.axes[-1].identifiers, arrays.source_components or arrays.components)
                     self.assertEqual(tensor.tensor_layout.source_identity.instance_id, 0)
                     with self.assertRaises(ValueError):
-                        replace(arrays, source_components=()).to_data_tensor(scientific_provenance=provenance)
+                        replace(arrays, source_components=()).to_data_tensor(data_provenance=provenance)
                     if context.static:
                         self.assertEqual(len(tensor.tensor_layout.axes), 2)
                     else:
@@ -98,7 +98,7 @@ class TensorConsumerTests(unittest.TestCase):
                             clock_id=f"{context.sensor_group}:recording_relative",
                             source_identity=SourceIdentity(source_id=context.source, sensor_group=context.sensor_group),
                             sample_ids=arrays.frames, timestamps_s=arrays.timestamps)
-                        series = arrays.to_time_series(sample_timing=timeline, scientific_provenance=provenance)
+                        series = arrays.to_time_series(sample_timing=timeline, data_provenance=provenance)
                         self.assertIs(series.sample_timing, timeline)
                         self.assertEqual(timeline.sample_count, 222)
                         np.testing.assert_array_equal(series.data_tensor.data_values, arrays.values)
@@ -106,7 +106,7 @@ class TensorConsumerTests(unittest.TestCase):
                             source_identity=timeline.source_identity, sample_ids=arrays.frames,
                             timestamps_s=arrays.timestamps + 0.01)
                         with self.assertRaisesRegex(ValueError, "timestamps"):
-                            arrays.to_time_series(sample_timing=shifted, scientific_provenance=provenance)
+                            arrays.to_time_series(sample_timing=shifted, data_provenance=provenance)
                     checked.add(context.channel)
         self.assertEqual(checked, required)
 
@@ -122,7 +122,7 @@ class TensorConsumerTests(unittest.TestCase):
                         source_identity=SourceIdentity(source_id=arrays.context.source),
                         sample_ids=arrays.frames, timestamps_s=arrays.timestamps)
                     borrowed = arrays.to_time_series(sample_timing=timeline,
-                        scientific_provenance=ScientificProvenance(meaning="model_landmarks", operation_id="parquet_read"))
+                        data_provenance=DataProvenance(meaning="model_landmarks", operation_id="parquet_read"))
                     published = borrowed.immutable_copy()
                     expected_frame = arrays.values[7:8].copy()
         selected = published.frame_view(7)
@@ -148,11 +148,11 @@ class TensorConsumerTests(unittest.TestCase):
                 context = item[0]
                 if context.channel not in required:
                     continue
-                provenance = ScientificProvenance(meaning=f"saved:{context.channel}", operation_id="parquet_read",
+                provenance = DataProvenance(meaning=f"saved:{context.channel}", operation_id="parquet_read",
                                                    input_refs=(view.revision,))
                 with ordered_arrays(view, run_id, item, scratch=Path(temporary)) as arrays:
                     if context.static:
-                        static_items.append(arrays.to_data_tensor(scientific_provenance=provenance).immutable_copy())
+                        static_items.append(arrays.to_data_tensor(data_provenance=provenance).immutable_copy())
                         continue
                     # Different camera/source streams retain separate timing identities.
                     timing_key = (context.sensor_group, context.source, context.reference_frame)
@@ -162,7 +162,7 @@ class TensorConsumerTests(unittest.TestCase):
                             source_identity=SourceIdentity(source_id=context.source, sensor_group=context.sensor_group),
                             sample_ids=arrays.frames, timestamps_s=arrays.timestamps)
                     series_items.append(arrays.to_time_series(sample_timing=timelines[timing_key],
-                        scientific_provenance=provenance).immutable_copy())
+                        data_provenance=provenance).immutable_copy())
             dataset = RecordingDataset(recording_id=self.recording.name, run_id=run_id,
                 time_series=tuple(series_items), static_tensors=tuple(static_items), definition_documents=definitions)
         # Assembly and selection retain already-owned payloads after every reader closes.

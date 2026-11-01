@@ -75,5 +75,5 @@ Agree on one assignment policy shared by live and recorded consumers before impl
 
 Then resume the Mocap/posthoc endpoint-to-worker walkthrough, stage reprocessing and
 keep/overwrite semantics, ending at the recording output contract. Recording metadata
-stays separate from model measurements; scientific outputs remain centered on Parquet
+stays separate from model measurements; outputs remain centered on Parquet
 until their export contracts are agreed.

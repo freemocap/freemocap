@@ -69,7 +69,7 @@ with matched inputs and checks their saved numerical outputs.
 The tracker matrix in the dataset commands checks default ChArUco, MediaPipe CPU,
 and RTMPose CPU/CUDA configurations at the tracking boundary. It does not certify
 full pipeline reruns across different detector models. MediaPipe CUDA is explicitly
-unsupported. Saved-stage replay retains recorded scientific model definitions;
+unsupported. Saved-stage replay retains recorded model definitions;
 changing a tracker requires new observations rather than relabeling existing data.
 
 Wide CSV and diagnostic tall CSV use this same prepared root:
@@ -116,7 +116,7 @@ leaves a checksum mismatch that blocks automatic reuse; inspect it before recove
 Connected-fitting viewers are preserved on `development-skelly-fit`. Use the current
 recording playback UI to inspect ordinary reconstructed outputs.
 
-The scientific consumer now validates CSV, NPY and NPZ for landmarks, raw/filtered
+The consumer now validates CSV, NPY and NPZ for landmarks, raw/filtered
 3D keypoints, per-camera 2D keypoints and combined segment poses. It compares each
 CSV scalar to Parquet, then both NumPy representations to that validated table.
 The standard producer profile remains Parquet plus Blender.

@@ -14,12 +14,12 @@ from freemocap.core.recording.parquet_storage.checkpoint_publication import chec
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.sample_encoding.arrow_schema import DESCRIPTOR_KEY, SAMPLE_SCHEMA, SampleValidator
 from freemocap.tests.test_selective_parquet_read import observe_reads, write_channel_groups
-from freemocap.tests.test_wide_csv_export import scientific_recording  # noqa: F401
+from freemocap.tests.test_wide_csv_export import recording_processing  # noqa: F401
 
 
 @pytest.fixture
-def checkpoint_recording(scientific_recording):
-    structure, original = scientific_recording
+def checkpoint_recording(recording_processing):
+    structure, original = recording_processing
     rows = []
     for row in original:
         # The export fixture deliberately omits a scalar. Checkpoint publication

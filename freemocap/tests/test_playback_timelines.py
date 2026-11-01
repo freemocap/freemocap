@@ -8,7 +8,7 @@ import pytest
 
 from freemocap.core.recording.playback_queries import playback_manifest
 from freemocap.tests.test_selective_parquet_read import observe_reads, write_channel_groups
-from freemocap.tests.test_wide_csv_export import scientific_recording  # noqa: F401
+from freemocap.tests.test_wide_csv_export import recording_processing  # noqa: F401
 
 
 def rewrite(structure, rows, *, statistics=True):
@@ -18,8 +18,8 @@ def rewrite(structure, rows, *, statistics=True):
 
 
 @pytest.fixture
-def timing_recording(scientific_recording):
-    structure, rows = scientific_recording
+def timing_recording(recording_processing):
+    structure, rows = recording_processing
     rows = [dict(row, component="timestamp_s") if row["channel"] == "TIMESTAMPS" else row for row in rows]
     rewrite(structure, rows)
     return structure, rows

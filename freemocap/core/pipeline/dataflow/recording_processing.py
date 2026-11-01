@@ -2,7 +2,7 @@
 
 The existing recording-wide camera matcher remains an explicit prerequisite.
 No numerical solver, coordinate conversion or storage format is reimplemented.
-This module is a backend scientific slice, not the general graph scheduler.
+This module is a backend slice, not the general graph scheduler.
 """
 from collections.abc import Iterable, Callable
 from dataclasses import dataclass, field, asdict
@@ -123,7 +123,7 @@ class ObservationCollection:
                 raise ValueError('Saved observations must retain complete declared coverage')
             return
         if not self.join.complete or not all(series.delivered.all() for series in self.frames.camera_series.values()):
-            raise ValueError("Scientific save requires complete successful coverage from every declared camera")
+            raise ValueError("Save requires complete successful coverage from every declared camera")
         self.frames.finalize()
 
 
@@ -170,7 +170,7 @@ class FrameTriangulation:
     def completed_result(self) -> RecordingTriangulation:
         self.observations.require_complete()
         if set(self.results) != set(range(self.observations.frame_count)):
-            raise ValueError("Scientific save requires every triangulation result")
+            raise ValueError("Save requires every triangulation result")
         ordered = [self.results[frame] for frame in range(self.observations.frame_count)]
         first = ordered[0]
         if any((result.sources, result.keypoint_names, result.diagnostic_point_names) !=
@@ -192,7 +192,7 @@ class FrameTriangulation:
 
 
 @dataclass(frozen=True)
-class CompletedScientificRecording:
+class CompletedRecording:
     observations: ObservationCollection
     triangulation: RecordingTriangulation
     camera_geometry: dict[str, CameraModel]
@@ -203,7 +203,7 @@ class CompletedScientificRecording:
     _integrity_digest: bytes = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        # Own the complete scientific payload, including mutable model/array data.
+        # Own the complete payload, including mutable model/array data.
         for name in ("observations", "triangulation", "camera_geometry", "matching_result",
                      "matching_config", "triangulation_config"):
             object.__setattr__(self, name, deepcopy(getattr(self, name)))
@@ -225,7 +225,7 @@ class CompletedScientificRecording:
         """
         self.observations.require_complete()
         if self._payload_digest() != self._integrity_digest:
-            raise ValueError("Scientific payload changed after computation")
+            raise ValueError("Recording payload changed after computation")
         require_processing_assignment(result=self.matching_result, config=self.matching_config)
         sources = self.observations.sources
         result = self.triangulation
@@ -258,18 +258,18 @@ class CompletedScientificRecording:
         return publish_posthoc_observations(request)
 
 
-def process_resolved_scientific_recording(
+def process_resolved_recording(
     *, events: Iterable[TrackedCameraFrame | VideoSourceFinished], sources: RecordingVideoSources,
     execution_id: str, calibration_cameras: tuple[CameraModel, ...],
     matching_result: CameraMatchingResult, matching_config: CameraMatchingConfig,
     point_names: tuple[str, ...], triangulation_config: TriangulationConfig,
     cancelled: Callable[[], bool] = lambda: False,
-) -> CompletedScientificRecording:
+) -> CompletedRecording:
     """Consume ready camera frames immediately using an already resolved assignment.
 
     The backend owns consumption; this function never waits for a viewer. Assignment
     evidence and the declared point axis must belong to these recording inputs.
-    Completion and scientific saving remain separate from per-frame readiness.
+    Completion and saving remain separate from per-frame readiness.
     """
     matching = PosthocMatchingRequest(frames=[],
         videos={source.camera_id: source.video_metadata for source in sources.camera_sources},
@@ -279,19 +279,19 @@ def process_resolved_scientific_recording(
         camera_geometry=geometry, point_names=point_names, triangulation_config=triangulation_config)
     for event in events:
         if cancelled():
-            raise CancelledError("Scientific recording cancelled")
+            raise CancelledError("Recording cancelled")
         operation.accept(event)
     if cancelled():
-        raise CancelledError("Scientific recording cancelled")
-    return CompletedScientificRecording(operation.observations, operation.completed_result(), operation.camera_geometry,
+        raise CancelledError("Recording cancelled")
+    return CompletedRecording(operation.observations, operation.completed_result(), operation.camera_geometry,
                                         matching_result, matching_config, operation.config)
 
 
-def process_scientific_recording(*, events: Iterable[TrackedCameraFrame | VideoSourceFinished],
+def process_recording(*, events: Iterable[TrackedCameraFrame | VideoSourceFinished],
                                  sources: RecordingVideoSources, execution_id: str,
                                  calibration_cameras: tuple[CameraModel, ...], matching_config: CameraMatchingConfig,
                                  triangulation_config: TriangulationConfig,
-                                 cancelled: Callable[[], bool] = lambda: False) -> CompletedScientificRecording:
+                                 cancelled: Callable[[], bool] = lambda: False) -> CompletedRecording:
     """Collect streaming observations, then use the recording-wide batch operation.
 
     Retains observations, never video images. Consume all healthy sources even when
@@ -300,7 +300,7 @@ def process_scientific_recording(*, events: Iterable[TrackedCameraFrame | VideoS
     collection = ObservationCollection(sources=sources, execution_id=execution_id)
     for event in events:
         if cancelled():
-            raise CancelledError("Scientific recording cancelled")
+            raise CancelledError("Recording cancelled")
         collection.accept(event)
     return triangulate_completed_observations(collection=collection, calibration_cameras=calibration_cameras,
         matching_config=matching_config, triangulation_config=triangulation_config, cancelled=cancelled)
@@ -310,7 +310,7 @@ def triangulate_completed_observations(
     *, collection: ObservationCollection, calibration_cameras: tuple[CameraModel, ...],
     matching_config: CameraMatchingConfig, triangulation_config: TriangulationConfig,
     cancelled: Callable[[], bool] = lambda: False,
-) -> CompletedScientificRecording:
+) -> CompletedRecording:
     """Match and batch-triangulate available observations without replaying events.
 
     Only compact observations are retained; this never loads video images. The
@@ -320,7 +320,7 @@ def triangulate_completed_observations(
     if len(collection.cameras) < 2:
         raise ValueError("Metric triangulation requires at least two declared cameras")
     if cancelled():
-        raise CancelledError("Scientific recording cancelled")
+        raise CancelledError("Recording cancelled")
     sources = collection.sources
     timing = PosthocTimingReport()
     started = perf_counter()
@@ -333,7 +333,7 @@ def triangulate_completed_observations(
         raise ValueError("Metric triangulation requires unique resolved geometry for every declared camera")
     timing.record("camera_assignment", perf_counter() - started)
     if cancelled():
-        raise CancelledError("Scientific recording cancelled")
+        raise CancelledError("Recording cancelled")
     started = perf_counter()
     buffers = observation_buffers(collection.frames, collection.cameras)
     names = tuple(dict.fromkeys(name for buffer in buffers.values() for name in buffer.keypoint_names))
@@ -348,9 +348,9 @@ def triangulate_completed_observations(
                            if stage.name in ("triangulate", "reprojection_gate_and_blender"))
     timing.record("triangulation_array_preparation", max(0., helper_seconds - measured_seconds))
     if cancelled():
-        raise CancelledError("Scientific recording cancelled")
+        raise CancelledError("Recording cancelled")
     started = perf_counter()
-    completed = CompletedScientificRecording(collection, result, geometry, matching_result,
+    completed = CompletedRecording(collection, result, geometry, matching_result,
         matching_config, triangulation_config, execution_timing=timing)
-    timing.record("scientific_payload_snapshot", perf_counter() - started)
+    timing.record("result_payload_snapshot", perf_counter() - started)
     return completed

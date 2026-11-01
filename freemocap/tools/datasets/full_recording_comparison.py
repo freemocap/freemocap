@@ -1,6 +1,6 @@
-"""Complete experimental recording graph versus the current scientific task.
+"""Complete experimental recording graph versus the current task.
 
-Tracking runs once; both scientific paths consume identical observations. This is
+Tracking runs once; both paths consume identical observations. This is
 downstream parity, not a full old/new tracking-throughput benchmark.
 """
 import argparse
@@ -28,7 +28,7 @@ from freemocap.core.tasks.calibration.shared.calibration_result import Calibrati
 from freemocap.core.tracking.board_selection import CharucoBoardMode
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterConfig
 from freemocap.core.reconstruction.recording_timing import RecordingGroupTiming
-from freemocap.core.recording.exports.requests import ScientificExportOptions
+from freemocap.core.recording.exports.requests import ExportOptions
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
 from freemocap.core.recording.result_processing.saved_reconstruction import (
     read_saved_channel, read_saved_reconstruction, SavedReconstructionRequest, SavedPointPolicy,
@@ -64,9 +64,9 @@ def compare_saved_channels(left: RecordingStructure, right: RecordingStructure) 
     def compare_definition(expected, actual, path):
         if path.startswith('scale_fits/') and path.endswith(('/fit/measured_segment_names', '/fit/voting_segment_names')):
             # ModelScaleFit declares these as frozensets. JSON order varies with
-            # each interpreter's hash seed; membership is the scientific contract.
+            # each interpreter's hash seed; membership is the contract.
             if sorted(expected) != sorted(actual):
-                raise ValueError(f'Scientific segment membership differs: {path}')
+                raise ValueError(f'Segment membership differs: {path}')
             return
         if path.startswith("scale_fits/") and path.endswith("/inputs/points"):
             # Roundoff-equivalent arrays can have different exact byte hashes;
@@ -74,18 +74,18 @@ def compare_saved_channels(left: RecordingStructure, right: RecordingStructure) 
             return
         if isinstance(expected, dict):
             if not isinstance(actual, dict) or expected.keys() != actual.keys():
-                raise ValueError(f"Scientific definition keys differ: {path}")
+                raise ValueError(f"Definition keys differ: {path}")
             for key in expected:
                 compare_definition(expected[key], actual[key], f"{path}/{key}")
         elif isinstance(expected, list):
             if not isinstance(actual, list) or len(expected) != len(actual):
-                raise ValueError(f"Scientific definition lengths differ: {path}")
+                raise ValueError(f"Definition lengths differ: {path}")
             for index, (first, second) in enumerate(zip(expected, actual, strict=True)):
                 compare_definition(first, second, f"{path}/{index}")
         elif isinstance(expected, float):
             np.testing.assert_allclose(actual, expected, atol=1e-6, rtol=1e-8, err_msg=path)
         elif expected != actual:
-            raise ValueError(f"Scientific definition differs: {path}")
+            raise ValueError(f"Definition differs: {path}")
     # Compare equivalent arrays across routes, but verify each local fit fingerprint
     # against its own exact saved inputs using the production resume reader.
     for structure, item in zip((left, right), metadata, strict=True):
@@ -126,7 +126,7 @@ def render_report(report: dict) -> str:
              f"Execution: {report.get('execution_mode', 'concurrent')}; profiled: {report.get('profiled', False)}",
              f"Recording: {report.get('recording', 'unknown')}",
              f"Detector: {report.get('detector', 'unknown')}; requested provider: {report.get('provider', 'unknown')}",
-             "Scope: shared tracking observations; compare complete scientific processing and saved channels."]
+             "Scope: shared tracking observations; compare complete processing and saved channels."]
     if "camera_count" in report:
         lines.append(f"Coverage: {report['camera_count']} videos x {report['frames_per_camera']} frames each "
                      f"= {report['camera_count'] * report['frames_per_camera']} camera images")
@@ -143,11 +143,11 @@ def render_report(report: dict) -> str:
         lines.append("Process CPU sums this process's threads; excludes GPU time and child-process CPU. Profiled runs include profiler overhead.")
     if report.get("operations_seconds"):
         lines.append("Rates are recording coverage / elapsed handler time, including resource contention; not exclusive CPU time. Overlapping durations must not be added.")
-    if report.get("scientific_subphases"):
+    if report.get("processing_subphases"):
         lines.append("Matching / triangulation breakdown:")
-        for stage in report["scientific_subphases"]:
+        for stage in report["processing_subphases"]:
             lines.append(f"  {stage['name']:36} {stage['elapsed_seconds']:9.3f} s")
-    for name in ("graph_wall_seconds", "scientific_completion_seconds", "current_scientific_seconds"):
+    for name in ("graph_wall_seconds", "processing_completion_seconds", "current_processing_seconds"):
         if name in report:
             lines.append(f"{name}: {report[name]:.3f} s")
     workers = report.get("annotation_workers")
@@ -211,7 +211,7 @@ def run_comparison(*, recording: Path, calibration: Path, output: Path, provider
             board_mode=CharucoBoardMode.EXPLICIT, charuco_board=CalibrationResult.load_toml(graph_calibration).board,
             calibration_toml_path=str(graph_calibration), video_fps=fps, export_to_blender=False,
             filter_config=PosthocFilterConfig(enabled=fps > 12),
-            scientific_exports=ScientificExportOptions(formats=("npz",)))
+            export_options=ExportOptions(formats=("npz",)))
         report["configuration"] = config.model_dump(mode="json")
         report["resource_capacity"] = dict(compute=2, annotation=annotation_workers, recording_io=1)
         performance = PerformanceReport()
@@ -239,17 +239,17 @@ def run_comparison(*, recording: Path, calibration: Path, output: Path, provider
             report["annotation_workers"] = dict(launch_seconds=annotation_service.launch_seconds,
                 shutdown_seconds=annotation_service.shutdown_seconds, jobs=annotation_service.measurements,
                 alive_after_close=sum(worker.is_alive() for worker in annotation_service.workers))
-        scientific_nodes = {node.id for node in graph.definition.nodes if not node.id.startswith("annotate_camera_")}
-        if scientific_nodes.issubset(result.outputs):
-            report["scientific_completion_seconds"] = execution_offset + max(
-                result.finished_seconds[name] for name in scientific_nodes)
+        processing_nodes = {node.id for node in graph.definition.nodes if not node.id.startswith("annotate_camera_")}
+        if processing_nodes.issubset(result.outputs):
+            report["processing_completion_seconds"] = execution_offset + max(
+                result.finished_seconds[name] for name in processing_nodes)
         report.update(graph_wall_seconds=perf_counter() - started, operations_seconds=result.elapsed_seconds,
             operation_started_seconds=result.started_seconds, operation_finished_seconds=result.finished_seconds,
             failures=result.failures, failure_tracebacks=result.failure_tracebacks,
             blocked=result.blocked, tracking_timings=performance.snapshot(),
             tracking_counts=performance.counts_snapshot())
         if "match_and_triangulate" in result.outputs:
-            report["scientific_subphases"] = [asdict(stage) for stage in
+            report["processing_subphases"] = [asdict(stage) for stage in
                 result.outputs["match_and_triangulate"]["result"].execution_timing.stages]
         write_report()
         if not result.complete:
@@ -269,7 +269,7 @@ def run_comparison(*, recording: Path, calibration: Path, output: Path, provider
         report["annotated_videos"] = annotation_reports
         collection = result.outputs["load_and_track"]["result"]
         baseline_config = config.model_copy(update={"calibration_toml_path": str(baseline_calibration), "sensor_group": original.sensor_group})
-        report["phase"] = "current_scientific_task"
+        report["phase"] = "current_processing_task"
         write_report()
         started = perf_counter()
         run_posthoc_mocap_task(frame_observations=collection.frames,
@@ -277,7 +277,7 @@ def run_comparison(*, recording: Path, calibration: Path, output: Path, provider
             video_metadata={source.camera_id: source.video_metadata for source in baseline_sources.camera_sources},
             task_config=baseline_config, selected_board=config.charuco_board if with_board else None,
             saved_timing=None)
-        report["current_scientific_seconds"] = perf_counter() - started
+        report["current_processing_seconds"] = perf_counter() - started
         report["phase"] = "saved_output_validation"
         write_report()
         structures = [RecordingStructure(base_directory=output / route, recording_name=recording.name) for route in ("current", "graph")]
@@ -309,7 +309,7 @@ def main() -> int:
     parser.add_argument("--detector", choices=("rtmpose", "mediapipe"), default="rtmpose")
     parser.add_argument("--annotate", action="store_true")
     parser.add_argument("--annotation-workers", type=int, default=2,
-                        help="Experimental annotation concurrency; does not change scientific work")
+                        help="Experimental annotation concurrency; does not change work")
     parser.add_argument("--annotation-execution", choices=("thread", "process"), default="process")
     parser.add_argument("--isolate-components", action="store_true", help="Diagnostic: run graph handlers one at a time")
     parser.add_argument("--profile-components", action="store_true", help="Profile isolated handler thread; timings include profiler overhead")

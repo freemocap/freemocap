@@ -30,7 +30,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const run = manifest?.runs.find(item => item.run_id === runId);
     const clock = run?.timelines.find(item => item.sensor_group === group && item.source === `timing:${group}`);
     const groups = useMemo(() => [...new Set(run?.channels.map(channel => channel.sensor_group) ?? [])], [run]);
-    const baseUrl = recordingId ? `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}` : null;
+    const baseUrl = recordingId ? serverUrls.recordingResource(recordingId) : null;
     const parameters = new URLSearchParams();
     if (recordingParentDirectory) parameters.set('recording_parent_directory', recordingParentDirectory);
     const query = parameters.toString();

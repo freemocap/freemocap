@@ -9,11 +9,11 @@
 export interface PointsFrame {
     names: readonly string[];
     /** Read-only by consumer contract; rows have `stride` values (default three).
-     * Coordinate offsets select XYZ without discarding other scientific values.
+     * Coordinate offsets select XYZ without discarding other values.
      * Published storage is never overwritten by the transport. */
     data: Float32Array;
     /** Declared source row width; omitted for packed XYZ. Owned wire arrays can
-     * retain additional scientific components without a projection allocation. */
+     * retain additional components without a projection allocation. */
     stride?: number;
     /** XYZ component offsets within each source row; omitted for [0, 1, 2]. */
     coordinateOffsets?: readonly [number, number, number];

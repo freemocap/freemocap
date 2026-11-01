@@ -35,7 +35,7 @@ class ComponentDiagnosticsTests(unittest.TestCase):
     def test_failure_preserves_independent_branch_and_profile(self):
         with TemporaryDirectory() as folder:
             def fail(_):
-                raise ValueError('scientific failure')
+                raise ValueError('failure')
             result = measure_isolated_components(graph=example_graph(), output=Path(folder), profile=True,
                 handlers={'source': lambda _: {'result': 42}, 'annotation': lambda x: x,
                           'science': fail, 'save': lambda _: self.fail('blocked handler ran')})

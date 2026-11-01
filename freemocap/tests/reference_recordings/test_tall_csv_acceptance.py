@@ -66,7 +66,7 @@ def test_tall_export_matches_every_production_sample(tmp_path, name):
     with pq.ParquetFile(structure.data_parquet_path) as parquet, csv_batches(result.files[0], SAMPLE_SCHEMA) as exported:
         expected = (batch.filter(pc.equal(batch.column('run_id'), result.run_id)) for batch in parquet.iter_batches(batch_size=65536))
         count = compare_streams(expected, iter(exported), SAMPLE_SCHEMA)
-    assert count == manifest.artifacts[result.files[0].name].rows
+    assert count == manifest.artifacts[result.files[0].relative_to(result.manifest_path.parent).as_posix()].rows
     run = read_metadata(path=structure.data_parquet_path).runs[result.run_id]
     expected_static = []
     for item in read_static_channels(run):

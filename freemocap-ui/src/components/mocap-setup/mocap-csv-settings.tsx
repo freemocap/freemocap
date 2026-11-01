@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {exportTallCsvUpdated} from '@/store/slices/mocap';
-import {serverUrls} from '@/constants/server-urls';
+import {createRecordingExport, recordingExportUrl, waitForTaskResult} from '@/services/recording/recording-exports';
 import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import SettingRow from '@/components/common/settings-layout/setting-row';
@@ -37,7 +37,7 @@ export default function MocapCsvSettings({path, processing, sourceRunId}: {path:
     const [noSavedResult, setNoSavedResult] = useState(false);
     const [saved, setSaved] = useState<string[]>([]);
     const [refresh, setRefresh] = useState(0);
-    const endpoint = `${serverUrls.getHttpUrl()}/freemocap/exports/tall-csv`;
+    const endpoint = path ? recordingExportUrl(path, '/export-options') : null;
 
     useEffect(() => {
         const controller = new AbortController();
@@ -46,14 +46,14 @@ export default function MocapCsvSettings({path, processing, sourceRunId}: {path:
         if (!path || processing) return () => controller.abort();
         void (async () => {
             try {
-                const response = await fetch(`${endpoint}?recording_path=${encodeURIComponent(path)}`, {signal: controller.signal});
+                const response = await fetch(endpoint!, {signal: controller.signal});
                 if (response.status === 204) {
                     if (!controller.signal.aborted) setNoSavedResult(true);
                     return;
                 }
                 if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
                 const data: Selection = await response.json();
-                if (!controller.signal.aborted) {setSelection(data);}
+                if (!controller.signal.aborted) {setNoSavedResult(!data.revision); setSelection(data.revision ? data : null);}
             } catch (reason) {
                 if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
             }
@@ -65,10 +65,8 @@ export default function MocapCsvSettings({path, processing, sourceRunId}: {path:
         if (!selection || !path || busy) return;
         setBusy(true); setError(''); setSaved([]);
         try {
-            const response = await fetch(endpoint, {method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({recording_path: path, run_id: run, expected_revision: selection.revision})});
-            if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
-            const result: {files: string[]; manifest_path: string} = await response.json();
+            const task = await createRecordingExport(path, {kind: 'tall_csv', run_id: run, expected_revision: selection.revision});
+            const result = await waitForTaskResult<{files: string[]; manifest_path: string}>(task.task_id);
             setSaved([...result.files, result.manifest_path]);
         } catch (reason) {setError(reason instanceof Error ? reason.message : String(reason));}
         finally {setBusy(false);}

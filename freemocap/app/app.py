@@ -334,6 +334,7 @@ async def collect_task_progress(app: FastAPI) -> None:
     try:
         while not app.state.global_kill_flag.value:
             await asyncio.to_thread(get_freemocap_app().posthoc_pipeline_manager.refresh_progress)
+            await asyncio.to_thread(get_freemocap_app().sync_job_manager.refresh_progress)
             await asyncio.sleep(0.5)
     except Exception as error:
         app.state.fatal_error = error
@@ -441,29 +442,22 @@ def _register_routes(app: FastAPI) -> None:
         logger.api(f"\tRegistered WebSocket route: {route.path}")
 
     # Health, shutdown, and settings state routes (no prefix)
-    logger.api("\nRegistering App level routes:")
     for router in APP_ROUTERS:
         app.include_router(router)
-        for route in router.routes:
-            logger.api(f"\tRegistered: {route.path} with methods: [{', '.join(route.methods)}]")
+        logger.api(f"Registered app router: {router.prefix or '/'}")
 
-    logger.api("\nRegistering FreeMoCap endpoints:")
     for router in FREEMOCAP_ROUTERS:
         app.include_router(router, prefix=f"/{freemocap.__package_name__}")
-        for route in router.routes:
-            logger.api(
-                f"\tRegistering route: `/{freemocap.__package_name__}{route.path}` with methods: [{', '.join(route.methods)}]")
+        logger.api(f"Registered FreeMoCap router: /{freemocap.__package_name__}{router.prefix}")
 
-    logger.api("\nRegistering SkellyCam endpoints:")
     for router in SKELLYCAM_ROUTERS:
-        for route in router.routes:
-            logger.api(
-                f"\tRegistering route: `/{skellycam.__package_name__}{route.path}` with methods: [{', '.join(route.methods)}]")
         app.include_router(router, prefix=f"/{skellycam.__package_name__}")
+        logger.api(f"Registered SkellyCam router: /{skellycam.__package_name__}{router.prefix}")
 
 
 def _customize_openapi(app: FastAPI) -> None:
     """Customize the OpenAPI schema."""
+    from freemocap.api.openapi_tags import OPENAPI_TAGS
 
     def custom_openapi():
         if app.openapi_schema:
@@ -476,6 +470,7 @@ def _customize_openapi(app: FastAPI) -> None:
                 f"FastAPI Backend for FreeMoCap: {freemocap.__description__}"
             ),
             routes=app.routes,
+            tags=OPENAPI_TAGS,
         )
 
         app.openapi_schema = schema

@@ -56,7 +56,7 @@ def main():
             exportToBlender=True, autoOpenBlendFile=False, blenderExePath=str(args.blender),
             blenderImportRoute='parquet_segments', blenderPackage=package,
             blenderExportConfig=dict(formats=['fbx', 'bvh']),
-            scientificExports=dict(formats=['wide_csv', 'npy', 'npz'],
+            exportOptions=dict(formats=['wide_csv', 'npy', 'npz'],
                 data=['LANDMARKS_3D', 'KEYPOINTS_3D', 'RAW_KEYPOINTS_3D', 'OVERLAY_2D', 'SEGMENT_POSES']))
         assert set(config.blender_export.formats) == {'fbx', 'bvh'}
         request = SimpleNamespace(recording=SimpleNamespace(full_recording_path=folder), config=config,
@@ -91,7 +91,7 @@ def main():
     assert comparable == {name for name in right if name.endswith(('.csv', '.npy'))}
     mismatches = [name for name in sorted(comparable) if left[name]['sha256'] != right[name]['sha256']]
     if mismatches:
-        raise AssertionError(f'Scientific output mismatch: {mismatches}')
+        raise AssertionError(f'Output mismatch: {mismatches}')
     assert measurements[0]['npz_members'] == measurements[1]['npz_members'], 'NPZ arrays differ'
     result = dict(source=str(args.parquet.resolve()), source_sha256=source_hash,
         sequential_s=measurements[0]['wall_s'], concurrent_s=measurements[1]['wall_s'],

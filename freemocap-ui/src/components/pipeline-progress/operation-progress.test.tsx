@@ -33,6 +33,24 @@ test('snapshot preserves independent completed, running and failed rows without 
     assert.deepEqual(state.activePipelines.recording.operations, next.tasks[0].operations, 'terminal snapshots retain backend rows');
 });
 
+test('queued exports and synchronization without a destination survive reconnect and restart', () => {
+    const first = snapshot(5, []);
+    const template = first.tasks[0];
+    first.tasks = ['export', 'sync'].map((kind, index) => ({...template,
+        task_id: `${kind}:job`, task_type: kind as 'export' | 'sync', recording: null,
+        status: index ? 'running' : 'queued',
+        progress: {phase: index ? 'trimming' : 'queued', progress_fraction: null, detail: 'Working'},
+    }));
+    let state = reducer(undefined, taskSnapshotReceived(first));
+    assert.equal(state.activePipelines['export:job'].completedAt, undefined);
+    assert.equal(state.activePipelines['sync:job'].recordingName, '');
+    assert.ok(selectGroupedPipelinesAll({pipelines: state} as Parameters<typeof selectGroupedPipelinesAll>[0]).every(group => group.isActive));
+    assert.deepEqual(reducer(state, taskSnapshotReceived(first)), state);
+    const restarted = {...first, revision: 0, tasks: [], server_instance_id: '30000000-0000-4000-8000-000000000003'};
+    state = reducer(state, taskSnapshotReceived(restarted));
+    assert.deepEqual(state.activePipelines, {});
+});
+
 test('bars show independent percentages, real counts and unmeasured work without invented percentages', () => {
     const html = renderToStaticMarkup(<OperationProgressBars operations={[
         operation('Save CSV', {progress_fraction: 0.25, completed: 1, total: 4, unit: 'channels'}),

@@ -37,6 +37,7 @@ from freemocap.core.recording.playback_queries import (
     playback_manifest, PlaybackMedia, PlaybackTimeline,
     recording_view,
 )
+from freemocap.api.http.recordings.resource_models import (VideoInfo, VideoSourceInfo, VideoSourcesResponse, RecordingStatusSummary, RecordingListEntry)
 from pydantic import BaseModel
 
 from freemocap.system.recording_status.recording_status import (
@@ -60,10 +61,11 @@ from freemocap.api.http.playback.resource_loading import RecordingResource, Reso
 
 logger = logging.getLogger(__name__)
 
-from freemocap.api.http.playback.recording_access import RecordingPlaybackRoute
+from freemocap.api.http.recordings.recording_access import RecordingReadRoute
+from freemocap.api.http.recordings.recording_location import recording_location
 from freemocap.core.recording.recording_access import RecordingBusyError
 
-playback_router = APIRouter(prefix="/playback", tags=["Playback"], route_class=RecordingPlaybackRoute)
+playback_router = APIRouter(prefix="/playback", tags=["Playback"], include_in_schema=False, deprecated=True, route_class=RecordingReadRoute)
 
 
 @playback_router.get("/{recording_id}/media")
@@ -121,26 +123,7 @@ TIMESTAMP_EXTENSIONS = {".csv"}
 def video_stream_url(*, recording_id: str, path: Path, parameters: dict[str, str]) -> str:
     stat = path.stat()
     query = {**parameters, "revision": f"{stat.st_ino:x}-{stat.st_mtime_ns:x}-{stat.st_size:x}"}
-    return f"/freemocap/playback/{quote(recording_id, safe='')}/videos/{quote(path.name, safe='')}?{urlencode(query)}"
-
-
-class VideoInfo(BaseModel):
-    video_id: str
-    filename: str
-    size_bytes: int
-    stream_url: str
-
-
-class VideoSourceInfo(BaseModel):
-    available: bool
-    valid: bool
-    video_count: int
-    videos: list[VideoInfo] = []
-
-
-class VideoSourcesResponse(BaseModel):
-    preferred_source: str
-    sources: dict[str, VideoSourceInfo]
+    return f"/freemocap/recordings/{quote(recording_id, safe='')}/videos/{quote(path.name, safe='')}?{urlencode(query)}"
 
 
 def preferred_video_source(*, synchronized: VideoSourceInfo, annotated: VideoSourceInfo) -> PlaybackVideoSource:
@@ -152,15 +135,6 @@ def preferred_video_source(*, synchronized: VideoSourceInfo, annotated: VideoSou
         if source.available:
             return name
     raise ValueError("No playback video source is available")
-
-
-class RecordingStatusSummary(BaseModel):
-    blender_export_ready: bool = False
-    has_blend_file: bool = False
-    has_annotated_videos: bool = False
-    has_calibration_toml: bool = False
-    stages_complete: int = 0
-    stages_total: int = 0
 
 
 class RecordingBundle(BaseModel):
@@ -178,20 +152,6 @@ class RecordingBundle(BaseModel):
     status_summary: RecordingStatusSummary | None
 
 
-class RecordingListEntry(BaseModel):
-    name: str
-    path: str
-    video_count: int
-    total_size_bytes: int = 0
-    created_timestamp: Optional[str] = None
-    total_frames: Optional[int] = None
-    duration_seconds: Optional[float] = None
-    fps: Optional[float] = None
-    status_summary: RecordingStatusSummary = RecordingStatusSummary()
-    status: Optional[RecordingStatus] = None
-    layout_validation: Optional[RecordingLayoutValidation] = None
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -200,29 +160,7 @@ def _resolve_recording_path(
     recording_id: str,
     recording_parent_directory: str | None = None,
 ) -> Path:
-    """Resolve the full recording path from recording_id + optional parent dir.
-
-    Raises HTTPException(404) if the directory does not exist.
-    Raises HTTPException(400) for path traversal attempts.
-    """
-    parent = (
-        Path(recording_parent_directory)
-        if recording_parent_directory
-        else Path(get_default_freemocap_recordings_path())
-    )
-    parent = parent.expanduser().resolve()
-    recording_path = (parent / recording_id).resolve()
-
-    # Path traversal guard
-    if recording_path.parent != parent:
-        raise HTTPException(status_code=400, detail="Invalid recording_id")
-
-    if not recording_path.is_dir():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Recording directory not found: {recording_path}",
-        )
-    return recording_path
+    return recording_location(recording_id, recording_parent_directory).full_path
 
 
 @playback_router.get("/{recording_id}/manifest")

@@ -5,14 +5,14 @@ interview alone. Pending recommendations below are not settled decisions.
 
 ## Existing agreements
 
-- Scientific validity is mandatory. Missing required camera data never silently
-  becomes a smaller-camera scientific result.
+- Validity is mandatory. Missing required camera data never silently
+  becomes a smaller-camera result.
 - Compute as soon as actual data dependencies permit, using batched numerical
   operations. Saving a stage must not become an artificial compute barrier.
 - Complete independent requested outputs even when another branch fails.
-  Annotation is a sink, never a scientific prerequisite.
-- Validate completeness at scientific save boundaries. Temporary files are allowed;
-  incomplete scientific results must not replace accepted results.
+  Annotation is a sink, never a prerequisite.
+- Validate completeness at save boundaries. Temporary files are allowed;
+  incomplete results must not replace accepted results.
 - The server owns execution and truth. HTTP controls requests; WebSocket clients
   display reports without deciding readiness or blocking processing.
 - Reuse the existing recording contract, run/revision/attempt identities and
@@ -65,7 +65,7 @@ boundary. Existing `test_recording_store.py`, `test_stage_provenance.py` and
    it ran. Existing locking is safe but broad; any shorter lock needs explicit
    immutable inputs plus a checked publication revision, not unlocked mutation.
 7. Derive UI statuses from the backend plan: reused, scheduled, running, complete,
-   blocked, failed. Existing files alone do not prove reusable scientific data.
+   blocked, failed. Existing files alone do not prove reusable data.
 
 ## Decision tree — round 1 pending
 
@@ -80,15 +80,15 @@ V1 supports observations/triangulation starts and observations/triangulation/fil
 reconstruction finishes. Other selections remain blocked; this is not yet the
 complete staged pipeline.
 
-### Corrected scientific completion contract
+### Corrected completion contract
 
 The owner's correction supersedes the earlier unaligned-save proposal. Distinct
-operations do not imply independently publishable scientific products. A requested
+operations do not imply independently publishable products. A requested
 3D product includes its requested coordinate alignment before it may be saved as
 complete. Never save unaligned points as a substitute for that completed product.
 
 - Triangulation, trajectory preparation and alignment remain separate graph nodes.
-  The early 3D save depends on their completed output, using the same scientific
+  The early 3D save depends on their completed output, using the same
   calculations and alignment policy as the full path.
 - Alignment currently consumes prepared trajectories. A triangulation finish thus
   runs that preparation as a prerequisite, but publishes only raw aligned points,
@@ -112,7 +112,7 @@ be independently saved merely because it is a distinct computation.
 
 - Q1 Initial user controls: implement start plus finish-at-stage together, or only
   start-and-run-to-end first? Recommendation: both, using the existing five visible
-  scientific stages. Finish-at means exclude later scientific work from this request,
+  stages. Finish-at means exclude later work from this request,
   not run later work and throw it away. Requested side outputs remain independent.
 - Q2 Incompatible saved prerequisites: reject with the exact required earlier
   start, or automatically expand to earlier work? Recommendation: reject with a
@@ -121,7 +121,7 @@ be independently saved merely because it is a distinct computation.
 Dependent rounds: stage selection determines required save boundaries; mismatch
 policy determines plan review UX. Then settle exposure of existing keep/overwrite,
 side-output selection and freshness, failure retention, and cancellation boundaries.
-Do not reopen scientific validity, annotation independence or client authority.
+Do not reopen validity, annotation independence or client authority.
 
 ## Proposed validation (not yet run for this feature)
 
@@ -220,9 +220,9 @@ attempts for one recording additionally use a fail-fast admission lock; graph
 operations still execute concurrently.
 
 Run 0 keeps ordinary output names. Later runs use `.run-<id>` suffixes and
-`run-<id>` folders in their respective output locations: scientific exports under
+`run-<id>` folders in their respective output locations: exports under
 `exports/`, annotations under `annotated_videos/`, and Blender scenes under the
-recording root. Aligned calibration copies follow the scientific export run folder.
+recording root. Aligned calibration copies follow the export run folder.
 Overwriting a nonzero run uses those same paths. Existing exported files are not
 removed by stage invalidation or journal recovery. They change only when a new
 requested output replaces their matching filename. Only temporary staging and
@@ -247,7 +247,7 @@ Verification of the revised run policy (2026-10-13): 172 focused Python tests
 and 15 subtests passed in 56.01 seconds. Coverage includes saved-2D and saved-3D
 restarts, source-run numerical preservation, destination-only invalidation,
 failed-attempt run-ID reservation, cancellation before file replacement, and
-run-specific annotation, scientific export, calibration-copy and Blender paths.
+run-specific annotation, export, calibration-copy and Blender paths.
 TypeScript checking passed. The stage-selection browser test passed in Edge,
 including source selection and both save choices. Browser screenshots use the
 component test harness, not the full application's styles. Reports are in

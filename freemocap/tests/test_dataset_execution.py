@@ -1,4 +1,4 @@
-"""Execution reports retain failures without claiming scientific acceptance."""
+"""Execution reports retain failures without claiming acceptance."""
 import copy
 from pathlib import Path
 import subprocess
@@ -27,13 +27,13 @@ class DatasetExecutionTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 require_implementation(value)
 
-    def test_graph_restart_is_rejected_before_reading_saved_files(self):
+    def test_graph_restart_requires_a_prepared_recording(self):
         from freemocap.tools.datasets import workflow
-        with patch.object(workflow, 'checked_ready') as ready:
-            with self.assertRaisesRegex(ValueError, 'saved-stage restart'):
+        with patch.object(workflow, 'checked_ready', return_value=None) as ready:
+            with self.assertRaisesRegex(ValueError, 'No prepared recording'):
                 workflow.preflight('test_data', recordings_root=Path('raw'),
                     prepared_root=Path('prepared'), implementation='graph', start='reconstruction')
-            ready.assert_not_called()
+            ready.assert_called_once()
 
     def run_measured(self, error=None):
         writes = []

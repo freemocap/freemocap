@@ -45,7 +45,7 @@ annotation worker lifecycle. No dependencies were installed.
 
 Two real application-path acceptance runs used the full 222-motion-frame,
 three-camera test recording, CUDA RTMPose and explicit ChArUco. Filtering was disabled
-for the test recording's 6 FPS; optional scientific exports and Blender were disabled.
+for the test recording's 6 FPS; optional exports and Blender were disabled.
 These used FastAPI TestClient with the actual application lifespan, workers,
 inference, saving and HTTP/WebSocket endpoints, not a mocked pipeline. Telemetry
 was disabled only inside the diagnostic process.
@@ -86,7 +86,7 @@ before processing and are not acceptance evidence.
   by saved-stage integration and the careful numerical/performance comparison work.
 
 
-## Application settings repair — 2026-10-12
+## Application settings repair â€” 2026-10-12
 
 Automatic board selection now runs inside the application worker before detector
 sessions and the recording graph are constructed. It uses the existing SkellyTracker
@@ -105,6 +105,6 @@ components with mocked external services, not the running Electron window.
 Acceptance: full 1,108-frame, three-camera sample recording completed through real
 application HTTP/WebSocket endpoints with AUTO board selection and CUDA RTMPose.
 All three annotated videos contain 1,108 frames and the final Parquet is readable.
-The diagnostic disabled filtering and optional Blender/scientific exports; the
+The diagnostic disabled filtering and optional Blender/exports; the
 original recording was untouched. Evidence: `.test-artifacts/application-graph/
 http-auto-sample-2/`. Sixteen focused backend tests and the frontend typecheck pass.

@@ -69,7 +69,7 @@ class SuiteRunner:
         if case.case_name.startswith('record-'):
             self.start_recording(case_directory)
             samples = self.stream.collect_frames(5.0)
-            recordings = self.api.request('GET', '/skellycam/camera/group/all/record/stop', timeout_seconds=20.0)
+            recordings = self.api.request('POST', '/skellycam/camera/group/all/record/stop', timeout_seconds=20.0)
             result['recordings'] = [audit_recording(Path(recording['recording_path']), case.camera_ids) for recording in recordings]
             result['stream'] = inspect_stream(samples, self.configs, case_directory, self.backend)
             assert recordings and all(recording['passed'] for recording in result['recordings']), 'Recording failed capture/video checks'
@@ -87,7 +87,7 @@ class SuiteRunner:
             if recording:
                 self.start_recording(case_directory)
                 self.stream.collect_frames(3.0)
-            self.api.request('GET', '/skellycam/camera/group/all/pause_unpause', timeout_seconds=10.0)
+            self.api.request('PUT', '/skellycam/camera/group/all/pause', request_body={'paused': True}, timeout_seconds=10.0)
             # A frame already in transport may arrive; verify the queue stops advancing after settling.
             time.sleep(0.4)
             with self.stream.condition:
@@ -96,10 +96,10 @@ class SuiteRunner:
             with self.stream.condition:
                 current = self.stream.messages[-1][1]['sequence']
             assert current == previous, 'Frames continued while camera group was paused'
-            self.api.request('GET', '/skellycam/camera/group/all/pause_unpause', timeout_seconds=10.0)
+            self.api.request('PUT', '/skellycam/camera/group/all/pause', request_body={'paused': False}, timeout_seconds=10.0)
             _, result['stream'] = self.collect(case_directory)
             if recording:
-                result['recording_response'] = self.api.request('GET', '/skellycam/camera/group/all/record/stop', timeout_seconds=20.0)
+                result['recording_response'] = self.api.request('POST', '/skellycam/camera/group/all/record/stop', timeout_seconds=20.0)
         elif case.case_name == 'close-during-recording':
             self.start_recording(case_directory)
             self.stream.collect_frames(4.0)
@@ -136,7 +136,7 @@ class SuiteRunner:
             _, result['stream'] = self.collect(case_directory)
         elif case.case_name == 'stop-without-recording':
             try:
-                result['stop_response'] = self.api.request('GET', '/skellycam/camera/group/all/record/stop', timeout_seconds=3.0)
+                result['stop_response'] = self.api.request('POST', '/skellycam/camera/group/all/record/stop', timeout_seconds=3.0)
             except ApiResponseError as error:
                 assert error.status_code == 409, f'Expected explicit idle rejection, got {error.status_code}'
             _, result['stream'] = self.collect(case_directory)
@@ -147,7 +147,7 @@ class SuiteRunner:
                 self.start_recording(case_directory)
             except ApiResponseError as error:
                 assert error.status_code == 409, f'Expected explicit recording rejection, got {error.status_code}'
-            result['recording_response'] = self.api.request('GET', '/skellycam/camera/group/all/record/stop', timeout_seconds=20.0)
+            result['recording_response'] = self.api.request('POST', '/skellycam/camera/group/all/record/stop', timeout_seconds=20.0)
             result['recording'] = audit_recording(case_directory / 'capture', case.camera_ids)
             assert result['recording']['passed'], 'Repeated start damaged the original recording'
         elif case.control_name:

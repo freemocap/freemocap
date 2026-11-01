@@ -1,7 +1,7 @@
 """Immutable graph definitions and structural validation before execution.
 
 Configured inputs are required. Contracts describe semantics, not Python memory
-layout; adapters remain responsible for validating actual scientific payloads.
+layout; adapters remain responsible for validating actual payloads.
 """
 from enum import StrEnum
 
@@ -75,7 +75,7 @@ def compile_graph(graph: GraphDefinition) -> CompiledGraph:
 
     Topological order is inspection metadata, not a serial execution schedule.
     This first compiler covers structural contracts, not handler availability or
-    whole-record scientific configuration validation.
+    whole-record configuration validation.
     """
     nodes = {node.id: node for node in graph.nodes}
     if not nodes or len(nodes) != len(graph.nodes):

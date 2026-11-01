@@ -1,4 +1,4 @@
-"""Named scientific arrays shared by saved-stage readers and export projections."""
+"""Named arrays shared by saved-stage readers and export projections."""
 from collections.abc import Callable
 from concurrent.futures import CancelledError
 from contextlib import contextmanager, nullcontext

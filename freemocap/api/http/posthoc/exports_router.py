@@ -1,47 +1,49 @@
-"""Export saved scientific results without running the processing pipeline."""
-from pathlib import Path
+"""Export saved results without running the processing pipeline."""
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Response
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Response, Request
+from concurrent.futures import CancelledError
+from threading import Event
 from filelock import Timeout
 from pydantic import BaseModel
 
 from freemocap.core.recording.exports.tall_csv import TallCsvRequest, TallCsvResult, export_tall_csv
-from freemocap.core.recording.exports.requests import ScientificExportRequest
-from freemocap.core.recording.exports.arrays import scientific_channels, resolve_selection
+from freemocap.core.recording.exports.requests import ExportRequest
+from freemocap.core.recording.exports.arrays import resolve_selection
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
+from freemocap.api.http.recordings.recording_location import recording_path_location
+from freemocap.api.http.recordings.recording_access import RecordingReadRoute
+from freemocap.core.recording.exports.catalog import export_options
+from freemocap.core.recording.recording_access import RecordingBusyError
 from .export_jobs import create_job, run_job, job_state, cancel_job
 
-exports_router = APIRouter(prefix='/exports', tags=['Recording exports'])
+exports_router = APIRouter(prefix='/exports', tags=['Recording exports'],
+                          include_in_schema=False, deprecated=True, route_class=RecordingReadRoute)
 
-class SavedScientificRequest(ScientificExportRequest):
+class SavedExportRequest(ExportRequest):
     recording_path: str
 
 
 @exports_router.get('/scientific')
-def scientific_selection(recording_path: str):
+def export_selection(recording_path: str):
     structure = structure_for(recording_path, require_result=False)
     if not structure.data_parquet_path.is_file():
         return Response(status_code=204)
-    with recording_view(structure.data_parquet_path) as view:
-        return dict(revision=view.revision, selected_run_id=view.metadata.selected_run_id,
-            formats=['wide_csv', 'npy', 'npz', 'notebook'], runs=[dict(run_id=rid, channels=[dict(selection=context.model_dump(mode='json'),
-                names=len(channel.names), components=list(channel.components), units=channel.components)
-                for context, channel, _ in scientific_channels(run)]) for rid, run in view.metadata.runs.items()])
+    return export_options(structure).model_dump(mode='json', exclude={'kinds'})
 
 
 @exports_router.post('/scientific', status_code=202)
-def save_scientific(request: SavedScientificRequest, background: BackgroundTasks):
+def save_channel_exports(request: SavedExportRequest, background: BackgroundTasks, http_request: Request):
     structure = structure_for(request.recording_path)
-    options = ScientificExportRequest(**request.model_dump(exclude={'recording_path'}))
+    options = ExportRequest(**request.model_dump(exclude={'recording_path'}))
     try:
-        with recording_view(structure.data_parquet_path) as view:
+        with http_request.app.state.recording_access.read(path=structure.full_path, cancel=lambda: None), recording_view(structure.data_parquet_path) as view:
             run_id, _ = resolve_selection(view, options)
             options = options.model_copy(update=dict(run_id=run_id, expected_revision=view.revision))
-    except ValueError as error:
+    except (ValueError, RecordingBusyError) as error:
         raise HTTPException(409, str(error)) from error
-    key = create_job()
-    background.add_task(run_job, key, structure, options)
+    key = create_job(structure=structure, request=options)
+    background.add_task(run_job, key, structure, options, access=http_request.app.state.recording_access)
     return dict(job_id=key)
 
 
@@ -56,10 +58,7 @@ def stop_export_job(job_id: str):
 
 
 def structure_for(path: str, *, require_result: bool = True) -> RecordingStructure:
-    folder = Path(path).expanduser().resolve()
-    if not folder.is_dir():
-        raise HTTPException(404, 'Recording folder does not exist.')
-    structure = RecordingStructure(base_directory=folder.parent, recording_name=folder.name)
+    structure = recording_path_location(path)
     if require_result and not structure.data_parquet_path.is_file():
         raise HTTPException(404, 'No saved Parquet result in this recording. Process the recording first.')
     return structure
@@ -86,12 +85,17 @@ def selection(recording_path: str) -> ExportSelection | Response:
 
 
 @exports_router.post('/tall-csv', response_model=TallCsvResult)
-def save_tall_csv(request: SavedTallCsvRequest) -> TallCsvResult:
+def save_tall_csv(request: SavedTallCsvRequest, http_request: Request) -> TallCsvResult:
     # A synchronous route runs in FastAPI's thread pool; large exports do not
     # block the event loop or rerun detection/reconstruction.
     try:
-        return export_tall_csv(structure=structure_for(request.recording_path),
-            request=TallCsvRequest(**request.model_dump(exclude={'recording_path'})))
+        structure = structure_for(request.recording_path)
+        cancelled = Event()
+        with http_request.app.state.recording_access.read(path=structure.full_path, cancel=cancelled.set):
+            return export_tall_csv(structure=structure,
+                request=TallCsvRequest(**request.model_dump(exclude={'recording_path'})), cancelled=cancelled.is_set)
+    except (RecordingBusyError, CancelledError) as error:
+        raise HTTPException(409, str(error)) from error
     except (ValueError, FileExistsError, Timeout) as error:
         raise HTTPException(409, str(error)) from error
     except OSError as error:

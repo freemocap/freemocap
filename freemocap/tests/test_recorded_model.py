@@ -1,4 +1,4 @@
-"""Scientific definitions restore without a filesystem or a particular skeleton type."""
+"""Definitions restore without a filesystem or a particular skeleton type."""
 
 from pathlib import Path
 

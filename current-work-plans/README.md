@@ -1,5 +1,10 @@
 # Current Work Plans
 
+2026-10-31: [recording API organization and terminology cleanup](03-transport/recording-api-and-terminology-plan.md)
+maps the agreed recording-resource direction to existing handlers, UI callers,
+Swagger categories, compatibility contracts, and independently reviewable work
+stages. Planning only; individual linear tasks have not started under this plan.
+
 2026-10-29: [runtime tensor and export contract](01-data-model/tensor-contract.md)
 records completed Global 1 and Global 2 implementation and reference-data validation.
 Tracking, reconstruction and immediate streaming consumers use tensor-backed arrays;
@@ -122,7 +127,7 @@ and the VMC Definition of Done. Then:
 
 1. **One complete posthoc recording into canonical storage** — the recording contract and stage
    planner have focused tests. The mocap path saves observations/timing/raw 3D, world landmarks,
-   segment origins/local and world rotations, joint angles, centre of mass, scientific definitions
+   segment origins/local and world rotations, joint angles, centre of mass, definitions
    and the complete frozen fit. Raw-input reload, strict fit-input binding and atomic numerical
    completion records have focused tests. Connect saved-input signature resolution to the planner. Prove saved-data
    reconstruction opens no video and constructs no detector. Verify keep/overwrite through worker

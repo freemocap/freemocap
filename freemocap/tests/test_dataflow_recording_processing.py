@@ -14,7 +14,7 @@ from skellytracker.core.data_primitives.keypoints import Keypoints
 from freemocap.core.pipeline.dataflow.camera_join import CameraFrameKey, ProducerOutcome
 from freemocap.core.pipeline.dataflow.video_sources import CameraVideoSource, RecordingVideoSources, VideoSourceFinished
 from freemocap.core.pipeline.dataflow.tracker_adapter import TrackedCameraFrame
-from freemocap.core.pipeline.dataflow.scientific_recording import FrameTriangulation, process_scientific_recording, process_resolved_scientific_recording, observation_buffers
+from freemocap.core.pipeline.dataflow.recording_processing import FrameTriangulation, process_recording, process_resolved_recording, observation_buffers
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
@@ -31,7 +31,7 @@ from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 
-class ScientificRecordingTests(unittest.TestCase):
+class RecordingProcessingTests(unittest.TestCase):
     def setUp(self):
         self.temporary = TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -87,7 +87,7 @@ class ScientificRecordingTests(unittest.TestCase):
             for field in ("errors", "observed", "reconstructed", "weights"):
                 np.testing.assert_allclose(getattr(actual.reconstruction.diagnostics, field), getattr(expected.reconstruction.diagnostics, field), atol=1e-8, rtol=1e-10)
 
-    def test_late_camera_failure_invalidates_scientific_completion(self):
+    def test_late_camera_failure_invalidates_recording_completion(self):
         operation = self.operation()
         for event in self.events + self.outcomes[:2]:
             operation.accept(event)
@@ -97,16 +97,16 @@ class ScientificRecordingTests(unittest.TestCase):
             operation.completed_result()
 
     def test_complete_recording_batches_once_and_preserves_streaming_results(self):
-        from freemocap.core.pipeline.dataflow import scientific_recording
+        from freemocap.core.pipeline.dataflow import recording_processing
         for reject in (False, True):
             config = TriangulationConfig(use_outlier_rejection=reject)
             streamed = self.operation(config)
             for event in self.events + self.outcomes:
                 streamed.accept(event)
             expected = streamed.completed_result()
-            with patch.object(scientific_recording, "triangulate_observation_buffers",
+            with patch.object(recording_processing, "triangulate_observation_buffers",
                               wraps=triangulate_observation_buffers) as solver:
-                actual = process_scientific_recording(events=self.events + self.outcomes,
+                actual = process_recording(events=self.events + self.outcomes,
                     sources=self.sources, execution_id="run", calibration_cameras=self.cameras,
                     matching_config=CameraMatchingConfig(), triangulation_config=config)
                 self.assertEqual(solver.call_count, 1)
@@ -120,21 +120,21 @@ class ScientificRecordingTests(unittest.TestCase):
                 np.testing.assert_allclose(getattr(actual.triangulation.reconstruction.diagnostics, name),
                     getattr(expected.reconstruction.diagnostics, name), atol=1e-8, rtol=1e-10)
             self.assertIn("camera_assignment", {stage.name for stage in actual.execution_timing.stages})
-            self.assertIn("scientific_payload_snapshot", {stage.name for stage in actual.execution_timing.stages})
+            self.assertIn("result_payload_snapshot", {stage.name for stage in actual.execution_timing.stages})
 
     def test_batch_metric_triangulation_rejects_single_camera(self):
         sources = replace(self.sources, camera_sources=self.sources.camera_sources[:1])
         events = [event for event in self.events if event.frame_key.camera == self.cameras[0].id]
         with self.assertRaisesRegex(ValueError, "at least two"):
-            process_scientific_recording(events=events + self.outcomes[:1], sources=sources,
+            process_recording(events=events + self.outcomes[:1], sources=sources,
                 execution_id="run", calibration_cameras=self.cameras[:1],
                 matching_config=CameraMatchingConfig(), triangulation_config=TriangulationConfig())
 
     def test_batch_metric_triangulation_rejects_duplicate_geometry(self):
-        with patch("freemocap.core.pipeline.dataflow.scientific_recording.PosthocMatchingRequest.resolve",
+        with patch("freemocap.core.pipeline.dataflow.recording_processing.PosthocMatchingRequest.resolve",
                    return_value={camera.id: self.cameras[0] for camera in self.cameras}):
             with self.assertRaisesRegex(ValueError, "unique resolved geometry"):
-                process_scientific_recording(events=self.events + self.outcomes, sources=self.sources,
+                process_recording(events=self.events + self.outcomes, sources=self.sources,
                     execution_id="run", calibration_cameras=self.cameras,
                     matching_config=CameraMatchingConfig(), triangulation_config=TriangulationConfig())
 
@@ -149,7 +149,7 @@ class ScientificRecordingTests(unittest.TestCase):
             operation.accept(self.events[0])
 
     def test_real_matching_and_canonical_save_round_trip(self):
-        completed = process_scientific_recording(events=iter(self.events + self.outcomes), sources=self.sources,
+        completed = process_recording(events=iter(self.events + self.outcomes), sources=self.sources,
             execution_id="run", calibration_cameras=self.cameras, matching_config=CameraMatchingConfig(),
             triangulation_config=TriangulationConfig())
         self.assertIn(completed.matching_result.status, (CameraMatchingStatus.INITIAL_ACCEPTED, CameraMatchingStatus.MATCHED))
@@ -171,26 +171,26 @@ class ScientificRecordingTests(unittest.TestCase):
                     yield event
             yield from self.outcomes[1:]
         with self.assertRaisesRegex(ValueError, "every declared camera"):
-            process_scientific_recording(events=events(), sources=self.sources, execution_id="run",
+            process_recording(events=events(), sources=self.sources, execution_id="run",
                 calibration_cameras=self.cameras, matching_config=CameraMatchingConfig(), triangulation_config=TriangulationConfig())
         self.assertEqual(len(consumed), 24)
 
     def test_resolved_assignment_triangulates_before_iterator_completion(self):
-        from freemocap.core.pipeline.dataflow import scientific_recording
-        original = scientific_recording.triangulate_observation_buffers
-        with patch.object(scientific_recording, "triangulate_observation_buffers", wraps=original) as solver:
+        from freemocap.core.pipeline.dataflow import recording_processing
+        original = recording_processing.triangulate_observation_buffers
+        with patch.object(recording_processing, "triangulate_observation_buffers", wraps=original) as solver:
             def events():
                 yield from self.events[:3]
                 self.assertEqual(solver.call_count, 1)
                 yield from self.events[3:] + self.outcomes
-            result = process_resolved_scientific_recording(events=events(), sources=self.sources,
+            result = process_resolved_recording(events=events(), sources=self.sources,
                 execution_id="run", calibration_cameras=self.cameras,
                 matching_result=CameraMatchingResult(CameraMatchingStatus.INITIAL_ACCEPTED, (0, 1, 2), None, None),
                 matching_config=CameraMatchingConfig(), point_names=self.names, triangulation_config=TriangulationConfig())
             self.assertEqual(result.triangulation.reconstruction.points_3d.shape, (12, 10, 3))
 
     def test_poor_fitness_respects_existing_continue_policy_when_saving(self):
-        result = process_resolved_scientific_recording(events=self.events + self.outcomes, sources=self.sources,
+        result = process_resolved_recording(events=self.events + self.outcomes, sources=self.sources,
             execution_id="run", calibration_cameras=self.cameras,
             matching_result=CameraMatchingResult(CameraMatchingStatus.POOR, (0, 1, 2), None, None),
             matching_config=CameraMatchingConfig(), point_names=self.names, triangulation_config=TriangulationConfig())
@@ -210,21 +210,21 @@ class ScientificRecordingTests(unittest.TestCase):
 
     def test_continue_policy_cannot_invent_missing_assignment(self):
         with self.assertRaisesRegex(ValueError, "No camera assignment"):
-            process_resolved_scientific_recording(events=self.events + self.outcomes, sources=self.sources,
+            process_resolved_recording(events=self.events + self.outcomes, sources=self.sources,
                 execution_id="run", calibration_cameras=self.cameras,
                 matching_result=CameraMatchingResult(CameraMatchingStatus.INSUFFICIENT, None, None, None),
                 matching_config=CameraMatchingConfig(), point_names=self.names, triangulation_config=TriangulationConfig())
 
     def test_poor_fitness_still_respects_stop_policy(self):
         with self.assertRaisesRegex(ValueError, "failure policy"):
-            process_resolved_scientific_recording(events=self.events + self.outcomes, sources=self.sources,
+            process_resolved_recording(events=self.events + self.outcomes, sources=self.sources,
                 execution_id="run", calibration_cameras=self.cameras,
                 matching_result=CameraMatchingResult(CameraMatchingStatus.POOR, (0, 1, 2), None, None),
                 matching_config=CameraMatchingConfig(failure_policy=MatchingFailurePolicy.STOP),
                 point_names=self.names, triangulation_config=TriangulationConfig())
 
-    def test_mutated_scientific_payload_cannot_be_saved(self):
-        result = process_resolved_scientific_recording(events=self.events + self.outcomes, sources=self.sources,
+    def test_mutated_recording_payload_cannot_be_saved(self):
+        result = process_resolved_recording(events=self.events + self.outcomes, sources=self.sources,
             execution_id="run", calibration_cameras=self.cameras,
             matching_result=CameraMatchingResult(CameraMatchingStatus.INITIAL_ACCEPTED, (0, 1, 2), None, None),
             matching_config=CameraMatchingConfig(), point_names=self.names, triangulation_config=TriangulationConfig())

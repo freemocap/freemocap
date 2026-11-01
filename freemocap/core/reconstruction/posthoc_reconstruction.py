@@ -242,7 +242,7 @@ def reconstruct_skeletons_with_fits(
                         np.empty((request.frame_count, *item.data_values.shape[1:]), dtype=item.data_values.dtype),
                         replace(item.tensor_layout, axes=(sample_axis, *item.tensor_layout.axes[1:])))
                         for item in tensor.companion_tensors)
-                    channel_arrays[kind] = (layout, values, companions, tensor.scientific_provenance)
+                    channel_arrays[kind] = (layout, values, companions, tensor.data_provenance)
                 _, values, companions, _ = channel_arrays[kind]
                 values[start:stop] = tensor.data_values
                 for destination, source in zip(companions, tensor.companion_tensors, strict=True):

@@ -8,7 +8,7 @@ import pytest
 
 from freemocap.core.recording.exports import arrays, wide_csv
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
-from freemocap.tests.test_wide_csv_export import scientific_recording  # noqa: F401
+from freemocap.tests.test_wide_csv_export import recording_processing  # noqa: F401
 
 
 def rewrite(structure, rows, **options):
@@ -25,8 +25,8 @@ def raw_arrays(structure, scratch):
 
 @pytest.mark.parametrize('statistics', [False, True])
 @pytest.mark.parametrize('row_group_size', [1, 7, 1000])
-def test_row_group_pruning_keeps_exact_results_for_mixed_groups(scientific_recording, tmp_path, statistics, row_group_size):
-    structure, rows = scientific_recording
+def test_row_group_pruning_keeps_exact_results_for_mixed_groups(recording_processing, tmp_path, statistics, row_group_size):
+    structure, rows = recording_processing
     expected = raw_arrays(structure, tmp_path)
     # Reverse/interleave runs, frames and channels; source order is not an axis definition.
     rows = rows[::2] + rows[1::2][::-1]
@@ -50,8 +50,8 @@ def test_row_group_pruning_keeps_exact_results_for_mixed_groups(scientific_recor
     ({'timestamp_s': float('inf')}, 'Invalid frame/time'),
     ({'timestamp_s': 0.2}, 'Conflicting timestamps'),
 ])
-def test_batched_array_validation_rejects_corruption(scientific_recording, tmp_path, change, message):
-    structure, rows = scientific_recording
+def test_batched_array_validation_rejects_corruption(recording_processing, tmp_path, change, message):
+    structure, rows = recording_processing
     target = next(row for row in rows if row['run_id'] == 3 and row['channel'] == 'RAW_KEYPOINTS_3D')
     target.update(change)
     rewrite(structure, rows, row_group_size=1)
@@ -60,8 +60,8 @@ def test_batched_array_validation_rejects_corruption(scientific_recording, tmp_p
 
 
 @pytest.mark.parametrize('row_group_size', [1, 1000])
-def test_duplicate_rejected_inside_and_across_batches(scientific_recording, tmp_path, row_group_size, monkeypatch):
-    structure, rows = scientific_recording
+def test_duplicate_rejected_inside_and_across_batches(recording_processing, tmp_path, row_group_size, monkeypatch):
+    structure, rows = recording_processing
     target = next(row for row in rows if row['run_id'] == 3 and row['channel'] == 'RAW_KEYPOINTS_3D')
     rewrite(structure, rows + [target], row_group_size=row_group_size)
     original = arrays.channel_batches
@@ -78,8 +78,8 @@ def test_duplicate_rejected_inside_and_across_batches(scientific_recording, tmp_
 
 
 @pytest.mark.parametrize("split_batches", [False, True])
-def test_last_equal_timestamp_sign_and_value_signed_zero_preserved(scientific_recording, tmp_path, monkeypatch, split_batches):
-    structure, rows = scientific_recording
+def test_last_equal_timestamp_sign_and_value_signed_zero_preserved(recording_processing, tmp_path, monkeypatch, split_batches):
+    structure, rows = recording_processing
     target = [row for row in rows if row['run_id'] == 3 and row['channel'] == 'RAW_KEYPOINTS_3D' and row['frame_number'] == 10]
     for row in target:
         row['timestamp_s'] = 0.0
@@ -122,8 +122,8 @@ def test_csv_bulk_validation_rejects_corruption(tmp_path, mutation):
         wide_csv.validate_table(path, values, columns, (0, 2, 0, 3), None)
 
 
-def test_dictionary_encoded_batches_preserve_descriptor_order(scientific_recording, tmp_path, monkeypatch):
-    structure, _ = scientific_recording
+def test_dictionary_encoded_batches_preserve_descriptor_order(recording_processing, tmp_path, monkeypatch):
+    structure, _ = recording_processing
     expected = raw_arrays(structure, tmp_path)
     original = arrays.channel_batches
     def dictionary_batches(*args, **kwargs):

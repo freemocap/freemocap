@@ -97,7 +97,7 @@ class MocapPipelineIntegrationTests(unittest.TestCase):
         self.ipc = PipelineIPC(pipeline_id="integration", ws_queue=self.logs,
             global_kill_flag=multiprocessing.Value('b', False),
             heartbeat_timestamp=multiprocessing.Value('d', time.perf_counter()))
-        self.config = PosthocMocapPipelineConfig(charucoBoard={
+        self.config = PosthocMocapPipelineConfig(pipeline_implementation="current", exportToBlender=False, charucoBoard={
             "squares_x": 5, "squares_y": 3, "square_length_mm": 37.5,
         })
         self.body = Mock(spec=Tracker)

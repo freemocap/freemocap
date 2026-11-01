@@ -1,3 +1,11 @@
+import {serverUrls} from '@/constants/server-urls';
+import {recordingLocationFromPath} from './recording-location';
+
+export function recordingProcessingUrl(path: string, resource: '/processing' | '/stages' = '/processing'): string {
+    const location = recordingLocationFromPath(path);
+    return serverUrls.recordingResource(location.recordingId, resource, location.recordingParentDirectory);
+}
+
 export const PROCESSING_STAGES = [
     ['observations', '2D tracking (SkellyTracker)'],
     ['triangulation', 'Triangulation (3D points)'],

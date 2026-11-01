@@ -20,6 +20,7 @@ from freemocap.core.tasks.mocap.tracker_mappings import load_standard_human_mapp
 from skellyforge.core.math.geometry.spatial_vectors import Point
 from skellyforge.core.skeleton.pose.model_scale_fitting import (
     ModelScaleFit,
+    DEFAULT_SCALE_WINDOW_FRAMES,
     StreamingModelScaleFitter,
     scale_voting_segment_names,
 )
@@ -88,20 +89,27 @@ def _skeleton_and_voting_segments() -> tuple[SkeletonDefinition, frozenset[str]]
     )
 
 
-def _fit(keypoints: dict[str, np.ndarray]) -> ModelScaleFit:
-    """The aggregator's per-frame order: map -> hydrate -> resolve roll -> fit."""
+def _fit_sequence(frames: list[dict[str, np.ndarray]]) -> list[ModelScaleFit]:
+    """Keep the mapping, roll resolver, and scale history across observed frames."""
     skeleton, voting = _skeleton_and_voting_segments()
     mapping = load_standard_human_mapping("rtmpose")
-    observed = {
-        name: Point.from_array(values=position)
-        for name, position in mapping.apply(tracker_positions=keypoints).items()
-    }
-    resolved = ContinuousRollResolver.for_skeleton(skeleton=skeleton, rest_relative_orientations=RestPose.from_default_yaml(skeleton=skeleton).relative_orientations).resolve_pose(
-        pose=hydrate_skeleton(skeleton=skeleton, observed=observed, require_all=False)
+    resolver = ContinuousRollResolver.for_skeleton(
+        skeleton=skeleton,
+        rest_relative_orientations=RestPose.from_default_yaml(skeleton=skeleton).relative_orientations,
     )
     fitter = StreamingModelScaleFitter(skeleton=skeleton, voting_segment_names=voting)
-    fitter.observe_pose(pose=resolved)
-    return fitter.current_fit()
+    fits = []
+    for keypoints in frames:
+        observed = {name: Point.from_array(values=position)
+                    for name, position in mapping.apply(tracker_positions=keypoints).items()}
+        pose = resolver.resolve_pose(pose=hydrate_skeleton(skeleton=skeleton, observed=observed, require_all=False))
+        fitter.observe_pose(pose=pose)
+        fits.append(fitter.current_fit())
+    return fits
+
+
+def _fit(keypoints: dict[str, np.ndarray]) -> ModelScaleFit:
+    return _fit_sequence([keypoints])[0]
 
 
 def test_only_measured_landmarks_earn_a_vote_on_the_subjects_height() -> None:
@@ -148,31 +156,36 @@ def test_a_standing_subject_fits_a_plausible_body() -> None:
     assert 350.0 < fit.segment_lengths["left_upper_leg"] < 550.0
 
 
-def test_a_subject_at_a_desk_still_gets_correctly_sized_feet() -> None:
-    """The whole point. No knees, no ankles, no feet — and the feet still come out right.
+def test_partial_visibility_cold_start_sizes_unobserved_segments_from_visible_evidence() -> None:
+    """A fresh partial view estimates plausible proportions without invented leg measurements.
 
-    Nothing here measures a floor or assumes the subject is standing. The height is pooled
-    from the arms alone, and the invisible foot is sized from it.
+    This subject differs from the template. Different visible limb sets need not
+    infer identical stature; exact recovery is tested with proportional geometry
+    in SkellyForge's test_model_scale_fitting.py.
     """
-    standing = _fit(_standing_keypoints())
     seated = _fit(_seated_keypoints())
+    skeleton, _ = _skeleton_and_voting_segments()
+    low, high = _PLAUSIBLE_HEIGHT_RANGE_MM
+    assert low < seated.fitted_scale < high
+    assert seated.voting_segment_names
+    for name in ('left_foot', 'right_foot', 'left_lower_leg', 'right_lower_leg'):
+        assert name not in seated.measured_segment_names
+        proportion = skeleton.segments[name].length
+        assert seated.segment_lengths[name] == pytest.approx(proportion * seated.fitted_scale)
+        assert proportion * low < seated.segment_lengths[name] < proportion * high
 
-    # The desk really did take the legs away.
-    assert "left_lower_leg" not in seated.measured_segment_names
-    assert "left_foot" not in seated.measured_segment_names
-    assert len(seated.voting_segment_names) < len(standing.voting_segment_names)
-    assert seated.voting_segment_names, "the arms must still be measuring the subject"
 
-    # The height barely moves...
-    assert seated.fitted_scale == pytest.approx(standing.fitted_scale, rel=0.05)
-
-    # ...and the foot nobody can see lands where it lands when it IS seen.
-    assert seated.segment_lengths["left_foot"] == pytest.approx(
-        standing.segment_lengths["left_foot"], rel=0.05
-    )
-    assert seated.segment_lengths["left_upper_leg"] == pytest.approx(
-        standing.segment_lengths["left_upper_leg"], rel=0.05
-    )
+def test_established_subject_scale_remains_stable_through_occlusion_and_return() -> None:
+    """An established observation window survives a longer occlusion and reappearance."""
+    window = DEFAULT_SCALE_WINDOW_FRAMES
+    standing, seated = _standing_keypoints(), _seated_keypoints()
+    fits = _fit_sequence([standing] * window + [seated] * (2 * window) + [standing] * window)
+    baseline = fits[window - 1]
+    assert not any(any(hidden in name for hidden in _BELOW_THE_DESK) for name in seated)
+    for fit in fits[window:]:
+        assert fit.fitted_scale == pytest.approx(baseline.fitted_scale, rel=0.05)
+        for name in ('left_foot', 'right_foot', 'left_upper_leg', 'right_upper_leg'):
+            assert fit.segment_lengths[name] == pytest.approx(baseline.segment_lengths[name], rel=0.05)
 
 
 def test_the_seated_fit_uses_visible_measured_segments() -> None:

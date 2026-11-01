@@ -73,7 +73,7 @@ class ApplicationGraphTests(TestCase):
             self.assertEqual(operations['annotate_camera_0'].status, 'running')
             self.assertEqual(operations['reconstruct_skeletons'].status, 'running')
             complete.assert_called_once()
-            self.assertFalse(run.call_args.kwargs['config'].scientific_exports.formats)
+            self.assertFalse(run.call_args.kwargs['config'].export_options.formats)
             self.assertFalse(run.call_args.kwargs['config'].export_to_blender)
             self.assertEqual(Path(run.call_args.kwargs['config'].calibration_toml_path), self.calibration)
             self.assertEqual(self.calibration.read_text(), 'test calibration')

@@ -1,3 +1,8 @@
+from freemocap.api.http.capture.capture_router import capture_router
+from freemocap.api.http.recording_import.import_router import import_router
+from freemocap.api.http.recordings.processing_router import processing_router
+from freemocap.api.http.recordings.resources_router import recordings_router
+from freemocap.api.http.recordings.exports_router import recording_exports_router
 from skellycam.api.http.cameras.camera_router import camera_router
 from freemocap.api.http.playback.playback_router import playback_router
 from freemocap.api.http.posthoc.tasks_router import tasks_router
@@ -19,7 +24,7 @@ SKELLYCAM_ROUTERS = [
     camera_router,
 ]
 
-FREEMOCAP_ROUTERS = [exports_router, tasks_router, realtime_router,
+FREEMOCAP_ROUTERS = [capture_router, import_router, processing_router, recordings_router, recording_exports_router, exports_router, tasks_router, realtime_router,
                      calibration_router,
                      mocap_router,
                      blender_router,

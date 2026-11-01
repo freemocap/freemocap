@@ -133,7 +133,7 @@ def publish_checkpoint(
         proposed = result.models.get(name)
         if name in channel_models and proposed != model:
             raise ValueError(
-                "Result must preserve scientific models used by retained outputs"
+                "Result must preserve models used by retained outputs"
             )
         if name in fit_models and proposed is not model:
             # RecordingFitInputs excludes placement from scale evidence. A new
@@ -141,7 +141,7 @@ def publish_checkpoint(
             if proposed is None or definition_signature(
                 proposed.model_dump(exclude={"anchor_segment_name"})
             ) != definition_signature(model.model_dump(exclude={"anchor_segment_name"})):
-                raise ValueError("Result must preserve scientific models used by retained scale fits")
+                raise ValueError("Result must preserve models used by retained scale fits")
     retained_references = {channel.reference_frame for channel in retained.channels}
     retained_references.update(item.channel.reference_frame for item in retained.static_channels)
     retained_references.update(fit.reference_frame for fit in retained.scale_fits)

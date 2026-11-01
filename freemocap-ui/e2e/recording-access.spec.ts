@@ -53,7 +53,7 @@ test('recording ownership unmounts playback and release restores the session', a
                 import {useSyncExternalStore} from 'react';
                 let state = {pipelines: {activePipelines: {}, recordingOwners: []}};
                 const listeners = new Set<() => void>();
-                const dispatch = () => ({unwrap: () => Promise.resolve(), abort: () => {}});
+                const dispatch = () => Object.assign(Promise.resolve({type: 'snapshot/fulfilled'}), {unwrap: () => Promise.resolve(), abort: () => {}});
                 export const useAppDispatch = () => dispatch;
                 export const useAppSelector = (selector) => selector(useSyncExternalStore(
                     callback => {listeners.add(callback); return () => listeners.delete(callback);}, () => state));
@@ -63,7 +63,7 @@ test('recording ownership unmounts playback and release restores the session', a
                 export const selectActiveRecordingFullPath = () => 'C:/recordings/recording';
                 export const selectPlaybackBundle = () => () => ({});
                 export const selectPlaybackBundleError = () => () => null;
-                export const fetchTaskSnapshot = () => ({}), fetchPlaybackBundle = () => ({});
+                export const fetchTaskSnapshot = Object.assign(() => ({}), {fulfilled: {match: action => action.type === 'snapshot/fulfilled'}}), fetchPlaybackBundle = () => ({});
             `}));
             builder.onResolve({filter: /RecordingPlaybackSession$/}, () => ({path: 'session', namespace: 'session'}));
             builder.onLoad({filter: /.*/, namespace: 'session'}, () => ({loader: 'tsx', resolveDir: path.resolve('.'), contents: `

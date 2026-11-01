@@ -36,11 +36,11 @@ Inspection also confirms DetectionStage refreshes keypoint-derived boxes from
 this frame's pose; the next crop can depend on that result. Its batched path
 synchronizes detector refresh across cameras if any camera needs it. MediaPipe
 VIDEO mode has stream-local state. Arbitrarily batching future frames would
-therefore change current scientific behavior, even if results were sorted later.
+therefore change current behavior, even if results were sorted later.
 
 ## Proposed distinction
 
-A scientific item has recording/run, camera, frame and detector-stage identity.
+A item has recording/run, camera, frame and detector-stage identity.
 An inference batch is an execution choice containing compatible **ready** items;
 it is not a synchronized motion-capture frame. Results retain their identities.
 Triangulation joins all required camera observations by validated frame identity.
@@ -52,7 +52,7 @@ time. Current pose-derived crop feedback generally limits readiness to the next
 frame of each independent camera stream for that model. Removing synchronized
 frame-number admission alone does not unlock arbitrarily large batches. Changing
 to every-frame detection, frozen boxes or predicted multi-frame crops is an
-algorithm change requiring separate scientific evaluation, not a parity-preserving
+algorithm change requiring separate evaluation, not a parity-preserving
 scheduling optimization.
 
 A possible data path is bounded frame loading, exact crop/resize preparation into
@@ -74,7 +74,7 @@ must prevent reuse or ring overwrite until every consumer is finished.
 4. Compare the legal ready-work population under unchanged tracking behavior with
    the model's preferred batch size. This distinguishes GPU capacity from a real
    temporal dependency limit. Preserve detector refresh decisions for parity.
-5. Rerun scientific parity and report seconds per motion-capture frame end to end.
+5. Rerun parity and report seconds per motion-capture frame end to end.
 
 Prior quaternion microbenchmarks do not predict neural-network speedup: ONNX
 already executes tensor kernels. The opportunities here are batch utilization,
@@ -84,7 +84,7 @@ preparation and transfers. No speedup for larger post hoc batches is claimed yet
 
 User proposal: separate sparse person detection and crop planning from large-batch
 pose inference. This deliberately changes crop generation, so exact old-pipeline
-numerical parity is not expected. Scientific validation remains required.
+numerical parity is not expected. Validation remains required.
 
 Suggested experiment, not implemented:
 
@@ -106,7 +106,7 @@ Suggested experiment, not implemented:
    batches, preserving recording/camera/frame/person identity. Temporal filters
    consume ordered outputs; triangulation joins by camera/frame identity.
 6. Flag questionable poses for explicit crop revision and rerun. Confidence alone
-   is not scientific validation; compare annotated image evidence and independent
+   is not validation; compare annotated image evidence and independent
    quality metrics, including 3D/reprojection and coverage. Record crop revisions.
 
 This is adaptive temporal subdivision, not ordinary binary search: arbitrary

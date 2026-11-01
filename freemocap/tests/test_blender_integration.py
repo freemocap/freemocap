@@ -15,6 +15,7 @@ from freemocap.core.blender.runtime import environment
 import tempfile
 
 import pytest
+from freemocap.core.recording.recording_access import RecordingAccess
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -38,7 +39,7 @@ def installed_blender():
                                   ('BLENDER_USER_DATAFILES', 'datafiles'), ('BLENDER_USER_EXTENSIONS', 'extensions')]:
             path = root / folder; path.mkdir()
             env.setenv(variable, str(path))
-        app = FastAPI(); app.include_router(blender_router)
+        app = FastAPI(); app.state.recording_access = RecordingAccess(); app.include_router(blender_router)
         client = TestClient(app)
         response = client.post('/blender/addon/install', json=dict(blenderExePath=blender, archivePath=archive))
         assert response.status_code == 200, response.text
@@ -62,7 +63,7 @@ def test_installed_package_reports_and_enforces_build_identity(installed_blender
     # Export rechecks the fingerprint itself; an old UI inspection cannot bypass it.
     (tmp_path/'recording_data.parquet').touch()
     response = client.post('/blender/export', json=dict(recordingFolderPath=str(tmp_path),
-        blenderExePath=blender, autoOpenBlendFile=False, package=package, developmentBuildHash='0'*64))
+        blenderExePath=blender, autoOpenBlendFile=False, package=package, runId=0, developmentBuildHash='0'*64))
     assert response.status_code == 500
     assert 'selected development build differs' in response.json()['detail']
     assert not list(tmp_path.glob('*.blend'))
@@ -109,6 +110,6 @@ bpy.context.scene.frame_set(bpy.context.scene.frame_end)
         text=True, encoding='utf-8', errors='replace', timeout=120)
     assert reopened.returncode == 0, reopened.stdout + reopened.stderr
     if route == 'parquet_constraints':
-        assert list((recording / '3d_models').glob('*.fbx'))
+        assert list((recording / 'exports' / '3d_models').glob('*.fbx'))
     assert file_digest(parquet) == before
     assert checked_ready(prepared) == ready

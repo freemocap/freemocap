@@ -51,7 +51,7 @@ export const stopRecording = createAsyncThunk<
     'recording/stop',
     async () => {
         const response = await fetch(serverUrls.endpoints.stopRecording, {
-            method: 'GET',
+            method: 'POST',
         });
 
         if (!response.ok) {

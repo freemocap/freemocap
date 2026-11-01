@@ -178,7 +178,7 @@ substitutions, site-packages changes, or agent Git mutations.
 - Arbitrary names, same basename across directories, same stem with different extensions: no loss.
 - Missing metadata, moved recording folder, relocated media: inspect/load without invented identity.
 - Conflicting metadata, duplicate declarations, partial outputs: actionable diagnostics, unaffected
-  media still inspectable; no silent overwrite or fallback to false scientific relationships.
+  media still inspectable; no silent overwrite or fallback to false relationships.
 - Recorded timing, missing timing, invalid declared timing, offsets, unequal rates, trimmed outputs:
   correct explicit temporal semantics and deterministic forward/backward frame reads.
 - Device reorder/restart, partial ID overlap, extra calibration cameras: independent source identity

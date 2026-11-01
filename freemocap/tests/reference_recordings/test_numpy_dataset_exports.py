@@ -1,4 +1,4 @@
-"""Real prepared recording -> scientific runtime tensors -> portable NumPy datasets."""
+"""Real prepared recording -> runtime tensors -> portable NumPy datasets."""
 import json
 import os
 from pathlib import Path
@@ -9,7 +9,7 @@ import pytest
 
 from skellyforge.core.data_tensors import read_numpy_dataset
 from freemocap.core.recording.exports import arrays, numpy_dataset, publication, wide_csv
-from freemocap.core.recording.exports.requests import ScientificExportRequest
+from freemocap.core.recording.exports.requests import ExportRequest
 from freemocap.core.recording.parquet_storage.channel_arrays import read_channel_arrays
 from freemocap.core.recording.parquet_storage.recording_view import recording_view
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
@@ -30,9 +30,9 @@ def test_reference_numpy_channels_fit_evidence_and_definitions(tmp_path):
     structure = RecordingStructure(base_directory=tmp_path, recording_name=TEST_DATA.name)
     structure.full_path.mkdir()
     shutil.copy2(source_path, structure.data_parquet_path)
-    request = ScientificExportRequest(formats=('npy', 'npz'),
+    request = ExportRequest(formats=('npy', 'npz'),
         data=('LANDMARKS_3D', 'RAW_KEYPOINTS_3D', 'KEYPOINTS_3D', 'OVERLAY_2D', 'SEGMENT_POSES'))
-    result = wide_csv.export_scientific(structure=structure, request=request)
+    result = wide_csv.export_recording(structure=structure, request=request)
     manifest = publication.verified_manifest(result.manifest_path)
     descriptors = manifest.snapshots[result.source_sha256]['numpy_datasets']
     npy = read_numpy_dataset(result.manifest_path.parent / descriptors['npy']['path'])
@@ -44,7 +44,7 @@ def test_reference_numpy_channels_fit_evidence_and_definitions(tmp_path):
     with recording_view(structure.data_parquet_path) as view:
         run_id, selected = arrays.resolve_selection(view, request)
         run = view.metadata.runs[run_id]
-        native = numpy_dataset.scientific_selection(run, selected)
+        native = numpy_dataset.export_selection(run, selected)
         assert len(all_data) == len(native)
         by_context = {}
         for data in all_data:
@@ -89,7 +89,7 @@ def test_reference_numpy_channels_fit_evidence_and_definitions(tmp_path):
         first_tensor = first.data_tensor if hasattr(first, 'data_tensor') else first
         second_tensor = second.data_tensor if hasattr(second, 'data_tensor') else second
         assert first_tensor.tensor_layout == second_tensor.tensor_layout
-        assert first_tensor.scientific_provenance == second_tensor.scientific_provenance
+        assert first_tensor.data_provenance == second_tensor.data_provenance
         assert first_tensor.data_values.dtype.str == second_tensor.data_values.dtype.str
         np.testing.assert_array_equal(first_tensor.data_values, second_tensor.data_values)
         for first_companion, second_companion in zip(first_tensor.companion_tensors, second_tensor.companion_tensors, strict=True):

@@ -3,6 +3,7 @@ from freemocap.core.pipeline.performance_report import PerformanceReport
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from freemocap.core.recording.recording_access import RecordingAccess
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
@@ -16,6 +17,7 @@ from freemocap.tests.test_saved_reconstruction import saved_request  # noqa: F40
 
 def test_saved_result_export_and_stale_selection(saved_request):
     app = FastAPI()
+    app.state.recording_access = RecordingAccess()
     app.include_router(exports_router)
     with TestClient(app) as client:
         folder = str(saved_request.structure.full_path)

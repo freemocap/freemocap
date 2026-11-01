@@ -95,7 +95,7 @@ def matrix_summary(reports: list[dict]) -> str:
                   "CUDA provider registration is checked; individual ONNX kernel placement is not profiled.",
                   "Unsupported is not passed. MediaPipe exposes no CUDA backend here; ChArUco uses CPU.",
                   "These are default app model configurations, not every downloadable model variant.",
-                  "Raw observations are private diagnostics; no accepted scientific recording outputs are saved.", ""])
+                  "Raw observations are private diagnostics; no accepted recording outputs are saved.", ""])
     return "\n".join(lines)
 
 

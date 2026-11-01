@@ -12,14 +12,22 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
 import freemocap.api.http.mocap.mocap_router as mocap_router_module
 from freemocap.api.http.mocap.mocap_router import mocap_router
+from freemocap.api.http.recording_import.import_router import import_router
 from freemocap.core.pipeline.posthoc.sync_job_manager import SyncJobManager
 
 
-@pytest.fixture
-def client():
+@pytest.fixture(params=["legacy", "canonical"])
+def client(request):
     test_app = FastAPI()
     test_app.include_router(mocap_router)
-    return TestClient(test_app)
+    test_app.include_router(import_router)
+    with TestClient(test_app) as client:
+        canonical = request.param == 'canonical'
+        client.import_url = '/recording-import' if canonical else '/mocap/recording/import'
+        client.check_url = '/recording-import/check-sync' if canonical else '/mocap/recording/check_sync'
+        client.sync_url = '/recording-import/synchronize' if canonical else '/mocap/recording/synchronize'
+        client.sync_status = 202 if canonical else 201
+        yield client
 
 
 class _FakeApp:
@@ -94,7 +102,7 @@ class TestImportVideos:
             folder.mkdir()
             sources.append(_make_video_file(folder, "clip.mp4"))
         destination = tmp_path / "recordings"
-        response = client.post("/mocap/recording/import", json={
+        response = client.post(client.import_url, json={
             "videoPaths": [str(path) for path in sources],
             "recordingName": "capture", "baseDirectory": str(destination),
         })
@@ -107,7 +115,7 @@ class TestImportVideos:
         destination.mkdir()
         existing = destination / "keep.txt"
         existing.write_text("keep", encoding="utf-8")
-        response = client.post("/mocap/recording/import", json={
+        response = client.post(client.import_url, json={
             "videoPaths": [str(source)], "recordingName": "capture", "baseDirectory": str(tmp_path),
         })
         assert response.status_code == 409
@@ -122,7 +130,7 @@ class TestImportVideos:
 
         base_directory = tmp_path / "recordings"
 
-        response = client.post("/mocap/recording/import", json={
+        response = client.post(client.import_url, json={
             "videoPaths": [str(video_a), str(video_b)],
             "recordingName": "my_import_test",
             "baseDirectory": str(base_directory),
@@ -150,7 +158,7 @@ class TestImportVideos:
         video_a = _make_video_file(source_dir, "only_cam.mp4")
         base_directory = tmp_path / "recordings"
 
-        response = client.post("/mocap/recording/import", json={
+        response = client.post(client.import_url, json={
             "videoPaths": [str(video_a)],
             "baseDirectory": str(base_directory),
         })
@@ -160,12 +168,12 @@ class TestImportVideos:
         assert "imported" in body["recording_name"]
 
     def test_import_rejects_empty_video_list(self, client):
-        response = client.post("/mocap/recording/import", json={"videoPaths": []})
+        response = client.post(client.import_url, json={"videoPaths": []})
         assert response.status_code == 400
 
     def test_import_rejects_missing_video_file(self, tmp_path, client):
         base_directory = tmp_path / "recordings"
-        response = client.post("/mocap/recording/import", json={
+        response = client.post(client.import_url, json={
             "videoPaths": [str(tmp_path / "does_not_exist.mp4")],
             "baseDirectory": str(base_directory),
         })
@@ -178,7 +186,7 @@ class TestImportVideos:
         video_b = _make_video_file(source_dir, "cam1.mp4", num_frames=10)
         base_directory = tmp_path / "recordings"
 
-        response = client.post("/mocap/recording/import", json={
+        response = client.post(client.import_url, json={
             "videoPaths": [str(video_a), str(video_b)],
             "baseDirectory": str(base_directory),
         })
@@ -192,7 +200,7 @@ class TestCheckVideoSync:
         video_a = _make_video_file(tmp_path, "cam0.mp4", num_frames=5)
         video_b = _make_video_file(tmp_path, "cam1.mp4", num_frames=5)
 
-        response = client.post("/mocap/recording/check_sync", json={
+        response = client.post(client.check_url, json={
             "videoPaths": [str(video_a), str(video_b)],
         })
 
@@ -206,7 +214,7 @@ class TestCheckVideoSync:
         video_a = _make_video_file(tmp_path, "cam0.mp4", num_frames=5)
         video_b = _make_video_file(tmp_path, "cam1.mp4", num_frames=10)
 
-        response = client.post("/mocap/recording/check_sync", json={
+        response = client.post(client.check_url, json={
             "videoPaths": [str(video_a), str(video_b)],
         })
 
@@ -217,11 +225,11 @@ class TestCheckVideoSync:
         assert len(body["videos"]) == 2
 
     def test_check_sync_rejects_empty_video_list(self, client):
-        response = client.post("/mocap/recording/check_sync", json={"videoPaths": []})
+        response = client.post(client.check_url, json={"videoPaths": []})
         assert response.status_code == 400
 
     def test_check_sync_rejects_missing_video_file(self, tmp_path, client):
-        response = client.post("/mocap/recording/check_sync", json={
+        response = client.post(client.check_url, json={
             "videoPaths": [str(tmp_path / "does_not_exist.mp4")],
         })
         assert response.status_code == 400
@@ -229,11 +237,11 @@ class TestCheckVideoSync:
 
 class TestSynchronizeVideos:
     def test_synchronize_rejects_empty_video_list(self, client, sync_app):
-        response = client.post("/mocap/recording/synchronize", json={"videoPaths": []})
+        response = client.post(client.sync_url, json={"videoPaths": []})
         assert response.status_code == 400
 
     def test_synchronize_rejects_missing_video_file(self, tmp_path, client, sync_app):
-        response = client.post("/mocap/recording/synchronize", json={
+        response = client.post(client.sync_url, json={
             "videoPaths": [str(tmp_path / "does_not_exist.mp4")],
         })
         assert response.status_code == 400
@@ -250,11 +258,11 @@ class TestSynchronizeVideos:
         video_a = _make_flash_video_file(source_dir, "cam0.mp4", dark_frames=10, bright_frames=10)
         video_b = _make_flash_video_file(source_dir, "cam1.mp4", dark_frames=13, bright_frames=10)
 
-        start_response = client.post("/mocap/recording/synchronize", json={
+        start_response = client.post(client.sync_url, json={
             "videoPaths": [str(video_a), str(video_b)],
             "method": "brightness change detection",
         })
-        assert start_response.status_code == 201
+        assert start_response.status_code == client.sync_status
         job_id = start_response.json()["job_id"]
 
         result = _wait_for_sync_job(client, job_id)
@@ -264,7 +272,7 @@ class TestSynchronizeVideos:
         assert len(frame_counts_after) == 1
 
         base_directory = tmp_path / "recordings"
-        import_response = client.post("/mocap/recording/import", json={
+        import_response = client.post(client.import_url, json={
             "videoPaths": [str(video_a), str(video_b)],
             "baseDirectory": str(base_directory),
             "syncJobId": job_id,
@@ -278,7 +286,7 @@ class TestSynchronizeVideos:
         assert (synced_dir / "cam0.mp4").is_file()
         assert (synced_dir / "cam1.mp4").is_file()
 
-        check_response = client.post("/mocap/recording/check_sync", json={
+        check_response = client.post(client.check_url, json={
             "videoPaths": [str(synced_dir / "cam0.mp4"), str(synced_dir / "cam1.mp4")],
         })
         assert check_response.json()["synchronized"] is True

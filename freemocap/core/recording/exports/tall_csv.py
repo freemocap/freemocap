@@ -1,4 +1,4 @@
-"""Stream exact selected-run samples to tall CSV, preserving scientific metadata."""
+"""Stream exact selected-run samples to tall CSV, preserving metadata."""
 
 from collections.abc import Callable
 from concurrent.futures import CancelledError

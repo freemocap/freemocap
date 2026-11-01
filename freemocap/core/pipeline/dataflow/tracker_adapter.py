@@ -66,7 +66,7 @@ class SkellyTrackerAdapter:
         """One in-flight inference batch plus bounded read-ahead per camera.
 
         Close the iterator on early exit. Successful source outcomes arrive after
-        that camera's observations have been yielded; they are not scientific sink
+        that camera's observations have been yielded; they are not sink
         acceptance. Source failures allow remaining cameras to continue. An opaque
         inference-batch failure raises without attributing it to an individual camera
         or changing the caller's graph cancellation flag. No automatic stateful retry.

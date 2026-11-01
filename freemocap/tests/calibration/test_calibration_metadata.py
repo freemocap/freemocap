@@ -40,7 +40,9 @@ class CalibrationMetadataTests(TestCase):
         from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
         from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 
+        from freemocap.core.recording.recording_access import RecordingAccess
         app = FastAPI()
+        app.state.recording_access = RecordingAccess()
         app.include_router(calibration_api.calibration_router)
         application = SimpleNamespace(
             realtime_pipeline_manager=SimpleNamespace(pipelines={}),
@@ -92,7 +94,9 @@ class CalibrationMetadataTests(TestCase):
         from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
         from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 
+        from freemocap.core.recording.recording_access import RecordingAccess
         app = FastAPI()
+        app.state.recording_access = RecordingAccess()
         app.include_router(calibration_api.calibration_router)
         with TemporaryDirectory() as directory:
             path = Path(directory) / "calibration.toml"
@@ -480,7 +484,9 @@ class CalibrationMetadataTests(TestCase):
         from freemocap.core.tasks.calibration.shared.calibration_paths import create_camera_calibration_file_name
         from freemocap.core.tasks.calibration.shared.loaded_calibration import LoadedCalibration
 
+        from freemocap.core.recording.recording_access import RecordingAccess
         app = FastAPI()
+        app.state.recording_access = RecordingAccess()
         app.state.recording_access = RecordingAccess()
         app.include_router(calibration_api.calibration_router)
         app.include_router(playback_router)

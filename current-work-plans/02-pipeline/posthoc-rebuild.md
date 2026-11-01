@@ -179,7 +179,7 @@ entire arbitrary TrackerState can be reconstructed from keypoints.
 
 ## Execution request and planning
 
-Add one explicit processing request around existing scientific configs:
+Add one explicit processing request around existing configs:
 - base_run_id: selected result for reprocessing; 0 for first processing.
 - result_policy: overwrite or keep.
 - start_stage and stop_stage: stage boundaries; default whole mocap path.

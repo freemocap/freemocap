@@ -31,6 +31,7 @@ from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
+from freemocap.api.websocket.client_messages import ClientMessageError, FrameAcknowledgment
 from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
@@ -422,11 +423,11 @@ class WebsocketServer:
         if self.websocket.application_state == WebSocketState.CONNECTED:
             try:
                 await self.websocket.close(
-                    code=1011 if exc_val is not None else 1000,
-                    reason="Fatal server error; see server log" if exc_val is not None else "",
+                    code=1008 if isinstance(exc_val, ClientMessageError) else (1011 if exc_val is not None else 1000),
+                    reason="Invalid client message" if isinstance(exc_val, ClientMessageError) else ("Connection failed; see server log" if exc_val is not None else ""),
                 )
-            except WebSocketDisconnect:
-                pass
+            except (WebSocketDisconnect, RuntimeError, OSError):
+                logger.debug("WebSocket transport already closed")
         for task in self.ws_tasks:
             if not task.done():
                 task.cancel()
@@ -494,7 +495,8 @@ class WebsocketServer:
         logger.info("Starting posthoc-progress sender task...")
         try:
             while self.should_continue:
-                snapshot = self._app.posthoc_pipeline_manager.task_snapshot()
+                from freemocap.api.task_interface import task_snapshot
+                snapshot = task_snapshot(self._app)
                 await self._serializer.send_message(encode_message(ProgressMessage(snapshot=snapshot)))
                 await asyncio.sleep(0.5)
         except asyncio.CancelledError:
@@ -616,27 +618,14 @@ class WebsocketServer:
                             try:
                                 data = json.loads(text_content)
 
+                                if not isinstance(data, dict):
+                                    raise ClientMessageError('Expected a JSON object')
                                 if "frameNumber" in data:
-                                    # The ack's only remaining role: display image
-                                    # sizes, which drive SkellyCam's JPEG downscaling.
-                                    raw_sizes = data.get("displayImageSizes", None)
-                                    if raw_sizes is not None:
-                                        parsed = {
-                                            cam_id: {k: float(v) for k, v in dims.items()}
-                                            for cam_id, dims in raw_sizes.items()
-                                        }
-                                        self._display_image_sizes = {
-                                            cam_id: dims
-                                            for cam_id, dims in parsed.items()
-                                            if dims.get("width", 0) > 0 and dims.get("height", 0) > 0
-                                        } or None
-                                    else:
-                                        self._display_image_sizes = None
+                                    self._display_image_sizes = FrameAcknowledgment.model_validate(data).display_sizes()
                                 else:
-                                    logger.debug(f"Received unhandled JSON message: {list(data.keys())}")
-
-                            except json.JSONDecodeError as e:
-                                raise ValueError(f"Failed to decode JSON message: {e}") from e
+                                    logger.debug("Received unhandled JSON message: %s", list(data))
+                            except (ValueError, TypeError) as error:
+                                raise ClientMessageError('Invalid client message') from error
                         else:
                             if text_content.startswith("ping"):
                                 await self._serializer.send_raw_text("pong")
@@ -645,7 +634,7 @@ class WebsocketServer:
                             else:
                                 logger.info(f"Websocket received message: `{text_content}`")
                     elif "bytes" in message:
-                        logger.trace(f"Received binary websocket message ({len(message['bytes'])} bytes)")
+                        logger.debug("Received binary websocket message (%d bytes)", len(message["bytes"]))
                     else:
                         raise RuntimeError(f"Received unexpected message format: {message}")
 

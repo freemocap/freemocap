@@ -11,14 +11,14 @@ export function useRecordingStatus(
 ) {
     const {autoFetch = true, recordingParentDirectory = null} = options;
     const dispatch = useAppDispatch();
-    const entry = useAppSelector(selectRecordingStatusEntry(recordingId));
+    const entry = useAppSelector(selectRecordingStatusEntry(recordingId, recordingParentDirectory));
 
     const refresh = useCallback(() => {
         if (!recordingId) return;
         void dispatch(fetchRecordingStatus({recordingId, recordingParentDirectory}));
     }, [dispatch, recordingId, recordingParentDirectory]);
 
-    // Auto-fetch exactly once per (recordingId) — don't retry on error.
+    // Auto-fetch exactly once per recording location — don't retry on error.
     // If we already have an entry (success OR failure OR in-flight), skip.
     useEffect(() => {
         if (!autoFetch) return;

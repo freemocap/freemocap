@@ -30,7 +30,7 @@ class RunSaveSession:
         target = max(metadata.runs) + 1 if metadata is not None and mode == 'new_run' else source_run_id
         if metadata is not None and mode == 'new_run':
             # Atomic directory creation reserves the ID even if annotation succeeds
-            # before a failed scientific save. Never reuse failed attempts' outputs.
+            # before a failed save. Never reuse failed attempts' outputs.
             roots = (structure.exports_dir, structure.full_path, structure.full_path / 'annotated_videos')
             occupied = [int(path.name[4:]) for root in roots for path in root.glob('run-*')
                         if path.name[4:].isdigit()]

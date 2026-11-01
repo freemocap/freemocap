@@ -48,7 +48,7 @@ def test_hybrid_inventory_preserves_capture_and_optional_absence(tmp_path):
     capture = structure.full_path / "walk_info.json"
     payload = b'{"recording_name":"walk","camera_configs":{},"unknown_capture_field":42}'
     capture.write_bytes(payload)
-    # Inventory checks presence only; scientific validation belongs to the reader.
+    # Inventory checks presence only; validation belongs to the reader.
     structure.data_parquet_path.touch()
     before = sorted(path.relative_to(structure.full_path) for path in structure.full_path.rglob("*"))
     inventory = structure.validate_layout()

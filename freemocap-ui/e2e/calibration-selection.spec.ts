@@ -7,14 +7,14 @@ test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
 test('displayed calibration owns recording and live requests, including clearing and load races', async ({page}) => {
     page.on('pageerror', error => {throw error;});
-    const requests: {mocapTaskConfig?: {calibrationTomlPath: string | null}; realtimeConfig?: {
+    const requests: {config?: {calibrationTomlPath: string | null}; mocapTaskConfig?: {calibrationTomlPath: string | null}; realtimeConfig?: {
         aggregator_config: {calibration_toml_path: string | null}; camera_node_config: {charuco_board: unknown};
     }}[] = [];
     await page.route('http://localhost:53117/**', async route => {
         if (route.request().method() === 'POST') {
             requests.push(route.request().postDataJSON());
         }
-        await route.fulfill({json: {success: true, camera_group_id: 'cameras', pipeline_id: 'live'}});
+        await route.fulfill({json: {success: true, camera_group_id: 'cameras', pipeline_id: 'live', task_id: 'task', recording_id: 'sample', recording_parent_directory: 'C:/recordings'}});
     });
     await page.route('http://localhost:53117/', route => route.fulfill({contentType: 'text/html', body: '<output id="result"></output>'}));
     await page.route('**/calibration/most-recent', route => route.fulfill({json: calibrationFixture('C:/latest.toml')}));
@@ -75,7 +75,7 @@ test('displayed calibration owns recording and live requests, including clearing
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.locator('#result')).toHaveText('done');
-    expect(requests.slice(0, 3).map(request => request.mocapTaskConfig?.calibrationTomlPath)).toEqual(Array(3).fill('C:/selected.toml'));
+    expect(requests.slice(0, 3).map(request => (request.mocapTaskConfig ?? request.config)?.calibrationTomlPath)).toEqual(Array(3).fill('C:/selected.toml'));
     expect(requests.slice(3).map(request => request.realtimeConfig?.aggregator_config.calibration_toml_path)).toEqual(['C:/selected.toml', 'C:/replacement.toml', 'C:/latest.toml']);
     const savedBoard = {squares_x: 5, squares_y: 3, square_length_mm: 50, marker_length_ratio: 0.65, aruco_dictionary_enum: 2};
     expect(requests.slice(3).map(request => request.realtimeConfig?.camera_node_config.charuco_board)).toEqual([

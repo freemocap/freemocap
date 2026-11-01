@@ -128,7 +128,7 @@ def run_saved_numerical_stages(*, structure: RecordingStructure, config: Posthoc
         bundles = tuple(replace(bundle, anchor_segment_name=config.anchor_segment_name)
             if bundle.model_id == 'standard_human' else bundle for bundle in bundles)
         if not bundles:
-            raise ValueError('Saved scientific models are missing; rerun triangulation')
+            raise ValueError('Saved models are missing; rerun triangulation')
         numerical = RecordingReconstructionInput(bundles=bundles, keypoint_names=points.channel.names,
             keypoints_3d=values, measured_support=support, compute_center_of_mass=True, timing=PosthocTimingReport())
         check_cancelled()

@@ -4,7 +4,7 @@ Current audit, 2026-09-30: see [recording folder contract](recording-folder-cont
 for actual paths, metadata authority, saved parameters and run/export retention.
 Its findings supersede the older folder tree and metadata-placement claims below.
 
-Review note, 2026-09-06: the scientific direction remains the starting point; the directory tree,
+Review note, 2026-09-06: the direction remains the starting point; the directory tree,
 descriptor placement and processing metadata boundaries below are under renewed review. See
 [posthoc architecture review](../02-pipeline/posthoc-architecture-review.md) before implementation.
 
@@ -53,9 +53,9 @@ Disk flattens those channels:
 - Camera/coordinate context -> reference_frame.
 - Capture sampling sequence -> sensor_group and frame_number.
 
-The render-oriented ModelDefinition omits scientific details such as anatomical definitions and
+The render-oriented ModelDefinition omits details such as anatomical definitions and
 joint conventions. Its disk descriptor also preserves the resolved SkellyForge definitions required
-to interpret the result. Do not reconstruct scientific structure from installed defaults or names.
+to interpret the result. Do not reconstruct structure from installed defaults or names.
 
 Source files:
 - ../../../skellyforge/skellyforge/core/skeleton/skeleton_definition.py
@@ -155,7 +155,7 @@ Parent-relative rotations reference the actual parent segment frame, resolved fr
 skeleton topology. No ambiguous bare "local"; root orientation explicitly references world.
 Length/confidence scalars have null reference_frame. Channel kind and reference frame must agree.
 
-## Channels and scientific semantics
+## Channels and semantics
 
 | Channel | Names | Components / units |
 |---|---|---|
@@ -199,7 +199,7 @@ The Parquet embedded data descriptor contains:
 - Schema version and selected_run_id.
 - Per retained run: command argv or API request, resolved settings, software versions, stage status,
   dependencies, timing/quality statistics, exact calibration used, and computed output inventory.
-- Per-run model/instance/tracker/source/reference-frame descriptors, including resolved scientific
+- Per-run model/instance/tracker/source/reference-frame descriptors, including resolved
   definitions, so retained results never inherit another run's model settings.
 - Component/unit contracts, static/dynamic channel declarations, and fitted instance measurements.
 - Export status and selected run/options when exports exist.
@@ -219,7 +219,7 @@ stage reuse bookkeeping, not a per-landmark mapping-provenance taxonomy. Identit
 and reconstruction completion are published atomically with validated numeric rows. Centre-of-mass
 completion is included when computed for every reconstructed model in the group.
 
-Per-run `models` contains typed authored scientific definitions, rest poses, tracker mappings and
+Per-run `models` contains typed authored definitions, rest poses, tracker mappings and
 mass inputs. Restoring a bundle uses these stored values and domain constructors, not current YAML
 files. Local rotation references declare each segment's parent and the root's world reference;
 a missing parent pose produces a missing local quaternion. Joint scalar names come from the
@@ -265,7 +265,7 @@ See https://mp4ra.org/ for MP4 extension mechanisms.
 Round trip mixed-rate samples, multiple sources, camera/world/parent frames, named joint angles,
 missing data, static fits and retained runs. Validate the schema before changing pipeline math.
 Use typed bounded array/Arrow batches before wire float32 packing; do not route disk through CBOR.
-Scientific computation belongs to SkellyForge, detection/mapping to SkellyTracker, and recording
+Computation belongs to SkellyForge, detection/mapping to SkellyTracker, and recording
 assembly/orchestration to FreeMoCap.
 
 Video retention, publication and stale-output handling follow [processing and playback integration](../02-pipeline/processing-and-playback-integration.md#recording-video-output).

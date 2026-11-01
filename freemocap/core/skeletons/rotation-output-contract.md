@@ -21,7 +21,7 @@ change. These are output conventions, not a new motion filter.
   not a claim of a universal standard. It changes a single angle by at most
   that amount modulo a full turn; both outer angles together change the rotation
   by at most twice that bound plus arithmetic roundoff. Values outside the band
-  are not snapped. Scientific comparison tolerances are unchanged.
+  are not snapped. Comparison tolerances are unchanged.
 
 Canonical output is not a promise of temporal continuity. In particular, no
 positive-w rule is fed back into the temporal solver. Interpolation/derivatives

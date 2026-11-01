@@ -1,9 +1,9 @@
 # Integrated API handoff
 
-Status: integration validation complete; exact publication revisions are being recorded.
+Status: accepted runtime/API baseline, published to the canonical `sfn26` branches.
 This report supplements the [route migration inventory](api-route-migration.md)
-and [recording contract](../../RECORDING_CONTRACT.md). W6 must wait for the
-accepted revisions below before finalizing clients or published contracts.
+and [recording contract](../../RECORDING_CONTRACT.md). W6 and other consumers can
+target the accepted revisions below. Worktree archival is separate housekeeping.
 
 ## Revisions and ownership
 
@@ -13,9 +13,12 @@ The starting revisions were Core `72235c4d`, Cam `1df7fcb0`, Forge `73b1ac7`,
 and Tracker `713a175`. Cleanup sources were Core `d613f549`, Cam `f1aefa95`,
 and Forge `20cd7a6f`.
 
-- Cam integration: `e9f70c20`, local commit, publication pending.
-- Forge integration: `a7648e1`, local commit, publication pending.
-- Core integration: merge/reconciliation in progress; no accepted revision yet.
+- Core runtime integration: `90cd474e94eb320be22cadd2b65472108725dd54`, published.
+- Cam integration: `e9f70c200810d7aa68b24f7e71ad2294cf87ce93`, published.
+- Forge integration: `a7648e115f9a83ee80056137a438f72cadc579fe`, published.
+
+These checkouts were clean at runtime publication. Subsequent handoff-only commits
+may advance Core HEAD without changing the tested runtime baseline.
 
 Graph-only posthoc processing remains canonical. Export settings migration does
 not restore the retired runner. Tracker still owns detector presets, hand crops,

@@ -71,8 +71,13 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
               start: str = 'observations', calibration: str | None = None, alignment: str | None = None,
               run_id: int | None = None, sensor_group: str | None = None,
               timeout: float = 1800.0, output_profile: str = 'standard', blender_path: str | None = None,
-              implementation: str = 'graph') -> dict:
+              implementation: str = 'graph', tracker_preset: str | None = None) -> dict:
     require_implementation(implementation)
+    if tracker_preset is not None:
+        from skellytracker.core.io.tracker_profiles import tracker_profile
+        tracker_profile(tracker_preset)
+        if start != 'observations':
+            raise ValueError('Selecting a tracker preset requires restarting from observations')
     dataset = DATASETS[name]
     from .output_acceptance import required_outputs
     required_outputs(output_profile)
@@ -100,7 +105,7 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
                 raw=str(raw), root=str(root), run_id=run_id, sensor_group=sensor_group,
                 current=ready['recording'] if ready else None, output_profile=output_profile,
                 required_outputs=required_outputs(output_profile), blender_path=blender_path,
-                implementation=implementation)
+                implementation=implementation, tracker_preset=tracker_preset or 'rtmpose')
     if operation == 'process' and start != 'observations':
         if ready is None:
             raise ValueError('No prepared recording. Run the complete dataset workflow first.')

@@ -1,5 +1,12 @@
 # Reference dataset processing
 
+Fresh observation runs accept `--tracker-preset rtmw_mediapipe_hands` to exercise
+Tracker's combined RTMW body/face and MediaPipe hand preset. The other choices
+are `rtmpose` (the unchanged default) and `mediapipe`. The selected preset is
+recorded in the request and executed configuration. Selecting a preset on a
+saved-stage restart is rejected; restart from observations to change trackers.
+Use separate `--prepared-root` directories for controlled preset comparisons.
+
 ## Optional stage-range release check
 
 Run the complete **15-range** matrix explicitly; normal tests never launch it.
@@ -530,3 +537,11 @@ overhead is included and its scope is the calling thread, not inference/decoder
 worker threads. Do not compare profiled wall time directly with the unprofiled
 baseline. Use a fresh ignored output directory for every run. See
 [current sample measurements](../../../current-work-plans/02-pipeline/component-measurements.md).
+
+For the RTMW versus RTMW/MediaPipe-hand comparison, use
+`python -B -m freemocap.tools.datasets.hand_tracker_comparison --recording RECORDING_PATH --output .test-artifacts/NEW_COMPARISON --execution-provider cuda --repeats 2`.
+Run recordings sequentially. This measures direct tracking calls, saves dense NPZ
+evidence, and compares retained RTMW keypoints exactly. It does not measure live UI
+FPS or establish hand-position accuracy. See
+[the integration results](../../../TRACKER_COMPOSITION_INTEGRATION.md) for scope,
+measurements and current limitations.

@@ -36,6 +36,8 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument('--calibration', help='fresh, existing, or a TOML path; full runs default to fresh')
             sub.add_argument('--alignment', choices=('auto', 'calibration', 'person'), help='Default: auto')
             sub.add_argument('--from', dest='start', choices=workflow.STARTS, default='observations')
+            sub.add_argument('--tracker-preset', choices=('rtmpose', 'mediapipe', 'rtmw_mediapipe_hands'),
+                             help='Tracker preset for a fresh observations run')
             sub.add_argument('--run-id', type=int)
             sub.add_argument('--sensor-group')
     return command
@@ -70,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
                     options.update(start=args.start, calibration=args.calibration, alignment=args.alignment,
                                    run_id=args.run_id, sensor_group=args.sensor_group,
                                    output_profile=args.output_profile, blender_path=args.blender_path,
-                                   implementation=args.implementation)
+                                   implementation=args.implementation, tracker_preset=args.tracker_preset)
                 result = workflow.preflight(name, **options) if args.dry_run else str(workflow.process(name, **options))
             print(json.dumps(result, indent=2), flush=True)
     except (ValueError, OSError, RuntimeError, KeyError) as error:

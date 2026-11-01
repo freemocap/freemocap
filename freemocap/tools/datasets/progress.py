@@ -41,7 +41,7 @@ def owner(pipeline: str, detail: str) -> str:
     if pipeline == 'validation':
         return 'FreeMoCap · validation'
     if 'Detecting and annotating' in detail:
-        return 'SkellyTracker · RTMPose'
+        return 'SkellyTracker · keypoint detection'
     return 'FreeMoCap · mocap'
 
 

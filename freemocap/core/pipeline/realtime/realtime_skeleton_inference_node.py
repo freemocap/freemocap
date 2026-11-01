@@ -9,7 +9,7 @@ from queue import Empty
 from concurrent.futures import CancelledError, TimeoutError
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from freemocap.core.pipeline.inference_service import InferenceService, InferenceMode, InferenceRegistration, InferenceRequest
-from freemocap.core.tracking.tracker_factory import tracker_session_requests, skeleton_tracker_config, mediapipe_tracker_config
+from freemocap.core.tracking.tracker_factory import tracker_session_requests
 
 import cv2
 import numpy as np
@@ -145,18 +145,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 cleanup.callback(camera_shm.close)
 
             settings = pipeline_config.camera_node_config
-            if settings.detector_type == "mediapipe":
-                tracker_config = mediapipe_tracker_config(
-                    model_complexity=settings.mediapipe_model_complexity,
-                    detection_confidence=settings.mediapipe_detection_confidence,
-                    presence_confidence=settings.mediapipe_presence_confidence,
-                    tracking_confidence=settings.mediapipe_tracking_confidence,
-                    num_hands=settings.mediapipe_num_hands, num_faces=settings.mediapipe_num_faces,
-                )
-            else:
-                tracker_config = skeleton_tracker_config(model_name=settings.rtmpose_model_name,
-                    confidence_threshold=settings.rtmpose_confidence_threshold,
-                    video_fps=30.0, keypoint_bbox_expansion=0.05)
+            from freemocap.core.tracking.tracker_factory import tracker_config_for_settings
+            tracker_config = tracker_config_for_settings(settings)
             client = inference_service.register(InferenceRegistration(
                 pipeline_id=ipc.pipeline_id, mode=InferenceMode.REALTIME,
                 tracker_config=tracker_config,

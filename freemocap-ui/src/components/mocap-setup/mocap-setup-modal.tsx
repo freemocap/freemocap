@@ -83,7 +83,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             return <SettingsSummaryChip>{`MediaPipe · ${config.mediapipeModelComplexity}`}</SettingsSummaryChip>;
         }
         const model = RTMPOSE_MODELS.find(entry => entry.value === config.rtmPoseModelName);
-        return <SettingsSummaryChip>{['RTMPose', model?.label].filter(Boolean).join(' · ')}</SettingsSummaryChip>;
+        return <SettingsSummaryChip>{[config.detectorType === 'rtmw_mediapipe_hands' ? 'RTMW + MediaPipe hands' : 'RTMW', model?.label].filter(Boolean).join(' · ')}</SettingsSummaryChip>;
     };
 
     const recordingName = mocapRecordingPath?.split(/[\\/]/).filter(Boolean).pop() ?? '';

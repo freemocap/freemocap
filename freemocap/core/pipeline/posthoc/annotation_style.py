@@ -14,7 +14,7 @@ from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator, 
 from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_annotator import CharucoAnnotator, CharucoAnnotatorConfig
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoDetectorConfig
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import MediapipePoseDetectorConfig
-from freemocap.core.tracking.tracker_definitions import MEDIAPIPE_WHOLEBODY_DEFINITION, RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.tracking.tracker_definitions import MEDIAPIPE_WHOLEBODY_DEFINITION, RTMPOSE_WHOLEBODY_DEFINITION, tracker_definition
 
 # BGR (cv2 convention) equivalents of the realtime renderer's hex colors.
 _CENTER_COLOR = (0, 170, 0)       # #00AA00
@@ -149,7 +149,7 @@ def build_observation_annotator(tracker_config: TrackerConfig) -> KeypointAnnota
                     config=CharucoAnnotatorConfig(), board_def=detector.board,
                 )
 
-    tracker_definition = (
+    definition = tracker_definition(tracker_config.preset_name) if tracker_config.preset_name else (
         MEDIAPIPE_WHOLEBODY_DEFINITION
         if uses_mediapipe
         else RTMPOSE_WHOLEBODY_DEFINITION
@@ -157,7 +157,7 @@ def build_observation_annotator(tracker_config: TrackerConfig) -> KeypointAnnota
     return KeypointAnnotator(
         config=KeypointAnnotatorConfig(stage_schemas={
             "body": build_skeleton_stage_schema(
-                tracker_definition.connections, tracker_definition.tracked_points,
+                definition.connections, definition.tracked_points,
             ),
         }),
         stage_annotators=stage_annotators,

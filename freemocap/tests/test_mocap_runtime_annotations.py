@@ -27,7 +27,7 @@ def test_full_processing_reaches_detection_and_numerical_work(monkeypatch, tmp_p
     monkeypatch.setattr(mocap_pipeline, 'complete_mocap', complete)
     ipc = Mock(spec=PipelineIPC, should_continue=True)
     request = Mock(spec=mocap_pipeline.MocapWorkerRequest,
-        pipeline_id='runtime-regression', config=PosthocMocapPipelineConfig(),
+        pipeline_id='runtime-regression', config=PosthocMocapPipelineConfig(pipeline_implementation='current'),
         recording=SimpleNamespace(full_recording_path=tmp_path), ipc=ipc,
         progress_queue=Queue(), registry=Mock(spec=WorkerRegistry),
         inference_service=Mock(spec=InferenceService), video_nodes=[],

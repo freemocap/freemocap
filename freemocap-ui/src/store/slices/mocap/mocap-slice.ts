@@ -54,7 +54,7 @@ export interface PosthocFilterConfig {
     order: number;
 }
 
-export type DetectorType = "rtmpose" | "mediapipe";
+export type DetectorType = "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands";
 export type RTMPoseModelName = "rtmw-x-l_256x192" | "rtmw-x-l_384x288" | "rtmw-l-m_256x192";
 export type MediapipeModelComplexity = "lite" | "full" | "heavy";
 export {EXECUTION_PROVIDERS} from '@/types/execution-provider';

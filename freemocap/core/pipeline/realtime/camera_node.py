@@ -80,32 +80,11 @@ def _build_charuco_tracker_from_config(node_config: CameraNodeConfig):
 
 
 def _build_skeleton_tracker_from_config(node_config: CameraNodeConfig, execution_provider=None):
-    """Return (Tracker, session) for skeleton detection in per-camera mode."""
-    if node_config.detector_type == "mediapipe":
-        from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker
-        return build_mediapipe_tracker(
-            model_complexity=node_config.mediapipe_model_complexity,
-            detection_confidence=node_config.mediapipe_detection_confidence,
-            presence_confidence=node_config.mediapipe_presence_confidence,
-            tracking_confidence=node_config.mediapipe_tracking_confidence,
-            num_hands=node_config.mediapipe_num_hands,
-            num_faces=node_config.mediapipe_num_faces,
-        )
-
-    from freemocap.core.tracking.tracker_factory import (
-        build_skeleton_onnx_session,
-        build_skeleton_tracker,
-    )
-
-    model_name = node_config.rtmpose_model_name
-    confidence_threshold = node_config.rtmpose_confidence_threshold
-    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name, execution_provider=execution_provider)
-    tracker = build_skeleton_tracker(
-        onnx_session=onnx_session,
-        model_name=model_name,
-        confidence_threshold=confidence_threshold,
-    )
-    return tracker, onnx_session
+    """Create Tracker's selected preset with application-owned resource lifetime."""
+    from freemocap.core.tracking.tracker_factory import build_configured_tracker, tracker_config_for_settings
+    tracker = build_configured_tracker(config=tracker_config_for_settings(node_config),
+                                       batch_size=1, execution_provider=execution_provider)
+    return tracker, tracker.sessions.get("onnx", tracker.sessions.get("mediapipe"))
 
 
 @dataclass

@@ -182,7 +182,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Skeleton"
                     checked={skeletonEnabled}
                     onToggle={onSkeletonToggle}
-                    summaryWhenCollapsed={activeDetectorType === "rtmpose" ? "RTMPose" : "MediaPipe"}
+                    summaryWhenCollapsed={activeDetectorType === "rtmpose" ? "RTMW" : activeDetectorType === "mediapipe" ? "MediaPipe" : "RTMW + MediaPipe hands"}
                 >
                     <div className="p-1 flex flex-col gap-1 pl-4" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
 
@@ -190,20 +190,20 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         <div className="flex flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Detector</span>
                             <div className="flex flex-row gap-1">
-                                {(["rtmpose", "mediapipe"] as DetectorType[]).map((type) => (
+                                {(["rtmpose", "mediapipe", "rtmw_mediapipe_hands"] as DetectorType[]).map((type) => (
                                     <button
                                         key={type}
                                         className={`button sm br-1 ${activeDetectorType === type ? "primary accent" : "quaternary"}`}
                                         onClick={() => handleSetDetectorType(type)}
                                     >
-                                        {type === "rtmpose" ? "RTMPose" : "MediaPipe"}
+                                        {type === "rtmpose" ? "RTMW" : type === "mediapipe" ? "MediaPipe" : "RTMW + MediaPipe hands"}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         {/* RTMPose settings */}
-                        {activeDetectorType === "rtmpose" && context === "posthoc" && (
+                        {activeDetectorType !== "mediapipe" && context === "posthoc" && (
                             <>
                                 <p className="text-sm text-gray">
                                     133 keypoints (body, hands, face) via YOLOX person detection + RTMPose estimation.
@@ -232,12 +232,12 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                 </div>
                             </>
                         )}
-                        {activeDetectorType === "rtmpose" && context === "realtime" && (
+                        {activeDetectorType !== "mediapipe" && context === "realtime" && (
                             <p className="text-sm text-gray">
                                 133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
                             </p>
                         )}
-                        {activeDetectorType === "rtmpose" && (
+                        {activeDetectorType !== "mediapipe" && (
                             <div className="flex flex-row gap-1 items-center justify-content-space-between flex-wrap pos-rel z-10">
                                 <span className="text-sm">Execution provider</span>
                                 <NameDropdownSelector
@@ -253,12 +253,12 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         )}
 
                         {/* MediaPipe settings */}
-                        {activeDetectorType === "mediapipe" && (
+                        {activeDetectorType !== "rtmpose" && (
                             <>
                                 <p className="text-sm text-gray">
-                                    Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.
+                                    {activeDetectorType === "mediapipe" ? "MediaPipe body, hands and face." : "RTMW body and face with MediaPipe hands; these confidence settings apply to the hands."}
                                 </p>
-                                <div className="flex flex-row gap-1 items-center justify-content-space-between">
+                                {activeDetectorType === "mediapipe" && <div className="flex flex-row gap-1 items-center justify-content-space-between">
                                     <span className="text-sm">Model size</span>
                                     <div className="flex flex-row gap-1">
                                         {(["lite", "full", "heavy"] as MediapipeModelComplexity[]).map((c) => {
@@ -279,7 +279,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                             );
                                         })}
                                     </div>
-                                </div>
+                                </div>}
                                 <div className="flex flex-row gap-1 items-center justify-content-space-between">
                                     <span className="text-sm">Detection confidence</span>
                                     <ValueSelector

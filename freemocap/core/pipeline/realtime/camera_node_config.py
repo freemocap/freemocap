@@ -2,70 +2,29 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
-from skellytracker.core import TrackerConfig, DetectionStageConfig
+from skellytracker.core import TrackerConfig
 from skellytracker.core.detectors.keypoint_detectors.charuco import (
     CharucoBoardDefinition,
-    CharucoDetectorConfig,
 )
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
     MediapipePoseModelComplexity,
 )
-from skellytracker.core.detectors.keypoint_detectors.rtmw.wholebody.rtmw_wholebody_detector import RTMWWholebodyDetectorConfig
-from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
-from skellytracker.core.temporal_processing.temporal_processing_config import (
-    BBoxPolicyConfig,
-    BBoxSmoothingConfig,
-)
 
 
-_REDETECT_SECONDS = 5.0
-_ASSUMED_CAMERA_FPS = 30.0
 
 # The one definition point for the default skeleton detector. Everything that
 # needs "the detector we assume when none is running" reads this.
-DEFAULT_DETECTOR_TYPE: Literal["rtmpose", "mediapipe"] = "rtmpose"
+DEFAULT_DETECTOR_TYPE: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands"] = "rtmpose"
 
 
 def _default_skeleton_tracker_config() -> TrackerConfig:
-    redetect_interval = max(1, round(_REDETECT_SECONDS * _ASSUMED_CAMERA_FPS))
-    return TrackerConfig(
-        stages=[
-            DetectionStageConfig(
-                name="body",
-                object_detector=YoloxPersonDetectorConfig(),
-                keypoint_detectors=[
-                    RTMWWholebodyDetectorConfig(
-                        model_name="rtmw-x-l_256x192",
-                        confidence_threshold=0.4,
-                    )
-                ],
-                bbox_policy=BBoxPolicyConfig(
-                    redetect_interval=redetect_interval,
-                    keypoint_bbox_expansion=0.05,
-                    # See skeleton_tracker_config in tracker_factory.py: the
-                    # keypoints_within_bbox_ratio check measures against
-                    # smooth_bbox rather than the padded/aspect-corrected window
-                    # RTMPose actually decodes into, so it false-fires on every
-                    # frame for a standing subject and pins the person detector on.
-                    fitness_checks=[],
-                    min_shrink_ratio_per_frame=0.995,
-                    min_bbox_size_px=80.0,
-                ),
-                bbox_smoothing=BBoxSmoothingConfig(alpha=0.4),
-            )
-        ]
-    )
+    from skellytracker.core.tracker.tracker_presets import human_tracker_config
+    return human_tracker_config(preset=DEFAULT_DETECTOR_TYPE)
 
 
 def _charuco_tracker_config_for_board(board: CharucoBoardDefinition) -> TrackerConfig:
-    return TrackerConfig(
-        stages=[
-            DetectionStageConfig(
-                name="charuco",
-                keypoint_detectors=[CharucoDetectorConfig(board=board)],
-            )
-        ]
-    )
+    from skellytracker.core.tracker.tracker_presets import charuco_tracker_config
+    return charuco_tracker_config(board)
 
 #TODO - JSM - Yee-ikes! this is awful and ugly and NEEDS FIXED
 
@@ -74,8 +33,8 @@ class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
-    detector_type: Literal["rtmpose", "mediapipe"] = DEFAULT_DETECTOR_TYPE
-    # RTMPose config (only used when detector_type="rtmpose")
+    detector_type: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands"] = DEFAULT_DETECTOR_TYPE
+    # RTMW settings used by both rtmpose and rtmw_mediapipe_hands.
     rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = "rtmw-x-l_256x192"
     rtmpose_confidence_threshold: float = 0.4
     # MediaPipe config (only used when detector_type="mediapipe")
@@ -130,4 +89,6 @@ class CameraNodeConfig(BaseModel):
         of via stages[0].keypoint_detectors[0].board.
         """
         self.charuco_tracker_config = _charuco_tracker_config_for_board(self.charuco_board)
+        from freemocap.core.tracking.tracker_factory import tracker_config_for_settings
+        self.skeleton_tracker_config = tracker_config_for_settings(self)
         return self

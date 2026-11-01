@@ -11,22 +11,20 @@ from concurrent.futures import CancelledError
 from skellycam.core.ipc.process_management.managed_worker import ManagedWorker, WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellytracker.core import DetectionStageConfig, TrackerConfig
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition, CharucoDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.mocap_detection import MocapDetectionRequest, detect_mocap_recording
 from freemocap.core.pipeline.posthoc.mocap_video_node import MocapVideoNode
-from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, MocapStage, PosthocPipelineType
+from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
 from freemocap.core.pipeline.posthoc.operation_progress import OperationProgressReporter
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_task
 from freemocap.core.tracking.board_selection import CharucoBoardMode
-from freemocap.core.tracking.tracker_factory import CHARUCO_STAGE_NAME
 
 # The app's beartype import hook evaluates local variable annotations at runtime.
 # Keep these imports available even though static analysis sees only type usage.
@@ -132,10 +130,8 @@ def _run_mocap_pipeline(*, request: MocapWorkerRequest) -> None:
                 video_metadata = frame.video_metadata
                 if frame.selected_board is not None and selected_board is None:
                     selected_board = frame.selected_board
-                    tracker_config = TrackerConfig(stages=[
-                        *request.config.tracker_config.stages,
-                        DetectionStageConfig(name=CHARUCO_STAGE_NAME, keypoint_detectors=[CharucoDetectorConfig(board=selected_board)]),
-                    ])
+                    from skellytracker.core.tracker.tracker_presets import with_charuco_tracker
+                    tracker_config = with_charuco_tracker(request.config.tracker_config, selected_board)
                     resolved_config = request.config.model_copy(update={
                         "charuco_board": selected_board, "board_mode": CharucoBoardMode.EXPLICIT,
                         "tracker_config": tracker_config,

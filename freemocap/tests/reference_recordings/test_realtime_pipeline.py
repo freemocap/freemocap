@@ -135,12 +135,13 @@ def replay_reference(request):
 @pytest.mark.parametrize("human_enabled", [False, True], ids=["charuco", "charuco-and-human"])
 @pytest.mark.parametrize("use_default_calibration", [False, True], ids=["explicit-calibration", "latest-calibration"])
 @pytest.mark.parametrize('centralized', [True, False], ids=['centralized', 'per-camera'])
-def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, human_enabled, use_default_calibration, centralized, monkeypatch):
+def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, human_enabled, use_default_calibration, centralized, monkeypatch, preset="rtmpose"):
     calibration = find_recording_calibration(recording_folder=replay_reference.full_path)
     assert calibration is not None
     monkeypatch.setattr(calibration_paths, 'get_last_successful_calibration_toml_path', lambda: calibration)
     config = RealtimePipelineConfig(
         camera_node_config=CameraNodeConfig(
+            detector_type=preset,
             worker_mode=WorkerMode.THREAD, charuco_board=CharucoBoardDefinition.create_test_data_7x5(),
             charuco_tracking_enabled=True, skeleton_tracking_enabled=human_enabled,
         ),
@@ -233,3 +234,12 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
                 continue
             leaked.close()
             pytest.fail(f"Shared memory survived shutdown: {name}")
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@pytest.mark.parametrize('centralized', [True, False], ids=['centralized', 'per-camera'])
+def test_combined_tracker_realtime_replay(replay_reference, centralized, monkeypatch):
+    """Exercise the complete combined tracker recording on both live implementations."""
+    test_realtime_replay_preserves_frames_and_reconstructs(
+        replay_reference, True, False, centralized, monkeypatch, preset="rtmw_mediapipe_hands")

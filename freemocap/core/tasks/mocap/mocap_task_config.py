@@ -1,4 +1,3 @@
-from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker_config
 from freemocap.core.blender.blender_export_config import BlenderExportConfig
 from freemocap.core.recording.exports.requests import ScientificExportOptions
 from typing import Literal
@@ -6,17 +5,11 @@ from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
 from freemocap.core.reconstruction.posthoc_filtering import PosthocFilterConfig
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from skellytracker.core import DetectionStageConfig, TrackerConfig
+from skellytracker.core import TrackerConfig
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
     MediapipePoseModelComplexity,
 )
-from skellytracker.core.detectors.keypoint_detectors.rtmw.wholebody.rtmw_wholebody_detector import RTMWWholebodyDetectorConfig
-from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
 from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
-from skellytracker.core.temporal_processing.temporal_processing_config import (
-    BBoxPolicyConfig,
-    BBoxSmoothingConfig,
-)
 
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.calibration.camera_matching.matching_models import CameraMatchingConfig
@@ -56,10 +49,10 @@ class PosthocMocapPipelineConfig(BaseModel):
         default_factory=CharucoBoardDefinition.create_letter_size_5x3, alias="charucoBoard",
     )
 
-    detector_type: Literal["rtmpose", "mediapipe"] = Field(
+    detector_type: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands"] = Field(
         default="rtmpose",
         alias="detectorType",
-        description="Which pose detector to use: 'rtmpose' (default, more accurate) or 'mediapipe' (faster, CPU-friendly).",
+        description="Tracking preset: RTMW, MediaPipe, or RTMW with MediaPipe hands.",
     )
     # RTMPose settings
     rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = Field(
@@ -188,42 +181,6 @@ class PosthocMocapPipelineConfig(BaseModel):
 
     @model_validator(mode="after")
     def _build_tracker_config_from_detector_type(self) -> "PosthocMocapPipelineConfig":
-        if self.detector_type == "mediapipe":
-            self.tracker_config = build_mediapipe_tracker_config(
-                model_complexity=self.mediapipe_model_complexity,
-                detection_confidence=self.mediapipe_detection_confidence,
-                presence_confidence=self.mediapipe_presence_confidence,
-                tracking_confidence=self.mediapipe_tracking_confidence,
-                num_faces=self.mediapipe_num_faces,
-            )
-        else:
-            redetect_interval = max(1, round(5.0 * self.video_fps))
-            self.tracker_config = TrackerConfig(
-                stages=[
-                    DetectionStageConfig(
-                        name="body",
-                        object_detector=YoloxPersonDetectorConfig(),
-                        keypoint_detectors=[
-                            RTMWWholebodyDetectorConfig(
-                                model_name=self.rtmpose_model_name,
-                                confidence_threshold=self.rtmpose_confidence_threshold,
-                            )
-                        ],
-                        bbox_policy=BBoxPolicyConfig(
-                            redetect_interval=redetect_interval,
-                            keypoint_bbox_expansion=0.05,
-                            # See skeleton_tracker_config in tracker_factory.py:
-                            # the keypoints_within_bbox_ratio check measures
-                            # against smooth_bbox rather than the padded/
-                            # aspect-corrected window RTMPose actually decodes
-                            # into, so it false-fires on every frame for a
-                            # standing subject and pins the person detector on.
-                            fitness_checks=[],
-                            min_shrink_ratio_per_frame=0.995,
-                            min_bbox_size_px=80.0,
-                        ),
-                        bbox_smoothing=BBoxSmoothingConfig(alpha=0.4),
-                    )
-                ]
-            )
+        from freemocap.core.tracking.tracker_factory import tracker_config_for_settings
+        self.tracker_config = tracker_config_for_settings(self, video_fps=self.video_fps)
         return self

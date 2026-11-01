@@ -200,7 +200,7 @@ def run_worker(request_path: Path) -> None:
         from freemocap.core.reconstruction.alignment_config import MocapAlignmentConfig
         config = PosthocMocapPipelineConfig(
             pipeline_implementation='typed_dataflow' if implementation == 'graph' else 'current',
-            calibration_toml_path=str(calibration_path), detector_type="rtmpose",
+            calibration_toml_path=str(calibration_path), detector_type=request.get("tracker_preset", "rtmpose"),
             board_mode=CharucoBoardMode.EXPLICIT, charuco_board=board,
             video_fps=request["fps"], export_to_blender=profile == 'standard', auto_open_blend_file=False,
             blender_exe_path=str(prepared_blender[0]) if prepared_blender else None,

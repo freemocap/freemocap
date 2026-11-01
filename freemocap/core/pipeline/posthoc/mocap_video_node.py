@@ -14,9 +14,9 @@ from numpy.typing import NDArray
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.sequential_video_reader import SequentialVideoReader
-from skellytracker.core import Tracker, TrackerConfig, DetectionStageConfig
+from skellytracker.core import Tracker, TrackerConfig
 from skellytracker.core.data_primitives.observation import Observation
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition, CharucoDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from skellytracker.core.tracker.tracker_state import TrackerState
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -26,7 +26,7 @@ from freemocap.core.pipeline.posthoc.annotation_style import build_observation_a
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage, VideoNodeProgressMessage
 from freemocap.core.pipeline.posthoc.pipeline_phases import VideoNodePhase, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
-from freemocap.core.tracking.tracker_factory import build_charuco_tracker, CHARUCO_STAGE_NAME
+from freemocap.core.tracking.tracker_factory import build_charuco_tracker
 
 
 @dataclass(frozen=True)
@@ -117,11 +117,9 @@ class MocapVideoNode:
                                 if board_tracker is None:
                                     board_tracker, _ = build_charuco_tracker(board_def=command.board)
                                     cleanup.callback(board_tracker.close)
-                                    annotator = build_observation_annotator(TrackerConfig(stages=[
-                                        *self.config.tracker_config.stages,
-                                        DetectionStageConfig(name=CHARUCO_STAGE_NAME,
-                                            keypoint_detectors=[CharucoDetectorConfig(board=command.board)]),
-                                    ]))
+                                    from skellytracker.core.tracker.tracker_presets import with_charuco_tracker
+                                    annotator = build_observation_annotator(with_charuco_tracker(
+                                        self.config.tracker_config, command.board))
                                 board_observation, board_state = board_tracker.process_image(
                                     image=command.image, frame_number=command.observation.frame_number, state=board_state,
                                 )

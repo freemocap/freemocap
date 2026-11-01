@@ -119,8 +119,7 @@ def test_per_camera_factory_receives_selected_provider():
     from freemocap.core.pipeline.realtime.camera_node import _build_skeleton_tracker_from_config
     from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
     from freemocap.core.tracking import tracker_factory
-    with patch.object(tracker_factory, 'build_skeleton_onnx_session') as create, \
-         patch.object(tracker_factory, 'build_skeleton_tracker'):
+    with patch.object(tracker_factory, 'build_configured_tracker') as create:
         _build_skeleton_tracker_from_config(CameraNodeConfig(), 'cpu')
     assert create.call_args.kwargs['execution_provider'] == 'cpu'
 

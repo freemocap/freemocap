@@ -16,8 +16,9 @@ import {
 } from '@/store/slices/mocap';
 
 const DETECTORS: { label: string; value: DetectorType }[] = [
-    {label: "RTMPose", value: "rtmpose"},
-    {label: "MediaPipe Holistic", value: "mediapipe"},
+    {label: "RTMW", value: "rtmpose"},
+    {label: "RTMW + MediaPipe hands", value: "rtmw_mediapipe_hands"},
+    {label: "MediaPipe", value: "mediapipe"},
 ];
 
 const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
@@ -29,8 +30,9 @@ const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }
 const DETECTOR_INFO = {
     title: "Skeleton detector",
     text: <>
-        <p><strong>RTMPose</strong> — 133 keypoints (body, hands, face) via YOLOX person detection followed by RTMPose estimation. Recommended for best accuracy.</p>
-        <p><strong>MediaPipe Holistic</strong> — body (33) + hands (21 each) + face (60) in a single pass. Faster on CPU, fewer total keypoints.</p>
+        <p><strong>RTMW</strong> — body, hand and face keypoints from the wholebody model, following YOLOX person detection.</p>
+        <p><strong>MediaPipe</strong> — separate pose, cropped hand and face detectors.</p>
+        <p><strong>RTMW + MediaPipe hands</strong> — RTMW body and face with separately cropped MediaPipe hands. The confidence settings below apply to those hands.</p>
         <p><em>The detector decides which parameters below apply.</em></p>
     </>,
 };
@@ -62,7 +64,7 @@ const CONFIDENCE_INFO = {
 const DETECTION_CONFIDENCE_INFO = {
     title: "Detection confidence",
     text: <>
-        <p>How confident MediaPipe must be that it has found a person before it starts estimating landmarks for that frame.</p>
+        <p>The detection confidence required by the selected MediaPipe detectors; for the combined preset this applies to hand detection.</p>
         <p><em>Raise it if it locks onto things that are not people; lower it if it fails to pick up a person who is partly out of frame.</em></p>
     </>,
 };
@@ -70,15 +72,15 @@ const DETECTION_CONFIDENCE_INFO = {
 const PRESENCE_CONFIDENCE_INFO = {
     title: "Presence confidence",
     text: <>
-        <p>How confident MediaPipe must be that an individual landmark is actually present before reporting it.</p>
-        <p><em>This governs single points rather than the whole person, so it is what thins out occluded hands and feet.</em></p>
+        <p>The presence confidence required by the selected MediaPipe pose or hand detector.</p>
+        <p><em>Raise it to reject less certain detections; lower it to accept more uncertain detections.</em></p>
     </>,
 };
 
 const TRACKING_CONFIDENCE_INFO = {
     title: "Tracking confidence",
     text: <>
-        <p>How confident MediaPipe must be that it is still following the same person from the previous frame. Below this it stops tracking and runs person detection again.</p>
+        <p>The tracking confidence required by the selected MediaPipe detectors before requesting detection again.</p>
         <p><em>Lower values hold the track through occlusions; higher values re-detect sooner when the track drifts.</em></p>
     </>,
 };
@@ -130,23 +132,23 @@ export default function MocapDetectorSettings() {
             control={<SettingSelectInput label="Skeleton detector" value={detector} options={DETECTORS}
                 onChange={setDetectorType}/>}/>
 
-        {detector === "rtmpose" && <>
+        {detector !== "mediapipe" && <>
             <SettingRow label="Execution provider" info={{title: 'Execution provider', text: 'Auto retains the pipeline default. Choices are advertised by the server runtime; session startup verifies the selected provider can load.'}}
                 control={<SettingSelectInput label="Execution provider" value={executionProvider ?? 'auto'}
                     options={executionProviderOptions.map(option => ({...option, value: option.value ?? 'auto' as const}))}
                     onChange={(value: ExecutionProviderName | 'auto') => setExecutionProvider(value === 'auto' ? null : value)}/>}/>
             <SettingRow label="Model" info={MODEL_INFO}
-                control={<SettingSelectInput label="RTMPose model" value={rtmPoseModelName ?? "rtmw-x-l_384x288"}
+                control={<SettingSelectInput label="RTMPose model" value={rtmPoseModelName ?? "rtmw-x-l_256x192"}
                     options={RTMPOSE_MODELS} onChange={(value: RTMPoseModelName) => setRtmPoseModelName(value)}/>}/>
             <SettingRow label="Confidence threshold" info={CONFIDENCE_INFO}
-                control={<ValueSelector value={rtmPoseConfidenceThreshold ?? 0.004} min={0} max={1} step={0.001}
+                control={<ValueSelector value={rtmPoseConfidenceThreshold ?? 0.4} min={0} max={1} step={0.001}
                     unit="" onChange={setRtmPoseConfidenceThreshold}/>}/>
         </>}
 
-        {detector === "mediapipe" && <>
-            <SettingRow label="Pose model size" info={COMPLEXITY_INFO}
+        {detector !== "rtmpose" && <>
+            {detector === "mediapipe" && <SettingRow label="Pose model size" info={COMPLEXITY_INFO}
                 control={<SettingSelectInput label="Pose model size" value={mediapipeModelComplexity ?? "heavy"}
-                    options={MEDIAPIPE_COMPLEXITIES} onChange={setMediapipeModelComplexity}/>}/>
+                    options={MEDIAPIPE_COMPLEXITIES} onChange={setMediapipeModelComplexity}/>}/>}
             <SettingRow label="Detection confidence" info={DETECTION_CONFIDENCE_INFO}
                 control={<ValueSelector value={mediapipeDetectionConfidence ?? 0.5} min={0} max={1} step={0.05}
                     unit="" onChange={setMediapipeDetectionConfidence}/>}/>

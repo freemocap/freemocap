@@ -13,8 +13,6 @@ from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellyforge.core.biomechanics.alignment_definition import AlignmentDefinition
-from skellytracker.core import DetectionStageConfig
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoDetectorConfig
 
 from freemocap.core.pipeline.dataflow.definition import (
     CompiledGraph, DataContract, DataGranularity, GraphConnection, GraphDefinition,
@@ -125,10 +123,12 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     tracker_config = config.tracker_config.model_copy(deep=True)
     bundles = (build_standard_human_bundle(detector_type=config.detector_type, anchor_segment_name=config.anchor_segment_name),)
     if config.charuco_tracking_enabled:
-        tracker_config.stages.append(DetectionStageConfig(name="charuco",
-            keypoint_detectors=[CharucoDetectorConfig(board=config.charuco_board)]))
+        from skellytracker.core.tracker.tracker_presets import with_charuco_tracker
+        tracker_config = with_charuco_tracker(tracker_config, config.charuco_board)
         bundles += (build_charuco_board_bundle(board=config.charuco_board),)
     model_name = config.rtmpose_model_name if config.detector_type == "rtmpose" else MEDIAPIPE_WHOLEBODY_DEFINITION.name
+    if config.detector_type == "rtmw_mediapipe_hands":
+        model_name = f"{config.rtmpose_model_name}+mediapipe_hands"
     tracker_source = f"keypoint_model:{model_name}"
     timing = RecordingGroupTiming(cameras={source.camera_id: source.camera_timing for source in sources.camera_sources},
                                   synchronized=sources.group_timing)
@@ -244,7 +244,7 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 configuration=definition),
             detector=DetectorRecordingDefinition(name="object_detector:yolox-m",
                 box_names=recording_stage_names(collection.frames), configuration=definition)
-                if config.detector_type == "rtmpose" else None,
+                if config.detector_type != "mediapipe" else None,
             models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles),
             camera_geometry=(), spatial_series=(), filtering=None, reprojection=None, reconstructions=(),
             base_run_id=config.base_run_id, run_session=run_session, cancelled=lambda: bool(shutdown_flag.value),

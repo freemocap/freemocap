@@ -75,6 +75,8 @@ def _keypoint_model_name(task_config: PosthocMocapPipelineConfig) -> str:
     detectors in one stage — so it reports the composite tracker definition instead.
     Either way the full configuration rides in the Source definition blob.
     """
+    if task_config.detector_type == "rtmw_mediapipe_hands":
+        return f"{task_config.rtmpose_model_name}+mediapipe_hands"
     if task_config.detector_type == "rtmpose":
         return task_config.rtmpose_model_name
     return MEDIAPIPE_WHOLEBODY_DEFINITION.name
@@ -118,7 +120,7 @@ def run_posthoc_mocap_task(
     group_name = (task_config.sensor_group if saved_timing is not None else None) or camera_group_name(camera_ids)
     keypoint_source = f"keypoint_model:{_keypoint_model_name(task_config)}"
     detector_source = (f"object_detector:{YoloxPersonDetectorConfig().model_name}"
-        if task_config.detector_type == 'rtmpose' else None)
+        if task_config.detector_type != 'mediapipe' else None)
     observation_checkpoint = ObservationRecordingRequest(
         reprojection=None, filtering=None, reconstructions=(), spatial_series=(), camera_geometry=(),
         models=tuple(RecordedModel.from_bundle(bundle) for bundle in bundles), recording=recording_info,

@@ -26,10 +26,9 @@ REPORT_INTERVAL_SECONDS: float = 30.0
 SEPARATOR_WIDTH: int = 100
 PRECISION: int = 2
 
-# Per node-kind classification of which stage names contribute to the wrapper
-# (their medians sum to ~the wrapper's median; the % column is meaningful),
-# vs. framing/derived stats that share the table but are not sub-stages of
-# the wrapper (% column shows "-" for these).
+# Presentation order only. Independently sampled stage windows are not an
+# accounting partition: optional stages can cover different frames and workers
+# overlap. Neither ratios nor sums of their medians express a share of latency.
 @dataclass(frozen=True)
 class _SectionLayout:
     substages: tuple[str, ...]
@@ -45,6 +44,7 @@ SECTION_LAYOUTS: dict[str, _SectionLayout] = {
             "keypoint_filter",
             "velocity_gate",
             "skeleton_filter",
+            "skeleton_fitting",
         ),
         wrapper="full_frame_processing",
         framing=("frame_collection_wait", "loop_time"),
@@ -58,6 +58,21 @@ SECTION_LAYOUTS: dict[str, _SectionLayout] = {
         substages=("skeleton_detection", "charuco_detection"),
         wrapper="total_camera_node",
     ),
+}
+
+
+# Describe the actual timer boundaries, not an inferred execution graph.
+STAGE_SCOPES: dict[str, str] = {
+    "total_camera_node": "detection section / frame, including skips; excludes read/publish",
+    "skeleton_detection": "detector call / camera image",
+    "charuco_detection": "detector call / camera image; skipped attempts absent",
+    "full_frame_processing": "aggregation / group frame; excludes collection and output publish",
+    "frame_collection_wait": "request to collected results; overlaps previous aggregation",
+    "loop_time": "interval between completed aggregation timings",
+    "frame_read": "read camera images / group request",
+    "predict_batch": "submit to result / batch; includes inference service wait",
+    "predict_per_camera": "amortized batch duration / image; not image latency",
+    "dropped_frames": "discarded requests / drain with drops; zero-drop drains absent",
 }
 
 
@@ -143,7 +158,14 @@ class PipelineTimingReporter:
             return
 
         sep = "─" * SEPARATOR_WIDTH
-        sections: list[str] = [sep, f"Pipeline Timing Report — {self.name}", ""]
+        sections: list[str] = [
+            sep, f"Pipeline Timing Report — {self.name}",
+            f"Latest {ROLLING_WINDOW_FRAMES} samples per stage per node; windows are unpaired, not a shared time interval.",
+            "Wall-clock durations: workers and nested rows overlap; do not sum rows or infer end-to-end latency.",
+            "Samples count recorded calls/events, not necessarily processed frames. Camera rows pool images across cameras.",
+            "Cam-spread is max minus min of per-camera means in the row's unit.",
+            "",
+        ]
 
         for kind in ("aggregator", "skeleton_inference"):
             stage_to_arr = {
@@ -214,15 +236,15 @@ def _build_table(
 ) -> str:
     """Build a tabulated stage-statistics table for one section.
 
-    `layout` defines which stage names are sub-stages (their medians roll up
-    into the wrapper, and the % column is computed against the wrapper or
-    against the substage-median sum). Framing/derived stages share the table
-    but show "-" in the % column.
+    Layout controls ordering only. Samples have no frame identities, so even
+    equal-length stage and wrapper windows cannot establish paired accounting.
+    Report the observed distributions without inventing percentages.
     """
     p = PRECISION
-    headers = ["Stage", "n", "Median", "Mean", "Std", "Q1", "Q3", "% of Total"]
+    headers = ["Stage", "Samples", "Unit", "Median", "Mean", "Std", "Q1", "Q3"]
     if cam_spread_by_stage is not None:
         headers.append("Cam-spread")
+    headers.append("Scope")
 
     if layout is None:
         layout = _SectionLayout(
@@ -238,52 +260,46 @@ def _build_table(
     classified = set(present_substages) | set(present_framing) | ({wrapper} if wrapper else set())
     extras = sorted(s for s in stage_to_samples.keys() if s not in classified)
 
-    if wrapper is not None:
-        denominator = float(np.median(stage_to_samples[wrapper]))
-    else:
-        denominator = sum(float(np.median(stage_to_samples[s])) for s in present_substages)
-
-    def _row(stage: str, samples: np.ndarray, *, show_pct: bool) -> list[str]:
+    def _row(stage: str, samples: np.ndarray) -> list[str]:
+        unit = "count" if stage == "dropped_frames" else "ms"
+        scope = STAGE_SCOPES.get(stage, "recorded stage call")
         if len(samples) == 0:
-            row = [stage, "0", "-", "-", "-", "-", "-", "-"]
+            row = [stage, "0", unit, "-", "-", "-", "-", "-"]
             if cam_spread_by_stage is not None:
                 row.append("-")
+            row.append(scope)
             return row
         median = float(np.median(samples))
-        pct_str = (
-            f"{(median / denominator * 100.0):.1f}%"
-            if (show_pct and denominator > 0)
-            else "-"
-        )
         row = [
             stage,
             str(len(samples)),
+            unit,
             f"{median:.{p}f}",
             f"{np.mean(samples):.{p}f}",
             f"{np.std(samples):.{p}f}",
             f"{np.percentile(samples, 25):.{p}f}",
             f"{np.percentile(samples, 75):.{p}f}",
-            pct_str,
         ]
         if cam_spread_by_stage is not None:
             row.append(f"{cam_spread_by_stage.get(stage, 0.0):.{p}f}")
+        row.append(scope)
         return row
 
     rows: list[list[str]] = []
     blank_row = [""] * len(headers)
 
     for stage in present_substages:
-        rows.append(_row(stage, stage_to_samples[stage], show_pct=True))
+        rows.append(_row(stage, stage_to_samples[stage]))
 
     if wrapper is not None:
-        wrapper_row = _row(wrapper, stage_to_samples[wrapper], show_pct=True)
-        wrapper_row[0] = f"TOTAL: {wrapper}"
+        wrapper_row = _row(wrapper, stage_to_samples[wrapper])
+        wrapper_row[0] = f"WRAPPER: {wrapper}"
         rows.append(wrapper_row)
 
     if present_framing or extras:
         rows.append(blank_row)
         for stage in present_framing + extras:
-            rows.append(_row(stage, stage_to_samples[stage], show_pct=False))
+            rows.append(_row(stage, stage_to_samples[stage]))
 
     return tabulate(
         rows,

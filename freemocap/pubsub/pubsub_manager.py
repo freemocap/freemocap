@@ -86,6 +86,11 @@ class PubSubTopicManager:
         self._relay.check_alive()
         return self._relay.get_publication_queue(topic_type=topic_type)
 
+    def release_subscription(self, topic_type: type[PubSubTopicABC], subscription: TopicSubscriptionQueue) -> None:
+        """Stop sending to a terminated consumer; safe after manager shutdown."""
+        if self._relay is not None:
+            self._relay.release_subscription(topic_type, subscription)
+
     def publish(
             self,
             topic_type: type[PubSubTopicABC[MessageType]],

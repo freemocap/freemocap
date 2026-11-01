@@ -12,6 +12,7 @@ from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_m
 )
 from skellytracker.core.detectors.keypoint_detectors.rtmw.wholebody.rtmw_wholebody_detector import RTMWWholebodyDetectorConfig
 from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
+from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
     BBoxSmoothingConfig,
@@ -77,6 +78,18 @@ class PosthocMocapPipelineConfig(BaseModel):
             "~96% of visible keypoints. Only used when detector_type='rtmpose'."
         ),
     )
+    execution_provider: ExecutionProviderName | None = Field(
+        default=None,
+        alias="executionProvider",
+        description="ONNX Runtime execution provider for RTMPose. None retains the selected pipeline automatic policy; an explicit choice raises if it cannot load.",
+    )
+    @model_validator(mode="after")
+    def validate_provider_selection(self):
+        if (self.execution_provider is not None and self.graph_execution_provider != "auto"
+                and self.execution_provider != self.graph_execution_provider):
+            raise ValueError("executionProvider and graphExecutionProvider disagree; use executionProvider")
+        return self
+
     # MediaPipe settings (shared across pose/hands/face detectors)
     mediapipe_model_complexity: MediapipePoseModelComplexity = Field(
         default=MediapipePoseModelComplexity.HEAVY,

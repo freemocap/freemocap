@@ -1,3 +1,4 @@
+import {useExecutionProviderOptions} from "@/hooks/useExecutionProviderOptions";
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {mocapCharucoTrackingChanged} from '@/store/slices/mocap';
 import ValueSelector from '@/components/ui-components/ValueSelector';
@@ -11,6 +12,7 @@ import {
     MediapipeModelComplexity,
     RTMPOSE_MODELS,
     RTMPoseModelName,
+    ExecutionProviderName,
 } from '@/store/slices/mocap';
 
 const DETECTORS: { label: string; value: DetectorType }[] = [
@@ -104,6 +106,7 @@ export default function MocapDetectorSettings() {
         detectorType,
         rtmPoseModelName,
         rtmPoseConfidenceThreshold,
+        executionProvider,
         mediapipeModelComplexity,
         mediapipeDetectionConfidence,
         mediapipePresenceConfidence,
@@ -111,11 +114,13 @@ export default function MocapDetectorSettings() {
         setDetectorType,
         setRtmPoseModelName,
         setRtmPoseConfidenceThreshold,
+        setExecutionProvider,
         setMediapipeModelComplexity,
         setMediapipeDetectionConfidence,
         setMediapipePresenceConfidence,
         setMediapipeTrackingConfidence,
     } = useMocap();
+    const executionProviderOptions = useExecutionProviderOptions(executionProvider);
 
     const detector = detectorType ?? "rtmpose";
 
@@ -126,6 +131,10 @@ export default function MocapDetectorSettings() {
                 onChange={setDetectorType}/>}/>
 
         {detector === "rtmpose" && <>
+            <SettingRow label="Execution provider" info={{title: 'Execution provider', text: 'Auto retains the pipeline default. Choices are advertised by the server runtime; session startup verifies the selected provider can load.'}}
+                control={<SettingSelectInput label="Execution provider" value={executionProvider ?? 'auto'}
+                    options={executionProviderOptions.map(option => ({...option, value: option.value ?? 'auto' as const}))}
+                    onChange={(value: ExecutionProviderName | 'auto') => setExecutionProvider(value === 'auto' ? null : value)}/>}/>
             <SettingRow label="Model" info={MODEL_INFO}
                 control={<SettingSelectInput label="RTMPose model" value={rtmPoseModelName ?? "rtmw-x-l_384x288"}
                     options={RTMPOSE_MODELS} onChange={(value: RTMPoseModelName) => setRtmPoseModelName(value)}/>}/>

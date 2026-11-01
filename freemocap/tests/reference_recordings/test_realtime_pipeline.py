@@ -40,6 +40,86 @@ def shared_memory_names(group):
     return names
 
 
+@pytest.mark.e2e
+@pytest.mark.slow
+@pytest.mark.parametrize('centralized', [True, False], ids=['centralized', 'per-camera'])
+def test_provider_switch_reuses_capture_and_releases_sessions(replay_reference, centralized):
+    """Exercise an actual CPU-to-CUDA selection change through running workers."""
+    import onnxruntime
+    if 'CUDAExecutionProvider' not in onnxruntime.get_available_providers():
+        pytest.skip('CPU-to-CUDA replay needs a CUDA runtime')
+    calibration = find_recording_calibration(recording_folder=replay_reference.full_path)
+    config = RealtimePipelineConfig(
+        camera_node_config=CameraNodeConfig(worker_mode=WorkerMode.THREAD,
+            charuco_tracking_enabled=False, skeleton_tracking_enabled=True),
+        aggregator_config=RealtimeAggregatorNodeConfig(calibration_toml_path=str(calibration),
+            skeleton_fitting_enabled=False),
+        skeleton_inference_node_config={'execution_provider': 'cpu'},
+        use_centralized_inference=centralized, log_pipeline_times=False,
+    )
+    flag = multiprocessing.Value('b', False)
+    registry = WorkerRegistry(global_kill_flag=flag, worker_mode=WorkerMode.THREAD)
+    service = InferenceService(worker_registry=registry)
+    manager = RealtimePipelineManager(worker_registry=registry, inference_service=service)
+    group = capture = None
+    names = []
+    try:
+        registry.start_heartbeat()
+        group = MockCameraGroup.create(synchronized_videos_dir=synchronized_video_directory(replay_reference.full_path),
+                                       global_kill_flag=flag)
+        names = shared_memory_names(group)
+        service.start()
+        capture = CaptureGroup(group, flag)
+        pipeline = manager.create_pipeline(camera_group=capture, pipeline_config=config)
+        original_cameras = tuple(pipeline.camera_nodes.values())
+        original_inference = pipeline.skeleton_inference_node
+        original_subscribers = {topic: len(value.subscriptions) for topic, value in pipeline.pubsub.topics.items()}
+
+        def switch_provider(frame_index, active_pipeline):
+            if frame_index == 6:
+                if centralized:
+                    assert all(model['applied_providers'] == ('CPUExecutionProvider',)
+                               for client in service.provider_status() for model in client['models'])
+                updated = active_pipeline.config.model_copy(deep=True)
+                updated.skeleton_inference_node_config.execution_provider = 'cuda'
+                active_pipeline.update_config(updated)
+
+        result = drive_realtime_lockstep(pipeline=pipeline, mock_group=group, num_frames=12,
+                                        per_frame_timeout=120.0, before_frame=switch_provider)
+        assert result.frames_processed == 12
+        assert tuple(pipeline.camera_nodes.values()) == original_cameras
+        assert pipeline.failure is None
+        assert {topic: len(value.subscriptions) for topic, value in pipeline.pubsub.topics.items()} == original_subscribers
+        assert all(output.skeleton_observation is not None for frame in result.outputs
+                   for output in frame.camera_node_outputs.values())
+        if centralized:
+            assert pipeline.skeleton_inference_node is not original_inference
+            statuses = service.provider_status()
+            assert len(statuses) == 1 and statuses[0]['models']
+            assert all(model['requested_provider'] == 'cuda' and 'CUDAExecutionProvider' in model['applied_providers']
+                       for model in statuses[0]['models'])
+    finally:
+        try:
+            manager.shutdown()
+        finally:
+            try:
+                service.close()
+            finally:
+                registry.shutdown_all()
+                if capture is not None:
+                    capture.close_transport()
+                if group is not None:
+                    group.close()
+        assert not registry.alive_workers
+        for name in names:
+            try:
+                leaked = shared_memory.SharedMemory(name=name)
+            except FileNotFoundError:
+                continue
+            leaked.close()
+            pytest.fail(f'Shared memory survived provider switch: {name}')
+
+
 @pytest.fixture(scope='module', params=[TEST_DATA, SAMPLE_DATA], ids=['test-data', 'sample-data'])
 def replay_reference(request):
     """Replay needs validated numerical data and video, not a Blender export."""

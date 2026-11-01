@@ -67,13 +67,14 @@ _onnx_session_build_lock = threading.Lock()
 CHARUCO_STAGE_NAME = "charuco"
 
 
-def build_configured_tracker(*, config: TrackerConfig, batch_size: int) -> Tracker:
+def build_configured_tracker(*, config: TrackerConfig, batch_size: int,
+                             execution_provider: ExecutionProviderName | None = None) -> Tracker:
     """Allocate the backends and models declared by every stage of a tracker.
 
     The returned tracker owns the sessions and closes them through Tracker.close.
     Construction failures release sessions before propagating the error.
     """
-    requests = tracker_session_requests(config=config, batch_size=batch_size, execution_provider=None)
+    requests = tracker_session_requests(config=config, batch_size=batch_size, execution_provider=execution_provider)
     with ExitStack() as cleanup:
         sessions: dict[str, Session] = {}
         for request in requests:
@@ -81,6 +82,9 @@ def build_configured_tracker(*, config: TrackerConfig, batch_size: int) -> Track
                 session = request.session_type.create(request.config)
             sessions[request.config.backend] = session
             cleanup.callback(session.close)
+            if request.config.backend == "onnx":
+                from freemocap.core.tracking.execution_providers import inspect_onnx_session
+                inspect_onnx_session(session, request.config)
         tracker = Tracker.create(config=config, sessions=sessions)
         cleanup.pop_all()
     return tracker
@@ -153,6 +157,12 @@ def build_skeleton_onnx_session(
                 device_id=device_id,
             )
         )
+    from freemocap.core.tracking.execution_providers import inspect_onnx_session
+    try:
+        inspect_onnx_session(session, OnnxSessionConfig(batch_size=batch_size, models=[yolox_spec, rtmw_spec], execution_provider=execution_provider))
+    except Exception:
+        session.close()
+        raise
     return session
 
 

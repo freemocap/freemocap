@@ -236,6 +236,7 @@ class RealtimePipeline:
                     worker_registry=worker_registry,
                     camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
                     config=pipeline_config.camera_node_config,
+                    execution_provider=pipeline_config.skeleton_inference_node_config.execution_provider,
                     ipc=ipc,
                     pubsub=pubsub,
                     skeleton_inference_centralized=(
@@ -394,7 +395,11 @@ class RealtimePipeline:
         old_detector = self.config.camera_node_config.detector_type
         new_detector = new_config.camera_node_config.detector_type
         node = self.skeleton_inference_node
-        if node is not None and old_detector != new_detector:
+        inference_changed = (
+            new_config.skeleton_inference_node_config != self.config.skeleton_inference_node_config
+            or new_config.camera_node_config.skeleton_settings != self.config.camera_node_config.skeleton_settings
+        )
+        if node is not None and (old_detector != new_detector or inference_changed):
             node.shutdown()
             self.skeleton_inference_node = None
             node = None

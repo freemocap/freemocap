@@ -53,6 +53,16 @@ logger = logging.getLogger(__name__)
 class RealtimeSkeletonInferenceNode(SourceNode):
     """Thread adapter that submits live multiframes to shared inference."""
 
+    subscription_owner: PubSubTopicManager | None = None
+    owned_subscriptions: tuple = ()
+
+    def shutdown(self) -> None:
+        super().shutdown()
+        if self.subscription_owner is not None:
+            for topic, subscription in self.owned_subscriptions:
+                self.subscription_owner.release_subscription(topic, subscription)
+            self.owned_subscriptions = ()
+
     @classmethod
     def create(
             cls,
@@ -66,30 +76,39 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             pubsub: PubSubTopicManager,
             inference_service: InferenceService,
     ) -> "RealtimeSkeletonInferenceNode":
-        shutdown_self_flag, worker = cls._create_worker(
-            owner_shutdown_flag=ipc.pipeline_shutdown_flag,
-            worker_mode=WorkerMode.THREAD,
-            target=cls._run,
-            name=f"CameraGroup-{camera_group_id}-SkeletonInferenceNode",
-            worker_registry=worker_registry,
-            log_queue=ipc.ws_queue,
-            kwargs=dict(
-                inference_service=inference_service,
-                camera_group_id=camera_group_id,
-                camera_ids=camera_ids,
-                pipeline_config=config,
-                ipc=ipc,
-                camera_group_shm_dto=camera_group_shm_dto,
-                process_frame_number_sub=pubsub.get_subscription(ProcessFrameNumberTopic),
-                pipeline_config_sub=pubsub.get_subscription(PipelineConfigUpdateTopic),
-                skeleton_result_pub=pubsub.get_publication_queue(SkeletonInferenceResultTopic),
-                timing_pub=pubsub.get_publication_queue(PipelineTimingTopic),
-            ),
-        )
-        return cls(
-            shutdown_self_flag=shutdown_self_flag,
-            worker=worker,
-        )
+        with ExitStack() as cleanup:
+            frame_subscription = pubsub.get_subscription(ProcessFrameNumberTopic)
+            cleanup.callback(pubsub.release_subscription, ProcessFrameNumberTopic, frame_subscription)
+            config_subscription = pubsub.get_subscription(PipelineConfigUpdateTopic)
+            cleanup.callback(pubsub.release_subscription, PipelineConfigUpdateTopic, config_subscription)
+            shutdown_self_flag, worker = cls._create_worker(
+                owner_shutdown_flag=ipc.pipeline_shutdown_flag,
+                worker_mode=WorkerMode.THREAD,
+                target=cls._run,
+                name=f"CameraGroup-{camera_group_id}-SkeletonInferenceNode",
+                worker_registry=worker_registry,
+                log_queue=ipc.ws_queue,
+                kwargs=dict(
+                    inference_service=inference_service,
+                    camera_group_id=camera_group_id,
+                    camera_ids=camera_ids,
+                    pipeline_config=config,
+                    ipc=ipc,
+                    camera_group_shm_dto=camera_group_shm_dto,
+                    process_frame_number_sub=frame_subscription,
+                    pipeline_config_sub=config_subscription,
+                    skeleton_result_pub=pubsub.get_publication_queue(SkeletonInferenceResultTopic),
+                    timing_pub=pubsub.get_publication_queue(PipelineTimingTopic),
+                ),
+            )
+            node = cls(
+                shutdown_self_flag=shutdown_self_flag,
+                worker=worker,
+                subscription_owner=pubsub,
+                owned_subscriptions=((ProcessFrameNumberTopic, frame_subscription), (PipelineConfigUpdateTopic, config_subscription)),
+            )
+            cleanup.pop_all()
+            return node
 
     @staticmethod
     def _run(

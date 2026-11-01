@@ -63,6 +63,7 @@ class InferenceClient:
     _last_frame: int = -1
     _closed: bool = False
     failure: Exception | None = None
+    provider_status: tuple = ()
 
     def submit(self, request: InferenceRequest) -> Future[dict[str, Observation]]:
         return self._service.submit(client=self, request=request)
@@ -198,6 +199,10 @@ class InferenceService:
                             client._lease = pool.create_tracker(
                                 config=client.registration.tracker_config, requests=client.registration.sessions,
                             )
+                            from freemocap.core.tracking.execution_providers import inspect_tracker_providers
+                            statuses = inspect_tracker_providers(client._lease.tracker, client.registration.sessions)
+                            with self._condition:
+                                client.provider_status = statuses
                     with performance.measure(f"inference.process_batch.images={len(pending.request.images)}") if performance is not None else nullcontext():
                         observations, client._states = client._lease.tracker.process_batch(
                             images=pending.request.images, frame_number=pending.request.frame_number, states=client._states,
@@ -234,6 +239,15 @@ class InferenceService:
                 self._clients.clear()
                 self._condition.notify_all()
             pool.close()
+
+    def provider_status(self) -> list[dict]:
+        """Read immutable startup diagnostics without touching native sessions."""
+        from dataclasses import asdict
+        with self._condition:
+            return [{"pipeline_id": client.registration.pipeline_id,
+                     "mode": client.registration.mode.value,
+                     "models": [asdict(status) for status in client.provider_status]}
+                    for client in self._clients if not client._closed]
 
     def close(self) -> None:
         with self._condition:

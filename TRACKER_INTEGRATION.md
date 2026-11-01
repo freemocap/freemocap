@@ -107,10 +107,11 @@ with Tracker's schema accessor in
 Both `origin/sfn26` revisions were verified after pushing. Core's pre-existing
 100-line `references.bib` addition remains unstaged and unchanged. No generated
 artifacts, dependency declarations or lockfiles were included. This documentation
-checkpoint records completion after publication; Global 3 remains unstarted.
+checkpoint records Global 2 completion after publication. Global 3 execution is recorded in
+[EXECUTION_PROVIDER_INTEGRATION.md](EXECUTION_PROVIDER_INTEGRATION.md).
 
-PR #931 has not been merged or applied in Global 2. Review it against these
-current paths before integration:
+The following was the Global 2 handoff before PR #931 integration; the linked
+Global 3 record describes the implemented changes:
 
 - Centralized live inference already has
   `RealtimeSkeletonInferenceNodeConfig.execution_provider`. The skeleton node
@@ -134,9 +135,9 @@ current paths before integration:
   runtime acceleration from the requested name or install new runtimes as part
   of the already approved migration.
 
-### Proposed Global 3 checklist — awaiting approval
+### Approved Global 3 checklist — execution record linked above
 
-- [ ] **3.1. Review PR #931 against Core's current live, post-hoc and shared-session provider paths.**
-- [ ] **3.2. Integrate provider controls through the API, UI and tracker requests without replacing shared-session ownership.**
-- [ ] **3.3. Test provider selection, applied-provider reporting, unavailable-provider behavior and session cleanup.**
-- [ ] **3.4. Validate both reference recordings, publish the provider integration and pause with the PR comment.**
+- [x] **3.1. Review PR #931 against Core's current live, post-hoc and shared-session provider paths.**
+- [x] **3.2. Integrate provider controls through the API, UI and tracker requests without replacing shared-session ownership.**
+- [x] **3.3. Test provider selection, applied-provider reporting, unavailable-provider behavior and session cleanup.**
+- [x] **3.4. Validate both reference recordings, publish the provider integration and pause with the PR comment.**

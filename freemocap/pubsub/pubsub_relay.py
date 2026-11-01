@@ -126,6 +126,16 @@ class PubSubRelay:
                     relayed_any = True
         return relayed_any
 
+    def release_subscription(self, topic_type: type[PubSubTopicABC], subscription: TopicSubscriptionQueue) -> None:
+        """Remove the consumer under the same lock used by message fan-out."""
+        with self._subscriptions_lock:
+            topic = self.topics.get(topic_type)
+            if topic is None or subscription not in topic.subscriptions:
+                return
+            topic.subscriptions.remove(subscription)
+            subscription.cancel_join_thread()
+            subscription.close()
+
     def _drain(self) -> None:
         """
         Drain all remaining messages from publication queues to subscribers.

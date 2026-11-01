@@ -5,6 +5,7 @@ publishes CameraNodeOutputMessages.
 Runs indefinitely until shutdown. Responds to pipeline config updates
 (toggling trackers, changing charuco board params, etc).
 """
+from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 import logging
 import queue
 import time
@@ -78,7 +79,7 @@ def _build_charuco_tracker_from_config(node_config: CameraNodeConfig):
     return build_charuco_tracker(board_def)
 
 
-def _build_skeleton_tracker_from_config(node_config: CameraNodeConfig):
+def _build_skeleton_tracker_from_config(node_config: CameraNodeConfig, execution_provider=None):
     """Return (Tracker, session) for skeleton detection in per-camera mode."""
     if node_config.detector_type == "mediapipe":
         from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker
@@ -98,7 +99,7 @@ def _build_skeleton_tracker_from_config(node_config: CameraNodeConfig):
 
     model_name = node_config.rtmpose_model_name
     confidence_threshold = node_config.rtmpose_confidence_threshold
-    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name)
+    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name, execution_provider=execution_provider)
     tracker = build_skeleton_tracker(
         onnx_session=onnx_session,
         model_name=model_name,
@@ -123,6 +124,7 @@ class CameraNode(SourceNode):
             pubsub: PubSubTopicManager,
             skeleton_inference_centralized: bool = False,
             log_pipeline_times: bool = False,
+            execution_provider: ExecutionProviderName | None = None,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
             owner_shutdown_flag=ipc.pipeline_shutdown_flag,
@@ -138,6 +140,7 @@ class CameraNode(SourceNode):
                 camera_shm_dto=camera_shm_dto,
                 skeleton_inference_centralized=skeleton_inference_centralized,
                 log_pipeline_times=log_pipeline_times,
+                execution_provider=execution_provider,
                 process_frame_number_sub=pubsub.get_subscription(
                     ProcessFrameNumberTopic,
                 ),
@@ -172,6 +175,7 @@ class CameraNode(SourceNode):
             camera_shm_dto: SharedMemoryRingBufferDTO,
             skeleton_inference_centralized: bool = False,
             log_pipeline_times: bool = False,
+            execution_provider: ExecutionProviderName | None = None,
     ) -> None:
         import cv2
         from skellytracker.core.tracker.tracker_state import TrackerState
@@ -192,24 +196,24 @@ class CameraNode(SourceNode):
         # After a miss, skip detection for `_CHARUCO_MISS_SKIP_FRAMES` frames.
         charuco_skip_until_frame_number = -1
 
-        if config.charuco_tracking_enabled and config.charuco_tracker_config is not None:
-            charuco_tracker, charuco_session = _build_charuco_tracker_from_config(config)
-
-        if (
-                config.skeleton_tracking_enabled
-                and config.skeleton_tracker_config is not None
-                and not skeleton_inference_centralized
-        ):
-            # In centralized GPU mode, the dedicated SkeletonInferenceNode owns
-            # the ONNX session and serves all cameras via batched inference.
-            skeleton_tracker, skeleton_session = _build_skeleton_tracker_from_config(config)
-
-        frame_recarray: np.recarray | None = None
-        timer = None
-        if log_pipeline_times:
-            timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
-
         try:
+            if config.charuco_tracking_enabled and config.charuco_tracker_config is not None:
+                charuco_tracker, charuco_session = _build_charuco_tracker_from_config(config)
+
+            if (
+                    config.skeleton_tracking_enabled
+                    and config.skeleton_tracker_config is not None
+                    and not skeleton_inference_centralized
+            ):
+                # In centralized GPU mode, the dedicated SkeletonInferenceNode owns
+                # the ONNX session and serves all cameras via batched inference.
+                skeleton_tracker, skeleton_session = _build_skeleton_tracker_from_config(config, execution_provider)
+
+            frame_recarray: np.recarray | None = None
+            timer = None
+            if log_pipeline_times:
+                timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
+
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
                 # ---- Handle config updates ----
@@ -218,6 +222,7 @@ class CameraNode(SourceNode):
                         update_msg: PipelineConfigUpdateMessage = pipeline_config_sub.get_nowait()
                     except queue.Empty:
                         break
+                    new_provider = update_msg.pipeline_config.skeleton_inference_node_config.execution_provider
                     new_config: CameraNodeConfig = update_msg.pipeline_config.camera_node_config
                     logger.debug(f"RealtimeCameraNode [{camera_id}] received config update")
 
@@ -239,12 +244,13 @@ class CameraNode(SourceNode):
                             new_config.skeleton_tracking_enabled
                             and new_config.skeleton_tracker_config is not None
                             and not skeleton_inference_centralized
-                            and (new_config.skeleton_tracker_config != config.skeleton_tracker_config
-                                 or new_config.skeleton_tracking_enabled != config.skeleton_tracking_enabled)
+                            and (new_config.skeleton_settings != config.skeleton_settings
+                                 or new_config.skeleton_tracking_enabled != config.skeleton_tracking_enabled
+                                 or new_provider != execution_provider)
                     ):
                         if skeleton_tracker is not None:
                             skeleton_tracker.close()
-                        skeleton_tracker, skeleton_session = _build_skeleton_tracker_from_config(new_config)
+                        skeleton_tracker, skeleton_session = _build_skeleton_tracker_from_config(new_config, new_provider)
                         skeleton_state = TrackerState()
                     elif not new_config.skeleton_tracking_enabled or skeleton_inference_centralized:
                         if skeleton_tracker is not None:
@@ -252,6 +258,7 @@ class CameraNode(SourceNode):
                         skeleton_tracker = None
                         skeleton_session = None
 
+                    execution_provider = new_provider
                     config = new_config
 
                 # ---- Check shared memory validity every iteration ----
@@ -351,8 +358,13 @@ class CameraNode(SourceNode):
             ipc.shutdown_pipeline()
             raise
         finally:
-            if charuco_tracker is not None:
-                charuco_tracker.close()
-            if skeleton_tracker is not None:
-                skeleton_tracker.close()
+            try:
+                if charuco_tracker is not None:
+                    charuco_tracker.close()
+            finally:
+                try:
+                    if skeleton_tracker is not None:
+                        skeleton_tracker.close()
+                finally:
+                    camera_shm.close()
             logger.debug(f"RealtimeCameraNode [{camera_id}] exiting")

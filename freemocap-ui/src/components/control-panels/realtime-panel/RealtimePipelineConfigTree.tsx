@@ -1,10 +1,12 @@
+import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import {TemporalFilterControls} from './TemporalFilterControls';
 import React, {useCallback} from "react";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {PosthocFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/PosthocFilterConfigPanel";
 import {useMocap} from "@/hooks/useMocap";
+import {useExecutionProviderOptions} from "@/hooks/useExecutionProviderOptions";
 import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
-import {DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS} from "@/store/slices/mocap";
+import {DetectorType, ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS} from "@/store/slices/mocap";
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {pipelineConfigUpdated, resetSkeletonFitter} from "@/store/slices/realtime";
 import ValueSelector from "@/components/ui-components/ValueSelector";
@@ -46,12 +48,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     // ── Realtime pipeline config (for context="realtime") ──────────────────────
     const pipelineConfig = useAppSelector(state => state.realtime.pipelineConfig);
     const cameraNodeConfig = pipelineConfig.camera_node_config;
+    const inferenceNodeConfig = pipelineConfig.skeleton_inference_node_config;
 
     // ── Posthoc (mocap slice) config (for context="posthoc") ──────────────────
     const {
         detectorType: posthocDetectorType,
         rtmPoseModelName,
         rtmPoseConfidenceThreshold,
+        executionProvider: posthocExecutionProvider,
+        setExecutionProvider: setPosthocExecutionProvider,
         mediapipeModelComplexity,
         mediapipeDetectionConfidence,
         mediapipePresenceConfidence,
@@ -85,6 +90,25 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         },
         [dispatch, pipelineConfig, cameraNodeConfig, triggerRealtimeApply]
     );
+
+    const activeExecutionProvider: ExecutionProviderName | null =
+        context === "realtime"
+            ? (inferenceNodeConfig?.execution_provider ?? null)
+            : (posthocExecutionProvider ?? null);
+
+    const executionProviderOptions = useExecutionProviderOptions(activeExecutionProvider);
+
+    const handleSetExecutionProvider = useCallback((provider: ExecutionProviderName | null) => {
+        if (context === "realtime") {
+            dispatch(pipelineConfigUpdated({
+                ...pipelineConfig,
+                skeleton_inference_node_config: { ...inferenceNodeConfig, execution_provider: provider },
+            }));
+            triggerRealtimeApply();
+        } else {
+            setPosthocExecutionProvider(provider);
+        }
+    }, [context, dispatch, pipelineConfig, inferenceNodeConfig, triggerRealtimeApply, setPosthocExecutionProvider]);
 
     const handleSetDetectorType = useCallback((type: DetectorType) => {
         if (context === "realtime") {
@@ -212,6 +236,20 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                             <p className="text-sm text-gray">
                                 133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
                             </p>
+                        )}
+                        {activeDetectorType === "rtmpose" && (
+                            <div className="flex flex-row gap-1 items-center justify-content-space-between flex-wrap pos-rel z-10">
+                                <span className="text-sm">Execution provider</span>
+                                <NameDropdownSelector
+                                    key={activeExecutionProvider ?? "auto"}
+                                    DropdownclassName="z-111"
+                                    options={executionProviderOptions.map(({label}) => label)}
+                                    initialValue={executionProviderOptions.find(({value}) => value === activeExecutionProvider)?.label ?? "Auto"}
+                                    onChange={(label) => handleSetExecutionProvider(
+                                        executionProviderOptions.find((option) => option.label === label)?.value ?? null
+                                    )}
+                                />
+                            </div>
                         )}
 
                         {/* MediaPipe settings */}

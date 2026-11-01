@@ -100,8 +100,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     config = config.model_copy(deep=True)
     structure = RecordingStructure(base_directory=sources.recording_path.parent, recording_name=sources.recording_path.name)
     run_session = run_session or RunSaveSession.resolve(structure=structure, source_run_id=config.base_run_id, mode=config.run_save_mode)
-    if observation_loader is None and (execution_provider not in ("cpu", "cuda") or (config.detector_type == "mediapipe" and execution_provider != "cpu")):
-        raise ValueError("Choose CPU/CUDA for RTMPose; the installed MediaPipe adapter supports CPU only")
+    if observation_loader is None and (execution_provider not in ("cpu", "cuda", "trt", "coreml", "directml") or (config.detector_type == "mediapipe" and execution_provider != "cpu")):
+        raise ValueError("Choose a supported ONNX provider for RTMPose; the installed MediaPipe adapter supports CPU only")
     if config.start_stage not in ('observations', 'triangulation') or config.export_to_blender:
         raise ValueError("Recording graph requires observations or triangulation start and Blender export disabled")
     if config.start_stage == 'triangulation' and observation_loader is None:

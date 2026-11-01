@@ -62,7 +62,9 @@ def test_camera_defaults_preserve_detector_configuration():
 @pytest.mark.parametrize('model_name', tuple(RTMW_WHOLEBODY_MODEL_SPECS))
 def test_direct_session_preserves_models_and_provider_settings(model_name):
     with patch('freemocap.core.tracking.tracker_factory.OnnxSession.create',
-               return_value=OnnxSession()) as session_create:
+               return_value=OnnxSession()) as session_create, \
+         patch.object(OnnxSession, 'get_session') as get_session:
+        get_session.return_value.get_providers.return_value = ['CUDAExecutionProvider', 'CPUExecutionProvider']
         session = build_skeleton_onnx_session(batch_size=3, execution_provider='cuda',
                                              device_id=1, model_name=model_name, yolox_model_name='yolox-tiny')
     session_config = session_create.call_args.args[0]

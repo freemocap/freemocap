@@ -109,6 +109,14 @@ class CameraNodeConfig(BaseModel):
     confidence_threshold: float = 0.4
 
     @property
+    def skeleton_settings(self) -> tuple:
+        """Settings consumed when constructing either live skeleton tracker."""
+        return (self.detector_type, self.rtmpose_model_name, self.rtmpose_confidence_threshold,
+                self.mediapipe_model_complexity, self.mediapipe_detection_confidence,
+                self.mediapipe_presence_confidence, self.mediapipe_tracking_confidence,
+                self.mediapipe_num_hands, self.mediapipe_num_faces, self.skeleton_tracker_config)
+
+    @property
     def tracking2d_enabled(self) -> bool:
         return self.charuco_tracking_enabled or self.skeleton_tracking_enabled
 

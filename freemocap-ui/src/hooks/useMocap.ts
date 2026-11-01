@@ -22,8 +22,11 @@ import {
     mocapMediapipeTrackingConfidenceChanged,
     mocapRtmPoseConfidenceThresholdChanged,
     mocapRtmPoseModelNameChanged,
+    mocapExecutionProviderChanged,
     processMocapRecording,
     RTMPoseModelName,
+    ExecutionProviderName,
+    selectMocapExecutionProvider,
     selectCanProcessMocapRecording,
     selectCanStartMocapRecording,
     selectIsUsingManualMocapPath,
@@ -71,6 +74,7 @@ export function useMocap() {
     const detectorConfig = useAppSelector(selectMocapDetectorConfig);
     const detectorType = useAppSelector(selectMocapDetectorType);
     const rtmPoseModelName = useAppSelector(selectMocapRtmPoseModelName);
+    const executionProvider = useAppSelector(selectMocapExecutionProvider);
     const rtmPoseConfidenceThreshold = useAppSelector(selectMocapRtmPoseConfidenceThreshold);
     const mediapipeModelComplexity = useAppSelector(selectMocapMediapipeComplexity);
     const mediapipeDetectionConfidence = useAppSelector(selectMocapMediapipeDetectionConfidence);
@@ -95,6 +99,13 @@ export function useMocap() {
     const setRtmPoseModelName = useCallback(
         (modelName: RTMPoseModelName) => {
             dispatch(mocapRtmPoseModelNameChanged(modelName));
+        },
+        [dispatch]
+    );
+
+    const setExecutionProvider = useCallback(
+        (provider: ExecutionProviderName | null) => {
+            dispatch(mocapExecutionProviderChanged(provider));
         },
         [dispatch]
     );
@@ -255,6 +266,8 @@ export function useMocap() {
         // Actions
         setDetectorType,
         setRtmPoseModelName,
+        executionProvider,
+        setExecutionProvider,
         setRtmPoseConfidenceThreshold,
         setMediapipeModelComplexity,
         setMediapipeDetectionConfidence,

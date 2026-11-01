@@ -493,3 +493,13 @@
   claim = {LSL sample timestamps use its local clock domain; other clock domains require explicit mapping for synchronization.},
   note = {Reviewed documentation excerpts about local timestamps, clock offsets and mapping another clock to LSL time. FreeMoCap capture clock semantics have not been validated by this research.}
 }
+
+@misc{freemocapExecutionProviderPr931,
+  title = {{FreeMoCap} expose execution providers in the GUI pull request 931},
+  author = {{philipqueen}},
+  url = {https://github.com/freemocap/freemocap/pull/931},
+  urldate = {2026-10-31},
+  review = {source-code},
+  claim = {The proposal adds provider selection and an endpoint based on ONNX Runtime available providers; it does not implement model precision conversion or TensorRT RTX acceleration.},
+  note = {Reviewed patch at head 3f833d9fa7f7469a1258d3f3a9ebe42a3878ac14. Its posthoc wiring targets VideoNode, whereas current sfn26 mocap inference uses InferenceService. No runtime validation performed.}
+}

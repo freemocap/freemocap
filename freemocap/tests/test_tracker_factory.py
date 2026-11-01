@@ -44,7 +44,8 @@ def test_direct_onnx_creation_is_serialized_across_factory_paths() -> None:
             peak = max(peak, active)
         try:
             time.sleep(0.05)
-            return OnnxSession()
+            return OnnxSession(_sessions={spec.name: MagicMock(spec=__import__('onnxruntime').InferenceSession, get_providers=lambda: ['CPUExecutionProvider'])
+                                          for spec in config.models})
         finally:
             with counter_lock:
                 active -= 1

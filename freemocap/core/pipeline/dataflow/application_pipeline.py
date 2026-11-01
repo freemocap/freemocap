@@ -45,6 +45,17 @@ def validate_application_graph(*, config: PosthocMocapPipelineConfig) -> None:
         raise ValueError('The installed MediaPipe adapter supports CPU only; choose automatic or CPU')
 
 
+def resolve_tracking_provider(config: PosthocMocapPipelineConfig) -> str:
+    """Explicit ONNX selection wins; retain the graph's existing Auto policy."""
+    if config.detector_type == 'mediapipe':
+        return 'cpu'
+    provider = config.execution_provider or config.graph_execution_provider
+    if provider == 'auto' and config.start_stage == 'observations':
+        import onnxruntime
+        return 'cuda' if 'CUDAExecutionProvider' in onnxruntime.get_available_providers() else 'cpu'
+    return provider
+
+
 def run_application_graph(*, request) -> None:
     # Prevent simultaneous app attempts from allocating the same run/file paths.
     # This admission lock does not serialize nodes within the graph.
@@ -83,13 +94,7 @@ def _run_application_graph(*, request) -> None:
         resolved_config = resolve_recording_board(sources=sources, config=request.config,
             cancelled=lambda: not request.ipc.should_continue,
             report=lambda detail: request.report('setting_up', detail, 0.0))
-    provider = request.config.graph_execution_provider
-    if provider == 'auto' and request.config.start_stage == 'observations':
-        if request.config.detector_type == 'mediapipe':
-            provider = 'cpu'
-        else:
-            import onnxruntime
-            provider = 'cuda' if 'CUDAExecutionProvider' in onnxruntime.get_available_providers() else 'cpu'
+    provider = resolve_tracking_provider(request.config)
     # Processing reads the selected calibration without modifying it. Changed
     # geometry is exported only when the final scientific result is saved.
     config = resolved_config.model_copy(update={
@@ -118,7 +123,7 @@ def _run_application_graph(*, request) -> None:
                 cameras = len(sources.camera_sources)
                 total_images = count * cameras
                 detector = 'RTMPose' if config.detector_type == 'rtmpose' else 'MediaPipe'
-                device = 'CUDA GPU' if provider == 'cuda' else 'CPU'
+                device = f'requested provider: {provider}; applied providers are reported at session startup'
                 board_text = ' and ChArUco board points' if config.charuco_tracking_enabled else ''
                 request.report_operation(node,
                     f'Detect poses{board_text} in {cameras} videos ({detector}, {device})',

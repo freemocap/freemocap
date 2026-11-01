@@ -50,6 +50,35 @@ class InferenceServiceTests(unittest.TestCase):
         self.assertEqual(self.leases[0].tracker.process_batch.call_count, 2)
         self.assertIs(self.leases[0].tracker.process_batch.call_args.kwargs["images"], images)
 
+    def test_provider_failure_releases_lease_without_inference(self):
+        released = Event()
+        def create(**kwargs):
+            lease = self.create_lease(**kwargs)
+            lease.close.side_effect = released.set
+            return lease
+        self.pool.create_tracker.side_effect = create
+        with patch('freemocap.core.tracking.execution_providers.inspect_tracker_providers',
+                   side_effect=RuntimeError('provider did not load')):
+            client = self.client(name='bad-provider')
+            with self.assertRaisesRegex(RuntimeError, 'provider did not load'):
+                client.submit(self.request()).result(timeout=2)
+            self.assertTrue(released.wait(2), 'failed provider retained its lease')
+        self.leases[0].tracker.process_batch.assert_not_called()
+        self.assertEqual(self.service.provider_status(), [])
+
+    def test_provider_status_is_inspected_once_and_reports_applied_values(self):
+        from freemocap.core.tracking.execution_providers import ModelProviderStatus
+        status = ModelProviderStatus('pose', None, ('CUDAExecutionProvider', 'CPUExecutionProvider'))
+        with patch('freemocap.core.tracking.execution_providers.inspect_tracker_providers', return_value=(status,)) as inspect:
+            client = self.client(name='observed-provider')
+            client.submit(self.request()).result(timeout=2)
+            client.submit(self.request(frame=1)).result(timeout=2)
+            inspect.assert_called_once()
+        observed = self.service.provider_status()[0]
+        self.assertEqual(observed['pipeline_id'], 'observed-provider')
+        self.assertIsNone(observed['models'][0]['requested_provider'])
+        self.assertEqual(observed['models'][0]['applied_providers'], status.applied_providers)
+
     def setUp(self) -> None:
         self.global_shutdown = multiprocessing.Value("b", False)
         self.registry = WorkerRegistry(global_kill_flag=self.global_shutdown, worker_mode=WorkerMode.THREAD)

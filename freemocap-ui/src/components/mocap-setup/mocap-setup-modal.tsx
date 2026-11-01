@@ -55,7 +55,6 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     const config = useAppSelector(state => state.mocap.config);
     const blender = useAppSelector(selectBlender);
     const [pipelineImplementation, setPipelineImplementation] = useState<'current' | 'typed_dataflow'>('typed_dataflow');
-    const [graphExecutionProvider, setGraphExecutionProvider] = useState<'auto' | 'cpu' | 'cuda'>('auto');
     const [sourceRunId, setSourceRunId] = useState(0);
     const [stageSelection, setStageSelection] = useState<StageSelection | null>(null);
     const partialStageSelection = (pipelineImplementation === 'current' && stageSelection?.stopStage !== undefined
@@ -112,12 +111,6 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                             {value: 'typed_dataflow', label: 'Typed data flow graph V1'},
                             {value: 'current', label: 'Legacy post hoc pipeline'},
                         ]}/>}/>
-                {pipelineImplementation === 'typed_dataflow' && <SettingRow label="Tracking device"
-                    info={{title: 'Tracking device', text: 'Automatic uses CUDA when available for RTMPose, otherwise CPU. MediaPipe uses CPU. Requires multiple videos and a calibration; saves annotated videos.'}}
-                    control={<SettingSelectInput label="Tracking device" value={graphExecutionProvider}
-                        onChange={setGraphExecutionProvider} options={[
-                            {value: 'auto', label: 'Automatic'}, {value: 'cuda', label: 'CUDA GPU'}, {value: 'cpu', label: 'CPU'},
-                        ]}/>}/>}
                 <MocapStageSelection path={mocapRecordingPath} onChange={setStageSelection} onSourceRunChange={setSourceRunId}/>
                 {partialStageSelection && <p role="status" className="settings-note">
                     This pipeline cannot yet finish at the selected stage. Choose an earlier finish point in V1 or include reconstruction.
@@ -214,7 +207,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                     {mode === "playback" ? (
                         <ButtonSm text="Process Mocap" textColor="text-white" iconClass="processmocap-icon"
                             buttonType="" className="primary accent"
-                            onClick={() => {if (stageSelection) {dispatchProcessMocapRecording({...stageSelection, pipelineImplementation, graphExecutionProvider}); onClose?.();}}}
+                            onClick={() => {if (stageSelection) {dispatchProcessMocapRecording({...stageSelection, pipelineImplementation}); onClose?.();}}}
                             disabled={!canProcessMocapRecording || !stageSelection || partialStageSelection} tooltip tooltipPosition="pos-top"
                             tooltipText={processBlockedReason ?? (partialStageSelection ? "This stage range or new-run choice requires typed data flow graph V1." : stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
                     ) : (

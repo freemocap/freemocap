@@ -172,3 +172,5 @@ upx.exe
 .aider*
 freemocap-ui/freemocap_server
 /.codex/*
+
+freemocap-ui/tsconfig.node.tsbuildinfo

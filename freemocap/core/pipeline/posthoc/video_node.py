@@ -35,6 +35,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
     CharucoDetectorConfig,
     CharucoBoardDefinition,
 )
+from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 from skellytracker.core.tracker.tracker import Tracker
 from skellytracker.core.tracker.tracker_state import TrackerState
 
@@ -86,6 +87,7 @@ class VideoNode(SourceNode):
         save_annotated_video: bool = True,
         annotation_input: AnnotationInput = AnnotationInput.RAW,
         pipeline_id: PipelineIdString | None = None,
+        execution_provider: ExecutionProviderName | None = None,
     ) -> "VideoNode":
         _progress_queue: multiprocessing.queues.Queue = multiprocessing.Queue()
         shutdown_self_flag, worker = cls._create_worker(
@@ -99,6 +101,7 @@ class VideoNode(SourceNode):
                 camera_id=camera_id,
                 video_path=video_path,
                 detector_config=detector_config,
+                execution_provider=execution_provider,
                 ipc=ipc,
                 video_output_pub=pubsub.get_publication_queue(
                     VideoNodeOutputTopic,
@@ -134,6 +137,7 @@ class VideoNode(SourceNode):
         annotation_input: AnnotationInput,
         pipeline_id: PipelineIdString,
         pipeline_type: PosthocPipelineType,
+        execution_provider: ExecutionProviderName | None = None,
     ) -> None:
         node_pipeline_id = f"{pipeline_id}:{camera_id}"
         video_progress_pub.put(VideoNodeProgressMessage(
@@ -146,7 +150,7 @@ class VideoNode(SourceNode):
             recording_name=recording_path.name,
             recording_path=str(recording_path),
         ))
-        tracker = build_configured_tracker(config=detector_config, batch_size=1)
+        tracker = build_configured_tracker(config=detector_config, batch_size=1, execution_provider=execution_provider)
         tracker_state = TrackerState()
 
         cache = _build_recording_frame_cache(

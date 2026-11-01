@@ -1,3 +1,4 @@
+import type {ExecutionProviderName} from '@/types/execution-provider';
 import {CameraMatchingOptions, defaultCameraMatchingOptions} from '@/types/camera-matching';
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
@@ -56,6 +57,8 @@ export interface PosthocFilterConfig {
 export type DetectorType = "rtmpose" | "mediapipe";
 export type RTMPoseModelName = "rtmw-x-l_256x192" | "rtmw-x-l_384x288" | "rtmw-l-m_256x192";
 export type MediapipeModelComplexity = "lite" | "full" | "heavy";
+export {EXECUTION_PROVIDERS} from '@/types/execution-provider';
+export type {ExecutionProviderName} from '@/types/execution-provider';
 
 export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
     { label: "Default", value: "rtmw-x-l_256x192" },
@@ -75,6 +78,7 @@ export interface MocapConfig {
     detectorType: DetectorType;
     rtmPoseModelName: RTMPoseModelName;
     rtmPoseConfidenceThreshold: number;
+    executionProvider: ExecutionProviderName | null;
     mediapipeModelComplexity: MediapipeModelComplexity;
     mediapipeDetectionConfidence: number;
     mediapipePresenceConfidence: number;
@@ -189,6 +193,7 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     detectorType: "rtmpose",
     rtmPoseModelName: "rtmw-x-l_256x192",
     rtmPoseConfidenceThreshold: 0.004,
+    executionProvider: null,
     mediapipeModelComplexity: "heavy",
     mediapipeDetectionConfidence: 0.5,
     mediapipePresenceConfidence: 0.5,
@@ -290,6 +295,11 @@ export const mocapSlice = createSlice({
         /** Change the RTMPose model variant. */
         mocapRtmPoseModelNameChanged: (state, action: PayloadAction<RTMPoseModelName>) => {
             state.config.rtmPoseModelName = action.payload;
+        },
+
+        /** Change the ONNX execution provider (null = auto). */
+        mocapExecutionProviderChanged: (state, action: PayloadAction<ExecutionProviderName | null>) => {
+            state.config.executionProvider = action.payload;
         },
 
         /** Change the RTMPose keypoint confidence threshold. */
@@ -430,6 +440,7 @@ export const selectReferenceTransform = (state: RootState) => state.mocap.config
 export const selectReferenceTransformEnabled = (state: RootState) => state.mocap.config.referenceTransformEnabled;
 export const selectMocapDetectorType = (state: RootState) => state.mocap.config.detectorType;
 export const selectMocapRtmPoseModelName = (state: RootState) => state.mocap.config.rtmPoseModelName;
+export const selectMocapExecutionProvider = (state: RootState) => state.mocap.config.executionProvider;
 export const selectMocapRtmPoseConfidenceThreshold = (state: RootState) => state.mocap.config.rtmPoseConfidenceThreshold;
 export const selectMocapMediapipeComplexity = (state: RootState) => state.mocap.config.mediapipeModelComplexity;
 export const selectMocapMediapipeDetectionConfidence = (state: RootState) => state.mocap.config.mediapipeDetectionConfidence;
@@ -484,6 +495,7 @@ export const {
     mocapDetectorTypeChanged,
     mocapRtmPoseModelNameChanged,
     mocapRtmPoseConfidenceThresholdChanged,
+    mocapExecutionProviderChanged,
     mocapMediapipeComplexityChanged,
     mocapMediapipeDetectionConfidenceChanged,
     mocapMediapipePresenceConfidenceChanged,

@@ -91,7 +91,7 @@ def detect_mocap_recording(request: MocapDetectionRequest) -> Iterator[MocapDete
     client = request.inference_service.register(InferenceRegistration(
         pipeline_id=request.ipc.pipeline_id, mode=InferenceMode.POSTHOC,
         tracker_config=request.config.tracker_config,
-        sessions=tracker_session_requests(config=request.config.tracker_config, batch_size=len(metadata), execution_provider=None),
+        sessions=tracker_session_requests(config=request.config.tracker_config, batch_size=len(metadata), execution_provider=request.config.execution_provider),
         shutdown_flag=request.ipc.pipeline_shutdown_flag,
     ))
     completed = False

@@ -105,7 +105,8 @@ including its separate Starlette WebSocket route representation.
 The full suite was not rerun after its 15 failures were resolved. The coordinator
 requested focused closure, fresh producer/Blender checks and physical/UI acceptance
 instead. Do not describe this as a new all-green full-suite run. The original
-`w3-core-full.xml` and `.log` remain in the local temporary reports directory.
+`w3-core-full.xml` and `.log` are preserved in
+`.test-artifacts/w3-integration/reports/`, alongside the focused reports.
 Core `.test-artifacts/w3-integration/full-core-failures.json` records each original
 failure, diagnosis, resolution and focused passing evidence.
 
@@ -145,6 +146,17 @@ GPU/camera ownership was explicitly released at 16:53 ET on 2026-11-01. No match
 test-owned processes remained; user applications were not stopped. Cleanup evidence
 is in `final-resource-cleanup.json` beside the failure ledger and hardware reports.
 
-Cleanup worktrees must remain until accepted canonical revisions are preserved,
-unique working files and needed ignored evidence/environments are accounted for,
-and no process uses them. Do not force removal or delete branches as routine cleanup.
+## Worktree preservation
+
+The three cleanup worktrees were retired with ordinary non-force Git removal after
+clean-status, merged-ancestry and process checks. Their branches and history remain.
+All 72 ignored entries (87,601 filesystem objects), including environments and test
+evidence, were preserved under canonical Core `.test-artifacts/retired-worktrees/`.
+Before/after file identities, sizes, modification times and report/source hashes
+matched. Nested reparse points were not traversed. Archived environments are for
+restoration at their original paths, not claimed runnable at the archive location.
+
+Provenance and verification: `.test-artifacts/w3-integration/retirement-manifest.json`.
+Restoration instructions: `.test-artifacts/retired-worktrees/README.md`.
+The archive is local and ignored, not a remote backup. Canonical normal imports were
+verified again after retirement; other worktrees were left untouched.

@@ -5,6 +5,8 @@ Set FREEMOCAP_PROVENANCE_PREPARED_ROOT to the isolated --prepared-root from
 the producer run. This suite copies its outputs and exercises the real worker.
 """
 
+from freemocap.tests.saved_graph_helpers import run_saved_graph
+
 from concurrent.futures import CancelledError
 import hashlib
 import json
@@ -15,7 +17,7 @@ import shutil
 import pyarrow.parquet as pq
 import pytest
 
-from freemocap.core.pipeline.posthoc.saved_stage_processing import run_saved_numerical_stages, select_group
+from freemocap.core.pipeline.posthoc.saved_stage_processing import select_group
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.recording.data_descriptors.stage_provenance import stage_provenance
 from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
@@ -62,7 +64,7 @@ def test_fresh_outputs_then_filter_restart_preserve_provenance(tmp_path, name, f
     upstream = pq.read_table(structure.data_parquet_path, filters=filters).replace_schema_metadata(None)
     config = PosthocMocapPipelineConfig(start_stage='filtering', base_run_id=run_id, sensor_group=group,
         filter_config=PosthocFilterConfig(cutoff=cutoff))
-    run_saved_numerical_stages(structure=structure, config=config, reporter=TaskProgressReporter.noop())
+    run_saved_graph(structure=structure, config=config, reporter=TaskProgressReporter.noop())
     after = read_metadata(path=structure.data_parquet_path)
     updated = stage_provenance(after.runs[run_id].processing, group).stages
     for stage in ('timing', 'observations', 'triangulation'):
@@ -73,7 +75,7 @@ def test_fresh_outputs_then_filter_restart_preserve_provenance(tmp_path, name, f
     assert not structure.videos_synchronized_dir.exists(), 'Replay must not need videos'
     before_cancel = digest(structure.data_parquet_path)
     with pytest.raises(CancelledError):
-        run_saved_numerical_stages(structure=structure, config=config,
+        run_saved_graph(structure=structure, config=config,
             reporter=TaskProgressReporter.noop(), cancelled=lambda: True)
     assert digest(structure.data_parquet_path) == before_cancel
     assert digest(source) == original_hash, 'Consumer acceptance modified producer output'

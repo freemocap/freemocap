@@ -153,15 +153,13 @@ class PosthocPipelineManager(PipelineManagerABC):
         mocap_config: PosthocMocapPipelineConfig,
         start_pipeline: bool = True,
     ) -> MocapPipeline:
-        if mocap_config.pipeline_implementation == "typed_dataflow":
-            from freemocap.core.pipeline.dataflow.application_pipeline import validate_application_graph
-            validate_application_graph(config=mocap_config)
+        from freemocap.core.pipeline.dataflow.application_pipeline import validate_application_graph
+        validate_application_graph(config=mocap_config)
         structure = RecordingStructure.from_recording_info(recording=recording_info)
         with self.access.read(path=structure.full_path, cancel=lambda: None):
             if structure.data_parquet_path.exists():
                 read_metadata(path=structure.data_parquet_path)
         pipeline = MocapPipeline.create(
-            inference_service=self.inference_service,
             pipeline_id=str(uuid.uuid4()), recording_info=recording_info,
             config=mocap_config, worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,

@@ -6,7 +6,7 @@ plain Python types; the streaming layer owns the actual CBOR encoding.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Any
 
 from skellyforge.core.math.geometry.orthonormal_basis.spatial_axis import SpatialAxis
@@ -114,3 +114,40 @@ class RestLandmark:
         if self.rest_position is not None:
             result["rest_position"] = list(self.rest_position)
         return result
+
+
+@dataclass(frozen=True, slots=True)
+class ModelAttachedLines:
+    """Prepared local endpoint pairs; static data, never a dynamic channel."""
+    segment: str
+    authored_length: float
+    positions: tuple[float, ...]
+    material: dict[str, Any] | None = None
+    surfaces: tuple[dict[str, Any], ...] = ()
+
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {'segment': self.segment, 'authored_length': self.authored_length, 'positions': list(self.positions),
+                **({'material': self.material} if self.material is not None else {}),
+                **({'surfaces': list(self.surfaces)} if self.surfaces else {})}
+
+    @classmethod
+    def from_attached_lines(cls, item):
+        return cls(segment=item.segment, authored_length=item.authored_length, positions=item.positions,
+                   material=asdict(item.material) if item.material is not None else None,
+                   surfaces=tuple({'positions': list(surface.positions), 'indices': list(surface.indices),
+                       'material': asdict(surface.material), 'double_sided': surface.double_sided}
+                       for surface in item.surfaces))
+
+
+@dataclass(frozen=True, slots=True)
+class ModelPresentation:
+    attached_lines: tuple[ModelAttachedLines, ...]
+    excluded_origin_edges: tuple[tuple[str, str], ...]
+    excluded_bones: tuple[str, ...]
+    connection_materials: tuple[dict[str, Any], ...] = ()
+
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {'attached_lines': [item.to_cbor_message() for item in self.attached_lines],
+                'excluded_origin_edges': [list(edge) for edge in self.excluded_origin_edges],
+                'excluded_bones': list(self.excluded_bones),
+                **({'connection_materials': list(self.connection_materials)} if self.connection_materials else {})}

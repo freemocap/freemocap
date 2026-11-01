@@ -9,6 +9,7 @@ export interface PreparedBones {
     proportions: Float64Array;
     radii: Float64Array;
     colors: Float32Array;
+    excluded: Uint8Array;
 }
 
 export function prepareBones(model: PreparedModel, baseSlot: number): PreparedBones {
@@ -16,6 +17,7 @@ export function prepareBones(model: PreparedModel, baseSlot: number): PreparedBo
     const axisMatrices = new Float64Array(segments.length * 9);
     const proportions = new Float64Array(segments.length), radii = new Float64Array(segments.length);
     const colors = new Float32Array(segments.length * 3);
+    const excluded = Uint8Array.from(segments, segment => +!!model.definition?.presentation?.excluded_bones.includes(segment.name));
     segments.forEach((segment, row) => {
         // Preserve the existing shortest-arc primary-axis transform and its rest semantics.
         // This authored transform is independent of the current frame.
@@ -26,7 +28,7 @@ export function prepareBones(model: PreparedModel, baseSlot: number): PreparedBo
         const rgb = BONE_SIDE_COLORS[classifyBone(segment.name)];
         for (let c = 0; c < 3; c++) colors[row * 3 + c] = rgb[c] * 0.7;
     });
-    return {model, baseSlot, axisMatrices, proportions, radii, colors};
+    return {model, baseSlot, axisMatrices, proportions, radii, colors, excluded};
 }
 
 /** Explicit renderer boundary: incoming presentation rows are XYZ and scalar-first WXYZ. */
@@ -42,6 +44,7 @@ export function writeBoneMatrices(prepared: PreparedBones, frame: ResolvedModelF
     const stride = frame.segmentOrigins?.stride ?? 3, coordinates = frame.segmentOrigins?.coordinateOffsets ?? XYZ_OFFSETS;
     for (let row = 0; row < proportions.length; row++) {
         const o = model.originRows[row] * stride, q = model.rotationRows[row] * 4, m = (baseSlot + row) * 16;
+        if (prepared.excluded[row]) {hideMatrix(target, m); continue;}
         if (!finitePoint(origins, o, coordinates) || !finitePoint(quats, q) || !Number.isFinite(quats?.[q + 3])) {hideMatrix(target, m); continue;}
         const fitted = frame.segmentLengths?.data[model.lengthRows[row]];
         const scale = frame.segmentLengths?.fittedScaleMm;

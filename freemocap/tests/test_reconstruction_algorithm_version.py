@@ -1,11 +1,12 @@
 """Placement changes invalidate derived results while retaining valid fitted inputs."""
+
+from freemocap.tests.saved_graph_helpers import run_saved_graph
 import pytest
 
 from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingRequest, ProcessingStage
 from freemocap.core.pipeline.posthoc.stage_execution_plan import build_execution_plan, retained_run
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
-from freemocap.core.pipeline.posthoc.saved_stage_processing import run_saved_numerical_stages
 from freemocap.core.pipeline.dataflow.saved_spatial_source import load_saved_spatial_source
 from freemocap.core.pipeline.dataflow.saved_spatial_pipeline import build_saved_spatial_pipeline
 from freemocap.core.pipeline.dataflow.recording_executor import execute_recording_graph
@@ -31,9 +32,9 @@ def assert_only_derived_signatures_change(old, current):
 
 
 def test_connected_checkpoint_rejected_for_biomechanics_but_fit_reused_for_reconstruction(publication, monkeypatch):
-    assert input_signatures.RECONSTRUCTION_STAGE_VERSION == 2
+    assert input_signatures.RECONSTRUCTION_STAGE_VERSION == 3
     with monkeypatch.context() as legacy:
-        legacy.setattr(input_signatures, "RECONSTRUCTION_STAGE_VERSION", 1)
+        legacy.setattr(input_signatures, "RECONSTRUCTION_STAGE_VERSION", 2)
         old = signature_map(reconstruction_checkpoints(request=publication, timestamps_s=(0., 1 / 30)))
     current = signature_map(reconstruction_checkpoints(request=publication, timestamps_s=(0., 1 / 30)))
     assert_only_derived_signatures_change(old, current)
@@ -61,22 +62,14 @@ def test_connected_checkpoint_rejected_for_biomechanics_but_fit_reused_for_recon
     assert not {ProcessingStage.RECONSTRUCTION, ProcessingStage.BIOMECHANICS}.intersection(signature_map(retained.checkpoints))
 
 
-@pytest.mark.parametrize("route", ["current", "typed_dataflow"])
-def test_both_resume_writers_replace_legacy_derived_checkpoints_only(saved_request, monkeypatch, route):
+def test_graph_replaces_outdated_derived_checkpoints_only(saved_request, monkeypatch):
     def process(start):
-        config = PosthocMocapPipelineConfig(pipeline_implementation=route,
-            base_run_id=3, sensor_group="mocap", start_stage=start, export_to_blender=False)
-        if route == "current":
-            run_saved_numerical_stages(structure=saved_request.structure, config=config,
-                                      reporter=TaskProgressReporter.noop())
-        else:
-            source = load_saved_spatial_source(path=saved_request.structure.full_path, config=config)
-            graph, handlers = build_saved_spatial_pipeline(source=source, config=config)
-            result = execute_recording_graph(graph=graph, handlers=handlers)
-            assert result.complete, result.failure_tracebacks
+        config = PosthocMocapPipelineConfig(base_run_id=3, sensor_group="mocap", start_stage=start, export_to_blender=False)
+        run_saved_graph(structure=saved_request.structure, config=config,
+                        reporter=TaskProgressReporter.noop())
         return read_metadata(path=saved_request.structure.data_parquet_path).runs[3]
     with monkeypatch.context() as legacy:
-        legacy.setattr(input_signatures, "RECONSTRUCTION_STAGE_VERSION", 1)
+        legacy.setattr(input_signatures, "RECONSTRUCTION_STAGE_VERSION", 2)
         old = process("filtering")
     current = process("reconstruction")
     assert_only_derived_signatures_change(signature_map(old.checkpoints), signature_map(current.checkpoints))

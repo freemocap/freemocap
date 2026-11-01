@@ -7,6 +7,7 @@ import SettingsGroupHeading from '@/components/common/settings-layout/settings-g
 import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
 import {useMocap} from '@/hooks/useMocap';
+import {DETECTOR_OPTIONS} from './detector-options';
 import {
     DetectorType,
     MediapipeModelComplexity,
@@ -14,12 +15,6 @@ import {
     RTMPoseModelName,
     ExecutionProviderName,
 } from '@/store/slices/mocap';
-
-const DETECTORS: { label: string; value: DetectorType }[] = [
-    {label: "RTMW", value: "rtmpose"},
-    {label: "RTMW + MediaPipe hands", value: "rtmw_mediapipe_hands"},
-    {label: "MediaPipe", value: "mediapipe"},
-];
 
 const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
     {label: "Heavy", value: "heavy"},
@@ -129,7 +124,7 @@ export default function MocapDetectorSettings() {
     return <>
         {/* The detector reframes every row beneath it, so it leads the section. */}
         <SettingRow promoted label="Skeleton detector" info={DETECTOR_INFO}
-            control={<SettingSelectInput label="Skeleton detector" value={detector} options={DETECTORS}
+            control={<SettingSelectInput label="Skeleton detector" value={detector} options={DETECTOR_OPTIONS}
                 onChange={setDetectorType}/>}/>
 
         {detector !== "mediapipe" && <>

@@ -6,6 +6,7 @@ Runs indefinitely until shutdown. Responds to pipeline config updates
 (toggling trackers, changing charuco board params, etc).
 """
 from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
+from freemocap.core.tracking.capture_timing import tracker_capture_timestamp_ms
 import logging
 import queue
 import time
@@ -289,13 +290,12 @@ class CameraNode(SourceNode):
                 if skeleton_tracker is not None:
                     t0 = time.perf_counter() if timer is not None else 0.0
                     skeleton_observation, skeleton_state = skeleton_tracker.process_image(
-                        image, actual_frame_number, skeleton_state
+                        image, actual_frame_number, skeleton_state,
+                        timestamp_ms=tracker_capture_timestamp_ms([frame_recarray]),
                     )
                     if timer is not None:
                         timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
 
-                    from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
-                    merge_mediapipe_hand_face_children(skeleton_observation)
                 if charuco_tracker is not None:
                     if actual_frame_number > charuco_skip_until_frame_number:
                         t0 = time.perf_counter() if timer is not None else 0.0

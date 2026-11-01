@@ -99,7 +99,7 @@ working-tree changes present and preserved. No production code was changed.
 | RTMPose camera batch | `InferenceService`, `tracker_session_requests` | Camera-keyed `Observation` results from configured RTMPose/RTMW and person detector |
 | Detect ChArUco corners | ChArUco work currently in `MocapVideoNode` | Board observations with a selected board definition |
 | Assemble camera observations | `MocapDetectionFrame.observations` | Tracker and board stages per camera/frame |
-| Resolved camera models | `run_posthoc_mocap_task`, `CalibrationResult`, camera matching | Resolved `CameraModel` collection |
+| Resolved camera models | `build_recording_pipeline`, `CalibrationResult`, camera matching | Resolved `CameraModel` collection |
 | Triangulate keypoints | `triangulate_observation_buffers` | `RAW_KEYPOINTS_3D`, weights and reprojection diagnostics |
 | Prepare 3D trajectories | `prepare_recording_points` | Gap-filled/filtered coordinates, timestamps, filtering report and measured-support mask |
 | Fit recording-wide model scale | `reconstruct_skeletons_for_recording`, `FittedRecordingScale` | Fit and its model/evidence provenance |

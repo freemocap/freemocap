@@ -15,6 +15,7 @@ from skellyforge.core.skeleton.pose.model_scale_fitting import (
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
+from skellytracker.core.io.tracker_profiles import tracker_profile
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.tasks.mocap.tracker_mappings import (
@@ -55,6 +56,7 @@ def build_standard_human_bundle(*, detector_type: str, anchor_segment_name: str 
         model_id=STANDARD_HUMAN_MODEL_ID,
         detector_type=detector_type,
         tracker_keypoint_names=tuple(tracker_keypoint_names(detector_type)),
+        tracker_connections=tracker_profile(detector_type).connections,
         skeleton=skeleton,
         rest_pose=RestPose.from_default_yaml(skeleton=skeleton),
         landmark_mapping=mapping,

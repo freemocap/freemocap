@@ -1,8 +1,6 @@
 """Application graph routing and export ownership regression checks."""
 from concurrent.futures import CancelledError
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
-from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from freemocap.core.pipeline.inference_service import InferenceService
 from pathlib import Path
 from types import SimpleNamespace
 from tempfile import TemporaryDirectory
@@ -25,9 +23,10 @@ class ApplicationGraphTests(TestCase):
             charuco_tracking_enabled=False, graph_execution_provider='cpu',
             calibration_toml_path=str(self.calibration), export_to_blender=False)
 
-    def test_graph_is_default_and_legacy_remains_selectable(self):
+    def test_graph_is_the_only_implementation(self):
         self.assertEqual(PosthocMocapPipelineConfig().pipeline_implementation,'typed_dataflow')
-        self.assertEqual(PosthocMocapPipelineConfig(pipeline_implementation='current').pipeline_implementation, 'current')
+        with self.assertRaises(ValueError):
+            PosthocMocapPipelineConfig(pipeline_implementation='unsupported')
 
     def test_saved_3d_starts_do_not_require_external_calibration(self):
         for start in ('filtering', 'scale_fit', 'reconstruction'):
@@ -42,9 +41,7 @@ class ApplicationGraphTests(TestCase):
     def test_graph_exports_run_once_and_reuses_unchanged_calibration(self):
         from queue import Queue
         destination=self.root/'recording'; destination.mkdir()
-        request=MocapWorkerRequest(pipeline_id='test',recording=RecordingInfo(recording_name='recording',recording_directory=str(self.root)),
-            config=self.config,ipc=Mock(spec=PipelineIPC,should_continue=True,pipeline_shutdown_flag=multiprocessing.Value('b',False)),
-            progress_queue=Queue(),registry=Mock(spec=WorkerRegistry),inference_service=Mock(spec=InferenceService),video_nodes=[])
+        request=MocapWorkerRequest(pipeline_id='test', recording=RecordingInfo(recording_name='recording', recording_directory=str(self.root)), config=self.config, ipc=Mock(spec=PipelineIPC, should_continue=True, pipeline_shutdown_flag=multiprocessing.Value('b', False)), progress_queue=Queue())
         sources=Mock(spec=RecordingVideoSources,recording_path=destination,camera_sources=[SimpleNamespace(video_metadata=SimpleNamespace(frame_count=222)) for _ in range(3)])
         with patch('freemocap.core.pipeline.dataflow.application_pipeline.RecordingVideoSources.resolve',return_value=sources), \
              patch('freemocap.core.pipeline.dataflow.application_pipeline.run_recording_pipeline',return_value=RecordingExecutionResult()) as run, \
@@ -62,7 +59,7 @@ class ApplicationGraphTests(TestCase):
             messages=list(request.progress_queue.queue)
             detection=next(message for message in messages if '333' in message.detail)
             self.assertIn('3 videos x 222 frames each',detection.detail)
-            self.assertIn('RTMPose on CPU',detection.detail)
+            self.assertIn('RTMW on requested provider: cpu',detection.detail)
             self.assertIn('percentage is for detection only',detection.detail)
             self.assertIn('annotated video 1',messages[-1].detail)
             self.assertIn('joint rotations',messages[-1].detail)
@@ -85,9 +82,7 @@ class ApplicationGraphTests(TestCase):
     def test_failed_or_cancelled_graph_never_reports_complete(self):
         from queue import Queue
         destination=self.root/'recording';destination.mkdir()
-        request=MocapWorkerRequest(pipeline_id='test',recording=RecordingInfo(recording_name='recording',recording_directory=str(self.root)),
-            config=self.config,ipc=Mock(spec=PipelineIPC,should_continue=True,pipeline_shutdown_flag=multiprocessing.Value('b',False)),
-            progress_queue=Queue(),registry=Mock(spec=WorkerRegistry),inference_service=Mock(spec=InferenceService),video_nodes=[])
+        request=MocapWorkerRequest(pipeline_id='test', recording=RecordingInfo(recording_name='recording', recording_directory=str(self.root)), config=self.config, ipc=Mock(spec=PipelineIPC, should_continue=True, pipeline_shutdown_flag=multiprocessing.Value('b', False)), progress_queue=Queue())
         for result,exception in [(RecordingExecutionResult(cancelled=True),CancelledError),
                                  (RecordingExecutionResult(failures={'science':'failed'}),RuntimeError)]:
             with patch('freemocap.core.pipeline.dataflow.application_pipeline.RecordingVideoSources.resolve',return_value=Mock(spec=RecordingVideoSources,recording_path=destination)), \

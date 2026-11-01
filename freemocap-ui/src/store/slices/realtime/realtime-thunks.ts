@@ -6,6 +6,8 @@ import {serverUrls} from "@/services";
 import {PipelineApplyResponse, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
 import {selectCalibrationConfig, selectLoadedCalibration} from "@/store/slices/calibration/calibration-slice";
 import {loadRealtimeCalibrationDefault} from '@/store/slices/calibration/calibration-thunks';
+import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
+import {realtimePipelineSettings} from './realtime-settings';
 
 export const applyRealtimePipeline = createAsyncThunk<
     PipelineApplyResponse,
@@ -51,7 +53,7 @@ export const applyRealtimePipeline = createAsyncThunk<
             aruco_dictionary_enum: savedBoard.aruco_dictionary_enum,
         } : calibrationConfig.charucoBoard;
 
-        const configWithBoard: RealtimePipelineConfig = {
+        const configWithBoard = realtimePipelineSettings({
             ...realtimeConfig,
             camera_node_config: {
                 ...realtimeConfig.camera_node_config,
@@ -61,7 +63,7 @@ export const applyRealtimePipeline = createAsyncThunk<
                 ...realtimeConfig.aggregator_config,
                 calibration_toml_path: calibrationTomlPath,
             },
-        };
+        });
 
         const response = await fetch(serverUrls.endpoints.realtimeConnectOrUpdate, {
             method: 'POST',
@@ -74,8 +76,7 @@ export const applyRealtimePipeline = createAsyncThunk<
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`Failed to apply realtime: ${error.detail || response.statusText}`);
+            throw new Error(`Failed to apply realtime: ${await getDetailedErrorMessage(response)}`);
         }
 
         return response.json() as Promise<PipelineApplyResponse>;
@@ -90,7 +91,7 @@ export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to close realtime: ${response.statusText}`);
+            throw new Error(`Failed to close realtime: ${await getDetailedErrorMessage(response)}`);
         }
     }
 );
@@ -103,8 +104,7 @@ export const resetSkeletonFitter = createAsyncThunk<void, void, { state: RootSta
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`Failed to reset skeleton fitter: ${error.detail || response.statusText}`);
+            throw new Error(`Failed to reset skeleton fitter: ${await getDetailedErrorMessage(response)}`);
         }
     }
 );

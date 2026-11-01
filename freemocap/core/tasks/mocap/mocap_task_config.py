@@ -22,9 +22,9 @@ class PosthocMocapPipelineConfig(BaseModel):
     anchor_segment_name: str = Field(default="pelvis", min_length=1, alias="anchorSegmentName")
     model_config = ConfigDict(populate_by_name=True)
 
-    pipeline_implementation: Literal["current", "typed_dataflow"] = Field(
+    pipeline_implementation: Literal["typed_dataflow"] = Field(
         default="typed_dataflow", alias="pipelineImplementation",
-        description="Typed data flow graph V1 (default), or the legacy post hoc pipeline (current).")
+        description="Typed data flow graph V1.")
     graph_execution_provider: Literal["auto", "cpu", "cuda"] = Field(
         default="auto", alias="graphExecutionProvider")
     graph_annotate: bool = Field(default=True, alias="graphAnnotate")
@@ -110,12 +110,10 @@ class PosthocMocapPipelineConfig(BaseModel):
         le=1.0,
         description="Minimum tracking confidence for all MediaPipe detectors.",
     )
-    mediapipe_num_hands: int = Field(
+    mediapipe_num_hands: Literal[2] = Field(
         default=2,
         alias="mediapipeNumHands",
-        ge=1,
-        le=4,
-        description="Number of hands to detect. Only used when detector_type='mediapipe'.",
+        description="Two-sided human presets detect one hand per side; the count is fixed at two.",
     )
     mediapipe_num_faces: int = Field(
         default=1,
@@ -170,17 +168,17 @@ class PosthocMocapPipelineConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_stage_range(self) -> "PosthocMocapPipelineConfig":
-        if self.pipeline_implementation == 'current' and self.run_save_mode != 'overwrite':
-            raise ValueError('Creating a processing run requires typed data flow graph V1')
         stages = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
         if stages.index(self.start_stage) > stages.index(self.stop_stage):
             raise ValueError('stopStage must not precede startStage')
-        if self.pipeline_implementation == 'current' and self.stop_stage != 'reconstruction':
-            raise ValueError('stopStage before reconstruction requires typed data flow graph V1')
         return self
 
     @model_validator(mode="after")
     def _build_tracker_config_from_detector_type(self) -> "PosthocMocapPipelineConfig":
         from freemocap.core.tracking.tracker_factory import tracker_config_for_settings
-        self.tracker_config = tracker_config_for_settings(self, video_fps=self.video_fps)
+        expected_tracker = tracker_config_for_settings(self, video_fps=self.video_fps)
+        if self.tracker_config is not None and self.tracker_config != expected_tracker:
+            raise ValueError("tracker_config must match the selected tracking preset settings")
+        if self.tracker_config is None:
+            self.tracker_config = expected_tracker
         return self

@@ -37,6 +37,8 @@ from freemocap.core.streaming.rest_geometry import (
     ModelLandmarkGroup,
     RestLandmark,
     RestSegment,
+    ModelAttachedLines,
+    ModelPresentation,
 )
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
@@ -320,6 +322,8 @@ class ModelDefinition:
     # charuco board. Lets a client render "height 1684 mm" or "square 54.2 mm" without
     # either side hardcoding which model it is looking at.
     scale_reference_name: str = "body_height"
+    presentation: ModelPresentation | None = None
+    tracker_connections: tuple[tuple[str, str], ...] = ()
 
     @classmethod
     def from_skeleton(
@@ -330,6 +334,7 @@ class ModelDefinition:
         rest_pose: RestPose,
         palette: ColorPalette,
         scale_reference_name: str,
+        tracker_connections: tuple[tuple[str, str], ...] = (),
     ) -> "ModelDefinition":
         """Project any skeleton onto the wire.
 
@@ -340,6 +345,15 @@ class ModelDefinition:
         return cls(
             model_id=model_id,
             scale_reference_name=scale_reference_name,
+            tracker_connections=tracker_connections,
+            presentation=ModelPresentation(
+                attached_lines=tuple(ModelAttachedLines.from_attached_lines(item) for item in skeleton.presentation_lines),
+                excluded_origin_edges=skeleton.presentation.excluded_origin_edges,
+                excluded_bones=skeleton.presentation.excluded_bones,
+                connection_materials=tuple({'group': item.group, 'material': {
+                    'color': item.material.color, 'opacity': item.material.opacity}}
+                    for item in skeleton.presentation.connection_materials),
+            ) if skeleton.presentation is not None else None,
             landmark_groups=tuple(
                 ModelLandmarkGroup(
                     name=group.name,
@@ -391,6 +405,8 @@ class ModelDefinition:
     def to_cbor_message(self) -> dict[str, Any]:
         return {
             "model_id": self.model_id,
+            **({'presentation': self.presentation.to_cbor_message()} if self.presentation is not None else {}),
+            **({'tracker_connections': [list(edge) for edge in self.tracker_connections]} if self.tracker_connections else {}),
             "scale_reference_name": self.scale_reference_name,
             "segments": [s.to_cbor_message() for s in self.segments],
             "landmarks": [l.to_cbor_message() for l in self.landmarks],

@@ -17,11 +17,6 @@ from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_m
 DEFAULT_DETECTOR_TYPE: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands"] = "rtmpose"
 
 
-def _default_skeleton_tracker_config() -> TrackerConfig:
-    from skellytracker.core.tracker.tracker_presets import human_tracker_config
-    return human_tracker_config(preset=DEFAULT_DETECTOR_TYPE)
-
-
 def _charuco_tracker_config_for_board(board: CharucoBoardDefinition) -> TrackerConfig:
     from skellytracker.core.tracker.tracker_presets import charuco_tracker_config
     return charuco_tracker_config(board)
@@ -42,7 +37,7 @@ class CameraNodeConfig(BaseModel):
     mediapipe_detection_confidence: float = 0.5
     mediapipe_presence_confidence: float = 0.5
     mediapipe_tracking_confidence: float = 0.5
-    mediapipe_num_hands: int = 2
+    mediapipe_num_hands: Literal[2] = 2
     mediapipe_num_faces: int = 1
     charuco_board: CharucoBoardDefinition = Field(
         default_factory=CharucoBoardDefinition.create_letter_size_5x3
@@ -53,9 +48,7 @@ class CameraNodeConfig(BaseModel):
     # detections to one crop per camera keeps the pose batch a fixed size
     # (N cameras), which prevents the ONNX Runtime GPU arena from growing on
     # frames with spurious detections (the cause of intermittent OOMs).
-    skeleton_tracker_config: TrackerConfig | None = Field(
-        default_factory=_default_skeleton_tracker_config
-    )
+    skeleton_tracker_config: TrackerConfig | None = None
 
     # Confidence gating threshold — keypoints below this visibility score
     # have their xy NaN-ed before publication so triangulation skips them.
@@ -88,7 +81,15 @@ class CameraNodeConfig(BaseModel):
         RealtimePipeline, posthoc video_node reprocessing) reads the board out
         of via stages[0].keypoint_detectors[0].board.
         """
-        self.charuco_tracker_config = _charuco_tracker_config_for_board(self.charuco_board)
+        expected_board = _charuco_tracker_config_for_board(self.charuco_board)
+        if self.charuco_tracker_config is not None and self.charuco_tracker_config != expected_board:
+            raise ValueError("charuco_tracker_config must match charuco_board")
+        if self.charuco_tracker_config is None:
+            self.charuco_tracker_config = expected_board
         from freemocap.core.tracking.tracker_factory import tracker_config_for_settings
-        self.skeleton_tracker_config = tracker_config_for_settings(self)
+        expected_tracker = tracker_config_for_settings(self)
+        if self.skeleton_tracker_config is not None and self.skeleton_tracker_config != expected_tracker:
+            raise ValueError("skeleton_tracker_config must match the selected tracking preset settings")
+        if self.skeleton_tracker_config is None:
+            self.skeleton_tracker_config = expected_tracker
         return self

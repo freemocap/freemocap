@@ -245,5 +245,5 @@ Paths below are relative to `freemocap/core/`.
 | Real-time matching | `tasks/calibration/camera_matching/live_matching.py` |
 | Live attempt lifecycle | `tasks/calibration/camera_matching/matching_lifecycle.py` |
 | Posthoc matching | `tasks/calibration/camera_matching/posthoc_matching.py` |
-| Posthoc integration | `tasks/mocap/posthoc_mocap_task.py` |
+| Posthoc integration | `dataflow/recording_pipeline.py` |
 | Settings and result types | `tasks/calibration/camera_matching/matching_models.py` |

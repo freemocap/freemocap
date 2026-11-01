@@ -16,7 +16,7 @@ def test_live_and_posthoc_use_tracker_recipes_and_profiles(preset):
     live = CameraNodeConfig(detector_type=preset)
     live_recipe = tracker_factory.tracker_config_for_settings(live)
     assert live.skeleton_tracker_config == live_recipe
-    for implementation in ("current", "typed_dataflow"):
+    for implementation in ("typed_dataflow",):
         posthoc = PosthocMocapPipelineConfig(detector_type=preset, pipeline_implementation=implementation,
                                            mediapipe_model_complexity=live.mediapipe_model_complexity)
         restored = PosthocMocapPipelineConfig.model_validate_json(posthoc.model_dump_json(by_alias=True, round_trip=True))
@@ -34,7 +34,7 @@ def test_live_and_posthoc_use_tracker_recipes_and_profiles(preset):
 
 def test_core_recipe_aliases_are_tracker_implementations():
     for name in ("skeleton_tracker_config", "mediapipe_tracker_config",
-                 "build_mediapipe_tracker_config", "merge_mediapipe_hand_face_children"):
+                 "build_mediapipe_tracker_config"):
         assert getattr(tracker_factory, name) is getattr(tracker_presets, name)
 
 

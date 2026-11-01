@@ -21,19 +21,10 @@ class DatasetExecutionTests(unittest.TestCase):
             self.assertEqual(plan['implementation'], 'graph')
 
     def test_selection_never_falls_back(self):
-        self.assertEqual(require_implementation('current'), 'current')
         self.assertEqual(require_implementation('graph'), 'graph')
         for value in ('typo',):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 require_implementation(value)
-
-    def test_graph_restart_is_rejected_before_reading_saved_files(self):
-        from freemocap.tools.datasets import workflow
-        with patch.object(workflow, 'checked_ready') as ready:
-            with self.assertRaisesRegex(ValueError, 'saved-stage restart'):
-                workflow.preflight('test_data', recordings_root=Path('raw'),
-                    prepared_root=Path('prepared'), implementation='graph', start='reconstruction')
-            ready.assert_not_called()
 
     def run_measured(self, error=None):
         writes = []
@@ -42,7 +33,7 @@ class DatasetExecutionTests(unittest.TestCase):
              patch('freemocap.tools.datasets.execution.perf_counter', side_effect=[10.0, 12.5]):
             try:
                 with measure_worker(report_path=Path('performance.json'),
-                                    implementation='current', operation='process') as report:
+                                    implementation='graph', operation='process') as report:
                     if error:
                         raise error
             except BaseException as caught:

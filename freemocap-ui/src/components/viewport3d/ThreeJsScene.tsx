@@ -118,7 +118,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <KeypointsRenderer />
             {visibility.centerOfMass && <CenterOfMassRenderer />}
             {visibility.boneLines && <ModelConnectionRenderer />}
-            {visibility.face && <FaceRenderer />}
+            {(visibility.face || visibility.faceConnections) && <FaceRenderer />}
             {visibility.cameras && <MocapCameraRenderer />}
             {visibility.bones && <RigidBodyBoneRenderer />}
             {visibility.segmentAxes && <SegmentAxesRenderer />}

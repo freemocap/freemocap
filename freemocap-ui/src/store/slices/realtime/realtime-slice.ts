@@ -3,6 +3,7 @@ import {defaultRealtimePipelineConfig, PipelineState, RealtimePipelineConfig} fr
 import {applyRealtimePipeline, closePipeline, fetchTemporalConfig, applyTemporalConfig} from "@/store/slices/realtime/realtime-thunks";
 import {serverStateReceived, serverDisconnected} from "@/store/slices/connection/connection-slice";
 import {matchesSavedManualOffset, saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
+import {realtimePipelineSettings} from './realtime-settings';
 
 const initialState: PipelineState = {
     temporalStatus: null,
@@ -23,7 +24,7 @@ export const realtimeSlice = createSlice({
         pipelineStateReset: () => initialState,
 
         pipelineConfigUpdated: (state, action: PayloadAction<RealtimePipelineConfig>) => {
-            state.pipelineConfig = action.payload;
+            state.pipelineConfig = realtimePipelineSettings(action.payload);
         },
 
         pipelineErrorCleared: (state) => {
@@ -80,7 +81,7 @@ export const realtimeSlice = createSlice({
             .addCase(applyRealtimePipeline.fulfilled, (state, action) => {
                 state.cameraGroupId = action.payload.camera_group_id;
                 state.pipelineId = action.payload.pipeline_id;
-                state.pipelineConfig = action.payload.resolved_config;
+                state.pipelineConfig = realtimePipelineSettings(action.payload.resolved_config);
                 state.isConnected = true;
                 state.isLoading = false;
             })

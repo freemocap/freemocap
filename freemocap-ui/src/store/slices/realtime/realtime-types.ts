@@ -21,7 +21,7 @@ export interface CameraNodeConfig {
     mediapipe_detection_confidence?: number;
     mediapipe_presence_confidence?: number;
     mediapipe_tracking_confidence?: number;
-    mediapipe_num_hands?: number;
+    mediapipe_num_hands?: 2;
     mediapipe_num_faces?: number;
 }
 

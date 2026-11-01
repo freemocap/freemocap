@@ -12,18 +12,10 @@ a worktree does not update that dependency. No dependency installation occurred.
 
 ## Application integration
 
-The experimental recording graph is now selectable in the main application's
-Mocap processing settings. The current implementation remains the default.
-Both frontend and backend must run from this worktree; an already-running older
-application does not acquire these changes automatically.
-
-1. Open a recording in playback and open its Mocap processing settings.
-2. Under Processing stages, choose Processing pipeline: Experimental typed graph.
-3. Start at 2D tracking; provide an existing camera calibration. If ChArUco is
-   enabled, use Automatic for supported 5x3/7x5 layouts or select an explicit board.
-   Automatic preserves the configured square length; it does not infer physical size. Use CPU/Automatic for MediaPipe; RTMPose
-   supports the Automatic, CPU and CUDA GPU choices.
-4. Process Mocap. Existing task progress and stop controls operate on the graph.
+Typed data flow graph V1 is the application's posthoc motion-capture pipeline.
+The processing selector also shows a disabled custom-pipeline item. Fresh runs
+and saved-stage starts use the same executable graph definitions, managed task
+lifecycle, and recording run ownership.
 
 The existing HTTP process route and managed task own recording access, cancellation
 and completion. The existing WebSocket sends task snapshots. Display connections

@@ -153,7 +153,7 @@ def test_fresh_processing_does_not_require_readable_previous_outputs(recording_w
     assert (current / f'{current.name}_data.parquet').read_text() == 'result 2'
     with pytest.raises(ValueError):
         # A saved-stage request still validates inputs instead of inventing them.
-        workflow.preflight(name, start='reconstruction', implementation='current', **options)
+        workflow.preflight(name, start='reconstruction', implementation='graph', **options)
 
 
 @pytest.mark.parametrize('failure, expected', [

@@ -10,7 +10,7 @@ Source paths below are relative to the repository root.
 
 | Operation | Data and identity | Actual readiness / ordering | Evidence |
 | --- | --- | --- | --- |
-| Load video frames | Video source, source frame ordinal, image dimensions, timing | Ordered reader per video; cameras can progress independently | `freemocap/core/pipeline/posthoc/mocap_video_node.py` |
+| Load video frames | Video source, source frame ordinal, image dimensions, timing | Ordered reader per video; cameras can progress independently | `freemocap/core/pipeline/dataflow/video_sources.py` |
 | Track observations | Camera/frame, tracker/model identity, named keypoints | Model-specific state ordering; camera batches are execution policy | `freemocap/core/pipeline/inference_service.py` |
 | Resolve timing | Source frame selection, camera timelines, group timeline | Current selection must match declared video range; recorded group timestamps or mean camera times | `freemocap/core/reconstruction/recording_timing.py` |
 | Assign camera geometry | Video source IDs, calibration models, sampled observations | Current matcher samples across the recording including the final frame; assignment can require late evidence | `freemocap/core/tasks/calibration/camera_matching/posthoc_matching.py` |
@@ -24,7 +24,7 @@ Source paths below are relative to the repository root.
 | Calculate biomechanics | Reconstructed landmarks, mass/COM definitions | Current COM calculation is frame-local; stage name alone does not imply temporal dependence | `freemocap/core/skeletons/reconstruct_skeleton.py` |
 | Reprojection | Geometry, observed pixels or reconstructed points | Distinguish triangulation residuals from reconstructed-model projection and video drawing | `freemocap/core/tasks/triangulation/triangulator.py` |
 | Save scientific products | Complete declared coverage, schema, provenance, validation | Acceptance barrier for that product only; incomplete scientific product is not accepted | `freemocap/core/pipeline/posthoc/saved_stage_processing.py`; owner decision |
-| Save annotated videos | Per-camera images and requested overlays | Independent per-camera completeness; ordered encoding, no reason to gate unrelated scientific work | `freemocap/core/pipeline/posthoc/mocap_video_node.py`; owner decision |
+| Save annotated videos | Per-camera images and requested overlays | Independent per-camera completeness; ordered encoding, no reason to gate unrelated scientific work | `freemocap/core/pipeline/dataflow/video_sources.py`; owner decision |
 
 ## Identity boundaries
 
@@ -90,7 +90,7 @@ until the resulting contracts have been reviewed with the owner.
 
 Reviewed `matching_models.py`, `matching_evaluation.py`, `matching_fitness.py`,
 `posthoc_matching.py` under `freemocap/core/tasks/calibration/camera_matching/`,
-and the caller in `freemocap/core/tasks/mocap/posthoc_mocap_task.py`.
+and the caller in `freemocap/core/pipeline/dataflow/recording_pipeline.py`.
 
 1. The recorded adapter samples uniformly across the full recording, including
    the final frame (normally up to 24 samples). Source IDs matching calibration

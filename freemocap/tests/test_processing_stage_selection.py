@@ -5,10 +5,10 @@ from pydantic import ValidationError
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 
 
-def test_legacy_partial_request_cannot_silently_run_to_completion():
-    with pytest.raises(ValidationError, match='stopStage'):
+def test_unsupported_pipeline_is_rejected():
+    with pytest.raises(ValidationError, match='pipelineImplementation'):
         PosthocMocapPipelineConfig.model_validate({
-            'pipelineImplementation': 'current', 'stopStage': 'filtering',
+            'pipelineImplementation': 'unsupported', 'stopStage': 'filtering',
         })
 
 
@@ -23,10 +23,8 @@ def test_reversed_stage_range_is_rejected():
         PosthocMocapPipelineConfig(startStage='triangulation', stopStage='observations')
 
 
-def test_run_save_mode_is_explicit_and_legacy_cannot_ignore_it():
+def test_run_save_mode_is_explicit():
     assert PosthocMocapPipelineConfig(runSaveMode='new_run').run_save_mode == 'new_run'
     assert PosthocMocapPipelineConfig().run_save_mode == 'overwrite'
     with pytest.raises(ValidationError):
         PosthocMocapPipelineConfig(runSaveMode='keep_typo')
-    with pytest.raises(ValidationError, match='Creating a processing run'):
-        PosthocMocapPipelineConfig(pipelineImplementation='current', runSaveMode='new_run')

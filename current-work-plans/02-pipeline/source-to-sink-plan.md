@@ -74,7 +74,7 @@ driven by WebSocket client acknowledgements.
 | Existing capability | Reuse / new responsibility |
 | --- | --- |
 | `freemocap/core/pipeline/posthoc/video_group_helper.py` | Reuse source associations, metadata and equal-frame-count validation. Do not silently truncate to the shortest video. |
-| SkellyCam `SequentialVideoReader`, already used by `mocap_video_node.py` | Reuse sequential BGR loading; give each reader one owner. |
+| SkellyCam `SequentialVideoReader`, already used by `video_sources.py` | Reuse sequential BGR loading; give each reader one owner. |
 | `freemocap/core/reconstruction/recording_timing.py` | Reuse recorded camera/group timestamps and existing fallback rules. Preserve timing provenance. |
 | `freemocap/core/pipeline/inference_service.py` and `freemocap/core/tracking/tracker_factory.py` | Reuse tracker/session construction and supported camera batching; preserve camera-specific tracker state. Current service permits one outstanding request/client, so do not promise arbitrary concurrent GPU calls. |
 | Camera matching, triangulation and reconstruction modules | Reuse scientific algorithms through explicit graph operations, not an old-coordinator wrapper. |

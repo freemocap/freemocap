@@ -5,7 +5,7 @@ import ModalWindowControls from '@/components/ui-components/ModalWindowControls'
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import SettingRow from '@/components/common/settings-layout/setting-row';
-import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
+import ProcessingPipelineSelect from './processing-pipeline-select';
 import SettingsSection from "@/components/common/settings-layout/settings-section";
 import SettingsSummaryChip from "@/components/common/settings-layout/settings-summary-chip";
 
@@ -54,11 +54,9 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
 
     const config = useAppSelector(state => state.mocap.config);
     const blender = useAppSelector(selectBlender);
-    const [pipelineImplementation, setPipelineImplementation] = useState<'current' | 'typed_dataflow'>('typed_dataflow');
     const [sourceRunId, setSourceRunId] = useState(0);
     const [stageSelection, setStageSelection] = useState<StageSelection | null>(null);
-    const partialStageSelection = (pipelineImplementation === 'current' && stageSelection?.stopStage !== undefined
-            && stageSelection.stopStage !== 'reconstruction') || (pipelineImplementation === 'current' && stageSelection?.runSaveMode === 'new_run');
+
 
     useEffect(() => {
         if (mocapRecordingPath) validateDirectory(mocapRecordingPath);
@@ -106,15 +104,9 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             content: <>
                 <SettingRow label="Processing pipeline" info={{title: 'Processing pipeline',
                     text: 'Typed data flow graph V1 is the default. Select the stages to run. Start from videos, saved 2D tracking, saved 3D points, or saved skeleton fits.'}}
-                    control={<SettingSelectInput label="Processing pipeline" value={pipelineImplementation}
-                        onChange={setPipelineImplementation} options={[
-                            {value: 'typed_dataflow', label: 'Typed data flow graph V1'},
-                            {value: 'current', label: 'Legacy post hoc pipeline'},
-                        ]}/>}/>
+                    control={<ProcessingPipelineSelect/>}/>
                 <MocapStageSelection path={mocapRecordingPath} onChange={setStageSelection} onSourceRunChange={setSourceRunId}/>
-                {partialStageSelection && <p role="status" className="settings-note">
-                    This pipeline cannot yet finish at the selected stage. Choose an earlier finish point in V1 or include reconstruction.
-                </p>}
+
             </>,
         },
         {
@@ -207,9 +199,9 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                     {mode === "playback" ? (
                         <ButtonSm text="Process Mocap" textColor="text-white" iconClass="processmocap-icon"
                             buttonType="" className="primary accent"
-                            onClick={() => {if (stageSelection) {dispatchProcessMocapRecording({...stageSelection, pipelineImplementation}); onClose?.();}}}
-                            disabled={!canProcessMocapRecording || !stageSelection || partialStageSelection} tooltip tooltipPosition="pos-top"
-                            tooltipText={processBlockedReason ?? (partialStageSelection ? "This stage range or new-run choice requires typed data flow graph V1." : stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
+                            onClick={() => {if (stageSelection) {dispatchProcessMocapRecording({...stageSelection, pipelineImplementation: 'typed_dataflow'}); onClose?.();}}}
+                            disabled={!canProcessMocapRecording || !stageSelection} tooltip tooltipPosition="pos-top"
+                            tooltipText={processBlockedReason ?? (stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
                     ) : (
                         <ButtonSm text="Save" textColor="text-white" buttonType="" className="primary accent"
                             onClick={onClose} tooltip tooltipPosition="pos-top" tooltipText="Save mocap settings"/>

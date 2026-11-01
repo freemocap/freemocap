@@ -129,8 +129,9 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
 ```
 
 - **freemocap has two consumers of one model:** realtime (online, per-frame, partial hydration +
-  transported roll) and posthoc (batch over full recordings — currently broken-if-invoked, deferred:
-  [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
+  transported roll) and posthoc (batch over recordings). For implementation status and remaining
+  work, read [the posthoc plan](../02-pipeline/posthoc-rebuild.md) and the relevant current code;
+  this ontology does not establish that a pipeline's tests pass today.
 - **Adapters project the one skeleton outward:** VMC / LSL later
   ([03-transport/hub-and-adapters.md](03-transport/hub-and-adapters.md)).
 

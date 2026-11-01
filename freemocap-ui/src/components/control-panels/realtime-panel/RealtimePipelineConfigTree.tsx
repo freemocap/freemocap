@@ -1,5 +1,6 @@
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import {TemporalFilterControls} from './TemporalFilterControls';
+import {DETECTOR_OPTIONS} from '@/components/mocap-setup/detector-options';
 import React, {useCallback} from "react";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {PosthocFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/PosthocFilterConfigPanel";
@@ -190,13 +191,13 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         <div className="flex flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Detector</span>
                             <div className="flex flex-row gap-1">
-                                {(["rtmpose", "mediapipe", "rtmw_mediapipe_hands"] as DetectorType[]).map((type) => (
+                                {DETECTOR_OPTIONS.map(({value: type, label}) => (
                                     <button
                                         key={type}
                                         className={`button sm br-1 ${activeDetectorType === type ? "primary accent" : "quaternary"}`}
                                         onClick={() => handleSetDetectorType(type)}
                                     >
-                                        {type === "rtmpose" ? "RTMW" : type === "mediapipe" ? "MediaPipe" : "RTMW + MediaPipe hands"}
+                                        {label}
                                     </button>
                                 ))}
                             </div>

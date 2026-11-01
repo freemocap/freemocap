@@ -231,7 +231,7 @@ def run_matrix(*, recordings_root: Path, calibration: Path, output: Path, timeou
                 raise ValueError('Full baseline failed; numerical parity cannot be certified')
             row['channels'] = compare_stage_channels(reference, recording, stop=stop)
             if stop == 'reconstruction':
-                from .full_recording_comparison import compare_saved_channels
+                from .channel_comparison import compare_saved_channels
                 from freemocap.system.recording_structure.recording_structure import RecordingStructure
                 compare_saved_channels(*(RecordingStructure(base_directory=p.parent, recording_name=p.name)
                                          for p in (reference, recording)))

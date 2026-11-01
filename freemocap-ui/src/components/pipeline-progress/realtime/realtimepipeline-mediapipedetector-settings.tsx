@@ -8,6 +8,7 @@ import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
 import { useExecutionProviderOptions } from '@/hooks/useExecutionProviderOptions';
 import { DetectorType, ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
 import { CameraNodeConfig } from '@/store/slices/realtime/realtime-types';
+import { DETECTOR_OPTIONS } from '@/components/mocap-setup/detector-options';
 
 interface RTPSkeletonSetupProps {
     open: boolean;
@@ -94,20 +95,19 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                             size="sm"
                             className="segmented-control-sm bg-darkgray"
                             value={detectorType ?? "rtmpose"}
-                            options={[
-                                { label: "RTMPose", value: "rtmpose" },
-                                { label: "MediaPipe", value: "mediapipe" },
-                            ]}
+                            options={DETECTOR_OPTIONS}
                             onChange={(value) => handleCameraNodeUpdate({ detector_type: value as DetectorType })}
                         />
                     </div>
                 </div>
 
                 {/* RTMPose settings */}
-                {detectorType === "rtmpose" && (
+                {detectorType !== "mediapipe" && (
                     <>
                         <p className="text-sm text-gray p-1">
-                            133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
+                            {detectorType === 'rtmw_mediapipe_hands'
+                                ? 'RTMW body and face with cropped MediaPipe hands. The execution provider applies to RTMW; MediaPipe hands run on CPU.'
+                                : '133 keypoints (body, hands, face) via YOLOX + RTMW. Uses GPU batched inference when available.'}
                         </p>
 
                         {/* Model */}
@@ -151,14 +151,16 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                 )}
 
                 {/* MediaPipe settings */}
-                {detectorType === "mediapipe" && (
+                {detectorType !== "rtmpose" && (
                     <>
                         <p className="text-sm text-gray p-1">
-                            Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.
+                            {detectorType === 'mediapipe'
+                                ? 'Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.'
+                                : 'MediaPipe confidence settings below apply to the hands.'}
                         </p>
 
                         {/* Model size */}
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        {detectorType === 'mediapipe' && <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Model size</span>
                             <div className="flex flex-row gap-1">
                                 <SegmentedControl
@@ -169,7 +171,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                                     onChange={(value) => handleCameraNodeUpdate({ mediapipe_model_complexity: value as MediapipeModelComplexity })}
                                 />
                             </div>
-                        </div>
+                        </div>}
 
                         {/* Detection confidence */}
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">

@@ -83,7 +83,7 @@ export interface MocapConfig {
     mediapipeDetectionConfidence: number;
     mediapipePresenceConfidence: number;
     mediapipeTrackingConfidence: number;
-    mediapipeNumHands: number;
+    mediapipeNumHands: 2;
     mediapipeNumFaces: number;
 
     bodyAlignmentMode: 'auto' | 'calibration' | 'person';
@@ -323,9 +323,6 @@ export const mocapSlice = createSlice({
             state.config.mediapipeTrackingConfidence = action.payload;
         },
 
-        mocapMediapipeNumHandsChanged: (state, action: PayloadAction<number>) => {
-            state.config.mediapipeNumHands = action.payload;
-        },
         mocapMediapipeNumFacesChanged: (state, action: PayloadAction<number>) => {
             state.config.mediapipeNumFaces = action.payload;
         },
@@ -500,7 +497,6 @@ export const {
     mocapMediapipeDetectionConfidenceChanged,
     mocapMediapipePresenceConfidenceChanged,
     mocapMediapipeTrackingConfidenceChanged,
-    mocapMediapipeNumHandsChanged,
     mocapMediapipeNumFacesChanged,
     mocapDetectorConfigReplaced,
     mocapDetectorConfigUpdated,

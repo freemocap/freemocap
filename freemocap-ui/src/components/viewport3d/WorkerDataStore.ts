@@ -153,10 +153,18 @@ export const workerDataStore: Omit<KeypointsSource, 'getLatestKeypoints'> & {
                 livePresentation = data === true;
                 modelPresentation.clear();
                 pointPresentation.clear();
+                modelPresentation.setPaused(false);
+                pointPresentation.setPaused(false);
+                break;
+            case "presentationPaused":
+                modelPresentation.setPaused(livePresentation && data === true);
+                pointPresentation.setPaused(livePresentation && data === true);
                 break;
             case "presentationReset":
                 modelPresentation.clear();
                 pointPresentation.clear();
+                modelPresentation.setPaused(false);
+                pointPresentation.setPaused(false);
                 modelsChan.dispatch([]);
                 break;
             case "frameReset":

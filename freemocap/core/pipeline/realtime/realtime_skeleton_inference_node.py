@@ -1,4 +1,3 @@
-from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
 """Realtime frame-request adapter for the application inference service."""
 from contextlib import ExitStack
 import logging
@@ -10,6 +9,7 @@ from concurrent.futures import CancelledError, TimeoutError
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from freemocap.core.pipeline.inference_service import InferenceService, InferenceMode, InferenceRegistration, InferenceRequest
 from freemocap.core.tracking.tracker_factory import tracker_session_requests
+from freemocap.core.tracking.capture_timing import tracker_capture_timestamp_ms
 
 import cv2
 import numpy as np
@@ -241,7 +241,9 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         cam_id: img
                         for cam_id, img in zip(ordered_camera_ids, images)
                     }
-                    result = client.submit(InferenceRequest(frame_number=requested_frame_number, images=images_dict))
+                    result = client.submit(InferenceRequest(frame_number=requested_frame_number, images=images_dict,
+                        timestamp_ms=tracker_capture_timestamp_ms(
+                            [frame_recarrays[cam_id] for cam_id in ordered_camera_ids])))
                     observations = _await_inference_result(result, ipc, shutdown_self_flag)
                     if observations is None:
                         return
@@ -252,10 +254,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         timer.record("predict_per_camera", inf_ms / max(len(images), 1))
 
                     # ---- Preserve raw detections; aggregator owns temporal processing ----
-                    per_camera_skeleton: dict[CameraIdString, Observation | None] = {}
-                    for camera_id, obs in observations.items():
-                        merge_mediapipe_hand_face_children(obs)
-                        per_camera_skeleton[camera_id] = obs
+                    per_camera_skeleton: dict[CameraIdString, Observation | None] = dict(observations)
 
                     # Cameras whose frame we couldn't read get None.
                     for camera_id in camera_ids:

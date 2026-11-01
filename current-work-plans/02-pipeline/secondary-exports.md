@@ -495,7 +495,7 @@ The first milestone should prove that relationship on a saved recording before b
 
 ## Current code and evidence
 
-- `freemocap/core/tasks/mocap/posthoc_mocap_task.py`: triangulation, alignment, trajectory filtering, reconstruction, then `publish_posthoc_observations`. Successful completion publishes canonical Parquet.
+- `freemocap/core/pipeline/dataflow/recording_pipeline.py`: triangulation, alignment, trajectory filtering, reconstruction, then `publish_posthoc_observations`. Successful completion publishes canonical Parquet.
 - `freemocap/core/recording/sample_encoding/arrow_schema.py`: scalar long rows: `timestamp_s, sensor_group, frame_number, source, reference_frame, channel, name, component, value, units, run_id`.
 - `freemocap/core/recording/sample_encoding/reconstruction_samples.py`: landmarks, segment origins, world/local WXYZ quaternions, joint angles, residuals, and optional center of mass. Missing frames/components remain missing.
 - `freemocap/core/recording/data_descriptors/recording_model.py`: saved skeleton and rest-pose snapshots, tracker mappings, and scientific definitions. Recording fits supply segment lengths/scales through static channel views in `parquet_reader.py`.

@@ -131,7 +131,7 @@ separate task. No worker-layout change has been implemented at this checkpoint.
 
 ### Shared detection implementation checkpoint
 
-`freemocap/core/pipeline/posthoc/mocap_detection.py` implements the recording-group detection
+`freemocap/core/pipeline/dataflow/recording_pipeline.py` implements the recording-group detection
 iterator. One owner reads each camera sequentially through SkellyCam's reader and calls the
 installed SkellyTracker batch API. One selector searches the group with capped backoff; the
 first match configures the existing Charuco tracker for every camera, preserving the user's

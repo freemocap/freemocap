@@ -49,7 +49,7 @@ def test_borrowed_nested_session_is_inspected_without_closing_it():
 
 @pytest.mark.parametrize('provider', [None, *PROVIDER_NAMES])
 def test_posthoc_api_accepts_all_providers_for_both_implementations(provider):
-    for implementation in ('current', 'typed_dataflow'):
+    for implementation in ('typed_dataflow',):
         config = PosthocMocapPipelineConfig(executionProvider=provider, pipelineImplementation=implementation)
         assert config.execution_provider == provider
         assert config.model_dump(by_alias=True)['executionProvider'] == provider

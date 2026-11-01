@@ -62,8 +62,8 @@ Verified current FreeMoCap behavior (paths relative to `freemocap/`):
 
 | Source | Finding and consequence |
 | --- | --- |
-| `core/pipeline/posthoc/mocap_detection.py` | Camera reads are dispatched together; next-frame reads overlap current inference. The coordinator then waits for every `AnnotateFrame` result before advancing. This is partial concurrency with a real barrier, not wholly serial loading. |
-| `core/pipeline/posthoc/mocap_video_node.py` | A camera thread owns loading, board detection, observation mutation, drawing and encoding. Removing the wait without separating board results would change scientific outputs. |
+| `core/pipeline/dataflow/recording_pipeline.py` | Camera reads are dispatched together; next-frame reads overlap current inference. The coordinator then waits for every `AnnotateFrame` result before advancing. This is partial concurrency with a real barrier, not wholly serial loading. |
+| `core/pipeline/dataflow/video_sources.py` | A camera thread owns loading, board detection, observation mutation, drawing and encoding. Removing the wait without separating board results would change scientific outputs. |
 | `core/pipeline/inference_service.py` | One outstanding request per client, ordered posthoc ordinals, shared model lifetime, and bounded realtime preference. More graph workers do not automatically create more GPU capacity. |
 | `core/pipeline/posthoc/mocap_pipeline.py` | Observations accumulate before subsequent scientific processing; requested exports run after saved processing. Preserve their outcome semantics. |
 | `core/pipeline/posthoc/stage_dependencies.py`, `stage_execution_plan.py` | Existing prerequisite closure, checkpoint reuse and invalidation must survive migration. |

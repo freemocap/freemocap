@@ -31,6 +31,40 @@ function projected(models: ResolvedModelFrame[]): ResolvedModelFrame[] {
     return readFrameBuffer(buffer, layout, 'modelFrames') as ResolvedModelFrame[];
 }
 
+test('self-describing presentation metadata reuses existing caches and independently decodes after a reset', () => {
+    const source = frame();
+    source.models[0].segments = [{name: 'body', parent: null, primary_axis: 'z',
+        rest_orientation: [1, 0, 0, 0], length_proportion: .1, is_fully_specified: true}];
+    source.models[0].presentation = {attached_lines: [{segment: 'body', authored_length: .1,
+        positions: Array.from({length: 1920}, (_, i) => i / 10000)}], excluded_bones: [], excluded_origin_edges: []};
+    source.models[0].tracker_connections = [['face_0000', 'face_0017']];
+    const decoder = new MessageDecoder();
+    const first = decoded(decoder, source);
+    assert.deepEqual(first.models[0].tracker_connections, source.models[0].tracker_connections);
+    const service = new TransportService({url: 'ws://localhost/websocket/connect'});
+    let updates = 0;
+    service.subscribeToModels(() => updates++);
+    service['handleFrame'](first);
+    for (let i = 0; i < 100; i++) {
+        const next = decoded(decoder, {...source, frame_number: i});
+        assert.equal(next.models, first.models);
+        assert.equal(next.models[0].presentation, first.models[0].presentation);
+        service['handleFrame'](next);
+    }
+    assert.equal(updates, 1);
+    assert.deepEqual(decoded(new MessageDecoder(), source).models, first.models, 'each packet is independently interpretable');
+    const changed = structuredClone(source);
+    changed.models[0].presentation!.attached_lines[0].positions[0] = .25;
+    const next = decoded(decoder, changed);
+    assert.notEqual(next.models, first.models, 'contents are authoritative even at the same model sequence');
+    service['handleFrame'](next);
+    assert.equal(updates, 2);
+    assert.equal(first.models[0].presentation!.attached_lines[0].positions[0], 0);
+    changed.models[0].presentation!.attached_lines[0].positions[0] = NaN;
+    assert.throws(() => decoded(decoder, changed));
+    assert.equal(decoded(decoder, source).models[0].presentation!.attached_lines[0].positions[0], 0);
+});
+
 test('temporal status stays aligned through CBOR, resolution and pooled worker transfer', () => {
     const source = frame();
     const labels = ['unavailable', 'current_input', 'predicted_support', 'retained_value'];

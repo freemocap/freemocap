@@ -1,8 +1,20 @@
-/** Holds only presentation values; expiry is driven even when input stops. */
+/** Holds only presentation values; unexpected input loss expires, deliberate pause holds. */
 export class PresentationBuffer<T> {
     private readonly values = new Map<string, {value: T; expires: number}>();
     private timer: ReturnType<typeof setTimeout> | null = null;
+    private paused = false;
     constructor(private readonly publish: (values: T[]) => void, private readonly graceMs: number) {}
+
+    setPaused(paused: boolean): void {
+        if (this.paused === paused) return;
+        this.paused = paused;
+        // Resume gets one normal grace interval for the next camera frame to arrive.
+        if (!paused) {
+            const expires = performance.now() + this.graceMs;
+            for (const entry of this.values.values()) entry.expires = expires;
+        }
+        this.flush();
+    }
 
     /** A complete new frame supersedes even entities omitted from that frame. */
     replace(values: readonly T[], key: (value: T) => string): void {
@@ -31,10 +43,10 @@ export class PresentationBuffer<T> {
         const now = performance.now();
         let nextExpiry = Infinity;
         for (const [key, entry] of this.values) {
-            if (entry.expires <= now) this.values.delete(key);
+            if (!this.paused && entry.expires <= now) this.values.delete(key);
             else nextExpiry = Math.min(nextExpiry, entry.expires);
         }
         this.publish(Array.from(this.values.values(), entry => entry.value));
-        if (Number.isFinite(nextExpiry)) this.timer = setTimeout(() => this.flush(), Math.max(1, nextExpiry - now));
+        if (!this.paused && Number.isFinite(nextExpiry)) this.timer = setTimeout(() => this.flush(), Math.max(1, nextExpiry - now));
     }
 }

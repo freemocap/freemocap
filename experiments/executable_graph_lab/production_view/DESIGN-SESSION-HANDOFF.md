@@ -55,7 +55,7 @@ Governing documents already in the repo, read these first:
   Cancel (`ButtonSm quaternary`) and "Process Mocap" (`ButtonSm primary accent` with
   `processmocap-icon`). Mode `playback` shows Stages and Process; mode `recording` hides Stages and
   shows Save.
-- Modal-local React state, not Redux: `pipelineImplementation` ('typed_dataflow' default | 'current'
+- Modal-local React state, not Redux: `pipelineImplementation` ('typed_dataflow'
   legacy), `graphExecutionProvider` ('auto' | 'cpu' | 'cuda'), `sourceRunId`, `stageSelection`.
 - `mocap-stage-selection.tsx`: fetches `GET /freemocap/mocap/recording/process/stages?recording_path=`
   for the saved-stage inventory (runs, sensor groups, which stages are saved). Controls: Starting data
@@ -447,6 +447,4 @@ magenta toast border removal while touching the progress styles.
 - Should bands be selectable on the graph as a shortcut to the stage range, or stay read-only with the
   chip bar as the only control? (Handoff says run-wide choices belong above the graph.)
 - Default modal size in graph view: auto-maximize, or a larger fixed default?
-- Should the legacy pipeline (`pipelineImplementation: current`) hide the Graph switch or show it
-  disabled with a note?
 - Per-type slot colour families (a few hues) versus neutral dots with type text only.

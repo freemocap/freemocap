@@ -128,13 +128,32 @@ export const ModelConnectionGroupSchema = z.object({
 });
 export type ModelConnectionGroup = z.infer<typeof ModelConnectionGroupSchema>;
 
+const PresentationMaterialSchema = z.object({color: z.string().regex(/^#[0-9a-fA-F]{6}$/), opacity: z.number().finite().min(0).max(1)});
+const AttachedSurfaceSchema = z.object({
+  positions: z.array(z.number().finite()).min(9).max(30000).refine(v => v.length % 3 === 0),
+  indices: z.array(z.number().int().nonnegative()).min(3).max(60000).refine(v => v.length % 3 === 0),
+  material: PresentationMaterialSchema, double_sided: z.boolean(),
+}).refine(surface => surface.indices.every(i => i < surface.positions.length / 3), 'Surface index out of bounds');
 export const ModelDefinitionSchema = z.object({
+  tracker_connections: z.array(z.tuple([z.string(), z.string()])).optional(),
   model_id: z.string(),
   segments: z.array(RestSegmentSchema),
   landmarks: z.array(RestLandmarkSchema),
   connections: z.array(z.tuple([z.string(), z.string()])),
   landmark_groups: z.array(ModelLandmarkGroupSchema).default([]),
   landmark_connections: z.array(ModelConnectionGroupSchema).default([]),
+  /** Static segment-local geometry. Absence explicitly preserves legacy presentation. */
+  presentation: z.object({
+    attached_lines: z.array(z.object({
+      segment: z.string(), authored_length: z.number().finite().positive(),
+      positions: z.array(z.number().finite()).min(6).max(7680).refine(values => values.length % 6 === 0),
+      material: PresentationMaterialSchema.optional(),
+      surfaces: z.array(AttachedSurfaceSchema).max(8).optional(),
+    })),
+    excluded_origin_edges: z.array(z.tuple([z.string(), z.string()])),
+    excluded_bones: z.array(z.string()),
+    connection_materials: z.array(z.object({group: z.string(), material: PresentationMaterialSchema})).optional(),
+  }).optional(),
   /** What this model's `1.0` means: "body_height", "square_length". Lets a client label
    *  the fitted number without hardcoding which model it is looking at. */
   scale_reference_name: z.string().default("body_height"),

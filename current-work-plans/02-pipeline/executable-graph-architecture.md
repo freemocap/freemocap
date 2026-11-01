@@ -38,26 +38,14 @@ the conversation plans. Copy the single-authority principle, not an assumption t
 its existing scheduler is a complete streaming dataflow engine. No SkellySpeak tests
 were executed and no SkellySpeak files were changed for this audit.
 
-## Current FreeMoCap mismatch
+## Application execution ownership
 
-- `posthoc/stage_dependencies.py` declares scientific prerequisites for saved-result
-  reuse and invalidation. It does not schedule work concurrently.
-- `posthoc/mocap_detection.py` schedules decoding, a synchronized tracker batch,
-  and annotation by manually awaiting futures in a loop.
-- `posthoc/mocap_video_node.py` combines decoding, ChArUco computation, mutation of
-  an observation, drawing, and encoding. Annotation completion gates the next batch.
-- `inference_service.py` owns model execution, per-client state, one outstanding
-  request per client, consecutive posthoc frame ordinals, and realtime preference.
-- `posthoc/mocap_pipeline.py` collects every observation before downstream work.
-- `tasks/mocap/posthoc_mocap_task.py` sequences numerical stages and three checkpoint
-  publications. Current publication rewrites retained Parquet content; health report
-  generation also occurs synchronously in `parquet_writer.py`.
-- `posthoc/task_snapshot.py` and frontend progress cards expose phases and camera
-  progress, not the actual execution dependencies, queues, or resource waits.
+`dataflow/application_pipeline.py` manages recording runs and exports.
+`dataflow/recording_pipeline.py` defines the executable scientific operations and
+checkpoint publications. `dataflow/video_sources.py` owns concurrent video reads;
+`dataflow/annotation_workers.py` owns independent annotation work.
+`posthoc/mocap_pipeline.py` manages the worker lifecycle and progress reporting.
 
-A diagram layered over these loops would create exactly the second authority the
-owner wants to avoid. During migration, unmigrated composite work must be displayed
-as an opaque legacy node, never expanded into a falsely authoritative graph.
 
 ## One authored definition; one resolved graph per run
 

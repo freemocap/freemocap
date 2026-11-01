@@ -517,8 +517,6 @@ def _get_observation(
         observation = cache[frame_number]
         return observation, state
 
-    from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
 
     observation, state = tracker.process_image(image, frame_number, state)
-    merge_mediapipe_hand_face_children(observation)
     return observation, state

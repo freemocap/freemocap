@@ -84,11 +84,9 @@ python -B -m pytest freemocap/tests/test_staged_mocap_processing.py freemocap/te
 
 Verify `.test-artifacts/` is ignored before running. This suite skips missing
 prepared recordings; inspect skips rather than treating them as acceptance.
-These are real saved-stage calculations through the existing pipeline, not a
-fresh detector run or graph resume. The application graph currently rejects
-saved-stage starts. The dataset workflow now supports `--implementation graph`
-for full runs; `freemocap.tools.datasets.pipeline_comparison` runs both pipelines
-with matched inputs and checks their saved numerical outputs.
+These tests perform saved-stage calculations through the application graph on
+private copies of both prepared recordings. They verify numerical outputs,
+timestamps, provenance, and that the source recordings remain unchanged.
 
 The tracker matrix in the dataset commands checks default ChArUco, MediaPipe CPU,
 and RTMPose CPU/CUDA configurations at the tracking boundary. It does not certify

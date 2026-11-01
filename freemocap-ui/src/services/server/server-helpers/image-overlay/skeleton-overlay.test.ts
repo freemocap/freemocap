@@ -34,7 +34,7 @@ test('camera renderer reads declared columns, reuses prepared indices, and prese
         const renderer = new SkeletonOverlayRenderer(), value = observation();
         appendOverlay(value, points(OverlayLayer.DETECTIONS));
         appendOverlay(value, points(OverlayLayer.REPROJECTIONS), [['left_wrist', 'right_wrist']]);
-        appendOverlay(value, {cameraId: 'camera', frameNumber: 8, layer: OverlayLayer.BOXES, names: ['body', 'hand', 'missing'],
+        appendOverlay(value, {cameraId: 'camera', frameNumber: 8, layer: OverlayLayer.BOXES, names: ['body', 'body/right_hand', 'body/left_hand'],
             columns: ['detector_ran', 'confidence', 'y2', 'x2', 'y1', 'x1'],
             data: new Float32Array([1, 0.75, 40, 30, 20, 10, 0, 0.5, 80, 70, 60, 50, 1, NaN, NaN, NaN, NaN, NaN])});
         renderer['drawSkeletonOverlay'](value);
@@ -44,6 +44,8 @@ test('camera renderer reads declared columns, reuses prepared indices, and prese
         assert.deepEqual(calls.find(call => call.name === 'lineTo')!.args, [30, 40]);
         assert.deepEqual(calls.filter(call => call.name === 'strokeRect').map(call => [call.args, call.color]),
             [[[10, 20, 20, 20], '#00FF00'], [[50, 60, 20, 20], '#FF8C00']]);
+        assert.ok(calls.some(call => call.name === 'fillText' && String(call.args[0]).startsWith('body/right_hand')),
+            'hand crop is labeled and drawn even without hand keypoints');
         const prepared = renderer['preparedLayers'][1];
         renderer['drawSkeletonOverlay'](structuredClone(value));
         assert.equal(renderer['preparedLayers'][1], prepared, 'worker-cloned unchanged labels reuse cached indices');

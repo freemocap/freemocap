@@ -22,8 +22,10 @@ export interface ViewportVisibility {
     landmarks: boolean;
     /** Per-segment x/y/z orientation triads. */
     segmentAxes: boolean;
-    /** Face contour lines. */
+    /** Detected face keypoints. */
     face: boolean;
+    /** Tracker-declared connections between detected face keypoints. */
+    faceConnections: boolean;
     /** Triangulated 3D detector output, before model fitting. */
     rawKeypoints: boolean;
     /** Detector keypoints placed under the model's landmark names. */
@@ -46,11 +48,12 @@ export type LayerKey = keyof ViewportVisibility;
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
     bones: true,
     boneLines: true,
-    landmarks: true,
+    landmarks: false,
     segmentAxes: true,
     face: true,
-    rawKeypoints: true,
-    mappedKeypoints: true,
+    faceConnections: false,
+    rawKeypoints: false,
+    mappedKeypoints: false,
     centerOfMass: true,
     comMarker: true,
     comFloorPoint: true,
@@ -67,6 +70,7 @@ export interface ViewportStats {
     landmarks: number;
     mappedKeypoints: number;
     face: number;
+    faceConnections: number;
     boneLines: number;
     cameras: number;
     centerOfMass: number;
@@ -79,6 +83,7 @@ export const EMPTY_STATS: ViewportStats = {
     landmarks: 0,
     mappedKeypoints: 0,
     face: 0,
+    faceConnections: 0,
     boneLines: 0,
     cameras: 0,
     centerOfMass: 0,

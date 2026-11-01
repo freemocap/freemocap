@@ -107,7 +107,7 @@ shared skeleton computation for human and board; do not rebuild deleted SkellyFo
 - core/pipeline/posthoc/posthoc_pipeline_manager.py: creates calibration/mocap jobs.
 - core/pipeline/posthoc/posthoc_pipeline.py: currently creates VideoNodes on the detection path.
 - core/pipeline/posthoc/posthoc_aggregation_node.py: collects frame observations and invokes a task.
-- core/tasks/mocap/posthoc_mocap_task.py: current observation-to-provisional-output task.
+- core/pipeline/dataflow/recording_pipeline.py: current observation-to-provisional-output task.
 - core/tasks/calibration/posthoc_calibration_task.py: calibration solve and board reconstruction.
 - core/reconstruction/posthoc_reconstruction.py: batch triangulation and per-frame reconstruction.
 - core/skeletons/reconstruct_skeleton.py and reconstruction_state.py: shared solve and state.

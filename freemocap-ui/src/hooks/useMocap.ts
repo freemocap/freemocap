@@ -17,7 +17,6 @@ import {
     mocapMediapipeComplexityChanged,
     mocapMediapipeDetectionConfidenceChanged,
     mocapMediapipeNumFacesChanged,
-    mocapMediapipeNumHandsChanged,
     mocapMediapipePresenceConfidenceChanged,
     mocapMediapipeTrackingConfidenceChanged,
     mocapRtmPoseConfidenceThresholdChanged,
@@ -132,9 +131,6 @@ export function useMocap() {
     );
     const setMediapipeTrackingConfidence = useCallback(
         (v: number) => dispatch(mocapMediapipeTrackingConfidenceChanged(v)), [dispatch]
-    );
-    const setMediapipeNumHands = useCallback(
-        (v: number) => dispatch(mocapMediapipeNumHandsChanged(v)), [dispatch]
     );
     const setMediapipeNumFaces = useCallback(
         (v: number) => dispatch(mocapMediapipeNumFacesChanged(v)), [dispatch]
@@ -273,7 +269,6 @@ export function useMocap() {
         setMediapipeDetectionConfidence,
         setMediapipePresenceConfidence,
         setMediapipeTrackingConfidence,
-        setMediapipeNumHands,
         setMediapipeNumFaces,
         updateDetectorConfig,
         replaceDetectorConfig,

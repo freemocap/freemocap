@@ -105,7 +105,7 @@ work, not GPU batch topology. Preserve logical camera/frame identity and expose
 actual batches/providers in execution inspection. Model-declared ordering and
 batch compatibility constrain this policy; changing placement must not silently
 change scientific results. Existing posthoc already submits camera batches through
-the shared inference service (`mocap_detection.py`, `inference_service.py`);
+the shared inference service (`recording_pipeline.py`, `inference_service.py`);
 its orchestration constraints must not be confused with an absence of batching.
 
 “Eager” means dispatch eligible work when capacity is available, not launch an

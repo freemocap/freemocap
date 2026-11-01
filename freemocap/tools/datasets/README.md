@@ -195,11 +195,10 @@ it does not create unmeasured timing percentiles or concurrency statistics.
 
 Posthoc execution selection is recorded in workflow requests and worker results.
 `--implementation graph` (Typed data flow graph V1) is the default for `process` and `process-all`.
-Use `--implementation current` to select the Legacy post hoc pipeline, including saved-stage restarts.
 `--implementation graph` selects the application's typed dataflow pipeline for
 full runs and all saved-stage starts. The stage matrix also exercises every
 finish point; the ordinary `process --from` command continues through reconstruction.
-It never silently falls back to the current pipeline. Realtime execution is unchanged.
+The graph handles both fresh observations and saved-stage restarts.
 
 Workflow attempts also contain `performance.json` (schema version 1). It records
 implementation, operation, worker-lifecycle status and measured elapsed seconds,
@@ -210,21 +209,6 @@ parent-side input copying, preflight and publication. It is not inference-only o
 GPU timing, and `complete` here does not certify output acceptance. Existing output
 validators still decide readiness. A hard parent termination may leave a `running`
 report with no elapsed duration; that is incomplete evidence, not a successful run.
-Run paired full-pipeline comparisons through this same workflow:
-
-```powershell
-python -B -m freemocap.tools.datasets.pipeline_comparison --output C:/Users/USER/freemocap_data/testing/ab
-```
-
-Use a new, short output directory separate from source/prepared roots. The command
-runs current then graph for both datasets, independently loading/tracking all videos,
-using the same accepted calibration and settings. It validates Parquet and Blender,
-checks implementation identity, and compares saved channel definitions, values and
-missingness using the existing comparison checks. Reports distinguish mocap wall
-time from worker lifecycle including setup/validation. Standard comparison exports
-are Parquet and Blender, not CSV/NPY/NPZ. This is one paired measurement, not a
-statistical benchmark; fixed run order and machine load can affect timings.
-
 ```powershell
 poe process-all-data --dry-run
 poe process-test-data --calibration existing
@@ -418,54 +402,11 @@ diagonal. No matching thresholds are relaxed to make diagnostics pass. Filtering
 alignment, skeleton reconstruction and annotations are not implemented in this slice.
 
 
-## Complete recording graph experiment
+## Recording graph validation
 
-`python -B -m freemocap.tools.datasets.full_recording_comparison RECORDING --calibration CALIBRATION --provider cuda --annotate --output .test-artifacts/full-recording-loop/NEW_RUN`
-
-Use an unused output directory. This command copies videos, recorded timing sidecars,
-and calibration into private graph/current recordings. It runs tracking once, then
-compares the graph's complete scientific output with the existing scientific task
-using those identical observations. `--with-board` adds the explicit ChArUco board
-from the calibration; `--detector mediapipe --provider cpu` selects MediaPipe.
-CPU/CUDA RTMPose are accepted. The default is RTMPose CPU.
-
-The graph includes filtering, reference alignment, model fitting, reconstruction,
-complete observation/spatial checkpoints, final canonical recording, NPZ export,
-and optional independent per-camera annotated videos. The reference harness disables
-filtering for its 6-FPS recording and enables it above 12 FPS; the resolved configuration
-is recorded. It validates saved channel identities, frame/timestamp identities,
-missing-value masks, numerical values, camera geometry, reference frames, model
-metadata and fitted parameters. Exact byte fingerprints of numerically equivalent
-fit inputs are excluded from cross-route equality; actual channel arrays are compared. Each local fit fingerprint is independently checked
-against its own saved inputs using the production reconstruction reader.
-
-Inspect `report.txt`, `report.json`, and the executable `graph.json`. JSON includes
-per-operation start/finish times, errors and tracebacks. Timings are **not** a speedup
-ratio: graph time includes tracking, annotations and exports, while the existing-task
-time covers scientific completion only. Scientific tolerance is `atol=1e-6, rtol=1e-8`.
-Camera-assignment evidence is saved under the sensor group's processing metadata.
-Full-graph reports also include `motion_capture_throughput`: wall seconds divided
-by synchronized frame count, and its reciprocal in motion-capture frames/second.
-One motion-capture frame includes all camera images at that frame index. This
-includes every graph sink (including annotation when requested), but excludes
-input-copy setup and the separate comparison harness's validation work. Compare
-like configurations and report repeated-run variability separately.
-
-The CLI comparison remains separate from the dataset workflow's implementation
-selector. The same graph is now selectable in the application under Mocap processing
-settings > Processing stages > Processing pipeline > Typed data flow graph V1 (the default).
-It uses existing HTTP start/stop and WebSocket progress. Start at 2D tracking, select
-a calibration, and use automatic or explicit board selection if ChArUco is enabled.
-The application resolves AUTO using the existing board selector before constructing
-the graph. The CLI comparison still supplies an explicit board. Saved-stage resume
-and single-camera operation remain unsupported. Optional
-application exports use the existing completion handler; Blender launch was not
-exercised in application acceptance tests. See the integration status document for
-test evidence and limitations.
-The graph currently exposes recording-level operations; streaming image loading and
-tracking remain inside their bounded adapter, and automatic camera assignment uses
-complete recorded observations. See `current-work-plans/02-pipeline/full-recording-loop.md`.
-
+Use `process-all --output-profile numerical` for both reference recordings, and
+`process-all --from filtering --output-profile numerical` to validate saved-stage
+reprocessing. The stage matrix checks every supported start/finish range.
 
 ### Serialization performance regression probe
 

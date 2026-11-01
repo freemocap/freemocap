@@ -2,7 +2,7 @@
 
 Audit of the preserved 2026-10-12 paired reference runs. No new timing run or
 performance change was made for this audit. The old pipeline and its measurements
-remain intact. See [paired results](paired-pipeline-results-2026-10-12.md).
+remain intact.
 
 ## Measurement boundary
 

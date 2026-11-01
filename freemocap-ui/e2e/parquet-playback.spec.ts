@@ -127,7 +127,7 @@ test.beforeAll(async () => {
                 negativeZero: Object.is(item.values[0], -0),
                 values: Array.from(item.values, value => Number.isNaN(value) ? null : value)})));
         };
-        window.checkFrameTransfer = async () => {
+        window.checkFrameTransfer = async (pause = false) => {
             const worker = new Worker('/transfer-worker.js', {type: 'module'});
             const pending = new Map();
             let sequence = 0;
@@ -148,13 +148,22 @@ test.beforeAll(async () => {
                 worker.postMessage({type: 'livePresentation', data: true});
                 sender.sendKeypoints({pointNames: names, interleaved: recording.subarray(30, 33)});
                 const first = await probe();
+                let held, expired;
+                if (pause) {
+                    worker.postMessage({type: 'presentationPaused', data: true});
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+                    held = await probe();
+                    worker.postMessage({type: 'presentationPaused', data: false});
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+                    expired = await probe();
+                }
                 sender.sendKeypoints({pointNames: names, interleaved: new Float32Array([NaN, NaN, NaN])});
                 const missing = await probe();
                 sender.sendKeypoints({pointNames: names, interleaved: new Float32Array([4, 5, 6])});
                 const replacement = await probe();
                 sender.dispose();
                 const cleared = await probe();
-                return {first, missing, replacement, cleared, packets, sourceBytes: recording.byteLength,
+                return {first, held, expired, missing, replacement, cleared, packets, sourceBytes: recording.byteLength,
                     sourceValues: Array.from(recording.subarray(30, 33))};
             } finally {sender.dispose(); worker.terminate();}
         };
@@ -279,12 +288,12 @@ test('columnar decoder preserves declared axes across shuffled pages and rejects
     }
 });
 
-test('real worker transfers only frame bytes and protects held live values until replacement', async ({page}) => {
+test('real worker transfers only frame bytes and clears explicitly missing live values', async ({page}) => {
     await page.goto(url);
     const result = await page.evaluate(() => (window as any).checkFrameTransfer());
     expect(result.first.values).toEqual([1, 2, 3]);
     expect(result.first.bufferBytes).toBe(12);
-    expect(result.missing.values).toEqual([1, 2, 3]);
+    expect(result.missing.values).toEqual([NaN, NaN, NaN]);
     expect(result.replacement.values).toEqual([4, 5, 6]);
     expect(result.cleared.values).toEqual([]);
     expect(result.sourceBytes).toBe(400000);
@@ -292,6 +301,16 @@ test('real worker transfers only frame bytes and protects held live values until
     expect(result.packets).toEqual([{bytes: 12, layout: true}, {bytes: 12, layout: false}, {bytes: 12, layout: false}]);
 });
 
+
+test('live camera pause holds worker presentation and resume restores input-loss expiry', async ({page}) => {
+    await page.goto(url);
+    const result = await page.evaluate(() => (window as any).checkFrameTransfer(true));
+    expect(result.held.values).toEqual([1, 2, 3]);
+    expect(result.held.bufferBytes).toBe(12);
+    expect(result.expired.values).toEqual([]);
+    expect(result.replacement.values).toEqual([4, 5, 6]);
+    expect(result.cleared.values).toEqual([]);
+});
 
 test('play and keyboard wait for decoded frame zero after refresh', async ({page}) => {
     for (let attempt = 0; attempt < 2; attempt++) {

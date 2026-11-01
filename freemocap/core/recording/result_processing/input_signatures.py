@@ -10,10 +10,10 @@ from numpy.typing import NDArray
 from pydantic import BaseModel
 
 
-# Version 2 places standard-human segments with weighted attachments. The same
+# Version 3 preserves independently solved components in weighted attachments. The same
 # boundary covers biomechanics because its center of mass uses those landmarks.
 # Filtering and scale fitting retain their independent algorithm versions.
-RECONSTRUCTION_STAGE_VERSION = 2
+RECONSTRUCTION_STAGE_VERSION = 3
 
 
 def reconstruction_stage_signature(*, models: dict[str, str]) -> str:

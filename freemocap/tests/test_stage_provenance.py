@@ -1,5 +1,7 @@
 """Settings survive real publication, restart, retention and failed replacement."""
 
+from freemocap.tests.saved_graph_helpers import run_saved_graph
+
 from datetime import datetime, timezone
 
 import pytest
@@ -28,7 +30,7 @@ def config(cutoff=4.0, start='filtering'):
 
 
 def process(request, settings):
-    processing.run_saved_numerical_stages(structure=request.structure, config=settings,
+    run_saved_graph(structure=request.structure, config=settings,
         reporter=TaskProgressReporter.noop())
     return read_metadata(path=request.structure.data_parquet_path)
 
@@ -91,7 +93,7 @@ def test_failed_replacement_retains_old_settings_and_bytes(saved_request, monkey
     def fail(**kwargs):
         raise OSError('injected replace failure')
     monkeypatch.setattr(parquet_writer, 'replace_recording_file', fail)
-    with pytest.raises(OSError, match='replace failure'):
+    with pytest.raises(RuntimeError, match='OSError: injected replace failure'):
         process(saved_request, config(cutoff=2.0))
     assert saved_request.structure.data_parquet_path.read_bytes() == content
     assert read_metadata(path=saved_request.structure.data_parquet_path) == before

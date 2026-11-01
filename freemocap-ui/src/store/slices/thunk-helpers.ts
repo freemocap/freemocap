@@ -2,34 +2,41 @@
  * Shared utilities for async thunks that call the backend HTTP API.
  */
 
-/**
- * Extract a detailed error message from a failed HTTP response.
- * Attempts to parse JSON first, falls back to text, builds a
- * comprehensive error string including status code and body.
- */
-export async function getDetailedErrorMessage(response: Response): Promise<string> {
-    let errorDetails: unknown;
-
-    try {
-        errorDetails = await response.json();
-        console.error('❌ Server returned validation/error details:', errorDetails);
-    } catch {
-        try {
-            errorDetails = await response.text();
-            console.error('❌ Server returned error text:', errorDetails);
-        } catch {
-            console.error('❌ Could not read error response body');
+function describeError(details: unknown): string {
+    if (typeof details === 'string') return details;
+    if (Array.isArray(details)) return details.map(describeError).filter(Boolean).join('\n');
+    if (details !== null && typeof details === 'object') {
+        const entry = details as Record<string, unknown>;
+        if (typeof entry.msg === 'string') {
+            const path = Array.isArray(entry.loc) ? entry.loc.join('.') : '';
+            return path ? `${path}: ${entry.msg}` : entry.msg;
         }
+        for (const key of ['detail', 'message', 'error']) {
+            if (entry[key] != null) {
+                const description = describeError(entry[key]);
+                if (description) return description;
+            }
+        }
+        return JSON.stringify(details);
     }
+    return details == null ? '' : String(details);
+}
 
-    const baseError = `HTTP ${response.status}: ${response.statusText}`;
-
-    if (errorDetails) {
-        const detailsStr = typeof errorDetails === 'string'
-            ? errorDetails
-            : JSON.stringify(errorDetails, null, 2);
-        return `${baseError}\n\nValidation/Error Details:\n${detailsStr}`;
+/** Read once: a failed response.json() also consumes a plain-text response body. */
+export async function getDetailedErrorMessage(response: Response): Promise<string> {
+    const baseError = `HTTP ${response.status}${response.statusText ? `: ${response.statusText}` : ''}`;
+    let body: string;
+    try {
+        body = await response.text();
+    } catch {
+        return baseError;
     }
-
-    return baseError;
+    let details: unknown = body;
+    try {
+        details = JSON.parse(body);
+    } catch {
+        // A proxy or server failure can return plain text instead of JSON.
+    }
+    const description = describeError(details);
+    return description ? `${baseError}\n${description}` : baseError;
 }

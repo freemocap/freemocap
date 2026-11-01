@@ -154,6 +154,42 @@ test('fresh model packets replace missing values and disconnected presentation e
     } finally {await h.close();}
 });
 
+test('camera pause holds owned model and point buffers; resume and teardown still release them', async t => {
+    t.mock.timers.enable({apis: ['setTimeout']});
+    let now = 0;
+    t.mock.method(performance, 'now', () => now);
+    const h = harness();
+    try {
+        await h.drain();
+        workerDataStore.dispatch('livePresentation', true);
+        h.sender.sendModels([modelFrame(0, 7)]);
+        h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([7, 8, 9])});
+        await h.drain();
+        const model = workerDataStore.getLatestModelFrames()![0];
+        const points = workerDataStore.getLatestKeypoints()!;
+        const held = [model.mappedKeypoints!.data.buffer, points.interleaved.buffer];
+        workerDataStore.dispatch('presentationPaused', true);
+        now = 300_000; t.mock.timers.tick(300_000); await h.drain();
+        assert.equal(workerDataStore.getLatestModelFrames()![0], model);
+        assert.equal(workerDataStore.getLatestKeypoints(), points);
+        assert.ok(held.every(buffer => buffer.byteLength > 0), 'paused renderer retains buffer ownership');
+        workerDataStore.dispatch('presentationPaused', false);
+        now += 500; t.mock.timers.tick(500); await h.drain();
+        assert.equal(workerDataStore.getLatestModelFrames()![0], model, 'resume allows a new frame to arrive');
+        h.sender.sendModels([modelFrame(0, 8)]); await h.drain();
+        assert.equal(workerDataStore.getLatestModelFrames()![0].mappedKeypoints!.data[0], 8);
+        assert.equal(held[0].byteLength, 0, 'replacement releases the held model');
+        now += 1001; t.mock.timers.tick(1001); await h.drain();
+        assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
+        assert.equal(held[1].byteLength, 0, 'unexpected input loss expires again after resume');
+        workerDataStore.dispatch('presentationPaused', true);
+        h.sender.sendModels([modelFrame(0, 9)]); await h.drain();
+        const last = workerDataStore.getLatestModelFrames()![0].mappedKeypoints!.data.buffer;
+        await h.close();
+        assert.equal(last.byteLength, 0, 'teardown releases paused buffers');
+    } finally {await h.close();}
+});
+
 test('session reset drops pending delivery, preserves static models and ignores stale packets', async () => {
     const h = harness();
     try {

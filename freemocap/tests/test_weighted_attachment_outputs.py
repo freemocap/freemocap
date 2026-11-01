@@ -2,6 +2,7 @@
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 from skellyforge.core.skeleton.pose.pose_tensor import PoseTensor
@@ -40,7 +41,7 @@ def calculate_channels(outputs, poses):
     return {tensor.tensor_layout.channel_kind: tensor for tensor in result}
 
 
-def test_rotations_lengths_masks_layouts_and_source_observations_match_connected_baseline():
+def test_complete_poses_match_connected_baseline_and_partial_poses_remain_available():
     bundle, fit, poses = pose_fixture()
     weighted = RecordingPoseOutputs(bundle=bundle, fit=fit, compute_center_of_mass=True)
     baseline = RecordingPoseOutputs(bundle=bundle, fit=fit, compute_center_of_mass=True)
@@ -50,9 +51,10 @@ def test_rotations_lengths_masks_layouts_and_source_observations_match_connected
     assert actual.keys() == expected.keys()
     for kind in actual:
         assert actual[kind].tensor_layout == expected[kind].tensor_layout
-        np.testing.assert_array_equal(actual[kind].companion_values("entry_presence"), expected[kind].companion_values("entry_presence"))
+        np.testing.assert_array_equal(actual[kind].companion_values("entry_presence")[[0, 2, 3]], expected[kind].companion_values("entry_presence")[[0, 2, 3]])
         if kind not in changed:
-            np.testing.assert_array_equal(actual[kind].data_values, expected[kind].data_values)
+            samples = slice(None) if kind in (ChannelKind.MAPPED_KEYPOINTS_3D, ChannelKind.RIGID_BODY_RESIDUALS) else [0, 2, 3]
+            np.testing.assert_array_equal(actual[kind].data_values[samples], expected[kind].data_values[samples])
     assert weighted.fit is fit
     np.testing.assert_array_equal(weighted.positions.landmark_vectors, baseline.positions.landmark_vectors)
     np.testing.assert_array_equal(weighted.positions.attachment_vectors, baseline.positions.attachment_vectors)
@@ -60,13 +62,40 @@ def test_rotations_lengths_masks_layouts_and_source_observations_match_connected
                            expected[ChannelKind.SEGMENT_ORIGINS].data_values, equal_nan=True)
     selected = actual[ChannelKind.SEGMENT_ORIGINS].companion_values("entry_presence").all(axis=-1)
     assert np.isnan(actual[ChannelKind.SEGMENT_ORIGINS].data_values[~selected]).all()
-    assert not selected[1, weighted.indices["left_clavicle"]]
+    assert selected[1, weighted.indices["left_clavicle"]]
     assert not selected[2].any()
     model = actual[ChannelKind.LANDMARKS_3D]
     center = weighted.center.calculate(positions=model.data_values[:, weighted._position_columns],
         landmark_present=model.companion_values("entry_presence").all(axis=-1)[:, weighted._position_columns])
     np.testing.assert_allclose(actual[ChannelKind.DERIVED_POINTS].data_values[:, 0],
         np.where(center.body_present[:, None], center.body_positions, np.nan))
+
+
+@pytest.mark.parametrize("missing_segment", ["pelvis", "thoracic"])
+def test_missing_connection_preserves_independently_solved_segments(missing_segment):
+    bundle, fit, poses = pose_fixture()
+    poses = poses.copy_owned(writable=True)
+    missing = poses.segment_names.index(missing_segment)
+    # Include a complete frame after the dropout to cover disappearance/recovery.
+    for values in poses.arrays():
+        values[0, missing] = np.nan if values.dtype.kind == 'f' else 0
+    outputs = RecordingPoseOutputs(bundle=bundle, fit=fit, compute_center_of_mass=True)
+    channels = calculate_channels(outputs, poses)
+    origins = channels[ChannelKind.SEGMENT_ORIGINS]
+    selected = origins.companion_values("entry_presence").all(axis=-1)
+    np.testing.assert_array_equal(selected, poses.segment_present)
+    assert np.isfinite(origins.data_values[selected]).all()
+    assert np.isnan(origins.data_values[~selected]).all()
+    landmarks = channels[ChannelKind.LANDMARKS_3D]
+    owners = np.array([outputs.indices[bundle.skeleton.landmarks[name].segment]
+                       for name in outputs.landmark_names])
+    np.testing.assert_array_equal(landmarks.companion_values("entry_presence").all(axis=-1),
+                                  poses.segment_present[:, owners])
+    world = channels[ChannelKind.ROTATIONS_WORLD]
+    np.testing.assert_array_equal(world.companion_values("entry_presence").all(axis=-1), selected)
+    local = channels[ChannelKind.ROTATIONS_LOCAL]
+    np.testing.assert_array_equal(local.companion_values("entry_presence").all(axis=-1),
+                                  selected & selected[:, outputs.parents])
 
 
 def test_prepared_solver_survives_changing_scale_fit():

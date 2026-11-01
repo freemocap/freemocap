@@ -14,6 +14,7 @@ from __future__ import annotations
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.channel_helpers import (
     assemble_channel_bytes,
+    BOX_COMPONENTS,
     camera_2d_boxes,
     detector_produces_boxes,
     detector_stage_names,
@@ -22,9 +23,7 @@ from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 
-BOX_COLUMNS: tuple[str, ...] = (
-    "x1", "y1", "x2", "y2", "confidence", "detector_ran",
-)
+BOX_COLUMNS: tuple[str, ...] = BOX_COMPONENTS
 
 
 class BoxProducer(ChannelProducer):

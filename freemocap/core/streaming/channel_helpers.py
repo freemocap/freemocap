@@ -7,6 +7,8 @@ import cycle.
 from __future__ import annotations
 
 from typing import Any
+from functools import lru_cache
+from skellytracker.core.io.tracker_profiles import tracker_profile
 from collections.abc import Mapping  # noqa: TC003 - runtime type checking
 from skellyforge.core.data_tensors.channel_values import ChannelValues
 
@@ -52,44 +54,26 @@ def assemble_channel_bytes(*, names: tuple[str, ...], positions: Mapping,
 _OBSERVATION_BY_DETECTOR: dict[str, tuple[str, tuple[str, ...]]] = {
     "rtmpose": ("skeleton_observation", ("body",)),
     "mediapipe": ("skeleton_observation", ("body",)),
+    "rtmw_mediapipe_hands": ("skeleton_observation", ("body",)),
     "charuco": ("charuco_observation", ("charuco",)),
 }
 
 
-# Which detectors actually run an object detector, and therefore produce a bounding box
-# that MEANS something. A stage with no object detector gets `BoundingBox.full_image`
-# from DetectionStage — a rectangle around the whole frame, which says nothing about
-# where the subject is. Drawing or recording that is worse than showing nothing, and is
-# why a MediaPipe posthoc run looked like it had a box covering the entire screen.
-_DETECTORS_WITH_OBJECT_DETECTOR: frozenset[str] = frozenset({"rtmpose"})
+@lru_cache(maxsize=8)
+def detector_crop_paths(detector_type: str) -> tuple[tuple[str, ...], ...]:
+    """Tracker declares meaningful crop stages; Core connects them to the wire."""
+    if detector_type not in _OBSERVATION_BY_DETECTOR:
+        raise KeyError(f"unknown detector type {detector_type!r}")
+    return () if detector_type == 'charuco' else tracker_profile(detector_type).crop_stage_paths
 
 
 def detector_produces_boxes(detector_type: str) -> bool:
-    """Whether this detector's boxes are a real measurement rather than the full frame."""
-    if detector_type not in _OBSERVATION_BY_DETECTOR:
-        raise KeyError(
-            f"unknown detector type {detector_type!r} - add it to "
-            f"`_OBSERVATION_BY_DETECTOR`. Known: {sorted(_OBSERVATION_BY_DETECTOR)}"
-        )
-    return detector_type in _DETECTORS_WITH_OBJECT_DETECTOR
+    return bool(detector_crop_paths(detector_type))
 
 
+@lru_cache(maxsize=8)
 def detector_stage_names(detector_type: str) -> tuple[str, ...]:
-    """The stages a detector files its output under, in wire order.
-
-    This is the declared row set for that detector's per-stage channels, so a stage
-    that detected nothing this frame is still a NaN row rather than a missing one.
-
-    Raises:
-        KeyError: an unknown detector type — same contract as `camera_2d_detections`.
-    """
-    try:
-        return _OBSERVATION_BY_DETECTOR[detector_type][1]
-    except KeyError as error:
-        raise KeyError(
-            f"unknown detector type {detector_type!r} - add it to "
-            f"`_OBSERVATION_BY_DETECTOR`. Known: {sorted(_OBSERVATION_BY_DETECTOR)}"
-        ) from error
+    return tuple('/'.join(path) for path in detector_crop_paths(detector_type))
 
 
 def camera_2d_detections(
@@ -138,57 +122,35 @@ def camera_2d_detections(
         np.concatenate([channel.entry_present for channel in point_channels]), component_names=components)
 
 
-def camera_2d_boxes(
-    message: Any,  # duck-typed: the concrete type pulls skellytracker/mediapipe
-    camera_id: str,
-    *,
-    detector_type: str,
-) -> dict[str, np.ndarray]:
-    """One detector's per-camera bounding boxes (stage name -> box row).
+BOX_COMPONENTS = ('x1', 'y1', 'x2', 'y2', 'confidence', 'detector_ran')
 
-    Each row is (x1, y1, x2, y2, confidence, detector_ran). `detector_ran` is the
-    stage's own flag for whether the object detector produced this box THIS frame or
-    it was carried forward from the tracked keypoints — the distinction the overlay
-    colours by, and the one that makes an over-eager redetect visible on sight.
 
-    A stage is keyed by its own name rather than by index, so a tracker running several
-    stages (body plus, later, face/hands children) files each box under a stable label.
+def camera_2d_boxes(message: Any, camera_id: str, *, detector_type: str) -> ChannelValues:
+    """Pack actual executed crops, including hand crops with no detected keypoints.
 
-    Raises:
-        KeyError: an unknown detector type — same contract as `camera_2d_detections`.
+    Stage identities come from Tracker. Numerical rows share one dense tensor;
+    absent crops retain a declared unavailable row rather than disappearing.
     """
-    try:
-        observation_attribute, stage_names = _OBSERVATION_BY_DETECTOR[detector_type]
-    except KeyError as error:
-        raise KeyError(
-            f"unknown detector type {detector_type!r} - add it to "
-            f"`_OBSERVATION_BY_DETECTOR` so its boxes can be found. Known: "
-            f"{sorted(_OBSERVATION_BY_DETECTOR)}"
-        ) from error
-    if detector_type not in _DETECTORS_WITH_OBJECT_DETECTOR:
-        return {}
-
-    cam_output = message.camera_node_outputs.get(camera_id)
-    if cam_output is None:
-        return {}
-    observation = getattr(cam_output, observation_attribute, None)
-    if observation is None:
-        return {}
-
-    boxes: dict[str, np.ndarray] = {}
-    for stage_name in stage_names:
-        stage = observation.stages.get(stage_name)
-        if stage is None or not stage.bounding_boxes:
-            continue
-        # One box per stage — freemocap runs no multi-person tracker, so a second
-        # entry would mean the stage contract changed rather than that two people
-        # are in view. Take the first and leave widening to a real multi-person path.
-        box = stage.bounding_boxes[0]
-        boxes[stage_name] = np.array(
-            [box.x1, box.y1, box.x2, box.y2, box.confidence, float(stage.detector_ran)],
-            dtype=np.float32,
-        )
-    return boxes
+    paths = detector_crop_paths(detector_type)
+    names = detector_stage_names(detector_type)
+    rows = np.full((len(paths), len(BOX_COMPONENTS)), np.nan, dtype=np.float32)
+    attribute = _OBSERVATION_BY_DETECTOR[detector_type][0]
+    output = message.camera_node_outputs.get(camera_id)
+    observation = getattr(output, attribute, None) if output is not None else None
+    if observation is not None:
+        for row, path in enumerate(paths):
+            stages = observation.stages
+            stage = None
+            for name in path:
+                stage = stages.get(name)
+                if stage is None:
+                    break
+                stages = stage.children
+            if stage is None or not stage.bounding_boxes:
+                continue
+            box = stage.bounding_boxes[0]
+            rows[row] = (box.x1, box.y1, box.x2, box.y2, box.confidence, float(stage.detector_ran))
+    return ChannelValues(names, rows, ~np.isnan(rows[:, :4]).any(axis=1), component_names=BOX_COMPONENTS)
 
 
 def origin_landmark_names(skeleton: SkeletonDefinition) -> dict[str, str]:

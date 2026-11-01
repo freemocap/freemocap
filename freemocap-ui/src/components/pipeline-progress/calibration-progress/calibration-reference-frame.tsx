@@ -52,8 +52,8 @@ export default function CalibrationReferenceFrame({calibrationPath}: {calibratio
         {offset && <ReferenceTransformSummary
             matrix={transformFromFields(offset.matrix, TransformRepresentation.Matrix)}
             label="Runtime transformation"/>}
-        {error && <p role="alert" className="text-error">{error}</p>}
-        {calibration.error && <p role="alert" className="text-error">{calibration.error}</p>}
+        {error && <p role="alert" className="text-error" style={{whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>{error}</p>}
+        {calibration.error && <p role="alert" className="text-error" style={{whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>{calibration.error}</p>}
         {editing && <TransformEditor
             initialMatrix={offset ? transformFromFields(offset.matrix, TransformRepresentation.Matrix) : new Matrix4()}
             onAccept={apply} onClose={() => setEditing(false)}/>}

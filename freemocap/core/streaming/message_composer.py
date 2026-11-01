@@ -137,6 +137,7 @@ def compose_messages(ctx: StreamContext) -> MessageComposition:
                 rest_pose=skeleton.rest_pose,
                 palette=palette,
                 scale_reference_name=skeleton.scale_reference_name,
+                tracker_connections=skeleton.tracker_connections,
             )
             for skeleton in ctx.skeletons
         ),

@@ -12,6 +12,7 @@ import {
 } from "./KeypointsSourceContext";
 import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import { useAppSelector } from "@/store";
+import {selectIsPaused} from '@/store/slices/cameras/cameras-selectors';
 import {
   selectCalibrationConfig,
   type LoadedCalibration,
@@ -158,6 +159,7 @@ function serializeWheelEvent(e: WheelEvent, rect: DOMRect) {
 
 export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | null}) {
   const calibrationConfig = useAppSelector(selectCalibrationConfig);
+  const camerasPaused = useAppSelector(selectIsPaused);
   const {
     isLive,
     subscribeToKeypoints,
@@ -218,6 +220,10 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
     VIEWPORT_WORKER.postMessage({type: "livePresentation", data: isLive});
     return () => { VIEWPORT_WORKER.postMessage({type: "presentationReset"}); };
   }, [isLive]);
+
+  useEffect(() => {
+    VIEWPORT_WORKER.postMessage({type: "presentationPaused", data: isLive && camerasPaused});
+  }, [isLive, camerasPaused]);
 
   // The STATIC model definitions, forwarded only when they change. Large and unchanging
   // between `model_sequence` bumps — 61 segments + 124 landmarks + 60 connections for the

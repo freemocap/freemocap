@@ -184,7 +184,7 @@ def build_mediapipe_tracker(
 # Tracker owns recipes and keypoint assembly; these aliases preserve Core callers.
 from skellytracker.core.tracker.tracker_presets import (
     skeleton_tracker_config, build_mediapipe_tracker_config as build_mediapipe_tracker_config, mediapipe_tracker_config,
-    merge_mediapipe_hand_face_children as merge_mediapipe_hand_face_children, human_tracker_config,
+    human_tracker_config,
 )
 
 def tracker_config_for_settings(settings, *, video_fps: float = 30.0) -> TrackerConfig:

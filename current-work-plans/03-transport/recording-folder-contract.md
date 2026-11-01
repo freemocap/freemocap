@@ -213,7 +213,7 @@ preserved exploration branch, not the current streaming contract. See the
 - `freemocap/system/recording_structure/recording_structure.py`
 - `freemocap-ui/src/store/slices/active-recording/recording-structure.ts` and layout presets
 - `freemocap/core/recording/data_descriptors/recording_descriptor.py`
-- `freemocap/core/tasks/mocap/posthoc_mocap_task.py`
+- `freemocap/core/pipeline/dataflow/recording_pipeline.py`
 - `freemocap/core/pipeline/posthoc/saved_stage_processing.py`
 - `freemocap/core/pipeline/posthoc/stage_execution_plan.py`
 - `freemocap/core/recording/parquet_storage/{parquet_writer,checkpoint_publication}.py`

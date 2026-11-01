@@ -113,34 +113,23 @@ The `Triangulator` (`core/tasks/triangulation/triangulator.py`, ~578 lines) is a
 
 ## Posthoc Mocap Task
 
-Orchestrated by `run_posthoc_mocap_aggregator_task()` in `posthoc_mocap_task.py`:
+`core/pipeline/dataflow/application_pipeline.py` runs Typed data flow graph V1.
+`posthoc/mocap_pipeline.py` owns its managed worker, cancellation and progress.
+The same graph definitions handle fresh video input and supported saved-stage
+restarts. Tracker owns keypoint detection and assembly; Core connects camera
+observations, Forge reconstruction, recording publication and requested exports.
 
-1. Receives `frame_observations` — a per-frame list of `{camera_id: Observation}` collected from all VideoNodes (unified SkellyTracker `Observation`s)
-2. Builds an `ObservationBuffer` per camera and accumulates each camera's observations
-3. Resolves the calibration TOML (explicit path wins; otherwise the most-recent successful calibration) and copies it into the recording folder
-4. Calls `skeleton_from_mediapipe_observation_recorders(detector=…, observation_recorders=…, …)` to triangulate the 3D skeleton into `output_data/`
-5. Writes `tracker_schema.json` from the active `TrackerDefinition` (e.g. `RTMPOSE_WHOLEBODY_DEFINITION`)
-6. Optionally triggers Blender export
+The processing selector offers the graph and a disabled **Add custom pipeline…**
+item with a **Coming soon** tooltip.
 
 ## Output Artifacts
 
-After mocap processing, results are written under the recording folder:
+`<recording>_data.parquet` in the recording folder is the primary processed
+record. Requested scientific exports live in `exports/`; opt-in individual NPY
+arrays live in their own subfolder. Saved runs use the recording's run ID and
+retention policy. Annotated videos are separate from numerical processing.
 
-```text
-recording_folder/
-├── synchronized_videos/      Input camera videos
-├── annotated_videos/         Videos with detected 2D keypoints drawn on
-├── output_data/              Reconstructed + post-processed 3D data
-│   ├── *.npy                 3D keypoint arrays (frames × keypoints × 3), CoM, etc.
-│   ├── *.csv
-│   ├── *.parquet             Primary tabular mocap data store
-│   └── per_camera_weights.npy
-├── tracker_schema.json       Keypoint names + connections (from the TrackerDefinition)
-├── <calibration>.toml        Calibration used for this recording (copied in)
-└── <name>.blend              Blender export (if enabled)
-```
-
-For the end-user walkthrough that produces these, see the
+For the end-user workflow, see the
 [Post-Hoc Motion Capture guide](/docs/guides/posthoc-mocap).
 
 ## Blender Export

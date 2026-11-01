@@ -25,16 +25,20 @@ class RecordedModel(BaseModel):
     segment_masses: dict[str, float]
     scale_reference_name: str
     anchor_segment_name: str | None = None
+    tracker_connections: tuple[tuple[str, str], ...] = ()
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
-        """Preserve historical fingerprints for absent observation frames.
+        """Preserve historical fingerprints for absent optional declarations.
 
         Old snapshots did not have this field. Absence still means no declared
         observation frame; never substitute today's model defaults. Present
         definitions must be serialized so they participate in fit signatures.
+        Tracker topology is likewise omitted when absent in historical records.
         """
         result = handler(self)
+        if not self.tracker_connections:
+            result.pop("tracker_connections", None)
         for segment in result.get("skeleton", {}).get("segments", ()):
             if segment.get("observation_frame") is None:
                 segment.pop("observation_frame", None)
@@ -74,6 +78,7 @@ class RecordedModel(BaseModel):
             model_id=bundle.model_id,
             detector_type=bundle.detector_type,
             tracker_keypoint_names=bundle.tracker_keypoint_names,
+            tracker_connections=bundle.tracker_connections,
             skeleton=SkeletonSnapshot.capture(bundle.skeleton),
             rest_pose=RestPoseSnapshot.capture(bundle.rest_pose),
             mappings=bundle.landmark_mapping.mapping_snapshots(),
@@ -90,6 +95,7 @@ class RecordedModel(BaseModel):
             model_id=self.model_id,
             detector_type=self.detector_type,
             tracker_keypoint_names=self.tracker_keypoint_names,
+            tracker_connections=self.tracker_connections,
             skeleton=skeleton,
             rest_pose=self.rest_pose.restore(skeleton),
             landmark_mapping=CompositeTrackerMapping(

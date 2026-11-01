@@ -494,6 +494,76 @@
   note = {Reviewed documentation excerpts about local timestamps, clock offsets and mapping another clock to LSL time. FreeMoCap capture clock semantics have not been validated by this research.}
 }
 
+@misc{mediapipePythonDelegateSelection,
+  title = {{MediaPipe} Python BaseOptions delegate selection},
+  author = {{MediaPipe Authors}},
+  url = {https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/python/core/base_options.py},
+  urldate = {2026-10-31},
+  review = {source-code},
+  claim = {The Python task options default to the CPU delegate when none is provided; the documented GPU support is limited to Ubuntu.},
+  note = {Compared the upstream source with the locally installed MediaPipe 0.10.33 options implementation. This is not a GPU execution benchmark. Upstream master is mutable.}
+}
+
+@misc{mediapipeHandLandmarkerPython,
+  title = {Hand landmarks detection guide for Python},
+  author = {{Google AI Edge}},
+  url = {https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/python},
+  urldate = {2026-10-31},
+  review = {excerpt},
+  claim = {VIDEO mode uses temporal tracking to avoid palm detection on every frame; detection and tracking failures can trigger palm detection again. VIDEO calls block until processing completes.},
+  note = {Reviewed running modes, thresholds, timestamps, execution behavior and output coordinate descriptions for mixed RTMW and MediaPipe detector planning. No mixed-detector runtime was benchmarked.}
+}
+
+@misc{opencvZooMediapipeHandOnnx,
+  title = {Hand pose estimation from MediaPipe Handpose},
+  author = {{OpenCV Zoo contributors}},
+  url = {https://github.com/opencv/opencv_zoo/tree/main/models/handpose_estimation_mediapipe},
+  urldate = {2026-10-31},
+  review = {full-text},
+  claim = {The model README describes a MediaPipe hand estimator converted from TFLite to ONNX and warns that the int8 model can lose substantial accuracy.},
+  note = {Full review of the model README only. No model download, equivalence test, CUDA execution or latency measurement was performed. Repository main is mutable.}
+}
+
+@misc{yakhyoMediapipeHandsOnnx,
+  title = {Hand Landmark: palm detection and 21-point hand landmarks},
+  author = {{yakhyo}},
+  url = {https://github.com/yakhyo/mediapipe-hand-landmark-onnx},
+  urldate = {2026-10-31},
+  review = {excerpt},
+  claim = {The repository describes batch-capable ONNX palm and hand networks with separate decoding, suppression and rotated crop mapping, illustrating that porting the network is not the complete task pipeline.},
+  note = {Reviewed model provenance, tensor interfaces and preprocessing sections of the README. Its models and parity claims were not independently validated.}
+}
+
+@misc{skellytrackerSidecarReview2026,
+  title = {{SkellyTracker} model sidecar implementation and specification},
+  author = {{SkellyTracker contributors}},
+  url = {https://github.com/freemocap/skellytracker/tree/6560685cfe9411a27f5a7ca6192f91cc4ac506c3},
+  urldate = {2026-10-31},
+  review = {source-code},
+  claim = {Sidecars describe ONNX artifacts, preprocessing and output metadata and connect to existing sessions; the reviewed runtime retains detector classes and lacks generic discovery and several pose decoders, so the metadata contract alone does not implement arbitrary model integration or tracking composition.},
+  note = {Inspected core/sidecar, processing/simcc_decode.py and sidecar implementation/specification documents at the verified PR 81 head. PR 84 head 069ef01ffcf754ea05596c002071cd7858f2f8e7 appears in PR 81 commit history. No merge or runtime benchmark was performed in this assessment.}
+}
+
+@misc{skellytrackerFactoryPr90,
+  title = {{SkellyTracker} tracker factory pull request 90},
+  author = {{philipqueen}},
+  url = {https://github.com/freemocap/skellytracker/pull/90},
+  urldate = {2026-10-31},
+  review = {source-code},
+  claim = {The proposed factory recursively discovers session requirements through detector registries and constructs trackers from their configuration.},
+  note = {Reviewed patch at head 46d3454fd17d504f7d406d04f87497a2af1bbd2a against current Core session construction and sharing. No integration tests or merge performed.}
+}
+
+@misc{freemocapBatchedPosthocPr910,
+  title = {{FreeMoCap} run batched in posthoc pull request 910},
+  author = {{philipqueen}},
+  url = {https://github.com/freemocap/freemocap/pull/910},
+  urldate = {2026-10-31},
+  review = {source-code},
+  claim = {The proposed posthoc skeleton tracking node centralizes per-camera inference into one tracker and processes camera images together through process_batch.},
+  note = {Reviewed patch at head 857c334a4b7af0cf6765fc46b020d631bae7b381. Current sfn26 independently uses InferenceService and shared session pooling; the proposal was not benchmarked or merged in this review.}
+}
+
 @misc{freemocapExecutionProviderPr931,
   title = {{FreeMoCap} expose execution providers in the GUI pull request 931},
   author = {{philipqueen}},
@@ -502,4 +572,24 @@
   review = {source-code},
   claim = {The proposal adds provider selection and an endpoint based on ONNX Runtime available providers; it does not implement model precision conversion or TensorRT RTX acceleration.},
   note = {Reviewed patch at head 3f833d9fa7f7469a1258d3f3a9ebe42a3878ac14. Its posthoc wiring targets VideoNode, whereas current sfn26 mocap inference uses InferenceService. No runtime validation performed.}
+}
+
+@misc{skellytrackerRtPosePr72,
+  title = {{SkellyTracker} RT pose implementation pull request 72},
+  author = {{philipqueen}},
+  url = {https://github.com/freemocap/skellytracker/pull/72},
+  urldate = {2026-10-31},
+  review = {metadata},
+  claim = {The author describes the experimental YOLO and ViT pose implementation as slower, more GPU intensive and less stable than the existing RTMPose tracker.},
+  note = {Reviewed PR description, changed-file inventory and draft status at head 02883da823435fc5b1eca545779c20b9704dea98. Author performance claims were not independently measured.}
+}
+
+@misc{skellytrackerMetricsPr79,
+  title = {{SkellyTracker} realtime pipeline metrics pull request 79},
+  author = {{Dom Scott}},
+  url = {https://github.com/freemocap/skellytracker/pull/79},
+  urldate = {2026-10-31},
+  review = {metadata},
+  claim = {The PR describes collecting metrics and publishing them over a WebSocket for a companion FreeMoCap performance interface.},
+  note = {Reviewed PR description and state only; this is instrumentation, not evidence of inference acceleration. Companion FreeMoCap PR 867 was closed without merging at review time.}
 }

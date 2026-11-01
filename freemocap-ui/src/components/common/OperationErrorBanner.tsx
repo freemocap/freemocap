@@ -31,7 +31,7 @@ export const OperationErrorBanner: React.FC = () => {
       {entries.map(({ label, error, clear }) => (
         <div key={label} className="toast-notification error">
           <div className="flex flex-row items-center justify-content-space-between gap-1">
-            <p className="text sm">
+            <p className="text sm" style={{whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>
               <span className="text-bold">{label}:</span> {error}
             </p>
             <IconButton

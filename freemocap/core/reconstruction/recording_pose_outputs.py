@@ -121,14 +121,18 @@ class RecordingPoseOutputs:
         selected = np.zeros_like(present)
         position_result = None
         if self.positions:
-            selected[:, self.positions.anchor_index] = present[:, self.positions.anchor_index]
-            # Tree dependencies require depth order; frames and branches batch together.
-            for parents, children, _, _ in self.positions.traversal_levels:
-                selected[:, children] = selected[:, parents] & present[:, children]
             if self.weighted_attachments is not None:
+                # Forge places disconnected observed components independently.
+                # Requiring a path to the anchor here would erase valid poses
+                # whenever the pelvis or an intermediate segment is missing.
+                selected = present.copy()
                 position_result = self.weighted_attachments.positions(geometry=self.positions,
                     world_orientations=rotations, segment_present=selected, observed_origins=origins)
             else:
+                selected[:, self.positions.anchor_index] = present[:, self.positions.anchor_index]
+                # Rigid placement requires an unbroken path from its anchor.
+                for parents, children, _, _ in self.positions.traversal_levels:
+                    selected[:, children] = selected[:, parents] & present[:, children]
                 position_result = self.positions.positions(world_orientations=rotations, segment_present=selected,
                     anchor_origins=origins[:, self.positions.anchor_index])
         local_present = selected & present[:, self.parents]

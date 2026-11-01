@@ -141,51 +141,6 @@ def test_default_and_legacy_alignment_configuration():
             MocapAlignmentConfig(mode=mode, enabled=enabled)
 
 
-@pytest.mark.parametrize('aligned', [False, True])
-@pytest.mark.parametrize('saved', [False, True])
-def test_posthoc_uses_loaded_calibration_alignment(tmp_path, monkeypatch, aligned, saved):
-    """Full processing and saved detections both consult the actual TOML metadata."""
-    from types import SimpleNamespace
-    from unittest.mock import Mock
-    from skellycam.core.recorders.videos.recording_info import RecordingInfo
-    from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
-    from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-    from freemocap.core.tasks.mocap import posthoc_mocap_task as task
-    from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
-
-    request = alignment_request()
-    calibration_path = tmp_path / 'calibration.toml'
-    CalibrationResult(cameras=list(request.camera_geometry.values()),
-        board=CharucoBoardDefinition(squares_x=5, squares_y=3, square_length_mm=50),
-        reprojection_error_px=0., initial_cost=0., final_cost=0., n_iterations=0,
-        solver_time_seconds=0., n_observations_used=0, n_observations_rejected=0,
-        aligned=aligned).save_toml(calibration_path)
-    info = RecordingInfo(recording_name='recording', recording_directory=str(tmp_path))
-    (tmp_path / 'recording').mkdir(parents=True)
-    monkeypatch.setattr(task, 'ObservationRecordingRequest', Mock())
-    monkeypatch.setattr(task, 'ObservationGroup', Mock())
-    monkeypatch.setattr(task, 'TrackerRecordingDefinition', Mock())
-    monkeypatch.setattr(task, 'publish_posthoc_observations', Mock())
-    monkeypatch.setattr(task, 'PosthocMatchingRequest', Mock(return_value=Mock(
-        resolve=Mock(return_value=request.camera_geometry))))
-    monkeypatch.setattr(task, 'triangulate_observation_buffers', Mock(return_value=request.triangulation))
-    timing = Mock(spec=task.RecordingGroupTiming,
-        synchronized=SimpleNamespace(timestamps_s=request.timestamps_seconds))
-    monkeypatch.setattr(task.RecordingGroupTiming, 'resolve', Mock(return_value=timing))
-    monkeypatch.setattr(task, 'prepare_recording_points', Mock(return_value=SimpleNamespace(
-        points=request.filtered_points, report=SimpleNamespace(gap_filling=Mock(
-            measured_support=Mock(return_value=np.isfinite(request.filtered_points).all(axis=-1)))))))
-    captured = []
-    def capture(*, request):
-        captured.append(request)
-        raise RuntimeError('alignment reached')
-    monkeypatch.setattr(task, 'align_mocap_recording', capture)
-    with pytest.raises(RuntimeError, match='alignment reached'):
-        task.run_posthoc_mocap_task(frame_observations=[], recording_info=info,
-            video_metadata={source: Mock(spec=VideoMetadata) for source in request.camera_geometry},
-            task_config=PosthocMocapPipelineConfig(calibration_toml_path=str(calibration_path),
-                detector_type='mediapipe'), selected_board=None, saved_timing=timing if saved else None)
-    assert captured[0].preserve_reference_frame is aligned
 
 
 @pytest.mark.parametrize("enabled,preserve", [(True, False), (False, False), (True, True)])

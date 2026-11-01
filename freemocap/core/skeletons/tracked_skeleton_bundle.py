@@ -77,6 +77,7 @@ class TrackedSkeletonBundle:
             several, and each skeleton is fed by exactly one, so the pairing lives here
             rather than as a single value on the stream context.
         tracker_keypoint_names: every keypoint that detector can emit, in wire order.
+        tracker_connections: Tracker-authored display edges, preserved in recordings.
         skeleton: the definition being hydrated.
         rest_pose: its reference pose - authored for the human, defaulted for a rigid
             object that has nothing to author.
@@ -100,6 +101,7 @@ class TrackedSkeletonBundle:
     segment_masses: dict[str, float]
     scale_reference_name: str
     anchor_segment_name: str | None = None
+    tracker_connections: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         if self.anchor_segment_name is not None and self.anchor_segment_name not in self.skeleton.segments:

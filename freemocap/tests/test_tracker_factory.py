@@ -66,30 +66,6 @@ def test_direct_onnx_creation_is_serialized_across_factory_paths() -> None:
     assert peak == 1
 
 
-def test_hand_merge_preserves_order_missing_points_and_other_children() -> None:
-    import numpy as np
-    from skellytracker.core.data_primitives.keypoints import Keypoints
-    from skellytracker.core.data_primitives.observation import Observation, StageObservation
-    from freemocap.core.tracking.tracker_factory import merge_mediapipe_hand_face_children
-
-    def points(name, value):
-        return Keypoints(names=(name,), xyz=np.full((1, 3), value, dtype=float),
-                         visibility=np.array([0.0 if np.isnan(value) else 1.0]))
-
-    board = StageObservation(name="board", keypoints=points("corner", 5))
-    body = StageObservation(name="body", keypoints=points("nose", 1), children={
-        "face": StageObservation(name="face", keypoints=points("face_0", 4)),
-        "left_hand": StageObservation(name="left_hand", keypoints=points("left_hand_wrist", np.nan)),
-        "right_hand": StageObservation(name="right_hand", keypoints=points("right_hand_wrist", 2)),
-        "board": board,
-    })
-    observation = Observation(frame_number=2, image_size=(100, 100), stages={"body": body})
-    merge_mediapipe_hand_face_children(observation)
-    merge_mediapipe_hand_face_children(observation)
-    assert body.keypoints.names == ("nose", "right_hand_wrist", "left_hand_wrist", "face_0")
-    np.testing.assert_allclose(body.keypoints.xyz[:, 0], [1, 2, np.nan, 4], equal_nan=True)
-    assert body.keypoints.visibility[2] == 0
-    assert body.children == {"board": board}
 
 
 @pytest.mark.parametrize("fail", [False, True])

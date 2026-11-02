@@ -19,6 +19,10 @@
     "./recording": {
       "types": "./dist/recording/index.d.ts",
       "import": "./dist/recording/index.js"
+    },
+    "./images": {
+      "types": "./dist/images/index.d.ts",
+      "import": "./dist/images/index.js"
     }
   },
   "files": [

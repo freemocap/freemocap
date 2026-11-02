@@ -90,6 +90,12 @@ state. HTTP requests and server tasks are not cancelled by `close()`.
 
 Treat received numerical/image bytes as read-only. Copy before editing or
 transferring their buffers. Later frames do not overwrite retained arrays.
+
+A frame's image is SkellyCam's multi-camera image payload. `readImagePayload`
+(also in the small `@freemocap/client/images` entry for workers) returns each
+camera's identity, declared size and JPEG bytes as views, and throws for any
+malformed payload. In a browser or worker, `decodeImageBitmaps` and
+`decodeImagePixels` decode those JPEGs to `ImageBitmap`s or transferable RGBA.
 Coordinates, units, names, channel order and clocks keep their declared meaning.
 No implicit coordinate conversion or fabricated samples are applied.
 

@@ -13,6 +13,7 @@ export * from './transport/websocket-connection.js';
 export * from './transport/log-record.js';
 export * from './transport/content-equality.js';
 export * from './transport/snapshot-equality.js';
+export * from './images/index.js';
 
 /** Complete HTTP client and an explicit, initially disconnected streaming session. */
 export function createClient(options:ClientOptions){

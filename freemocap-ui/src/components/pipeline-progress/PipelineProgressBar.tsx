@@ -19,7 +19,7 @@ export default function PipelineProgressBar({pipeline}: PipelineProgressBarProps
     const isComplete = pipeline.phase === PipelinePhase.COMPLETE;
     const isTerminal = isComplete || isFailed;
 
-    const progressColor = isFailed ? 'var(--color-error)' : isComplete ? 'var(--color-success)' : 'var(--color-info)';
+    const progressColor = isFailed ? 'var(--color-danger)' : isComplete ? 'var(--color-success)' : 'var(--color-info)';
 
     return (
         <div style={{padding: '4px 8px', opacity: isTerminal ? 0.5 : 1}}>

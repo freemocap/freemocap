@@ -103,7 +103,7 @@
 }
 
 .pipeline-toast-flyout--running {
-  border-color: #FF00FF;
+  border-color: var(--color-info);
 }
 
 /* =========================
@@ -130,7 +130,7 @@
 }
 
 .pipeline-group-card__border-failed {
-  border: 1px solid var(--color-error);
+  border: 1px solid var(--color-danger);
 }
 
 .pipeline-group-card__border-complete {

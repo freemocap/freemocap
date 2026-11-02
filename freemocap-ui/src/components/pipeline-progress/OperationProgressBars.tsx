@@ -12,7 +12,7 @@ export default function OperationProgressBars({operations}: {operations: readonl
             const {operation_id, label, status, progress_fraction, completed, total, unit, detail} = operation;
             const percent = progress_fraction === null ? undefined : Math.round(progress_fraction * 100);
             const indeterminate = status === 'running' && percent === undefined;
-            const color = status === 'failed' ? 'var(--color-error)'
+            const color = status === 'failed' ? 'var(--color-danger)'
                 : status === 'complete' ? 'var(--color-success)'
                 : status === 'running' ? 'var(--color-info)' : 'var(--color-text-secondary)';
             const count = completed === null ? null : `${completed.toLocaleString()}${total === null ? '' : ` / ${total.toLocaleString()}`}${unit ? ` ${unit}` : ''}`;

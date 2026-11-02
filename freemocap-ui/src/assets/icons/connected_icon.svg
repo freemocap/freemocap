@@ -1,7 +1,7 @@
 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_152_3161)">
 <g filter="url(#filter0_d_152_3161)">
-<circle cx="10" cy="10" r="3.46461" fill="#16DD12"/>
+<circle cx="10" cy="10" r="3.46461" fill="#70D269"/>
 </g>
 </g>
 <defs>
@@ -12,7 +12,7 @@
 <feOffset/>
 <feGaussianBlur stdDeviation="3.125"/>
 <feComposite in2="hardAlpha" operator="out"/>
-<feColorMatrix type="matrix" values="0 0 0 0 0.0834473 0 0 0 0 0.760285 0 0 0 0 0.0698425 0 0 0 1 0"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.439216 0 0 0 0 0.823529 0 0 0 0 0.411765 0 0 0 1 0"/>
 <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_152_3161"/>
 <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_152_3161" result="shape"/>
 </filter>

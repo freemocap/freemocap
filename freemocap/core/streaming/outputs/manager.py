@@ -8,7 +8,7 @@ from queue import Empty, Full, Queue
 from uuid import uuid4
 
 from freemocap.core.streaming.outputs.contracts import (
-    OutputCapability, OutputConflictError, OutputEmitter, OutputSample, OutputSource,
+    OutputCapability, OutputConflictError, OutputEmission, OutputEmitter, OutputSample, OutputSource,
     OutputState, OutputUnavailableError, ProtocolDefinition, StartOutputRequest,
 )
 
@@ -22,6 +22,9 @@ class _Output:
         self.stop_event = threading.Event()
         self.close_error: str | None = None
         self.cursors: dict[str, int] = {}
+        self.prepared_pipeline: str | None = None
+        self.preparing_pipeline: str | None = None
+        self.prepare = getattr(emitter, "prepare", None)
         self.thread = threading.Thread(target=self._run, name=f"Output-{state.id}", daemon=True)
         self.thread.start()
 
@@ -50,12 +53,19 @@ class _Output:
                 self.state.source_frame_gaps += max(0, sample.frame.frame_number - previous - 1)
             self.cursors[sample.pipeline_id] = sample.frame.frame_number
             self.state.active_pipeline_id = sample.pipeline_id
+            if self.prepare is not None and sample.pipeline_id != self.prepared_pipeline:
+                if self.preparing_pipeline == sample.pipeline_id:
+                    self.state.frames_before_ready += 1
+                    return
+                self.preparing_pipeline = sample.pipeline_id
+                self.state.readiness = "preparing"
             try:
                 self.queue.put_nowait(sample)
             except Full:
                 self.state.queue_overflows += 1
                 if self.state.overflow_policy == "fail":
-                    self.fail("Output queue overflow; acquisition continues, this output stopped")
+                    self.fail(f"{self.state.protocol.upper()} streaming stopped: its sender could not keep up. "
+                              "Camera capture and recording were not stopped by this error.")
                     return
                 try:
                     self.queue.get_nowait()
@@ -69,6 +79,7 @@ class _Output:
             if self.state.status not in ("failed", "stopped"):
                 self.state.status = "idle"
                 self.state.active_pipeline_id = None
+                self.state.readiness = None
                 self.cursors.clear()
 
     def _run(self) -> None:
@@ -80,8 +91,22 @@ class _Output:
                     continue
                 if self.stop_event.is_set():
                     break
-                self.emitter.emit(sample)
+                if self.prepare is not None and sample.pipeline_id != self.prepared_pipeline:
+                    progress = self.prepare(sample)
+                    with self.lock:
+                        self.prepared_pipeline = sample.pipeline_id
+                        self.preparing_pipeline = None
+                        self.state.frames_before_ready += 1
+                        self._progress(progress)
+                    continue
+                progress = self.emitter.emit(sample)
                 with self.lock:
+                    if isinstance(progress, OutputEmission):
+                        self._progress(progress)
+                        if not progress.sent:
+                            if progress.outlets_connected == 0:
+                                self.state.frames_without_receivers += 1
+                            continue
                     self.state.frames_emitted += 1
                     self.state.last_frame_number = sample.frame.frame_number
                     self.state.last_capture_timestamp_ns = str(sample.source_timestamp_ns)
@@ -103,6 +128,11 @@ class _Output:
                     self.close_error = str(error)
                     self.state.status = "failed"
                     self.state.error = f"{self.state.error or ''} Close failed: {error}".strip()
+
+    def _progress(self, progress: OutputEmission) -> None:
+        self.state.readiness = progress.readiness
+        self.state.outlets_advertised = progress.outlets_advertised
+        self.state.outlets_connected = progress.outlets_connected
 
     def stop(self) -> OutputState:
         self.stop_event.set()

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {StreamingOutputsPanel, outputStartBody} from './StreamingOutputsPanel';
+import {StreamingOutputsPanel, outputStartBody, outputStatusLabel} from './StreamingOutputsPanel';
 import {Provider} from 'react-redux';
 import {configureStore} from '@reduxjs/toolkit';
 
@@ -45,4 +45,15 @@ test('an old backend uses explicit settings instead of its incompatible quick-st
     const schema = {properties: {include_fingers: {default: false}}};
     assert.deepEqual(outputStartBody('vmc', schema, {config: {include_fingers: true}, pipeline: '', queueCapacity: 8}),
         {protocol: 'vmc', pipeline_id: null, queue_capacity: 8, config: {include_fingers: true}});
+});
+
+
+test('LSL status distinguishes preparation, subscription, sending and failure', () => {
+    const base = {protocol: 'lsl', status: 'idle'} as Parameters<typeof outputStatusLabel>[0];
+    assert.equal(outputStatusLabel(base), 'Waiting for source data');
+    assert.equal(outputStatusLabel({...base, readiness: 'preparing'}), 'Preparing streams');
+    assert.equal(outputStatusLabel({...base, readiness: 'waiting_for_receiver'}), 'Available - waiting for a receiver');
+    assert.equal(outputStatusLabel({...base, status: 'running', readiness: 'sending'}), 'Sending to connected receivers');
+    assert.equal(outputStatusLabel({...base, status: 'failed', readiness: 'sending'}), 'LSL stopped');
+    assert.equal(outputStatusLabel({...base, status: 'stopped', readiness: 'sending'}), 'Stopped');
 });

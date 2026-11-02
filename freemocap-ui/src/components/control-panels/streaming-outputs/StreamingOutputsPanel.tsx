@@ -8,6 +8,15 @@ import {serverUrls} from '@/constants/server-urls';
 
 type Capability = OperationData<'streaming_list_protocols'>[number];
 type Output = OperationData<'streaming_list_outputs'>[number];
+export function outputStatusLabel(output: Output): string {
+    if (output.status === 'failed') return `${output.protocol.toUpperCase()} stopped`;
+    if (output.status === 'stopped') return 'Stopped';
+    if (output.readiness === 'preparing') return 'Preparing streams';
+    if (output.readiness === 'waiting_for_receiver') return 'Available - waiting for a receiver';
+    if (output.readiness === 'sending') return 'Sending to connected receivers';
+    return output.status === 'idle' ? 'Waiting for source data' : 'Sending';
+}
+
 type Field = {type?: string; title?: string; description?: string; default?: unknown; const?: unknown;
     minimum?: number; maximum?: number; enum?: string[]; items?: Field; anyOf?: Field[]; $ref?: string};
 type Schema = {properties?: Record<string, Field>; $defs?: Record<string, Field>};
@@ -210,8 +219,9 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
                         {protocol === 'vmc' && <span className="text sm text-gray">{String(draft.config.host ?? '127.0.0.1')}:{String(draft.config.port ?? 39539)}</span>}
                     </div>
                     {capability?.unavailable_reason && <p className="text sm text-gray" role="status">{capability.unavailable_reason}</p>}
+                    {protocol === 'lsl' && <p className="text sm text-gray">In LabRecorder: Update, select the FreeMoCap streams, then Start. Refresh status here to check connections. Connected does not confirm recording to disk. Frames before a receiver connects are not buffered.</p>}
                     {states.map(output => <div key={output.id} aria-label={`Output ${output.id}`} className="flex flex-row items-center justify-between gap-1">
-                        <span className="text sm"><span data-testid="output-state">{output.status}</span>
+                        <span className="text sm"><span data-testid="output-state">{outputStatusLabel(output)}</span>
                             {output.error && <span role="alert" className="text-red"> · {output.error}</span>}</span>
                         <button type="button" className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left secondary"
                             disabled={busy || !observedOrigin} onClick={() => void mutate(protocol, output)}>

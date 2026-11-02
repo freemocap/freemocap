@@ -49,6 +49,14 @@ for old, name in namespace['asset_segments']().items():
     indices = [i for i, weight in original['groups'][old] if weight > 0]
     # Explicit presentation delta from the addon; its scientific binding is unchanged.
     expected = np.array([mesh.data.vertices[i].co[:] for i in indices]) * prepared.get('artworkScales', {}).get(name, 1.)
+    if name == 'thoracic' and prepared.get('torsoSocketFit'):
+        # Explicit artwork correction, independently applied to Blender's fit.
+        fit = prepared['torsoSocketFit']
+        original_expected = expected.copy()
+        for side, (source_anchor, target_anchor) in enumerate(zip(fit['source'], fit['target'])):
+            mask = original_expected[:, 0] < 0 if side == 0 else original_expected[:, 0] > 0
+            weights = original_expected[mask, 0] / source_anchor[0]
+            expected[mask] += weights[:, None] * (np.asarray(target_anchor) - source_anchor)
     actual = np.asarray(parts[name]['positions']).reshape(-1, 3)[:len(indices)]
     maximum = max(maximum, float(np.max(np.abs(actual - expected))))
     np.testing.assert_allclose(actual, expected, atol=2e-6, rtol=0, err_msg=name)

@@ -21,6 +21,31 @@ from skellyforge.core.skeleton.pose.rest_pose import RestPose
 SKULL_ARTWORK_SCALE = 0.90
 
 
+def fit_torso_sockets(points, source_sockets, target_sockets):
+    """Fit each side's authored shoulder anchor without moving the spine midline.
+
+    A single affine fit cannot preserve the neck: the source shoulder midpoint
+    coincides with its neck anchor, while the model's shoulders sit posteriorly.
+    This offline piecewise lateral adjustment is zero at x=0 and reaches each
+    socket's exact displacement at its authored x. No poses or rig are changed.
+    """
+    points = np.asarray(points, dtype=float)
+    source = np.asarray(source_sockets, dtype=float)
+    target = np.asarray(target_sockets, dtype=float)
+    if source.shape != (2, 3) or target.shape != (2, 3) or not np.isfinite(source).all() or not np.isfinite(target).all():
+        raise ValueError('Expected two finite shoulder socket anchors')
+    if not source[0, 0] < -1e-8 or not source[1, 0] > 1e-8:
+        raise ValueError('Shoulder anchors must straddle the torso centerline')
+    if not target[0, 0] < -1e-8 or not target[1, 0] > 1e-8:
+        raise ValueError('Target shoulder anchors must preserve their torso sides')
+    result = points.copy()
+    for side in range(2):
+        mask = points[:, 0] < 0 if side == 0 else points[:, 0] > 0
+        weight = points[mask, 0] / source[side, 0]
+        result[mask] += weight[:, None] * (target[side] - source[side])
+    return result
+
+
 def basis(primary, secondary):
     primary = np.asarray(primary, dtype=float)
     primary = primary / np.linalg.norm(primary)
@@ -98,6 +123,7 @@ def prepare(addon_root, reference_model=None):
     groups = {name: [i for i, weight in members if weight > 0]
               for name, members in asset['groups'].items()}
     parts, assigned = [], set()
+    torso_socket_fit = None
     for old, name in mapping.items():
         indices = groups[old]
         if assigned.intersection(indices):
@@ -131,7 +157,17 @@ def prepare(addon_root, reference_model=None):
         if name == 'skull':
             scale *= SKULL_ARTWORK_SCALE
         remap = {index: row for row, index in enumerate(indices)}
-        positions = ((vertices[indices] - head) @ rotation.T * scale).tolist()
+        positions = (vertices[indices] - head) @ rotation.T * scale
+        if name == 'thoracic':
+            # Same shoulder semantics as addon empty_markers_for_rest_pose:
+            # upper_arm.L/R origins are the glenohumeral attachment targets.
+            source_sockets = [(vertices[groups[old_arm + '_origin'][0]] - head) @ rotation.T * scale
+                              for old_arm in ('upper_arm.L', 'upper_arm.R')]
+            target_sockets = [world_rest.T @ (rest.segment_origins[arm].array - rest.segment_origins[name].array)
+                              for arm in ('left_upper_arm', 'right_upper_arm')]
+            torso_socket_fit = dict(source=np.asarray(source_sockets).tolist(), target=np.asarray(target_sockets).tolist())
+            positions = fit_torso_sockets(positions, source_sockets, target_sockets)
+        positions = positions.tolist()
         triangles, materials = [], []
         for face, material, smooth in zip(asset['faces'], asset['face_materials'], asset['face_smooth']):
             if face[0] not in remap:
@@ -153,6 +189,7 @@ def prepare(addon_root, reference_model=None):
         raise ValueError('Unmapped surface')
     return dict(version=1, coordinateSystem=asset['coordinate_system'],
                 artworkScales={'skull': SKULL_ARTWORK_SCALE},
+                torsoSocketFit=torso_socket_fit,
                 source='freemocap_blender_addon/assets/skelly_full_mesh_20k_faces.blend',
                 sourceSha256=hashlib.sha256(asset_path.read_bytes()).hexdigest(),
                 landmarks={name: point.array.tolist() for name, point in rest.landmark_positions.items()},

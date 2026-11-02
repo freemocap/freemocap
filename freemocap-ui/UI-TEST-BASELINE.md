@@ -2,7 +2,7 @@
 
 Baseline source: `8c209ec2` (2026-11-02), before the Skull theme refactor.
 Harness branch: `sfn26-ui-harness`; local design remote: `refactor`.
-This is an integration baseline in progress, not an all-green certification.
+Initial baseline work is complete with the acceptance failures documented below.
 
 ## Reproduce
 
@@ -29,7 +29,7 @@ Apple Silicon Mac; Python 3.12.14, Node 24.20.0, Playwright 1.59.0, Electron 35.
 1. Sandboxed npm could not resolve registry.npmjs.org; network-enabled installation succeeded.
 2. npm blocked install scripts; approved Electron/esbuild explicitly.
 3. UI imports failed before building the local `@freemocap/client` package. Building it restored a clean UI typecheck.
-4. `uv sync --frozen --group dev` failed linking SkellyCam: `ld: library 'turbojpeg-static' not found`. The downloaded macOS ARM64 archive contains `libturbojpeg.a`. No SkellyCam source was edited. `uv sync --frozen --group dev --no-install-package skellycam-rust` installed the remaining environment. Python camera backend only; Rust backend remains unverified.
+4. `uv sync --frozen --group dev` failed linking SkellyCam: `ld: library 'turbojpeg-static' not found`. The downloaded macOS ARM64 archive contains `libturbojpeg.a`. Initially installed the Python environment with `--no-install-package skellycam-rust`. After owner approval, SkellyCam commit `e7eeda45` corrected the macOS static library name. Full `uv sync --frozen --group dev` then succeeded and `_skellycam_rust` imported successfully. Native camera capture remains unverified without hardware.
 5. Core's pre-existing dirty `uv.lock` is preserved. Editable imports resolve to canonical sibling SkellyCam, Tracker and Forge checkouts; import evidence is saved locally.
 6. Backend on port 8005 returned HTTP 200 for `/openapi.json`. UI shell starts in Electron. Initial launch-to-React-root/fonts-ready measurement: 2595.30 ms; this excludes backend readiness and is not a cold-install benchmark.
 7. Standard reference processing fails during Blender preflight: `Automatic Blender packaging is not yet supported for Blender 5.2, Python 3.13, macos-arm64`. Numerical-only results do not certify standard exports.
@@ -43,7 +43,7 @@ Apple Silicon Mac; Python 3.12.14, Node 24.20.0, Playwright 1.59.0, Electron 35.
 - Visual repeat: all 11 PNG comparisons pass on repeat at the initial tolerance; the default modal POST matches the committed fixture. Existing separate request tests cover 36 alignment/filter combinations.
 - Contrast: baseline failures include 4.0:1 action-button text, 2.56:1 secondary labels, and 3.33:1 black button text. All three main surfaces and the modal have violations in stable disconnected state. Full node/ratio evidence is retained.
 - Initial existing E2E suite: 74 passed, 12 failed, 10 not reached. Missing fixture, incomplete Python setup, Edge default, stale streaming-output selectors and a Parquet setup timeout were identified. Configured rerun: 92 passed, three stale streaming-output tests failed, one real-Parquet test skipped without its file environment variable. All three then passed after updating their selectors and assertions to the existing VMC/LSL controls and explicit-refresh behavior; no product code changed. Original output is preserved.
-- Standard reference run failed before processing (worker lifecycle 5.10 s). Numerical test-data run passed: mocap 63.002 s; worker lifecycle 73.324 s; tracking 56.676 s. Timings are observations under concurrent UI testing, not isolated performance benchmarks. Sample-data numerical run passed: mocap 220.190 s; worker lifecycle 250.299 s. The pipeline directory suite passed all 29 tests; the 51-case reference suite is running.
+- Standard reference run failed before processing (worker lifecycle 5.10 s). Numerical test-data run passed: mocap 63.002 s; worker lifecycle 73.324 s; tracking 56.676 s. Timings are observations under concurrent UI testing, not isolated performance benchmarks. Sample-data numerical run passed: mocap 220.190 s; worker lifecycle 250.299 s. The pipeline directory suite passed all 29 tests; the final reference results are recorded below.
 
 ## First refactor comparison
 
@@ -89,3 +89,35 @@ Re-extract and independently verify checksums from checkout root:
 ```sh
 python3 freemocap-ui/tools/reference-baseline.py --prepared-root .test-artifacts/prepared-numerical --output .test-artifacts/baselines/reference-numerical.json
 ```
+
+## Final reference matrix
+
+51 cases: **34 passed, 9 failed, 4 setup errors, 4 skipped**, 717.28 seconds. Recorded-video replay cases passed; no test was skipped for missing physical cameras. The four skips require CUDA.
+
+The fresh standard producer fails Blender preflight. Eight downstream failures and four fixture errors reject numerical-only preparation as certification of standard outputs. These are unresolved acceptance failures, not passing exports. Both numerical artifact sets were rehashed after the suite and match the original baseline exactly.
+
+Full output: `.test-artifacts/baselines/reference-tests.log`; JUnit: `.test-artifacts/baselines/reference-tests.xml`.
+
+| Status | Test | Exact message |
+| --- | --- | --- |
+| failure | `test_saved_blender_matches_all_reference_frames[freemocap_test_data]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+| failure | `test_saved_blender_matches_all_reference_frames[freemocap_sample_data]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+| failure | `test_saved_blender_rejects_changed_geometry[landmark]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+| failure | `test_saved_blender_rejects_changed_geometry[armature]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+| failure | `test_fresh_calibration_and_mocap_publish_current_recording` | subprocess.CalledProcessError: Command '['/Users/jon-mac-mini/code-stuff/github/freemocap/project/repos/freemocap/.venv/bin/python3', '-B', '-m', 'freemocap.tools.datasets.preparation', '--worker', '/Users/jon-mac-mini/code-stuff/github/freemocap/project/repos/freemocap-ui-harness/.test-artifacts/prepared-numerical/freemocap_test_data/scratch/request.json']' returned non-zero exit status 1. |
+| error | `test_reference_playback_frame_grid_and_human_model` | failed on setup with "ValueError: Numerical-only preparation does not certify a complete standard run" |
+| error | `test_reference_human_inputs_and_matching_scale_fit` | failed on setup with "ValueError: Numerical-only preparation does not certify a complete standard run" |
+| error | `test_reference_calibration_and_alignment_provenance` | failed on setup with "ValueError: Numerical-only preparation does not certify a complete standard run" |
+| error | `test_reference_playback_http_bytes_and_revision` | failed on setup with "ValueError: Numerical-only preparation does not certify a complete standard run" |
+| failure | `test_fresh_outputs_then_filter_restart_preserve_provenance[freemocap_test_data-222-1.0]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+| failure | `test_fresh_outputs_then_filter_restart_preserve_provenance[freemocap_sample_data-1108-4.0]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+| skipped | `test_provider_switch_reuses_capture_and_releases_sessions[test-data-centralized]` | CPU-to-CUDA replay needs a CUDA runtime |
+| skipped | `test_provider_switch_reuses_capture_and_releases_sessions[test-data-per-camera]` | CPU-to-CUDA replay needs a CUDA runtime |
+| skipped | `test_provider_switch_reuses_capture_and_releases_sessions[sample-data-centralized]` | CPU-to-CUDA replay needs a CUDA runtime |
+| skipped | `test_provider_switch_reuses_capture_and_releases_sessions[sample-data-per-camera]` | CPU-to-CUDA replay needs a CUDA runtime |
+| failure | `test_tall_export_matches_every_production_sample[freemocap_test_data]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+| failure | `test_tall_export_matches_every_production_sample[freemocap_sample_data]` | ValueError: Numerical-only preparation does not certify a complete standard run |
+
+## Watching
+
+The active `freemocap-ui-integration-watch` chat heartbeat checks the local refactor remote every five minutes. Its durable cursor is `.test-artifacts/watch/last-tested.json`. It stays quiet when unchanged and reports completed new results. Keep this Mac and the desktop app running. Test-managed backend and Vite servers were stopped after the initial run.

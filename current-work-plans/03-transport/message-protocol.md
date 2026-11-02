@@ -70,7 +70,7 @@ One frame of reconstruction + images, fully self-describing. The authoritative s
   cameras: [ { id, index, rotation, image_size, intrinsics, extrinsics, world_position, world_orientation } ],
   models: [ { model_id, segments:[…], landmarks:[…] } ],
   instances: [ { instance_id, model_id, channels:[…] } ],
-  trackers: [ { tracker_id, detector_type, model_id, channels:[…] } ],
+  trackers: [ { tracker_id, detector_type, model_id, connection_groups:[…], channels:[…] } ],
   image: <jpeg bytes>
 }
 ```

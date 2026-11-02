@@ -32,7 +32,7 @@ export function useRealtimePipelineSync() {
     /** Applies a new pipeline config live if connected, otherwise updates local config only. */
     const applyOrUpdatePipelineConfig = useCallback(
         (newConfig: RealtimePipelineConfig) => {
-            if (isConnected) {
+            if (isConnected && (newConfig.camera_node_config.detector_type !== 'dlc' || newConfig.camera_node_config.dlc_model_path)) {
                 dispatch(applyRealtimePipeline(newConfig));
             } else {
                 dispatch(pipelineConfigUpdated(newConfig));
@@ -44,7 +44,8 @@ export function useRealtimePipelineSync() {
     /** Re-applies the current pipeline config if connected — call after a mocap detector/filter config change. */
     const triggerRealtimeApply = useCallback(() => {
         if (isConnected) {
-            dispatch(applyRealtimePipeline(store.getState().realtime.pipelineConfig));
+            const config = store.getState().realtime.pipelineConfig;
+            if (config.camera_node_config.detector_type !== 'dlc' || config.camera_node_config.dlc_model_path) dispatch(applyRealtimePipeline(config));
         }
     }, [dispatch, isConnected]);
 

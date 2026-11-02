@@ -77,6 +77,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     /* Every summary states only what IS. A chip given nothing to say removes
        itself rather than reporting an absence. */
     const detectorSummary = (): ReactNode => {
+        if (config.detectorType === "dlc") return <SettingsSummaryChip>DLC · 2D keypoints</SettingsSummaryChip>;
         if (config.detectorType === "mediapipe") {
             return <SettingsSummaryChip>{`MediaPipe · ${config.mediapipeModelComplexity}`}</SettingsSummaryChip>;
         }

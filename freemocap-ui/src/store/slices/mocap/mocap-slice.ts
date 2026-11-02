@@ -54,7 +54,7 @@ export interface PosthocFilterConfig {
     order: number;
 }
 
-export type DetectorType = "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands";
+export type DetectorType = "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
 export type RTMPoseModelName = "rtmw-x-l_256x192" | "rtmw-x-l_384x288" | "rtmw-l-m_256x192";
 export type MediapipeModelComplexity = "lite" | "full" | "heavy";
 export {EXECUTION_PROVIDERS} from '@/types/execution-provider';
@@ -76,6 +76,9 @@ export interface MocapConfig {
     triangulation: TriangulationConfig;
     posthoc_filter: PosthocFilterConfig;
     detectorType: DetectorType;
+    dlcModelPath: string | null;
+    dlcConfidenceThreshold: number;
+    dlcExecutionProvider: "cpu" | "cuda";
     rtmPoseModelName: RTMPoseModelName;
     rtmPoseConfidenceThreshold: number;
     executionProvider: ExecutionProviderName | null;
@@ -191,6 +194,9 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
 
     charucoTrackingEnabled: true,
     detectorType: "rtmpose",
+    dlcModelPath: null,
+    dlcConfidenceThreshold: 0.4,
+    dlcExecutionProvider: "cpu",
     rtmPoseModelName: "rtmw-x-l_256x192",
     rtmPoseConfidenceThreshold: 0.004,
     executionProvider: null,
@@ -286,6 +292,9 @@ export const mocapSlice = createSlice({
         },
         mocapCharucoTrackingChanged: (state, action: PayloadAction<boolean>) => {
             state.config.charucoTrackingEnabled = action.payload;
+        },
+        mocapDlcSettingsChanged: (state, action: PayloadAction<Partial<Pick<MocapConfig, 'dlcModelPath' | 'dlcConfidenceThreshold' | 'dlcExecutionProvider'>>>) => {
+            Object.assign(state.config, action.payload);
         },
         /** Switch between rtmpose and mediapipe detector backends. */
         mocapDetectorTypeChanged: (state, action: PayloadAction<DetectorType>) => {
@@ -490,6 +499,7 @@ export const {
     cameraMatchingUpdated,
     mocapCharucoTrackingChanged,
     mocapDetectorTypeChanged,
+    mocapDlcSettingsChanged,
     mocapRtmPoseModelNameChanged,
     mocapRtmPoseConfidenceThresholdChanged,
     mocapExecutionProviderChanged,

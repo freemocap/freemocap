@@ -17,7 +17,8 @@ from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellytracker.core.data_primitives.observation import Observation, StageObservation
 
 
-HUMAN_DETECTORS = get_args(CameraNodeConfig.model_fields['detector_type'].annotation)
+HUMAN_DETECTORS = tuple(value for value in get_args(CameraNodeConfig.model_fields['detector_type'].annotation)
+                        if value != 'dlc')  # Generic DLC has no anatomical bundle; test_dlc_streaming covers it.
 
 
 @pytest.mark.parametrize('detector_type', HUMAN_DETECTORS)

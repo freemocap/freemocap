@@ -253,6 +253,7 @@ export class FrameResolver {
             for (const c of tracker.channels) {
                 if (c.kind === OVERLAY_2D && c.camera_id && c.names) {
                     overlays.push({
+                        connectionGroups: tracker.model_id === null ? (tracker.connection_groups ?? []) : tracker.connection_groups?.length ? tracker.connection_groups : undefined,
                         cameraId: c.camera_id,
                         layer: OverlayLayer.DETECTIONS,
                         frameNumber: frame.frame_number,

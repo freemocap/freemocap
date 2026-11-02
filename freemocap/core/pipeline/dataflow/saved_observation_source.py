@@ -20,6 +20,6 @@ def load_saved_observation_source(*, path: str, config: PosthocMocapPipelineConf
     # New tracker options do not relabel saved predictions from another model.
     detector_fields = {'detector_type', 'tracker_config', 'charuco_tracking_enabled', 'board_mode', 'charuco_board'}
     detector_fields.update(name for name in type(config).model_fields
-        if name.startswith(('mediapipe_', 'rtmpose_')))
+        if name.startswith(('mediapipe_', 'rtmpose_', 'dlc_')))
     effective = config.model_copy(update={name: getattr(saved.config, name) for name in detector_fields})
     return sources, collection, effective

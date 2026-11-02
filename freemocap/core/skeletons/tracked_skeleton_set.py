@@ -37,7 +37,7 @@ def build_tracked_skeletons(
         camera_node_config: what the camera nodes are configured to detect.
     """
     bundles: list[TrackedSkeletonBundle] = []
-    if camera_node_config.skeleton_tracking_enabled:
+    if camera_node_config.skeleton_tracking_enabled and camera_node_config.detector_type != "dlc":
         bundles.append(
             build_standard_human_bundle(
                 detector_type=camera_node_config.detector_type,

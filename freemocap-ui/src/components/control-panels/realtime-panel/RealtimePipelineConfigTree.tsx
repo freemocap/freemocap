@@ -1,3 +1,4 @@
+import {DlcModelSettings} from '@/components/mocap-setup/dlc-model-settings';
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import {TemporalFilterControls} from './TemporalFilterControls';
 import {DETECTOR_OPTIONS} from '@/components/mocap-setup/detector-options';
@@ -33,7 +34,7 @@ interface PipelineConfigTreeProps {
 
 export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     context,
-    charucoEnabled,
+    charucoEnabled: requestedCharucoEnabled,
     onCharucoToggle,
     skeletonEnabled,
     onSkeletonToggle,
@@ -80,6 +81,8 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
             ? (cameraNodeConfig.detector_type ?? "rtmpose")
             : (posthocDetectorType ?? "rtmpose");
 
+    const charucoEnabled = activeDetectorType === "dlc" ? false : requestedCharucoEnabled;
+
     // ── Realtime camera node config updater ───────────────────────────────────
     const handleCameraNodeConfigUpdate = useCallback(
         (updates: Partial<typeof cameraNodeConfig>) => {
@@ -120,7 +123,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     }, [context, handleCameraNodeConfigUpdate, setPosThocDetectorType]);
 
     // ── 2D Tracking parent state ──────────────────────────────────────────────
-    const tracking2dAllOn = charucoEnabled && skeletonEnabled;
+    const tracking2dAllOn = activeDetectorType === "dlc" ? skeletonEnabled : charucoEnabled && skeletonEnabled;
     const tracking2dSomeOn = charucoEnabled || skeletonEnabled;
     const tracking2dIndeterminate = tracking2dSomeOn && !tracking2dAllOn;
     const tracking2dChecked = tracking2dAllOn;
@@ -132,7 +135,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     const recon3dChecked = recon3dAllOn;
 
     const handleToggle2dTracking = (newValue: boolean) => {
-        onCharucoToggle(newValue);
+        if (activeDetectorType !== "dlc") onCharucoToggle(newValue);
         onSkeletonToggle(newValue);
     };
 
@@ -157,13 +160,13 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 onToggle={handleToggle2dTracking}
 
                 summaryWhenCollapsed={
-                    [charucoEnabled && "Charuco", skeletonEnabled && "Skeleton"]
+                    [charucoEnabled && "Charuco", skeletonEnabled && (activeDetectorType === "dlc" ? "Model keypoints" : "Skeleton")]
                         .filter(Boolean)
                         .join(" + ") || "Off"
                 }
             >
                 {/* Charuco */}
-                <RealtimePipelineStageTreeItem
+                {activeDetectorType !== "dlc" && <RealtimePipelineStageTreeItem
                     itemId="2d-charuco"
                     label="Charuco"
                     checked={charucoEnabled}
@@ -175,15 +178,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                             Settings from `Post Processing::Capture Volume Calibration` section
                         </p>
                     </div>
-                </RealtimePipelineStageTreeItem>
+                </RealtimePipelineStageTreeItem>}
 
                 {/* Skeleton */}
                 <RealtimePipelineStageTreeItem
                     itemId="2d-skeleton"
-                    label="Skeleton"
+                    label={activeDetectorType === "dlc" ? "Model keypoints" : "Skeleton"}
                     checked={skeletonEnabled}
                     onToggle={onSkeletonToggle}
-                    summaryWhenCollapsed={activeDetectorType === "rtmpose" ? "RTMW" : activeDetectorType === "mediapipe" ? "MediaPipe" : "RTMW + MediaPipe hands"}
+                    summaryWhenCollapsed={activeDetectorType === "dlc" ? "DLC · 2D keypoints" : activeDetectorType === "rtmpose" ? "RTMW" : activeDetectorType === "mediapipe" ? "MediaPipe" : "RTMW + MediaPipe hands"}
                 >
                     <div className="p-1 flex flex-col gap-1 pl-4" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
 
@@ -203,8 +206,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                             </div>
                         </div>
 
+                        {activeDetectorType === "dlc" && <DlcModelSettings context={context}/>}
+
                         {/* RTMPose settings */}
-                        {activeDetectorType !== "mediapipe" && context === "posthoc" && (
+                        {(activeDetectorType === "rtmpose" || activeDetectorType === "rtmw_mediapipe_hands") && context === "posthoc" && (
                             <>
                                 <p className="text-sm text-gray">
                                     133 keypoints (body, hands, face) via YOLOX person detection + RTMPose estimation.
@@ -233,12 +238,12 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                 </div>
                             </>
                         )}
-                        {activeDetectorType !== "mediapipe" && context === "realtime" && (
+                        {(activeDetectorType === "rtmpose" || activeDetectorType === "rtmw_mediapipe_hands") && context === "realtime" && (
                             <p className="text-sm text-gray">
                                 133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
                             </p>
                         )}
-                        {activeDetectorType !== "mediapipe" && (
+                        {(activeDetectorType === "rtmpose" || activeDetectorType === "rtmw_mediapipe_hands") && (
                             <div className="flex flex-row gap-1 items-center justify-content-space-between flex-wrap pos-rel z-10">
                                 <span className="text-sm">Execution provider</span>
                                 <NameDropdownSelector
@@ -254,7 +259,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         )}
 
                         {/* MediaPipe settings */}
-                        {activeDetectorType !== "rtmpose" && (
+                        {(activeDetectorType === "mediapipe" || activeDetectorType === "rtmw_mediapipe_hands") && (
                             <>
                                 <p className="text-sm text-gray">
                                     {activeDetectorType === "mediapipe" ? "MediaPipe body, hands and face." : "RTMW body and face with MediaPipe hands; these confidence settings apply to the hands."}
@@ -327,7 +332,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
             </RealtimePipelineStageTreeItem>
 
             {/* ── 3D Reconstruction ── */}
-            <RealtimePipelineStageTreeItem
+            {activeDetectorType !== "dlc" && <RealtimePipelineStageTreeItem
                 itemId="3d-reconstruction"
                 label="3D Reconstruction"
                 checked={recon3dChecked}
@@ -398,7 +403,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         </button>
                     </div>
                 </RealtimePipelineStageTreeItem>
-            </RealtimePipelineStageTreeItem>
+            </RealtimePipelineStageTreeItem>}
         </div>
     );
 };

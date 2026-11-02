@@ -14,3 +14,27 @@ export function realtimePipelineSettings(config: RealtimePipelineConfig): Realti
     delete cameraSettings.charuco_tracker_config;
     return {...config, camera_node_config: cameraSettings};
 }
+
+/** Project UI preferences into the observation-only DLC execution contract. */
+export function realtimeExecutionSettings(config: RealtimePipelineConfig, dlcProvider: 'cpu' | 'cuda'): RealtimePipelineConfig {
+    const settings = realtimePipelineSettings(config);
+    if (settings.camera_node_config.detector_type !== 'dlc') return settings;
+    return {
+        ...settings,
+        camera_node_config: {...settings.camera_node_config, charuco_tracking_enabled: false},
+        skeleton_inference_node_config: {...settings.skeleton_inference_node_config, execution_provider: dlcProvider},
+        aggregator_config: {...settings.aggregator_config, triangulation_enabled: false, skeleton_fitting_enabled: false,
+            center_of_mass_enabled: false, calibration_toml_path: null, reference_transform: null},
+    };
+}
+
+/** Server execution overrides must not erase the user's human-tracking preferences. */
+export function acceptedRealtimeSettings(resolved: RealtimePipelineConfig, requested: RealtimePipelineConfig): RealtimePipelineConfig {
+    const settings = realtimePipelineSettings(resolved);
+    return requested.camera_node_config.detector_type === 'dlc' ? {
+        ...settings,
+        camera_node_config: {...settings.camera_node_config, charuco_tracking_enabled: requested.camera_node_config.charuco_tracking_enabled},
+        aggregator_config: requested.aggregator_config,
+        skeleton_inference_node_config: requested.skeleton_inference_node_config,
+    } : settings;
+}

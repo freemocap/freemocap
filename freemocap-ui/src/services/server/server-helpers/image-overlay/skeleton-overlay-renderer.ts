@@ -15,6 +15,7 @@ import {OverlayLayer, type OverlayFrame} from '../../transport/frame-types';
 import {snapshotEqual} from '../../transport/snapshot-equality';
 
 interface PreparedOverlay {
+    connectionGroups: OverlayFrame['connectionGroups'];
     layer: OverlayLayer;
     names: readonly string[];
     columns: readonly string[];
@@ -157,21 +158,28 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         if (values.data.length !== values.names.length * values.columns.length)
             throw new Error('Camera overlay values do not match their declared layout');
         if (previous && previous.layer === values.layer && snapshotEqual(previous.names, values.names) && snapshotEqual(previous.columns, values.columns)
-            && snapshotEqual(previous.connections, connections)) return previous;
+            && snapshotEqual(previous.connections, connections)
+            && snapshotEqual(previous.connectionGroups, values.connectionGroups)) return previous;
         if (new Set(values.columns).size !== values.columns.length) throw new Error('Camera overlay components must be unique');
         const components = values.layer === OverlayLayer.BOXES ? ['x1', 'y1', 'x2', 'y2', 'confidence', 'detector_ran'] : ['x', 'y', 'visibility'];
         const offsets = components.map(component => values.columns.indexOf(component));
         if (offsets.some(offset => offset < 0)) throw new Error('Camera overlay is missing required components');
-        const styles = values.names.map(name => this.styleFor(name));
+        const styles = values.names.map(name => values.connectionGroups !== undefined ? this.bodyStyleCenter : this.styleFor(name));
         const rowsByName = new Map(values.names.map((name, row) => [name, row]));
-        const edges = new Int32Array(connections.length * 2), edgeStyles: DrawStyle[] = [];
-        connections.forEach(([first, second], index) => {
+        // Prepare detector metadata only when it changes, never flatten edges per frame.
+        const declaredEdges = values.connectionGroups
+            ? values.connectionGroups.flatMap(group => group.pairs.map(pair => ({pair, color: group.color})))
+            : connections.map(pair => ({pair, color: undefined}));
+        const edges = new Int32Array(declaredEdges.length * 2), edgeStyles: DrawStyle[] = [];
+        declaredEdges.forEach(({pair: [first, second], color}, index) => {
             edges[index * 2] = rowsByName.get(first) ?? -1;
             edges[index * 2 + 1] = rowsByName.get(second) ?? -1;
             const firstStyle = this.styleFor(first);
-            edgeStyles.push(firstStyle === this.bodyStyleCenter ? this.styleFor(second) : firstStyle);
+            const style = firstStyle === this.bodyStyleCenter ? this.styleFor(second) : firstStyle;
+            edgeStyles.push(color ? {...style, lineColor: color} : style);
         });
-        return this.preparedLayers[position] = {layer: values.layer, names: values.names, columns: values.columns, connections, styles, edges, edgeStyles, offsets};
+        return this.preparedLayers[position] = {layer: values.layer, names: values.names, columns: values.columns, connections,
+            connectionGroups: values.connectionGroups, styles, edges, edgeStyles, offsets};
     }
 
     private drawSkeletonOverlay(observation: SkeletonObservation): void {

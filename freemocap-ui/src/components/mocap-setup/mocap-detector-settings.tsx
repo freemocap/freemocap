@@ -1,3 +1,4 @@
+import {DlcModelSettings} from '@/components/mocap-setup/dlc-model-settings';
 import {useExecutionProviderOptions} from "@/hooks/useExecutionProviderOptions";
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {mocapCharucoTrackingChanged} from '@/store/slices/mocap';
@@ -127,7 +128,9 @@ export default function MocapDetectorSettings() {
             control={<SettingSelectInput label="Skeleton detector" value={detector} options={DETECTOR_OPTIONS}
                 onChange={setDetectorType}/>}/>
 
-        {detector !== "mediapipe" && <>
+        {detector === "dlc" && <DlcModelSettings context="posthoc"/>}
+
+        {(detector === "rtmpose" || detector === "rtmw_mediapipe_hands") && <>
             <SettingRow label="Execution provider" info={{title: 'Execution provider', text: 'Auto retains the pipeline default. Choices are advertised by the server runtime; session startup verifies the selected provider can load.'}}
                 control={<SettingSelectInput label="Execution provider" value={executionProvider ?? 'auto'}
                     options={executionProviderOptions.map(option => ({...option, value: option.value ?? 'auto' as const}))}
@@ -140,7 +143,7 @@ export default function MocapDetectorSettings() {
                     unit="" onChange={setRtmPoseConfidenceThreshold}/>}/>
         </>}
 
-        {detector !== "rtmpose" && <>
+        {(detector === "mediapipe" || detector === "rtmw_mediapipe_hands") && <>
             {detector === "mediapipe" && <SettingRow label="Pose model size" info={COMPLEXITY_INFO}
                 control={<SettingSelectInput label="Pose model size" value={mediapipeModelComplexity ?? "heavy"}
                     options={MEDIAPIPE_COMPLEXITIES} onChange={setMediapipeModelComplexity}/>}/>}
@@ -155,9 +158,9 @@ export default function MocapDetectorSettings() {
                     unit="" onChange={setMediapipeTrackingConfidence}/>}/>
         </>}
 
-        <SettingsGroupHeading text="Board" info={BOARD_GROUP_INFO}/>
+        {detector !== "dlc" && <><SettingsGroupHeading text="Board" info={BOARD_GROUP_INFO}/>
         <SettingRow label="Detect and reconstruct Charuco board" info={CHARUCO_INFO}
             control={<SettingToggleSwitch label="Detect and reconstruct Charuco board" isToggled={detectBoard}
-                onToggle={enabled => dispatch(mocapCharucoTrackingChanged(enabled))}/>}/>
+                onToggle={enabled => dispatch(mocapCharucoTrackingChanged(enabled))}/>}/></>}
     </>;
 }

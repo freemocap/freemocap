@@ -5,6 +5,22 @@ import {resolveFrameChannels} from './frame-resolution';
 import {workerDataStore} from '@/components/viewport3d/WorkerDataStore';
 import type {ResolvedModelFrame} from './frame-types';
 
+test('arbitrary DLC image keypoints and connections require no model definition', () => {
+    const data = new Uint8Array(Float32Array.from([10, 20, .9, 30, 40, .8]).buffer);
+    const frame = FrameMessageSchema.parse({kind: 'frame', version: 1, timestamp: 1, sequence: 1,
+        frame_number: 1, model_sequence: 0, convention: {units: 'mm', handedness: 'right', up_axis: '+Z', forward_axis: '+Y', rotation_frame: 'world', rotation_form: 'quaternion_wxyz'},
+        cameras: [], models: [], instances: [], trackers: [{tracker_id: 'custom_keypoints', detector_type: 'dlc', model_id: null,
+            connection_groups: [{name: 'outer_edges', pairs: [['corner_alpha', 'corner_beta']], color: '#abcdef'}],
+            channels: [{kind: 'OVERLAY_2D', camera_id: 'camera', names: ['corner_alpha', 'corner_beta'], columns: ['x', 'y', 'visibility'], image_size: [640, 480], data}]}]});
+    const result = resolveFrameChannels(frame);
+    assert.equal(result.models.length, 0);
+    assert.equal(result.overlays.length, 1);
+    assert.deepEqual(result.overlays[0].names, ['corner_alpha', 'corner_beta']);
+    assert.equal(result.overlays[0].data.buffer, data.buffer, 'dense values stay in received storage');
+    assert.deepEqual(result.overlays[0].connectionGroups, frame.trackers[0].connection_groups);
+    assert.deepEqual(result.overlays[0].imageSize, [640, 480]);
+});
+
 test('live resolution keeps all three trajectory products distinct', () => {
     const block = (kind: string, xyz: number[], names?: string[]) => ({kind, names,
         columns: ['x', 'y', 'z', 'reprojection_error'], data: new Uint8Array(Float32Array.from([...xyz, NaN]).buffer)});

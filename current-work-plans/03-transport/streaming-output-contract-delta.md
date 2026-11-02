@@ -23,14 +23,6 @@ Only the target profile's rig-frame/name projection belongs in the VMC adapter.
 
 ## Added control resource
 
-For the usual local VMC receiver, `POST /freemocap/streaming/vmc/start` needs no
-request body. It uses the existing VMC defaults (`127.0.0.1:39539`, automatic sole
-pipeline) and returns an existing matching idle/running output on repeated calls.
-The SDK exposes `streaming_start_vmc()`; the current inventory has 65 operations.
-In the Streaming tab's left sidebar, the visible **Streaming outputs** section
-offers **Start VMC** and per-output **Stop VMC**. Custom settings are under
-**Advanced output settings**. Starting an output does not start capture.
-
 Use `/freemocap/streaming/protocols` for GET capability/schema discovery and
 `/freemocap/streaming/outputs` for POST create and GET list. GET and DELETE
 `/freemocap/streaming/outputs/{output_id}` inspect and stop one output.
@@ -69,7 +61,36 @@ receivers must rediscover the new session. One output follows one selected sourc
 at a time. Historical status retains no queued frame buffers, and unfinished
 workers continue to count toward the 16-worker bound even after a failure.
 
-## Local verification, 2026-11-01
+## Canonical follow-up, 2026-11-01
+
+Canonical integration adds `POST /freemocap/streaming/vmc/start`, operation
+`streaming_start_vmc`, with no request body. It reuses an idle/running automatic
+VMC output with matching defaults, or creates one through the existing manager.
+The defaults target `127.0.0.1:39539` with profile `vrm0_normalized`; the original
+reference profile remains opt-in. Starting an output does not start acquisition.
+The generic create/list/get/delete routes remain available for advanced use.
+The reviewed canonical SDK inventory is now 65 operations. Historical 59- and
+64-operation evidence below remains evidence for those earlier source states.
+
+The canonical UI exposes an Outputs toolbar dropdown with Start VMC and collapsed
+advanced settings. Refresh follows connection/source transitions and commands,
+with explicit refresh available; it does not poll on a repeating timer. The SDK
+loads Parquet compressors dynamically when decoding is requested, preserving
+worker ownership without weakening application CSP. Canonical package location
+is `packages/freemocap-client`, not the isolated sibling source directory.
+
+Canonical VMC emits finite branches only when their required ancestors are valid;
+it does not fabricate missing measurements. Root placement and installed-receiver
+rendering remain acceptance work. Consult canonical
+`current-work-plans/03-transport/vmc-receiver-profiles.md` before changing binding.
+These changes were inspected read-only; no fresh runtime test was run during this
+documentation reconciliation. Never replace them with older isolated source.
+
+The canonical optional LSL dependency is also represented in its lockfile after
+integration; the unchanged-environment statement above describes the earlier
+isolated validation pass, not the current canonical lockfile state.
+
+## Historical local verification, 2026-11-01
 
 The generated SDK now covers 64 operations: the prior 59 plus five additive output
 operations. The original compatibility record remains intact. SDK tests: 99 pass;

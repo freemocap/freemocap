@@ -6,6 +6,13 @@ Global/child wording below is frozen. Shared runtime 2.1–2.3 is locally verifi
 including real-server SDK and browser controls. Canonical integration remains
 coordinator-owned; live LSL and rendered/live VMC acceptance remain open.
 LSL/VMC protocol preparation runs in separately owned files; root owns native mesh.
+Canonical implementation has since advanced beyond this isolated source tree:
+the SDK now has 65 HTTP operations, VMC has a no-body quick start, and the UI uses
+an Outputs toolbar dropdown without timer polling. The default VMC profile is
+now `vrm0_normalized`, with partial ancestor-valid branches. Read
+`streaming-ecosystem-status-roadmap.md` for current evidence and proposed next
+expansions. The approved global/child wording below remains unchanged; open live
+and rendered acceptance tasks remain open. Publication is coordinator-owned.
 This supersedes the dependency ordering in
 `streaming-outputs-vmc-first.md`: LSL does not wait for VMC retargeting, and native
 Skelly visualization is a separate lane. Existing JS/TS completion and evidence
@@ -135,10 +142,12 @@ Custom Skelly VRM creation is not part of this child list.
 
 ## Open engineering work and approval boundary
 
-No new product interview is needed. Still to establish: LSL clock/delivery mapping,
-VMC receiver/version and original/rest-pose profile, and the mesh agent's findings
-about Blender deformation versus a real-time host implementation. These are scoped
-inspection/prototype tasks, not reasons to repeat the accepted transport discovery.
+No new product interview is needed. LSL clock/delivery mapping and reference
+validation are implemented; fresh live numeric acceptance remains open. Canonical
+VMC now includes a normalized VRM0 default and an opt-in original-reference profile;
+rendered receiver acceptance, placement and partial-body behavior remain open.
+Native mesh work remains separately owned. Do not repeat completed contract
+discovery or treat source implementation as receiver acceptance.
 
 Reuse existing golden/reference fixtures and add protocol-specific independent
 assertions. Actual live capture requires a coordinated hardware slot. No receiver,

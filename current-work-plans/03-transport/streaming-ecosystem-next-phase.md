@@ -1,5 +1,12 @@
 # Streaming ecosystem: proposed next phases
 
+HISTORICAL PROPOSAL: the approved execution order is now
+`streaming-output-dependencies.md`. Read `streaming-ecosystem-status-roadmap.md`
+for the canonical implementation and remaining work as of 2026-11-01. The
+59-operation inventory, unimplemented-output descriptions, package location,
+and sequencing below describe this earlier proposal, not current capability.
+Do not execute this superseded checklist or use it to overwrite canonical work.
+
 Status: planning proposal, awaiting approval of the displayed checklist. The
 completed six-step W6 JS/TS checklist remains frozen in `server-sdk-handoff.md`.
 It completed one foundation, not the streaming ecosystem. No new implementation,

@@ -6,6 +6,97 @@ Written 2026-10-30 from a code-reading session in the core checkout
 files named; everything under "Design" is a proposal that the user has partly approved (see "Decisions").
 Paths are relative to that checkout unless stated otherwise.
 
+## 0. Current code (verified 2026-11-02, branch `sfn26-ui-refactor`, `367fd72c`)
+
+Where this section disagrees with sections 3, 6 or 7, this section is correct. Each line names its
+source file.
+
+Configuration surface (`mocap-setup-modal.tsx`, `mocap-stage-selection.tsx`, `mocap-detector-settings.tsx`):
+
+- One pipeline: `pipeline_implementation: Literal["typed_dataflow"]` (`mocap_task_config.py`).
+  `ProcessingPipelineSelect` shows that option and a disabled "Add custom pipeline…". No legacy path,
+  no "Pipeline implementation" choice to draw.
+- No "Tracking device" row. Detectors has "Execution provider" (Auto, TensorRT, CUDA, CoreML,
+  DirectML, CPU; filtered by `GET /freemocap/onnx/execution_providers`) for RTMW and RTMW + MediaPipe
+  hands, stored in Redux `mocap.config.executionProvider`. DLC has "DLC execution provider"
+  (CPU · FP32 | CUDA · FP32, `dlcExecutionProvider`). MediaPipe has no control and runs on CPU.
+- Detector options: RTMW, MediaPipe, RTMW + MediaPipe hands, DLC (`detector-options.ts`). The Board
+  group is hidden for DLC.
+- Exports section is `mocap-export-settings.tsx`: formats, data selection, "Export selected formats
+  after processing", nested Tall CSV block.
+- Alignment rows ("Alignment", "Apply custom transform") are in Camera geometry, playback mode only.
+  Camera matching rows are in Triangulation. Skeleton anchor is in Post-processing.
+- `graphAnnotate` (default true) has no UI control. There is no "Save annotated videos" row.
+- Modal-local state: `sourceRunId`, `stageSelection`, `activeSection`; stage range, source run and
+  save mode live in `MocapStageSelection`. Execution provider is already in Redux.
+- Process closes the modal (`onClose?.()` after dispatch).
+
+Request and control (`processing_router.py`, `mocap-thunks.ts`, `tasks_router.py`):
+
+- Launch `POST /freemocap/recordings/{recording_id}/processing` with `{kind: 'mocap', config}`;
+  returns 202 `{task_id, ...}`. Cancel `POST /freemocap/tasks/{task_id}/cancel`. Stage inventory
+  `GET /freemocap/recordings/{recording_id}/stages` and `.../runs/{run_id}/stages`. Older routes are
+  hidden compatibility routes.
+- Export settings field is `exportOptions` (`formats`, `data`, optional `wide_csv`). The validator
+  `migrate_export_settings` accepts older names and rejects conflicting values.
+- Validators: export-settings conflict, provider agreement (`executionProvider` vs
+  `graphExecutionProvider`), DLC constraints, stop stage not before start stage, tracker config.
+
+Graph (`recording_pipeline.py`, `saved_spatial_pipeline.py`):
+
+- Operation id equals node id in code. Not yet documented as a contract.
+- Export node is `export_recording` (kind `export_manifest`); tall CSV node kind `tall_csv_manifest`.
+  The builder raises if Blender export is requested; Blender runs after the graph.
+- DLC builds an observation-only graph (start and stop at observations, no skeleton bundles).
+  RTMW + MediaPipe hands has the same topology as RTMW with a different tracker source.
+- Triangulation start builds annotation nodes from `load_saved_observations` when `graphAnnotate` is true.
+- Saved-spatial ports: `source`, `filtered`, `request`, `fits`, `results`. Execution resource:
+  `load_saved_spatial` and `save_*` are `recording_io`; `load_saved_observations` and
+  `load_saved_model_fits` are `compute`. Draw disk terminals from `execution_resource`, not from the
+  node name.
+- Annotation nodes use resource `annotation` (`annotate_camera_{index}`).
+
+Progress feed (`task_snapshot.py`, `application_pipeline.py`, `export_completion.py`, `operation_progress.py`):
+
+- Tasks can also be `BackgroundTaskSnapshot` (export, sync): status `queued`, nullable `recording`,
+  `source_run_id`, `source_revision`, `cancellation_requested`, `error`, `result`.
+- Mocap phases emitted: setting_up, collecting_camera_output, reconstructing, exporting_csv,
+  complete, failed. Mocap `cameras[]` is always empty (only calibration fills it).
+- Nodes that have not started have no operation row. Draw them as waiting from the plan, not from the feed.
+- `elapsed_seconds` per operation comes from `OperationProgressReporter` (first running report to
+  latest report). It only advances when that node reports.
+- Tracking label: "({RTMW|MediaPipe|RTMW + MediaPipe hands|DeepLabCut}, requested provider: {p};
+  applied providers are reported at session startup)". Total is camera-0 frame count × camera count,
+  unit camera images.
+- Blocked detail lists prerequisite labels and arrives only after the whole graph returns. On task
+  failure, remaining waiting and running operations are rewritten to failed with the task detail.
+- Export progress ids: `channel_exports` (label "Save {FORMATS} files"), `tall_csv`, `blender`.
+  Exports start as waiting and run only when the stop stage is reconstruction. Blender reports
+  with phase `exporting_csv`.
+- The target run comes from `RunSaveSession.resolve`; `build_execution_plan` is test-only.
+
+Section 7 asks, current status:
+
+1. Plan-preview route: not present. Builders load the calibration and build handlers, so a preview
+   needs a builder split. `processing-and-playback-integration.md` proposes "Preview processing";
+   `typed-dataflow.md` proposes compile with an artifact identity. Neither is implemented.
+2. Plan identity and node-to-stage membership on snapshots: not present.
+3. Per-camera tracking counters: not present (one counter in camera images).
+4. Artifact paths: export details name the output folder as free text; standalone export tasks carry
+   `result.files` and `result.manifest_path`; `GET /freemocap/recordings/{id}/exports` lists
+   published exports. Save and annotation nodes report no paths.
+5. Operation ids equal node ids: true, undocumented.
+
+Frontend-only items: `color-error` cleanup and the magenta border are done (`UI-REFACTOR-HANDOFF.md`).
+Shared draft state, modal staying open on Process, "Show graph" snackbar and the graph view are not done.
+
+Defects found while verifying (static reading, not yet run):
+
+- `rtmPoseConfidenceThreshold` defaults to 0.004 in `mocap-slice.ts` and 0.4 in `mocap_task_config.py`.
+- A DLC request carries `exportOptions` from `buildPosthocConfig` (data `['LANDMARKS_3D']`) and
+  `scientificExports {formats: [], data: []}` from `dlcPosthocExecutionSettings`. The two differ, so
+  `migrate_export_settings` raises "Conflicting export options" for default settings.
+
 ## 1. Purpose of the next session
 
 Produce a Design artifact (mockups) for a second, graph-based view of the existing Mocap processing

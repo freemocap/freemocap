@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 // cameras-thunks.ts
 import {createAction, createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
@@ -30,16 +31,7 @@ export const detectCameras = createAsyncThunk<
 >(
     'cameras/detect',
     async (request = { filterVirtual: true }, {getState}) => {
-        const params = new URLSearchParams();
-        if (request.filterVirtual !== undefined) {
-            params.set('filter_virtual', String(request.filterVirtual));
-        }
-        const query = params.toString();
-        const url = query ? `${serverUrls.endpoints.detectCameras}?${query}` : serverUrls.endpoints.detectCameras;
-
-        const response = await fetch(url, {
-            method: 'POST',
-        });
+        const response = await serverClient().responses.cameras_detect_endpoint_skellycam_camera_detect_post({query:{filter_virtual:request.filterVirtual},});
 
         if (!response.ok) {
             throw new Error(`Failed to detect cameras: ${response.statusText}`);
@@ -151,12 +143,7 @@ export const camerasConnectOrUpdate = createAsyncThunk<
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
         let response: Response;
         try {
-            response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(request),
-                signal: controller.signal,
-            });
+            response = await serverClient().responses.camera_group_apply_post_endpoint_skellycam_camera_group_apply_post({headers: { 'Content-Type': 'application/json' }, body: request, signal: controller.signal});
         } finally {
             clearTimeout(timeout);
         }
@@ -174,9 +161,7 @@ export const camerasConnectOrUpdate = createAsyncThunk<
 export const closeCameras = createAsyncThunk<void, void, { state: RootState }>(
     'cameras/close',
     async () => {
-        const response = await fetch(serverUrls.endpoints.closeAll, {
-            method: 'DELETE',
-        });
+        const response = await serverClient().responses.close_all_camera_groups_skellycam_camera_group_close_all_delete();
 
         if (!response.ok) {
             throw new Error(`Failed to close cameras: ${response.statusText}`);
@@ -187,11 +172,7 @@ export const closeCameras = createAsyncThunk<void, void, { state: RootState }>(
 export const pauseUnpauseCameras = createAsyncThunk<boolean, void, { state: RootState }>(
     'cameras/pause',
     async (_, {getState}) => {
-        const response = await fetch(serverUrls.endpoints.pauseUnpauseCameras, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({paused: !getState().cameras.isPaused}),
-        });
+        const response = await serverClient().responses.pause_camera_groups_skellycam_camera_group_all_pause_put({headers: {'Content-Type': 'application/json'}, body: {paused: !getState().cameras.isPaused}});
 
         if (!response.ok) {
             throw new Error(`Failed to pause/unpause cameras: ${response.statusText}`);

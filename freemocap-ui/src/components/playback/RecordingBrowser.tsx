@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 /**
  * RecordingBrowser — lists available recording sessions from the server,
  * with search filtering, multi-field sorting, and rich per-recording metadata.
@@ -224,12 +225,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
         const parsed = splitParentAndName(rec?.path ?? recordingPath);
         const parentDir = parsed?.baseDirectory;
 
-        const videosUrl = serverUrls.endpoints.playbackVideos(recName);
-        const url = parentDir
-          ? `${videosUrl}?recording_parent_directory=${encodeURIComponent(parentDir)}`
-          : videosUrl;
-
-        const response = await fetch(url);
+        const response = await serverClient().responses.recordings_list_videos({path:{recording_id:recName},query:{recording_parent_directory:parentDir},});
 
         if (!response.ok) {
           const detail = await response

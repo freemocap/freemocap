@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {useEffect, useRef, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {
@@ -143,13 +144,9 @@ export function BlenderPackageSettings() {
         setBusy(true);
         setNotice({kind: 'status', text: install ? 'Installing bundled package…' : 'Checking Blender…'});
         try {
-            const base = serverUrls.endpoints.blenderExport.replace(/\/export$/, '');
             let selected = state.packageName;
             if (install) {
-                const response = await fetch(base + '/addon/install', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({blenderExePath, archivePath}),
-                });
+                const response = await serverClient().responses.install_addon_freemocap_blender_addon_install_post({headers: {'Content-Type': 'application/json'}, body: {blenderExePath, archivePath}});
                 if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
                 selected = (await response.json()).package;
                 if (requestId !== requestSequence.current) return;
@@ -157,10 +154,7 @@ export function BlenderPackageSettings() {
                 dispatch(blenderDevelopmentBuildChanged(null));
                 developmentHash = null;
             }
-            const response = await fetch(base + '/inspect', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({blenderExePath, developmentBuildHash: developmentHash}),
-            });
+            const response = await serverClient().responses.inspect_blender_endpoint_freemocap_blender_inspect_post({headers: {'Content-Type': 'application/json'}, body: {blenderExePath, developmentBuildHash: developmentHash}});
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             const result = await response.json();
             if (requestId !== requestSequence.current) return;

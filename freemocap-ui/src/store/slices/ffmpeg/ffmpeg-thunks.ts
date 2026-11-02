@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
@@ -18,7 +19,7 @@ export const detectFfmpeg = createAsyncThunk<
     'ffmpeg/detect',
     async (_, {rejectWithValue}) => {
         try {
-            const response = await fetch(serverUrls.endpoints.ffmpegDetect);
+            const response = await serverClient().responses.detect_ffmpeg_freemocap_ffmpeg_detect_get();
             if (!response.ok) {
                 return rejectWithValue(await getDetailedErrorMessage(response));
             }

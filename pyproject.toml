@@ -46,6 +46,7 @@ dependencies = [
 cuda = ["skellytracker[all-cuda]"]
 trt = ["skellytracker[all-trt]"]
 cpu = ["skellytracker[all-cpu]"]
+lsl = ["pylsl>=1.18.6,<2"]
 
 [tool.uv.sources]
 # Development uses the sibling checkouts managed by the project workspace.

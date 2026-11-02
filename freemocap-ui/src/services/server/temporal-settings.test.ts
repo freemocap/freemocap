@@ -16,11 +16,11 @@ test('filter updates preserve units and distinguish requested settings from work
     const requested = {...config, gap_duration_s: .5};
     let sent: RequestInit | undefined;
     context.mock.method(globalThis, 'fetch', async (url: string, init?: RequestInit) => {
-        assert.equal(url, '/freemocap/realtime/filter-config');
+        assert.equal(new URL(String(url)).pathname, '/freemocap/realtime/filter-config');
         sent = init;
         return Response.json({defaults: config, requested, applied: config});
     });
-    const result = await requestTemporalSettings('/freemocap/realtime/filter-config', requested);
+    const result = await requestTemporalSettings(requested);
     assert.equal(sent?.method, 'PUT');
     assert.deepEqual(JSON.parse(sent?.body as string), requested);
     assert.equal(result.requested?.gap_duration_s, .5);
@@ -31,10 +31,11 @@ test('filter updates preserve units and distinguish requested settings from work
 
 test('defaults can be read without creating a pipeline and server validation errors reach the caller', async context => {
     context.mock.method(globalThis, 'fetch', async (_url: string, init?: RequestInit) => {
-        assert.equal(init, undefined);
+        assert.equal(init?.method, 'GET');
+        assert.equal(init?.body, undefined);
         return Response.json({defaults: config, requested: null, applied: null});
     });
-    assert.deepEqual((await requestTemporalSettings('/settings')).defaults, config);
+    assert.deepEqual((await requestTemporalSettings()).defaults, config);
     context.mock.method(globalThis, 'fetch', async () => Response.json({detail: 'No running realtime pipeline'}, {status: 409}));
-    await assert.rejects(requestTemporalSettings('/settings', config), /No running realtime pipeline/);
+    await assert.rejects(requestTemporalSettings(config), /No running realtime pipeline/);
 });

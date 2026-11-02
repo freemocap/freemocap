@@ -25,7 +25,7 @@ change/emit) and consumption (frames emit to renderers; the rest replace or appe
 - **Decode:** every message is self-contained (CBOR, names inline).
 - **Render:** a frame is also render-complete — the full model rides every frame.
 - **Replace:** low-frequency state (app_state, progress) replaces its client home wholesale (idempotent).
-- **Append:** log records append; they carry their own order via sequence.
+- **Append:** log records append in connection delivery order; their envelope sequence may retain its default.
 - **Degrade:** a frame whose names reference data not yet present is skipped gracefully, never silently wrong.
 
 ## The envelope (full names, never abbreviated)
@@ -34,8 +34,8 @@ change/emit) and consumption (frames emit to renderers; the rest replace or appe
 |---|---|---|
 | kind | string | which client handler consumes it |
 | version | int | message-shape version (0 for now) |
-| timestamp | float | monotonic seconds (the frame clock) |
-| sequence | int | monotonic within a kind, per connection (drop/order detection) |
+| timestamp | float | source timestamp for frames; other kinds may retain the default |
+| sequence | int | source frame number for frames; other kinds may retain the default |
 | … | | kind-specific payload fields |
 
 An unknown kind or an unsupported version is skipped + logged (fail soft — inbound data), never crashes
@@ -49,7 +49,7 @@ and never decodes wrongly.
 | log | record | on emit | LogStore (append) |
 | framerate | camera_group_id, backend_framerate, frontend_framerate | on emit | FramerateStore (fast) |
 | app_state | server_pid, state | connect + on change | connection slice (replace) |
-| progress | pipeline progress | on emit | pipelines/mocap/calibration slices (replace) |
+| progress | snapshot of shared task registry, with server identity and revision | on change | task subscribers (replace) |
 
 On connect the relay sends the current value of the replace kinds (app_state), then streams frames. A
 later change sends a fresh full replacement. Calibration is NOT a websocket kind: the frontend loads it
@@ -65,7 +65,7 @@ One frame of reconstruction + images, fully self-describing. The authoritative s
 
 ```
 {
-  kind: "frame", version: 0, timestamp: 123.456, sequence: 42, frame_number: 99, model_sequence: 0,
+  kind: "frame", version: 0, timestamp: 123.456, sequence: 99, frame_number: 99, model_sequence: 0,
   convention: { units:"mm", handedness:"right", up_axis:"+z", forward_axis:"+x", rotation_frame:"local", rotation_form:"quaternion" },
   cameras: [ { id, index, rotation, image_size, intrinsics, extrinsics, world_position, world_orientation } ],
   models: [ { model_id, segments:[…], landmarks:[…] } ],
@@ -92,7 +92,8 @@ dropped. Idempotence makes gaps harmless — a missed state replacement is overw
 
 ## Observability + extensibility
 
-timestamp + per-kind sequence let a client detect drops, reordering, and cadence. A new data type is a new
+Frame timestamp/number describe source timing and delivery gaps; task snapshot identity/revision
+orders task state. Do not infer per-kind envelope counters where the sender leaves defaults. A new data type is a new
 kind with a declared payload shape + a client handler — no changes to the envelope, framing, relay, or
 existing kinds.
 

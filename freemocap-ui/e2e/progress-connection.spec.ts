@@ -78,7 +78,8 @@ test('child auto-connect survives provider initialization and delivers calibrati
             builder.onLoad({filter: /.*/, namespace: 'services-stub'}, () => ({loader: 'ts', contents: `
                 export const serverUrls = {getWebSocketUrl: () => 'ws://test', setHost(): void {}, setPort(): void {}};
             `}));
-            builder.onLoad({filter: /websocket-connection\.ts$/}, () => ({loader: 'ts', contents: `
+            builder.onResolve({filter: /websocket-connection(?:\.ts|\.js)?$/}, () => ({path: 'socket', namespace: 'connection-stub'}));
+            builder.onLoad({filter: /.*/, namespace: 'connection-stub'}, () => ({loader: 'ts', contents: `
                 export const ConnectionState = {CONNECTED: 'connected', DISCONNECTED: 'disconnected', FAILED: 'failed'};
                 export const connections: WebSocketConnection[] = [];
                 export class WebSocketConnection {

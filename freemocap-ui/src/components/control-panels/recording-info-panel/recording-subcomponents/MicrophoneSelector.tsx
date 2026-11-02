@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import clsx from "clsx";
@@ -29,7 +30,7 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(serverUrls.endpoints.detectMicrophones);
+      const response = await serverClient().responses.microphone_detect_endpoint_skellycam_camera_microphone_detect_get();
       if (!response.ok) throw new Error(`Failed: ${response.statusText}`);
       const data = await response.json();
       setMicrophones(data.microphones ?? {});

@@ -484,6 +484,54 @@
   claim = {LSL outlets publish streams described by channel count, format, nominal rate, source identity and XML metadata; inlets discover and receive streams.}
 }
 
+@misc{vrmAvatarFeatures,
+  title = {Features and contents of {VRM}},
+  author = {{VRM documentation contributors}},
+  url = {https://vrm.dev/en/vrm/vrm_features/},
+  urldate = {2026-11-01},
+  review = {excerpt},
+  claim = {VRM is a portable humanoid avatar asset format with standardized model information, rig and pose conventions; avatar assets are distinct from live motion transport.},
+  note = {Reviewed format overview, portability, coordinate-system and motion-standardization sections for separating Skelly asset work from VMC output. No Skelly asset or exporter was tested.}
+}
+
+@misc{evmc4uOriginalRigReceiver,
+  title = {{EVMC4U} ExternalReceiver},
+  author = {gpsnmeajp},
+  url = {https://raw.githubusercontent.com/gpsnmeajp/EasyVirtualMotionCaptureForUnity/master/EVMC4U/ExternalReceiver.cs},
+  urldate = {2026-11-01},
+  review = {source-code},
+  claim = {The receiver applies named bone local positions and rotations, with bone-position synchronization enabled by default and non-normalized VRM1 rig configuration.},
+  note = {Inspected declarations and BoneSynchronize in v5.0a source; no Unity execution is implied.}
+}
+
+@misc{pylslOutletSource,
+  title = {pylsl StreamOutlet implementation},
+  author = {{Lab Streaming Layer contributors}},
+  url = {https://raw.githubusercontent.com/labstreaminglayer/pylsl/master/src/pylsl/outlet.py},
+  urldate = {2026-11-01},
+  review = {source-code},
+  claim = {Outlet push_sample accepts explicit timestamps and uses zero as the current-time sentinel; outlet disposal is managed through object lifetime.}
+}
+
+@misc{pylslInfoSource,
+  title = {pylsl StreamInfo implementation},
+  author = {{Lab Streaming Layer contributors}},
+  url = {https://raw.githubusercontent.com/labstreaminglayer/pylsl/master/src/pylsl/info.py},
+  urldate = {2026-11-01},
+  review = {source-code},
+  claim = {StreamInfo declares fixed channel count, metadata and source identity for an LSL stream.}
+}
+
+@misc{lslIntroduction,
+  title = {Introduction},
+  author = {{Lab Streaming Layer contributors}},
+  url = {https://labstreaminglayer.readthedocs.io/info/intro.html},
+  urldate = {2026-11-01},
+  review = {excerpt},
+  claim = {LSL supplies a transport library and sample, metadata, outlet and inlet abstractions for measurement time series; publishing uses its library rather than an application-specific TCP protocol.},
+  note = {Reviewed introduction and Streaming Layer API sections for bridge architecture; no FreeMoCap outlet or receiver was exercised.}
+}
+
 @misc{lslTimeSynchronizationGuide,
   title = {Time Synchronization},
   author = {{Lab Streaming Layer contributors}},

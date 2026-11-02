@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {recordingLocationKey} from '@/services/recording/recording-location';
 import {PlaybackManifestSchema, type PlaybackManifest, type PlaybackMedia} from '@/services/recording/playback-data';
 import {createAsyncThunk, createSlice, type PayloadAction} from '@reduxjs/toolkit';
@@ -79,8 +80,7 @@ export const fetchPlaybackBundle = createAsyncThunk<
     'playbackData/fetchBundle',
     async ({recordingId, recordingParentDirectory}, {rejectWithValue, signal}) => {
         try {
-            const url = serverUrls.recordingResource(recordingId, '/playback/bundle', recordingParentDirectory);
-            const response = await fetch(url, {signal});
+            const response = await serverClient().responses.recordings_get_recording_bundle({path:{recording_id:recordingId},query:{recording_parent_directory:recordingParentDirectory},signal});
             if (!response.ok) {
                 throw new Error(`Bundle fetch failed: ${response.status}`);
             }

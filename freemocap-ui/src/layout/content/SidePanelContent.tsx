@@ -1,3 +1,4 @@
+import {StreamingOutputsPanel} from '@/components/control-panels/streaming-outputs/StreamingOutputsPanel';
 import {CalibrateRecordingButton} from '@/components/control-panels/calibration-actions/CalibrateRecordingButton';
 import {useAppSelector} from '@/store';
 import {selectActiveRecordingFullPath} from '@/store/slices/active-recording/active-recording-slice';
@@ -31,15 +32,17 @@ const SECTION_ORDER = [
     'recording_path',
     'recording_control',
     'process_mocap',
+    'streaming_outputs',
     // 'mocap',
 ] as const;
 
 type SectionId = (typeof SECTION_ORDER)[number];
 
-const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording_path', 'recording_control']);
+const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording_path', 'recording_control', 'streaming_outputs']);
 const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings', 'process_mocap']);
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
+    streaming_outputs: StreamingOutputsPanel,
     cameras: CameraConfigTreeView,
     calibration: CalibrationPanel,
     process_mocap: ProcessMocapPanel,

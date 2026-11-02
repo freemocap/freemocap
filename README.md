@@ -205,9 +205,11 @@ ___
 
 ## Documentation 
 
-Our documenation is hosted at: https://freemocap.github.io/documentation/index_md.html
+Our documentation is hosted at: https://docs.freemocap.org/
 
-That site is built using `writerside` from this repository: https://github.com/freemocap/documentation
+The public Docusaurus site lives in https://github.com/freemocap/freemocap.github.io.
+Core architecture documentation lives in `freemocap-docs/docs/` in this repository.
+The integrated server contract is documented in `freemocap-docs/docs/architecture/api-boundary.mdx`.
 
 ___
 

@@ -31,7 +31,7 @@ test('PyAV fragments play and restart in Electron without converted files', asyn
             app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
             app.whenReady().then(() => { const window = new BrowserWindow({show: false}); window.loadURL('about:blank'); });`,
             loader: 'ts'}, bundle: true, platform: 'node', external: ['electron'], outfile: entry});
-        const application = await electron.launch({executablePath: process.env.FREEMOCAP_TEST_ELECTRON, args: [entry]});
+        const application = await electron.launch({executablePath: process.env.FREEMOCAP_TEST_ELECTRON, args: [...(process.env.FREEMOCAP_TEST_DISABLE_GPU === '1' ? ['--disable-gpu'] : []), entry]});
         try {
             const page = await application.firstWindow();
             const result = await page.evaluate(async ({port, count}) => {

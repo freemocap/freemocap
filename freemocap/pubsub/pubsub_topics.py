@@ -81,6 +81,8 @@ class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
     capture_timestamp_s: float | None = None
+    # Original SkellyCam integer midpoint; do not recover this from float seconds.
+    capture_timestamp_ns: int | None = None
     charuco_observation: Observation | None = None
     skeleton_observation: Observation | None = None
     raw_skeleton_observation: Observation | None = None

@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {TemporalConfig} from '@/types/temporal-config';
 import {requestTemporalSettings} from '@/services/server/temporal-settings';
@@ -65,15 +66,11 @@ export const applyRealtimePipeline = createAsyncThunk<
             },
         });
 
-        const response = await fetch(serverUrls.endpoints.realtimeConnectOrUpdate, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
+        const response = await serverClient().responses.pipeline_apply_endpoint_freemocap_realtime_apply_post({headers: {'Content-Type': 'application/json'}, body: {
                 realtimeConfig: configWithBoard,
                 cameraConfigs,
                 realtimeCameraIds,
-            }),
-        });
+            }});
 
         if (!response.ok) {
             throw new Error(`Failed to apply realtime: ${await getDetailedErrorMessage(response)}`);
@@ -86,9 +83,7 @@ export const applyRealtimePipeline = createAsyncThunk<
 export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
     'realtime/close',
     async () => {
-        const response = await fetch(serverUrls.endpoints.realtimeClose, {
-            method: 'DELETE',
-        });
+        const response = await serverClient().responses.stop_realtime_pipelines();
 
         if (!response.ok) {
             throw new Error(`Failed to close realtime: ${await getDetailedErrorMessage(response)}`);
@@ -99,9 +94,7 @@ export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
 export const resetSkeletonFitter = createAsyncThunk<void, void, { state: RootState }>(
     'realtime/resetSkeletonFitter',
     async () => {
-        const response = await fetch(serverUrls.endpoints.resetSkeletonFitter, {
-            method: 'POST',
-        });
+        const response = await serverClient().responses.reset_skeleton_fitter_endpoint_freemocap_realtime_reset_skeleton_fitter_post();
 
         if (!response.ok) {
             throw new Error(`Failed to reset skeleton fitter: ${await getDetailedErrorMessage(response)}`);
@@ -110,9 +103,9 @@ export const resetSkeletonFitter = createAsyncThunk<void, void, { state: RootSta
 );
 
 export const fetchTemporalConfig = createAsyncThunk('realtime/readTemporal', async () => {
-    return requestTemporalSettings(`${serverUrls.getHttpUrl()}/freemocap/realtime/filter-config`);
+    return requestTemporalSettings();
 });
 
 export const applyTemporalConfig = createAsyncThunk('realtime/applyTemporal', async (config: TemporalConfig) => {
-    return requestTemporalSettings(`${serverUrls.getHttpUrl()}/freemocap/realtime/filter-config`, config);
+    return requestTemporalSettings(config);
 });

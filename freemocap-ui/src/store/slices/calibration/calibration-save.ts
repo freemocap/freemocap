@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import type {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/constants/server-urls';
@@ -60,11 +61,7 @@ export const saveCalibrationTransform = createAsyncThunk<
                     }],
                 });
             }
-            const response = await fetch(serverUrls.endpoints.calibrationTransform, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(request),
-            });
+            const response = await serverClient().responses.transform_calibration_freemocap_calibration_transform_post({headers: {'Content-Type': 'application/json'}, body: request});
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             return LoadedCalibrationSchema.parse(await response.json());
         } catch (error) {

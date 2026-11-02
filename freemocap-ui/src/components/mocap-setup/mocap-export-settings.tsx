@@ -1,3 +1,4 @@
+import {serverClient, recordingRequest} from '@/services/server/sdk';
 import {useEffect, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {exportSettingsReset, exportFormatsUpdated, exportChannelsUpdated, exportAfterProcessingUpdated} from '@/store/slices/mocap';
@@ -53,7 +54,7 @@ export default function MocapExportSettings({path, processing, sourceRunId}: {pa
         if (!path || processing) return () => controller.abort();
         void (async () => {
             try {
-                const response = await fetch(optionsUrl!, {signal: controller.signal});
+                const response = await serverClient().responses.get_export_options_freemocap_recordings__recording_id__export_options_get({...recordingRequest(path!),signal: controller.signal});
                 if (response.status === 204) {
                     if (!controller.signal.aborted) setNoSavedResult(true);
                     return;
@@ -73,7 +74,7 @@ export default function MocapExportSettings({path, processing, sourceRunId}: {pa
         const controller = new AbortController();
         const timer = window.setTimeout(() => void (async () => {
             try {
-                const response = await fetch(`${tasks}/${encodeURIComponent(job.task_id)}`, {signal: controller.signal});
+                const response = await serverClient().responses.get_task_freemocap_tasks__task_id__get({path:{task_id:job.task_id},signal: controller.signal});
                 if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
                 const next: Job = await response.json();
                 if (!controller.signal.aborted) setJob(next);
@@ -102,7 +103,7 @@ export default function MocapExportSettings({path, processing, sourceRunId}: {pa
     async function cancel() {
         if (!job) return;
         try {
-            const response = await fetch(`${tasks}/${encodeURIComponent(job.task_id)}/cancel`, {method: 'POST'});
+            const response = await serverClient().responses.cancel_task_freemocap_tasks__task_id__cancel_post({path:{task_id:job.task_id},});
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             setJob(await response.json());
         } catch (reason) {setError(reason instanceof Error ? reason.message : String(reason));}

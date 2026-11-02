@@ -17,13 +17,13 @@ test('reconnected or different servers are queried again and preserve abort sign
         assert.equal(options?.signal, controller.signal);
         return Response.json({available: calls.length === 1 ? ['cuda', 'cpu'] : ['cpu']});
     }) as typeof fetch;
-    assert.deepEqual(await requestExecutionProviders('/first', controller.signal, request), ['cuda', 'cpu']);
-    assert.deepEqual(await requestExecutionProviders('/second', controller.signal, request), ['cpu']);
-    assert.deepEqual(calls, ['/first', '/second']);
+    assert.deepEqual(await requestExecutionProviders('http://first.invalid', controller.signal, request), ['cuda', 'cpu']);
+    assert.deepEqual(await requestExecutionProviders('http://second.invalid', controller.signal, request), ['cpu']);
+    assert.deepEqual(calls, ['http://first.invalid/freemocap/onnx/execution_providers', 'http://second.invalid/freemocap/onnx/execution_providers']);
 });
 
 test('HTTP failures and malformed provider lists are not advertised as support', async () => {
     for (const response of [new Response('', {status: 503}), Response.json({available: ['unknown']}), Response.json({})]) {
-        await assert.rejects(requestExecutionProviders('/providers', undefined, (async () => response) as typeof fetch));
+        await assert.rejects(requestExecutionProviders('http://providers.invalid', undefined, (async () => response) as typeof fetch));
     }
 });

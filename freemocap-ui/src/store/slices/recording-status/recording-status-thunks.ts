@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
@@ -27,8 +28,7 @@ export const fetchRecordingStatus = createAsyncThunk<
     'recordingStatus/fetch',
     async ({recordingId, recordingParentDirectory}, {rejectWithValue}) => {
         try {
-            const url = serverUrls.recordingResource(recordingId, '/status', recordingParentDirectory);
-            const response = await fetch(url);
+            const response = await serverClient().responses.recordings_get_recording_status({path:{recording_id:recordingId},query:{recording_parent_directory:recordingParentDirectory},});
             if (!response.ok) {
                 return rejectWithValue({recordingId, error: await getDetailedErrorMessage(response)});
             }
@@ -50,13 +50,7 @@ export const fetchAllRecordings = createAsyncThunk<
 >(
     'recordingStatus/fetchAll',
     async (options) => {
-        const params = new URLSearchParams();
-        if (options?.recordingParentDirectory) {
-            params.set('recording_parent_directory', options.recordingParentDirectory);
-        }
-        const qs = params.toString();
-        const url = `${serverUrls.endpoints.playbackRecordings}${qs ? `?${qs}` : ''}`;
-        const response = await fetch(url);
+        const response = await serverClient().responses.recordings_list_recordings({query:{recording_parent_directory:options?.recordingParentDirectory},});
         if (!response.ok) {
             throw new Error(`Failed to fetch recordings: ${response.status}`);
         }

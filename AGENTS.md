@@ -1,7 +1,8 @@
 # Core repository guidance
 
-Follow the containing workspace's ownership and review rules. Leave changes
-unstaged and uncommitted for human review.
+Follow the containing workspace's ownership and Git authorization rules. The owner
+authorizes staging, commits, and pushes for task-related cleanup and integration.
+Commit messages must be one sentence or less, with no agent name or attribution.
 
 Tracker owns detector recipes, crop rules, keypoint assembly, schemas/connections,
 and preset-specific mapping selection. Import its public preset/profile interfaces;

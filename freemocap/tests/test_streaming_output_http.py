@@ -71,6 +71,7 @@ def test_vmc_quick_start_needs_no_body_and_reuses_only_active_defaults():
         assert first['pipeline_id'] is None
         assert first['config'] == VmcConfig().model_dump(mode='json')
         assert first['config']['profile'] == 'vrm0_normalized'
+        assert first['config']['include_fingers'] is True
         schema = client.get(base + '/protocols').json()[0]['config_schema']
         assert schema['properties']['profile']['default'] == 'vrm0_normalized'
         assert schema['properties']['profile']['enum'] == ['vrm0_normalized', 'forge_reference_vrm_original']

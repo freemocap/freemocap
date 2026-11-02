@@ -43,7 +43,7 @@ class VmcConfig(BaseModel):
     model_id: str = Field(default=STANDARD_HUMAN_MODEL_ID, min_length=1)
     instance_id: int = Field(default=0, ge=0)
     profile: Literal["vrm0_normalized", "forge_reference_vrm_original"] = "vrm0_normalized"
-    include_fingers: bool = False
+    include_fingers: bool = True
     max_datagram_bytes: int = Field(default=1200, ge=256, le=1400)
 
 
@@ -180,10 +180,13 @@ class VmcProjector:
     def _bind(self, model: ModelDefinition) -> None:
         indices = {segment.name: index for index, segment in enumerate(model.segments)}
         required = tuple(source for source, _, _ in self.bindings)
-        missing = set(required) - indices.keys()
+        missing = {source for source, _, _ in BODY_BINDINGS} - indices.keys()
         if missing:
             raise ValueError(f"VMC profile requires existing human segments: {sorted(missing)}")
-        self.source_rows = np.asarray([indices[name] for name in required])
+        # Finger metadata may be absent in body-only models. Mask those rows
+        # before projection; the safe gather index is never emitted as a finger.
+        self.source_present = np.asarray([name in indices for name in required])
+        self.source_rows = np.asarray([indices.get(name, indices['pelvis']) for name in required])
         # RestSegment.rest_orientation is resolved WORLD rest, not the YAML's
         # parent-relative input. ModelDefinition.from_skeleton preserves this.
         source_rest = _rotation_matrices(np.asarray([
@@ -211,7 +214,7 @@ class VmcProjector:
                 self._model = model
         channels = {channel.kind: channel for channel in instance.channels if channel.camera_id is None}
         arrays = []
-        valid = np.ones(len(self.source_rows), dtype=bool)
+        valid = self.source_present.copy()
         for kind, columns in ((ChannelKind.SEGMENT_ORIGINS, ("x", "y", "z")),
                               (ChannelKind.ROTATIONS_WORLD, ("w", "x", "y", "z"))):
             channel = channels.get(kind)

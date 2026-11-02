@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {StreamingOutputsPanel} from './StreamingOutputsPanel';
+import {StreamingOutputsPanel, outputStartBody} from './StreamingOutputsPanel';
 import {Provider} from 'react-redux';
 import {configureStore} from '@reduxjs/toolkit';
 
-test('streaming output header and VMC quick action are outside hidden advanced settings', () => {
+test('VMC and LSL have sibling sections with their own controls and settings', () => {
     const store = configureStore({reducer: () => ({connection: {isConnected: false, serverPid: null, realtimePipelines: []}})});
     const html = renderToStaticMarkup(<Provider store={store}><StreamingOutputsPanel/></Provider>);
     assert.match(html, /^<section aria-label="Streaming outputs" class="flex flex-col gap-1 p-1 text text-white">/);
@@ -21,5 +21,26 @@ test('streaming output header and VMC quick action are outside hidden advanced s
         assert.ok(!match[1].split(/\s+/).includes('hidden'));
     }
     assert.doesNotMatch(visible, /display:\s*none/);
-    assert.match(html, /<details[^>]*><summary[^>]*>Advanced output settings<\/summary>/);
+    for (const protocol of ['VMC', 'LSL']) {
+        assert.match(html, new RegExp(`aria-label="${protocol} output"`));
+        assert.match(html, new RegExp(`>Start ${protocol}</p>`));
+        assert.match(html, new RegExp(`<details[^>]*><summary[^>]*>${protocol} settings</summary>`));
+    }
+    assert.doesNotMatch(html, /aria-label="Protocol"|Start output|Include fingers|Advanced output settings/);
+});
+
+test('each section sends its edited settings and VMC always includes fingers', () => {
+    const schema = {properties: {host: {default: '127.0.0.1'}, port: {default: 39539}, include_fingers: {default: true}}};
+    const draft = {config: {host: '127.0.0.1', port: 39539, include_fingers: true}, pipeline: '', queueCapacity: 8};
+    assert.equal(outputStartBody('vmc', schema, draft), null);
+    assert.deepEqual(outputStartBody('vmc', schema, {...draft, config: {...draft.config, port: 39540, include_fingers: false}, pipeline: ' selected ', queueCapacity: 16}),
+        {protocol: 'vmc', pipeline_id: 'selected', queue_capacity: 16, config: {host: '127.0.0.1', port: 39540, include_fingers: true}});
+    assert.deepEqual(outputStartBody('lsl', {}, {config: {stream_name: 'My session'}, pipeline: 'lsl-source', queueCapacity: 32}),
+        {protocol: 'lsl', pipeline_id: 'lsl-source', queue_capacity: 32, config: {stream_name: 'My session'}});
+});
+
+test('old running backend receives explicit fingers instead of its old quick-start default', () => {
+    const schema = {properties: {include_fingers: {default: false}}};
+    assert.deepEqual(outputStartBody('vmc', schema, {config: {include_fingers: false}, pipeline: '', queueCapacity: 8}),
+        {protocol: 'vmc', pipeline_id: null, queue_capacity: 8, config: {include_fingers: true}});
 });

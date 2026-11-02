@@ -24,7 +24,13 @@
     padding: 8px 0;
 }
 
-.streaming-outputs-flyout form > label {
+.streaming-output-section {
+    border-top: 1px solid var(--color-border-primary);
+    padding-top: 10px;
+    margin-top: 6px;
+}
+
+.streaming-output-settings > label {
     display: flex;
     flex-direction: column;
     gap: 4px;

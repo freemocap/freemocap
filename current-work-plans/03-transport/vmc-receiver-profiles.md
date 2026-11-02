@@ -23,6 +23,12 @@ retain the preceding transform of an omitted bone. Reloading the avatar after
 changing profiles can clear a pose left by the old binding; missing measurements
 are not synthesized.
 
+Available fingers are included by default. Missing finger measurements or a
+body-only model do not suppress valid body bones. The UI always includes fingers;
+the API retains `include_fingers` for existing clients. The Outputs popup has
+separate VMC and LSL sections, each with its own settings and Start/Stop controls.
+Stop an active output before starting it with changed settings.
+
 The public preview receiver can apply incoming bone positions directly. Its
 behavior does not establish the installed VSeeFace application's position
 settings or arbitrary-avatar proportion compatibility. Rendered acceptance,

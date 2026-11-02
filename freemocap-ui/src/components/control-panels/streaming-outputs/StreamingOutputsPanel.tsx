@@ -18,6 +18,19 @@ const label = (name: string) => name.replaceAll('_', ' ').replace(/^./, value =>
 const defaults = (schema: Schema): Record<string, unknown> => Object.fromEntries(
     Object.entries(schema.properties ?? {}).filter(([, field]) => field.default != null)
         .map(([name, field]) => [name, field.default]));
+type Draft = {config: Record<string, unknown>; pipeline: string; queueCapacity: number};
+const initialDraft = (schema: Schema): Draft => ({config: defaults(schema), pipeline: '', queueCapacity: 8});
+
+/** Null selects the no-body default VMC route; edited settings use generic create. */
+export function outputStartBody(protocol: string, schema: Schema, draft: Draft) {
+    const config = protocol === 'vmc' ? {...draft.config, include_fingers: true} : draft.config;
+    const expected = {...defaults(schema), ...(protocol === 'vmc' ? {include_fingers: true} : {})};
+    const unchanged = Object.keys(config).length === Object.keys(expected).length
+        && Object.entries(expected).every(([key, value]) => JSON.stringify(config[key]) === JSON.stringify(value));
+    if (protocol === 'vmc' && schema.properties?.include_fingers?.default === true
+        && unchanged && !draft.pipeline.trim() && draft.queueCapacity === 8) return null;
+    return {protocol, pipeline_id: draft.pipeline.trim() || null, config, queue_capacity: draft.queueCapacity};
+}
 
 /** Refresh on connection/source transitions and commands; never poll on a timer. */
 export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
@@ -30,10 +43,7 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
     const capabilityCache = useRef<{key: string; data: Capability[]} | null>(null);
     const [capabilities, setCapabilities] = useState<Capability[]>([]);
     const [outputs, setOutputs] = useState<Output[]>([]);
-    const [protocol, setProtocol] = useState('');
-    const [config, setConfig] = useState<Record<string, unknown>>({});
-    const [pipeline, setPipeline] = useState('');
-    const [queueCapacity, setQueueCapacity] = useState(8);
+    const [drafts, setDrafts] = useState<Record<string, Draft>>({});
     const [error, setError] = useState('');
     const [commandError, setCommandError] = useState('');
     const [busy, setBusy] = useState(false);
@@ -43,8 +53,6 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
     const requests = useRef(new Set<AbortController>());
     const activeMutation = useRef(false);
     const currentOrigin = useRef('');
-    const capability = capabilities.find(item => item.protocol === protocol);
-    const schema = (capability?.config_schema ?? {}) as Schema;
 
     useEffect(() => {
         mounted.current = true;
@@ -60,7 +68,7 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
                 currentOrigin.current = origin;
                 for (const request of requests.current) request.abort();
                 setOutputs([]); setCapabilities([]); setObservedOrigin('');
-                setProtocol(''); setConfig({}); setPipeline(''); setError(''); setCommandError('');
+                setDrafts({}); setError(''); setCommandError('');
             }
             const generation = epoch.current;
             const controller = new AbortController();
@@ -81,12 +89,6 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
                         setObservedAt(new Date().toLocaleTimeString());
                         setCapabilities(available.data); setOutputs(states.data); setObservedOrigin(origin);
                         setError('');
-                        setProtocol(previous => {
-                            if (available.data.some(item => item.protocol === previous)) return previous;
-                            const first = available.data.find(item => item.available) ?? available.data[0];
-                            setConfig(defaults((first?.config_schema ?? {}) as Schema));
-                            return first?.protocol ?? '';
-                        });
                     }
                 }
             } catch (cause) {
@@ -108,10 +110,13 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
         };
     }, [origin, connected, serverPid, sources, refreshVersion]);
 
-    async function mutate(output?: Output, quickVmc = false) {
+    async function mutate(protocol: string, output?: Output) {
         const origin = serverUrls.getHttpUrl();
         // Never apply IDs/configuration observed on a different server.
         if (origin !== observedOrigin || activeMutation.current) return;
+        if (!output && outputs.some(item => item.protocol === protocol && ['idle', 'running'].includes(item.status ?? ''))) return;
+        const schema = (capabilities.find(item => item.protocol === protocol)?.config_schema ?? {}) as Schema;
+        const body = outputStartBody(protocol, schema, drafts[protocol] ?? initialDraft(schema));
         const generation = ++epoch.current;
         for (const request of requests.current) request.abort();
         activeMutation.current = true; setBusy(true); setCommandError('');
@@ -122,15 +127,14 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
             const client = createHttpClient({baseUrl: origin});
             const result = output
                 ? await client.operations.streaming_stop_output({path: {output_id: output.id}, signal: controller.signal})
-                : quickVmc ? await client.operations.streaming_start_vmc({signal: controller.signal})
-                : await client.operations.streaming_create_output({body: {protocol, pipeline_id: pipeline.trim() || null,
-                    config, queue_capacity: queueCapacity}, signal: controller.signal});
+                : body === null ? await client.operations.streaming_start_vmc({signal: controller.signal})
+                : await client.operations.streaming_create_output({body, signal: controller.signal});
             if (mounted.current && generation === epoch.current && origin === serverUrls.getHttpUrl()) {
                 setOutputs(previous => [...previous.filter(item => item.id !== result.data.id), result.data]);
             }
         } catch (cause) {
             if (mounted.current && generation === epoch.current && origin === serverUrls.getHttpUrl()) {
-                setCommandError(`Request failed: ${errorText(cause)}`);
+                setCommandError(`${protocol.toUpperCase()} request failed: ${errorText(cause)}`);
             }
         } finally {
             clearTimeout(timeout); requests.current.delete(controller); activeMutation.current = false;
@@ -138,10 +142,15 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
         }
     }
 
-    function fieldControl(name: string, original: Field) {
+    function updateDraft(protocol: string, schema: Schema, update: (draft: Draft) => Draft) {
+        setDrafts(previous => ({...previous, [protocol]: update(previous[protocol] ?? initialDraft(schema))}));
+    }
+
+    function fieldControl(protocol: string, schema: Schema, name: string, original: Field) {
+        if (name === 'include_fingers') return null;
         const field = original.anyOf?.find(item => item.type !== 'null') ?? original;
-        const value = config[name];
-        const update = (next: unknown) => setConfig(previous => ({...previous, [name]: next}));
+        const value = (drafts[protocol] ?? initialDraft(schema)).config[name];
+        const update = (next: unknown) => updateDraft(protocol, schema, previous => ({...previous, config: {...previous.config, [name]: next}}));
         const fieldLabel = label(name);
         if (field.type === 'boolean') return <label className="text sm flex flex-col gap-1" key={name}><input className="input-field text sm br-1" aria-label={fieldLabel} type="checkbox"
             checked={value === true} onChange={event => update(event.target.checked)}/>{fieldLabel}</label>;
@@ -177,39 +186,48 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
             {onClose && <IconButton icon="close-icon" ariaLabel="Close streaming outputs" className="icon-size-25 flex-shrink-0" onClick={onClose}/>}
         </div>
         <div className="flex flex-row items-center gap-1">
-            <ButtonSm text="Start VMC" className="secondary" textColor="text-gray"
-                disabled={busy || !observedOrigin || !capabilities.some(item => item.protocol === 'vmc' && item.available)}
-                onClick={() => void mutate(undefined, true)}/>
             <ButtonSm text="Refresh" buttonType="secondary" textColor="text-white" disabled={busy}
                 onClick={() => refresh(value => value + 1)}/>
-            <span className="text sm text-gray">127.0.0.1:39539</span>
+            <span className="text sm text-gray">{observedAt ? `Status checked ${observedAt}` : 'Status not checked'}</span>
         </div>
         {error && <p className="text sm text-red" role="alert">{error}</p>}
         {commandError && <p className="text sm text-red" role="alert">{commandError}</p>}
-        <span className="text sm text-gray">{observedAt ? `Status checked ${observedAt}` : 'Status not checked'}</span>
-        {outputs.filter(output => output.status !== 'stopped').map(output => <div key={output.id} aria-label={`Output ${output.id}`}
-            className="flex flex-row items-center justify-between gap-1">
-            <span className="text sm">{output.protocol.toUpperCase()} · <span data-testid="output-state">{output.status}</span>
-                {output.error && <span role="alert" className="text-red"> · {output.error}</span>}</span>
-            <ButtonSm text={output.protocol === 'vmc' ? 'Stop VMC' : 'Stop output'} buttonType="secondary"
-                textColor="text-white" disabled={busy || output.status === 'stopped' || !observedOrigin}
-                onClick={() => void mutate(output)}/>
-        </div>)}
-        <details className="text sm"><summary className="text sm text-gray">Advanced output settings</summary>
-            <form onSubmit={event => {event.preventDefault(); void mutate();}} className="flex flex-col gap-1 p-1">
-                <label className="text sm">Protocol<select className="input-field text sm br-1" aria-label="Protocol" value={protocol} onChange={event => {
-                    setProtocol(event.target.value);
-                    setConfig(defaults((capabilities.find(item => item.protocol === event.target.value)?.config_schema ?? {}) as Schema));
-                }}>{capabilities.map(item => <option key={item.protocol} value={item.protocol}>{item.protocol.toUpperCase()}</option>)}</select></label>
-                {capability?.unavailable_reason && <p className="text sm text-gray" role="status">{capability.unavailable_reason}</p>}
-                <label className="text sm">Source pipeline ID<input className="input-field text sm br-1" aria-label="Source pipeline ID" value={pipeline}
-                    placeholder="Automatic" onChange={event => setPipeline(event.target.value)}/></label>
-                {Object.entries(schema.properties ?? {}).map(([name, field]) => fieldControl(name, field))}
-                <label className="text sm">Queue capacity<input className="input-field text sm br-1" aria-label="Queue capacity" type="number" min={1} max={256} required
-                    value={queueCapacity} onChange={event => setQueueCapacity(Number(event.target.value))}/></label>
-                <ButtonSm text="Start output" buttonType="secondary" textColor="text-white"
-                    disabled={busy || !capability?.available || !observedOrigin}/>
-            </form>
-        </details>
+        {['vmc', 'lsl'].map(protocol => {
+            const title = protocol.toUpperCase();
+            const capability = capabilities.find(item => item.protocol === protocol);
+            const schema = (capability?.config_schema ?? {}) as Schema;
+            const draft = drafts[protocol] ?? initialDraft(schema);
+            const states = outputs.filter(output => output.protocol === protocol && output.status !== 'stopped');
+            const active = states.some(output => ['idle', 'running'].includes(output.status ?? ''));
+            return <section key={protocol} aria-label={`${title} output`} className="streaming-output-section flex flex-col gap-1">
+                <SubactionHeader text={title}/>
+                <form onSubmit={event => {event.preventDefault(); void mutate(protocol);}} className="flex flex-col gap-1">
+                    <div className="flex flex-row items-center gap-1">
+                        <ButtonSm text={`Start ${title}`} className="secondary" textColor="text-white"
+                            disabled={busy || active || !observedOrigin || !capability?.available}/>
+                        {protocol === 'vmc' && <span className="text sm text-gray">{String(draft.config.host ?? '127.0.0.1')}:{String(draft.config.port ?? 39539)}</span>}
+                    </div>
+                    {capability?.unavailable_reason && <p className="text sm text-gray" role="status">{capability.unavailable_reason}</p>}
+                    {states.map(output => <div key={output.id} aria-label={`Output ${output.id}`} className="flex flex-row items-center justify-between gap-1">
+                        <span className="text sm"><span data-testid="output-state">{output.status}</span>
+                            {output.error && <span role="alert" className="text-red"> · {output.error}</span>}</span>
+                        <button type="button" className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left secondary"
+                            disabled={busy || !observedOrigin} onClick={() => void mutate(protocol, output)}>
+                            <p className="text-white text-nowrap text bg text-align-left">Stop {title}</p>
+                        </button>
+                    </div>)}
+                    {active && <span className="text sm text-gray">Stop before applying new settings.</span>}
+                    <details className="text sm"><summary className="text sm text-gray">{title} settings</summary>
+                        <div className="streaming-output-settings flex flex-col gap-1">
+                            <label className="text sm">Source pipeline ID<input className="input-field text sm br-1" aria-label={`${title} source pipeline ID`} value={draft.pipeline}
+                                placeholder="Automatic" onChange={event => updateDraft(protocol, schema, previous => ({...previous, pipeline: event.target.value}))}/></label>
+                            {Object.entries(schema.properties ?? {}).map(([name, field]) => fieldControl(protocol, schema, name, field))}
+                            <label className="text sm">Queue capacity<input className="input-field text sm br-1" aria-label={`${title} queue capacity`} type="number" min={1} max={256} required
+                                value={draft.queueCapacity} onChange={event => updateDraft(protocol, schema, previous => ({...previous, queueCapacity: Number(event.target.value)}))}/></label>
+                        </div>
+                    </details>
+                </form>
+            </section>;
+        })}
     </section>;
 }

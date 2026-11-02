@@ -248,7 +248,7 @@ def test_unavailable_pose_reports_not_loaded_without_fabricated_transforms(human
 @pytest.mark.parametrize("missing", ["left_upper_leg", "left_toes", "left_upper_arm"])
 def test_partial_pose_keeps_valid_branches_without_fabricating_missing_bones(human, fault, missing):
     sample = sample_frame(human, perturb=True)
-    projector = VmcProjector(VmcConfig())
+    projector = VmcProjector(VmcConfig(include_fingers=False))
     complete = projector.project(sample.frame, sample.source_timestamp_ns)
     instance = sample.frame.instances[0]
     index = next(i for i, segment in enumerate(human[0].segments) if segment.name == missing)
@@ -272,6 +272,37 @@ def test_partial_pose_keeps_valid_branches_without_fabricating_missing_bones(hum
     np.testing.assert_allclose(pose.local_positions_m, complete.local_positions_m[rows])
     np.testing.assert_allclose(pose.local_quaternions_xyzw, complete.local_quaternions_xyzw[rows])
     assert pose.source_timestamp_ns == sample.source_timestamp_ns
+
+
+@pytest.mark.parametrize('missing_metadata', [False, True])
+def test_default_streams_available_fingers_without_requiring_missing_fingers(human, missing_metadata):
+    sample = sample_frame(human, perturb=True)
+    projector = VmcProjector(VmcConfig())
+    full = projector.project(sample.frame, sample.source_timestamp_ns)
+    assert full is not None
+    assert set(full.bone_names) == {name for _, name, _ in BODY_BINDINGS + FINGER_BINDINGS}
+    finger_sources = {name for name, _, _ in FINGER_BINDINGS}
+    model = human[0]
+    keep = [i for i, segment in enumerate(model.segments) if segment.name not in finger_sources]
+    instance = sample.frame.instances[0]
+    channels = []
+    for channel in instance.channels:
+        values = np.frombuffer(channel.data, dtype='<f4').reshape(-1, len(channel.columns)).copy()
+        if missing_metadata:
+            values = values[keep]
+        else:
+            missing = [i for i in range(len(model.segments)) if i not in keep]
+            values[missing] = np.nan
+        channels.append(replace(channel, data=values.tobytes()))
+    if missing_metadata:
+        model = replace(model, segments=tuple(model.segments[i] for i in keep))
+    frame = replace(sample.frame, models=(model,), instances=(replace(instance, channels=tuple(channels)),))
+    pose = projector.project(frame, sample.source_timestamp_ns)
+    assert pose is not None
+    assert set(pose.bone_names) == {name for _, name, _ in BODY_BINDINGS}
+    rows = [full.bone_names.index(name) for name in pose.bone_names]
+    np.testing.assert_allclose(pose.local_quaternions_xyzw, full.local_quaternions_xyzw[rows])
+    np.testing.assert_allclose(pose.local_positions_m, full.local_positions_m[rows])
 
 
 def test_partial_pose_requires_valid_root(human):

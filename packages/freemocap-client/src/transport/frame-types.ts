@@ -6,6 +6,8 @@
 // index-keyed on the wire is resolved here against the frame's own model, so the
 // names arrays below are in the model's ordered segment order.
 
+import type {ModelConnectionGroup} from './message-contract.js';
+
 export interface PointsFrame {
     sampleStatus?: Uint8Array;
     statusLabels?: readonly string[];
@@ -61,6 +63,8 @@ export enum OverlayLayer {
 }
 
 export interface OverlayFrame {
+    /** Detector-owned image keypoint connections; no reconstructed model required. */
+    connectionGroups?: readonly ModelConnectionGroup[];
     cameraId: string;
     layer: OverlayLayer;
     /** Which model these rows belong to. Set on REPROJECTIONS (they are one model's

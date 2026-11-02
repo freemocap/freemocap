@@ -67,6 +67,26 @@ test('camera renderer reads declared columns, reuses prepared indices, and prese
         renderer['drawSkeletonOverlay'](boxes);
         assert.notEqual(renderer['preparedLayers'][0], detectionLayout, 'layer kind is part of the prepared layout identity');
         assert.deepEqual(calls.find(call => call.name === 'strokeRect')!.args, [10, 20, 20, 20]);
+
+        const arbitrary = observation();
+        appendOverlay(arbitrary, {cameraId: 'camera', frameNumber: 10, layer: OverlayLayer.DETECTIONS,
+            names: ['rear_corner', 'front_corner'], columns: ['x', 'y', 'visibility'],
+            data: Float32Array.from([2, 3, .9, 8, 9, .8]),
+            connectionGroups: [{name: 'outer_edge', pairs: [['rear_corner', 'front_corner']], color: '#abcdef'}]});
+        calls.length = 0;
+        renderer['drawSkeletonOverlay'](arbitrary);
+        assert.deepEqual(calls.find(call => call.name === 'moveTo')!.args, [2, 3]);
+        assert.deepEqual(calls.find(call => call.name === 'lineTo')!.args, [8, 9]);
+        assert.equal(calls.find(call => call.name === 'stroke')!.color, '#abcdef');
+        const arbitraryLayout = renderer['preparedLayers'][0];
+        assert.equal(arbitraryLayout.styles[0].pointRadius, arbitraryLayout.styles[1].pointRadius,
+            'arbitrary model identities do not trigger anatomical style heuristics');
+        renderer['drawSkeletonOverlay'](structuredClone(arbitrary));
+        assert.equal(renderer['preparedLayers'][0], arbitraryLayout, 'repeated self-describing groups reuse prepared indices');
+        const recolored = structuredClone(arbitrary);
+        recolored.pointLayers[0].connectionGroups![0].color = '#123456';
+        renderer['drawSkeletonOverlay'](recolored);
+        assert.notEqual(renderer['preparedLayers'][0], arbitraryLayout, 'connection metadata changes invalidate prepared styles');
     } finally {
         if (previous) Object.defineProperty(globalThis, 'OffscreenCanvas', previous);
         else Reflect.deleteProperty(globalThis, 'OffscreenCanvas');

@@ -15,6 +15,8 @@ export interface CameraNodeConfig {
     skeleton_tracking_enabled: boolean;
     charuco_board?: CharucoBoardConfigForPipeline;
     detector_type?: DetectorType;
+    dlc_model_path?: string | null;
+    dlc_confidence_threshold?: number;
     rtmpose_model_name?: RTMPoseModelName;
     rtmpose_confidence_threshold?: number;
     mediapipe_model_complexity?: MediapipeModelComplexity;

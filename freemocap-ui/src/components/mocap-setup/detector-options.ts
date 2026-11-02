@@ -5,4 +5,5 @@ export const DETECTOR_OPTIONS: {label: string; value: DetectorType}[] = [
     {label: 'RTMW', value: 'rtmpose'},
     {label: 'MediaPipe', value: 'mediapipe'},
     {label: 'RTMW + MediaPipe hands', value: 'rtmw_mediapipe_hands'},
+    {label: 'DLC', value: 'dlc'},
 ];

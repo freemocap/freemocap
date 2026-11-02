@@ -13,10 +13,12 @@ OPENAPI_TAGS = [
     {'name': 'Capture', 'description': 'Start and stop recording from connected cameras.'},
     {'name': 'Recording import', 'description': 'Inspect, synchronize and import external media.'},
     {'name': 'Realtime processing', 'description': 'Configure and control live processing.'},
+    {'name': 'Streaming outputs', 'description': 'Configure, start and stop downstream streaming outputs.'},
     {'name': 'Calibration tools', 'description': 'Discover, inspect and transform calibration files.'},
     {'name': 'Blender', 'description': 'Blender executable and package operations.'},
     {'name': 'Cameras', 'description': 'Standalone SkellyCam camera and microphone control.'},
     {'name': 'ONNX', 'description': 'Advertised execution providers and loaded inference-session diagnostics.'},
+    {'name': 'DeepLabCut', 'description': 'Inspect converted keypoint models and manage optional model conversion.'},
     {'name': 'FFmpeg', 'description': 'FFmpeg executable discovery.'},
     {'name': 'Telemetry', 'description': 'Application telemetry events.'},
 ]

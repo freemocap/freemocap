@@ -1,3 +1,4 @@
+import {DlcModelSettings} from '@/components/mocap-setup/dlc-model-settings';
 import React, { useCallback, useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import IconButton from '@/components/ui-components/IconButton';
@@ -101,8 +102,10 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                     </div>
                 </div>
 
+                {detectorType === "dlc" && <DlcModelSettings context="realtime"/>}
+
                 {/* RTMPose settings */}
-                {detectorType !== "mediapipe" && (
+                {(detectorType === "rtmpose" || detectorType === "rtmw_mediapipe_hands") && (
                     <>
                         <p className="text-sm text-gray p-1">
                             {detectorType === 'rtmw_mediapipe_hands'
@@ -151,7 +154,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                 )}
 
                 {/* MediaPipe settings */}
-                {detectorType !== "rtmpose" && (
+                {(detectorType === "mediapipe" || detectorType === "rtmw_mediapipe_hands") && (
                     <>
                         <p className="text-sm text-gray p-1">
                             {detectorType === 'mediapipe'

@@ -1,5 +1,6 @@
 import {serverClient, recordingRequest} from '@/services/server/sdk';
 import {recordingProcessingUrl} from '@/services/recording/posthoc-processing';
+import {dlcPosthocExecutionSettings} from './dlc-execution-settings';
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import type {RootState} from "@/store";
 import {selectMocapRecordingPath} from "./mocap-slice";
@@ -13,7 +14,7 @@ import type {StageSelection} from '@/services/recording/posthoc-processing';
 function buildPosthocConfig(state: RootState) {
     const { config } = state.mocap;
     const blender = state.blender;
-    if (state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
+    if (config.detectorType !== 'dlc' && state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
     const calibrationTomlPath = selectLoadedCalibration(state)?.path ?? null;
     return {
         bodyAlignment: {
@@ -34,6 +35,8 @@ function buildPosthocConfig(state: RootState) {
         boardMode: state.calibration.config.boardMode,
         charucoBoard: state.calibration.config.charucoBoard,
         detectorType: config.detectorType,
+        dlcModelPath: config.dlcModelPath,
+        dlcConfidenceThreshold: config.dlcConfidenceThreshold,
         rtmPoseModelName: config.rtmPoseModelName,
         rtmPoseConfidenceThreshold: config.rtmPoseConfidenceThreshold,
         executionProvider: config.executionProvider,
@@ -63,6 +66,7 @@ function buildPosthocConfig(state: RootState) {
         blenderExportConfig: blender.exportConfig,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
         autoOpenBlendFile: blender.autoOpenBlendFile,
+        ...dlcPosthocExecutionSettings(config.detectorType, config.dlcExecutionProvider),
     };
 }
 
@@ -320,12 +324,12 @@ export const processMocapRecording = createAsyncThunk<
 
             console.log('🔧 Processing recording:', {
                 mocapRecordingDirectory,
-                mocapTaskConfig: {...configWithCalibration, ...selection},
+                mocapTaskConfig: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)},
             });
 
             const response = await serverClient().responses.process_recording_freemocap_recordings__recording_id__processing_post({...recordingRequest(mocapRecordingDirectory),headers: { 'Content-Type': 'application/json' }, body: {
                     kind: 'mocap',
-                    config: {...configWithCalibration, ...selection},
+                    config: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)},
                 }});
 
             if (!response.ok) {

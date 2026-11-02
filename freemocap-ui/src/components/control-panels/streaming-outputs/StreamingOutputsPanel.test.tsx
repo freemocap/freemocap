@@ -29,18 +29,20 @@ test('VMC and LSL have sibling sections with their own controls and settings', (
     assert.doesNotMatch(html, /aria-label="Protocol"|Start output|Include fingers|Advanced output settings/);
 });
 
-test('each section sends its edited settings and VMC always includes fingers', () => {
+test('VMC defaults include fingers and advanced settings preserve an explicit opt-out', () => {
     const schema = {properties: {host: {default: '127.0.0.1'}, port: {default: 39539}, include_fingers: {default: true}}};
     const draft = {config: {host: '127.0.0.1', port: 39539, include_fingers: true}, pipeline: '', queueCapacity: 8};
     assert.equal(outputStartBody('vmc', schema, draft), null);
     assert.deepEqual(outputStartBody('vmc', schema, {...draft, config: {...draft.config, port: 39540, include_fingers: false}, pipeline: ' selected ', queueCapacity: 16}),
-        {protocol: 'vmc', pipeline_id: 'selected', queue_capacity: 16, config: {host: '127.0.0.1', port: 39540, include_fingers: true}});
+        {protocol: 'vmc', pipeline_id: 'selected', queue_capacity: 16, config: {host: '127.0.0.1', port: 39540, include_fingers: false}});
+    assert.deepEqual(outputStartBody('vmc', schema, {...draft, config: {...draft.config, include_fingers: false}}),
+        {protocol: 'vmc', pipeline_id: null, queue_capacity: 8, config: {...draft.config, include_fingers: false}});
     assert.deepEqual(outputStartBody('lsl', {}, {config: {stream_name: 'My session'}, pipeline: 'lsl-source', queueCapacity: 32}),
         {protocol: 'lsl', pipeline_id: 'lsl-source', queue_capacity: 32, config: {stream_name: 'My session'}});
 });
 
-test('old running backend receives explicit fingers instead of its old quick-start default', () => {
+test('an old backend uses explicit settings instead of its incompatible quick-start default', () => {
     const schema = {properties: {include_fingers: {default: false}}};
-    assert.deepEqual(outputStartBody('vmc', schema, {config: {include_fingers: false}, pipeline: '', queueCapacity: 8}),
+    assert.deepEqual(outputStartBody('vmc', schema, {config: {include_fingers: true}, pipeline: '', queueCapacity: 8}),
         {protocol: 'vmc', pipeline_id: null, queue_capacity: 8, config: {include_fingers: true}});
 });

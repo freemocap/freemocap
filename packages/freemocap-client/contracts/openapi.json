@@ -56,6 +56,220 @@
         }
       }
     },
+    "/freemocap/streaming/protocols": {
+      "get": {
+        "tags": [
+          "Streaming outputs"
+        ],
+        "summary": "List Protocols",
+        "operationId": "streaming_list_protocols",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OutputCapability"
+                  },
+                  "type": "array",
+                  "title": "Response Streaming List Protocols"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/streaming/outputs": {
+      "get": {
+        "tags": [
+          "Streaming outputs"
+        ],
+        "summary": "List Outputs",
+        "operationId": "streaming_list_outputs",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OutputState"
+                  },
+                  "type": "array",
+                  "title": "Response Streaming List Outputs"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Streaming outputs"
+        ],
+        "summary": "Create Output",
+        "operationId": "streaming_create_output",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartOutputRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown protocol"
+          },
+          "409": {
+            "description": "Source or capacity conflict"
+          },
+          "503": {
+            "description": "Protocol runtime unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/streaming/vmc/start": {
+      "post": {
+        "tags": [
+          "Streaming outputs"
+        ],
+        "summary": "Start VMC with defaults (no request body)",
+        "description": "Start UDP VMC on 127.0.0.1:39539, or return the existing default output.",
+        "operationId": "streaming_start_vmc",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputState"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Source or capacity conflict"
+          },
+          "503": {
+            "description": "Protocol runtime unavailable"
+          }
+        }
+      }
+    },
+    "/freemocap/streaming/outputs/{output_id}": {
+      "get": {
+        "tags": [
+          "Streaming outputs"
+        ],
+        "summary": "Get Output",
+        "operationId": "streaming_get_output",
+        "parameters": [
+          {
+            "name": "output_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Output Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown output"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Streaming outputs"
+        ],
+        "summary": "Stop Output",
+        "operationId": "streaming_stop_output",
+        "parameters": [
+          {
+            "name": "output_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Output Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown output"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/freemocap/capture/mocap/start": {
       "post": {
         "tags": [
@@ -2101,6 +2315,7 @@
                         "charuco_tracking_enabled": true,
                         "skeleton_tracking_enabled": true,
                         "detector_type": "rtmpose",
+                        "dlc_confidence_threshold": 0.4,
                         "rtmpose_model_name": "rtmw-x-l_256x192",
                         "rtmpose_confidence_threshold": 0.4,
                         "mediapipe_model_complexity": "lite",
@@ -2725,6 +2940,159 @@
         }
       }
     },
+    "/freemocap/dlc/readiness": {
+      "get": {
+        "tags": [
+          "DeepLabCut"
+        ],
+        "summary": "Conversion Readiness",
+        "operationId": "conversion_readiness_freemocap_dlc_readiness_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Conversion Readiness Freemocap Dlc Readiness Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/dlc/inspect": {
+      "post": {
+        "tags": [
+          "DeepLabCut"
+        ],
+        "summary": "Inspect Model",
+        "operationId": "inspect_model_freemocap_dlc_inspect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DlcInspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Inspect Model Freemocap Dlc Inspect Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/dlc/import": {
+      "post": {
+        "tags": [
+          "DeepLabCut"
+        ],
+        "summary": "Import Model",
+        "operationId": "import_model_freemocap_dlc_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DlcConversionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Import Model Freemocap Dlc Import Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/dlc/import/{job_id}": {
+      "get": {
+        "tags": [
+          "DeepLabCut"
+        ],
+        "summary": "Import Status",
+        "operationId": "import_status_freemocap_dlc_import__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Import Status Freemocap Dlc Import  Job Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/freemocap/telemetry/track": {
       "post": {
         "tags": [
@@ -2931,8 +3299,8 @@
                 "$ref": "#/components/schemas/StartRecordingRequest",
                 "examples": [
                   {
-                    "recording_name": "2026-11-01T15_44_03_gmt-5",
-                    "recording_directory": "C:\\Users\\jonma\\skellycam_data\\recordings\\2026-11-01T15_44_03_gmt-5",
+                    "recording_name": "2026-11-02T08_14_09_gmt-5",
+                    "recording_directory": "C:\\Users\\jonma\\skellycam_data\\recordings\\2026-11-02T08_14_09_gmt-5",
                     "mic_device_index": -1
                   }
                 ]
@@ -3050,220 +3418,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/freemocap/streaming/outputs/{output_id}": {
-      "delete": {
-        "tags": [
-          "Streaming outputs"
-        ],
-        "summary": "Stop Output",
-        "operationId": "streaming_stop_output",
-        "parameters": [
-          {
-            "name": "output_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Output Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OutputState"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown output"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Streaming outputs"
-        ],
-        "summary": "Get Output",
-        "operationId": "streaming_get_output",
-        "parameters": [
-          {
-            "name": "output_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Output Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OutputState"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown output"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/freemocap/streaming/outputs": {
-      "get": {
-        "tags": [
-          "Streaming outputs"
-        ],
-        "summary": "List Outputs",
-        "operationId": "streaming_list_outputs",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/OutputState"
-                  },
-                  "type": "array",
-                  "title": "Response Streaming List Outputs"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Streaming outputs"
-        ],
-        "summary": "Create Output",
-        "operationId": "streaming_create_output",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StartOutputRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OutputState"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown protocol"
-          },
-          "409": {
-            "description": "Source or capacity conflict"
-          },
-          "503": {
-            "description": "Protocol runtime unavailable"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/freemocap/streaming/protocols": {
-      "get": {
-        "tags": [
-          "Streaming outputs"
-        ],
-        "summary": "List Protocols",
-        "operationId": "streaming_list_protocols",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/OutputCapability"
-                  },
-                  "type": "array",
-                  "title": "Response Streaming List Protocols"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/freemocap/streaming/vmc/start": {
-      "post": {
-        "tags": [
-          "Streaming outputs"
-        ],
-        "summary": "Start VMC with defaults (no request body)",
-        "description": "Start UDP VMC on 127.0.0.1:39539, or return the existing default output.",
-        "operationId": "streaming_start_vmc",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OutputState"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Source or capacity conflict"
-          },
-          "503": {
-            "description": "Protocol runtime unavailable"
           }
         }
       }
@@ -4576,10 +4730,29 @@
             "enum": [
               "rtmpose",
               "mediapipe",
-              "rtmw_mediapipe_hands"
+              "rtmw_mediapipe_hands",
+              "dlc"
             ],
             "title": "Detector Type",
             "default": "rtmpose"
+          },
+          "dlc_model_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlc Model Path"
+          },
+          "dlc_confidence_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Dlc Confidence Threshold",
+            "default": 0.4
           },
           "rtmpose_model_name": {
             "type": "string",
@@ -4680,10 +4853,29 @@
             "enum": [
               "rtmpose",
               "mediapipe",
-              "rtmw_mediapipe_hands"
+              "rtmw_mediapipe_hands",
+              "dlc"
             ],
             "title": "Detector Type",
             "default": "rtmpose"
+          },
+          "dlc_model_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlc Model Path"
+          },
+          "dlc_confidence_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Dlc Confidence Threshold",
+            "default": 0.4
           },
           "rtmpose_model_name": {
             "type": "string",
@@ -5557,6 +5749,68 @@
         ],
         "title": "DetectionStageConfig",
         "description": "Declarative description of a DetectionStage and its subtree."
+      },
+      "DlcConversionRequest": {
+        "properties": {
+          "pose_config_path": {
+            "type": "string",
+            "format": "path",
+            "title": "Pose Config Path"
+          },
+          "checkpoint_path": {
+            "type": "string",
+            "format": "path",
+            "title": "Checkpoint Path"
+          },
+          "project_config_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Config Path"
+          },
+          "image_height": {
+            "type": "integer",
+            "maximum": 8192.0,
+            "minimum": 32.0,
+            "title": "Image Height",
+            "default": 480
+          },
+          "image_width": {
+            "type": "integer",
+            "maximum": 8192.0,
+            "minimum": 32.0,
+            "title": "Image Width",
+            "default": 640
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pose_config_path",
+          "checkpoint_path"
+        ],
+        "title": "DlcConversionRequest"
+      },
+      "DlcInspectRequest": {
+        "properties": {
+          "sidecar_path": {
+            "type": "string",
+            "format": "path",
+            "title": "Sidecar Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sidecar_path"
+        ],
+        "title": "DlcInspectRequest"
       },
       "ExportInventory": {
         "properties": {
@@ -6814,6 +7068,175 @@
         "title": "OperationProgressSnapshot",
         "description": "One independently executing operation, described by its producer."
       },
+      "OutputCapability": {
+        "properties": {
+          "protocol": {
+            "type": "string",
+            "title": "Protocol"
+          },
+          "config_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config Schema"
+          },
+          "overflow_policy": {
+            "type": "string",
+            "enum": [
+              "latest",
+              "fail"
+            ],
+            "title": "Overflow Policy"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "protocol",
+          "config_schema",
+          "overflow_policy",
+          "available"
+        ],
+        "title": "OutputCapability"
+      },
+      "OutputState": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "protocol": {
+            "type": "string",
+            "title": "Protocol"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "active_pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Pipeline Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "running",
+              "failed",
+              "stopped"
+            ],
+            "title": "Status",
+            "default": "idle"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "queue_capacity": {
+            "type": "integer",
+            "title": "Queue Capacity"
+          },
+          "overflow_policy": {
+            "type": "string",
+            "enum": [
+              "latest",
+              "fail"
+            ],
+            "title": "Overflow Policy"
+          },
+          "frames_emitted": {
+            "type": "integer",
+            "title": "Frames Emitted",
+            "default": 0
+          },
+          "source_frame_gaps": {
+            "type": "integer",
+            "title": "Source Frame Gaps",
+            "default": 0
+          },
+          "queue_dropped_frames": {
+            "type": "integer",
+            "title": "Queue Dropped Frames",
+            "default": 0
+          },
+          "queue_overflows": {
+            "type": "integer",
+            "title": "Queue Overflows",
+            "default": 0
+          },
+          "last_frame_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Frame Number"
+          },
+          "last_capture_timestamp_ns": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Capture Timestamp Ns"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "protocol",
+          "pipeline_id",
+          "config",
+          "queue_capacity",
+          "overflow_policy"
+        ],
+        "title": "OutputState"
+      },
       "PlaybackManifest": {
         "properties": {
           "recording_id": {
@@ -7182,11 +7605,30 @@
             "enum": [
               "rtmpose",
               "mediapipe",
-              "rtmw_mediapipe_hands"
+              "rtmw_mediapipe_hands",
+              "dlc"
             ],
             "title": "Detectortype",
             "description": "Tracking preset: RTMW, MediaPipe, or RTMW with MediaPipe hands.",
             "default": "rtmpose"
+          },
+          "dlcModelPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlcmodelpath"
+          },
+          "dlcConfidenceThreshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Dlcconfidencethreshold",
+            "default": 0.4
           },
           "rtmPoseModelName": {
             "type": "string",
@@ -7811,6 +8253,7 @@
                   "charuco_tracking_enabled": true,
                   "confidence_threshold": 0.4,
                   "detector_type": "rtmpose",
+                  "dlc_confidence_threshold": 0.4,
                   "mediapipe_detection_confidence": 0.5,
                   "mediapipe_model_complexity": "lite",
                   "mediapipe_num_faces": 1,
@@ -8960,6 +9403,45 @@
         ],
         "title": "StartMocapRecordingResponse"
       },
+      "StartOutputRequest": {
+        "properties": {
+          "protocol": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Protocol"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "queue_capacity": {
+            "type": "integer",
+            "maximum": 256.0,
+            "minimum": 1.0,
+            "title": "Queue Capacity",
+            "default": 8
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "protocol"
+        ],
+        "title": "StartOutputRequest"
+      },
       "StartRecordingRequest": {
         "properties": {
           "recording_name": {
@@ -9701,214 +10183,6 @@
           "thread"
         ],
         "title": "WorkerMode"
-      },
-      "OutputCapability": {
-        "properties": {
-          "protocol": {
-            "type": "string",
-            "title": "Protocol"
-          },
-          "config_schema": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Config Schema"
-          },
-          "overflow_policy": {
-            "type": "string",
-            "enum": [
-              "latest",
-              "fail"
-            ],
-            "title": "Overflow Policy"
-          },
-          "available": {
-            "type": "boolean",
-            "title": "Available"
-          },
-          "unavailable_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unavailable Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "protocol",
-          "config_schema",
-          "overflow_policy",
-          "available"
-        ],
-        "title": "OutputCapability"
-      },
-      "OutputState": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "protocol": {
-            "type": "string",
-            "title": "Protocol"
-          },
-          "pipeline_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pipeline Id"
-          },
-          "active_pipeline_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Active Pipeline Id"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "idle",
-              "running",
-              "failed",
-              "stopped"
-            ],
-            "title": "Status",
-            "default": "idle"
-          },
-          "config": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Config"
-          },
-          "queue_capacity": {
-            "type": "integer",
-            "title": "Queue Capacity"
-          },
-          "overflow_policy": {
-            "type": "string",
-            "enum": [
-              "latest",
-              "fail"
-            ],
-            "title": "Overflow Policy"
-          },
-          "frames_emitted": {
-            "type": "integer",
-            "title": "Frames Emitted",
-            "default": 0
-          },
-          "source_frame_gaps": {
-            "type": "integer",
-            "title": "Source Frame Gaps",
-            "default": 0
-          },
-          "queue_dropped_frames": {
-            "type": "integer",
-            "title": "Queue Dropped Frames",
-            "default": 0
-          },
-          "queue_overflows": {
-            "type": "integer",
-            "title": "Queue Overflows",
-            "default": 0
-          },
-          "last_frame_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Frame Number"
-          },
-          "last_capture_timestamp_ns": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Capture Timestamp Ns"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "protocol",
-          "pipeline_id",
-          "config",
-          "queue_capacity",
-          "overflow_policy"
-        ],
-        "title": "OutputState"
-      },
-      "StartOutputRequest": {
-        "properties": {
-          "protocol": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Protocol"
-          },
-          "pipeline_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pipeline Id"
-          },
-          "config": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Config"
-          },
-          "queue_capacity": {
-            "type": "integer",
-            "maximum": 256.0,
-            "minimum": 1.0,
-            "title": "Queue Capacity",
-            "default": 8
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "protocol"
-        ],
-        "title": "StartOutputRequest"
       }
     }
   },
@@ -9962,6 +10236,10 @@
       "description": "Configure and control live processing."
     },
     {
+      "name": "Streaming outputs",
+      "description": "Configure, start and stop downstream streaming outputs."
+    },
+    {
       "name": "Calibration tools",
       "description": "Discover, inspect and transform calibration files."
     },
@@ -9976,6 +10254,10 @@
     {
       "name": "ONNX",
       "description": "Advertised execution providers and loaded inference-session diagnostics."
+    },
+    {
+      "name": "DeepLabCut",
+      "description": "Inspect converted keypoint models and manage optional model conversion."
     },
     {
       "name": "FFmpeg",

@@ -30,6 +30,7 @@ from skellycam.core.camera.config.image_rotation_types import RotationTypes
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
+from skellytracker.core.tracker.tracker_presets import DlcTrackerMetadata
 
 from freemocap.api.websocket.client_messages import ClientMessageError, FrameAcknowledgment
 from freemocap.api.websocket.frame_relay import FrameRelay
@@ -128,6 +129,7 @@ class WebsocketServer:
             camera_ids=camera_ids,
             calibrated_cameras=self._calibrated_cameras_from(aggregator_output),
             detector_type=detector_type,
+            independent_trackers=self._independent_trackers(),
             pipeline_live=bool(camera_ids),
             live_image_sizes={
                 cam_id: (config.width, config.height)
@@ -177,7 +179,16 @@ class WebsocketServer:
             self._current_detector_type(),
             bool(camera_ids),
             self._calibrated_cameras_from(aggregator_output),
+            self._independent_trackers(),
         )
+
+    def _independent_trackers(self) -> tuple[DlcTrackerMetadata, ...]:
+        """Use validated startup metadata; never touch model files on the frame path."""
+        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            if pipeline.alive:
+                metadata = getattr(pipeline, "tracker_metadata", None)
+                return (metadata,) if metadata is not None else ()
+        return ()
 
     def _calibrated_cameras_from(
         self,
@@ -245,7 +256,7 @@ class WebsocketServer:
 
     @staticmethod
     def _context_signature(ctx: StreamContext) -> tuple:
-        return (ctx.camera_ids, ctx.detector_type, ctx.pipeline_live, ctx.calibrated_cameras)
+        return (ctx.camera_ids, ctx.detector_type, ctx.pipeline_live, ctx.calibrated_cameras, ctx.independent_trackers)
 
     def _current_camera_ids(self) -> tuple[str, ...]:
         """The sorted camera IDs across all live realtime pipelines."""

@@ -73,3 +73,7 @@ errors, aborts, cancellation and asset ownership; compatibility records list act
 | GET | `/freemocap/streaming/protocols` | `streaming_list_protocols` | Core integration |
 | POST | `/freemocap/streaming/outputs` | `streaming_create_output` | Core integration |
 | POST | `/freemocap/streaming/vmc/start` | `streaming_start_vmc` | Core integration |
+| GET | `/freemocap/dlc/readiness` | `conversion_readiness_freemocap_dlc_readiness_get` | Core integration |
+| POST | `/freemocap/dlc/inspect` | `inspect_model_freemocap_dlc_inspect_post` | Core integration |
+| POST | `/freemocap/dlc/import` | `import_model_freemocap_dlc_import_post` | Core integration |
+| GET | `/freemocap/dlc/import/{job_id}` | `import_status_freemocap_dlc_import__job_id__get` | Core integration |

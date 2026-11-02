@@ -66,10 +66,15 @@ def tracker_session_requests(
     mediapipe_disable_gpu: bool | None = None,
 ) -> tuple[SessionRequest, ...]:
     """Describe Tracker registry resources without allocating inference sessions."""
+    overrides = {"execution_provider": execution_provider}
+    if config.preset_name == "dlc":
+        if execution_provider not in ("cpu", "cuda"):
+            raise ValueError("DLC requires an explicit CPU or CUDA execution provider; auto and TensorRT are unsupported")
+        overrides["fp16"] = False
     requests = registry_session_requests(
         config,
         batch_size=batch_size,
-        onnx_overrides={"execution_provider": execution_provider},
+        onnx_overrides=overrides,
         mediapipe_overrides={"disable_gpu": mediapipe_disable_gpu},
     )
     if not requests:
@@ -189,6 +194,16 @@ from skellytracker.core.tracker.tracker_presets import (
 
 def tracker_config_for_settings(settings, *, video_fps: float = 30.0) -> TrackerConfig:
     """Translate application setting names into Tracker's public preset interface."""
+    if settings.detector_type == "dlc":
+        from skellytracker.core.tracker.tracker_presets import dlc_tracker_config
+        from skellytracker.core.sidecar.errors import SidecarError
+        if not settings.dlc_model_path:
+            raise ValueError("Select or import a DLC model before starting tracking (dlc_model_path)")
+        try:
+            return dlc_tracker_config(sidecar_path=settings.dlc_model_path,
+                                      confidence_threshold=settings.dlc_confidence_threshold)
+        except (SidecarError, OSError) as error:
+            raise ValueError(f"Invalid DLC model selection: {error}") from error
     return human_tracker_config(
         preset=settings.detector_type, model_name=settings.rtmpose_model_name,
         confidence_threshold=settings.rtmpose_confidence_threshold, video_fps=video_fps,

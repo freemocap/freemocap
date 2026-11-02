@@ -31,10 +31,13 @@ from skellyforge.core.skeleton.components.color_palette import ColorPalette
 from freemocap.core.streaming.producers import ALL_PRODUCERS
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
+from freemocap.core.streaming.producers.overlay_producer import OverlayProducer
+from freemocap.core.streaming.rest_geometry import ModelConnectionGroup
 
 _TRACKER_KINDS = frozenset(
     (ChannelKind.KEYPOINTS_3D, ChannelKind.OVERLAY_2D, ChannelKind.BOXES_2D)
 )
+_OVERLAY_PRODUCER = OverlayProducer()
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +49,7 @@ class MessageComposition:
     convention: CoordinateConvention
     cameras: tuple[CalibratedCamera, ...]
     models: tuple[ModelDefinition, ...]
+    independent_connections: tuple[tuple[ModelConnectionGroup, ...], ...] = ()
     model_sequence: int = 0
 
     def compose_frame_message(self, frame_ctx: FrameContext) -> FrameMessage:
@@ -97,6 +101,15 @@ class MessageComposition:
                     )
                 )
         aggregation = frame_ctx.aggregator_output
+        if self.context.pipeline_live:
+            for metadata, connections in zip(
+                self.context.independent_trackers, self.independent_connections, strict=True,
+            ):
+                trackers.append(TrackerObservation(
+                    tracker_id=metadata.model_sha256, detector_type="dlc", model_id=None,
+                    channels=tuple(_OVERLAY_PRODUCER.fill_tracker(fill_ctx, metadata)),
+                    connection_groups=connections,
+                ))
         diagnostics = frame_diagnostics(
             reprojection=aggregation.reprojection_diagnostics,
             reconstructions=aggregation.reconstructions,
@@ -128,6 +141,11 @@ def compose_messages(ctx: StreamContext) -> MessageComposition:
         producers=active,
         convention=CoordinateConvention(),
         cameras=ctx.calibrated_cameras,
+        independent_connections=tuple(
+            tuple(ModelConnectionGroup(name=name, pairs=edges, color="#00AA00")
+                  for name, edges in metadata.connection_groups)
+            for metadata in ctx.independent_trackers
+        ),
         # One definition per tracked skeleton. Colours are resolved from each skeleton's
         # group tags HERE, so the wire carries an answer and no client needs the palette.
         models=tuple(

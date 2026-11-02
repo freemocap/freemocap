@@ -274,6 +274,96 @@ def test_partial_pose_keeps_valid_branches_without_fabricating_missing_bones(hum
     assert pose.source_timestamp_ns == sample.source_timestamp_ns
 
 
+def bone_wire_values(pose):
+    """Production OSC encoding, independent decoding, no sockets or receiver UI."""
+    messages = [osc_message('/VMC/Ext/Bone/Pos', name, *map(float, position), *map(float, rotation))
+                for name, position, rotation in zip(pose.bone_names, pose.local_positions_m,
+                                                    pose.local_quaternions_xyzw, strict=True)]
+    return {values[0]: np.asarray(values[1:]) for packet in osc_bundles(messages, 1200)
+            for address, values in decode_packet(packet) if address == '/VMC/Ext/Bone/Pos'}
+
+
+@pytest.mark.parametrize('fault', ['nan', 'status'])
+def test_missing_leg_sequence_omits_invalid_branch_and_recovers_without_stale_sender_pose(human, fault):
+    """A retaining receiver model keeps old bones; omission is not a hide command."""
+    first = sample_frame(human, timestamp=9_100_000_000_000_123)
+    index = next(i for i, s in enumerate(human[0].segments) if s.name == 'left_upper_leg')
+    instance = first.frame.instances[0]
+    channels = list(instance.channels)
+    if fault == 'nan':
+        values = np.frombuffer(channels[0].data, dtype='<f4').copy().reshape(-1, 3)
+        values[index] = np.nan
+        channels[0] = replace(channels[0], data=values.tobytes())
+    else:
+        status = np.ones(len(human[0].segments), dtype=np.uint8)
+        status[index] = 0
+        channels[1] = replace(channels[1], sample_status=status.tobytes())
+    missing = replace(first.frame, instances=(replace(instance, channels=tuple(channels)),))
+    recovered_channels = list(instance.channels)
+    rotations = np.frombuffer(recovered_channels[1].data, dtype='<f4').copy().reshape(-1, 4)
+    old = Rotation.from_quat(rotations[index, [1, 2, 3, 0]])
+    rotations[index] = (Rotation.from_euler('x', 35, degrees=True) * old).as_quat()[[3, 0, 1, 2]]
+    recovered_channels[1] = replace(recovered_channels[1], data=rotations.tobytes())
+    recovered = replace(first.frame, instances=(replace(instance, channels=tuple(recovered_channels)),))
+    projector = VmcProjector(VmcConfig())
+    poses = [projector.project(frame, first.source_timestamp_ns + step)
+             for step, frame in enumerate((first.frame, missing, recovered))]
+    cache = {}
+    snapshots = []
+    for step, pose in enumerate(poses):
+        assert pose is not None
+        assert pose.source_timestamp_ns == first.source_timestamp_ns + step
+        assert np.isfinite(pose.local_positions_m).all()
+        assert np.isfinite(pose.local_quaternions_xyzw).all()
+        wire = bone_wire_values(pose)
+        assert set(wire) == set(pose.bone_names)
+        assert all(np.isfinite(values).all() for values in wire.values())
+        cache.update({name: values[3:].copy() for name, values in wire.items()})
+        snapshots.append({name: value.copy() for name, value in cache.items()})
+    excluded = {'LeftUpperLeg', 'LeftLowerLeg', 'LeftFoot', 'LeftToes'}
+    assert set(poses[1].bone_names) == set(poses[0].bone_names) - excluded
+    assert poses[2].bone_names == poses[0].bone_names
+    np.testing.assert_array_equal(snapshots[1]['LeftUpperLeg'], snapshots[0]['LeftUpperLeg'])
+    assert not np.allclose(snapshots[2]['LeftUpperLeg'], snapshots[0]['LeftUpperLeg'])
+    # The cache models retention only, not the installed VSeeFace implementation.
+    assert excluded <= snapshots[1].keys()
+
+
+def test_measured_hand_origin_contact_requires_receiver_position_application(human):
+    """Joint contact fixture, not a claim about palm meshes or an installed avatar."""
+    first = sample_frame(human)
+    moving = sample_frame(human, perturb=True)
+    instance = moving.frame.instances[0]
+    channels = list(instance.channels)
+    origins = np.frombuffer(channels[0].data, dtype='<f4').copy().reshape(-1, 3)
+    for name in ('left_carpals', 'right_carpals'):
+        row = next(i for i, segment in enumerate(human[0].segments) if segment.name == name)
+        origins[row] = [100., 200., 300.]
+    channels[0] = replace(channels[0], data=origins.tobytes())
+    frame = replace(moving.frame, instances=(replace(instance, channels=tuple(channels)),))
+    projector = VmcProjector(VmcConfig(include_fingers=False))
+    rest = projector.project(first.frame, first.source_timestamp_ns)
+    pose = projector.project(frame, moving.source_timestamp_ns)
+    wire = bone_wire_values(pose)
+    wire_positions = np.asarray([wire[name][:3] for name in pose.bone_names])
+    def rebuild(local_positions):
+        rotations, positions = {}, {}
+        for row, name in enumerate(pose.bone_names):
+            parent = int(projector.parents[row])
+            parent_rotation = np.eye(3) if parent < 0 else rotations[parent]
+            parent_position = pose.root_position_m if parent < 0 else positions[parent]
+            rotations[row] = parent_rotation @ Rotation.from_quat(wire[name][3:]).as_matrix()
+            positions[row] = parent_position + parent_rotation @ local_positions[row]
+        return {name: positions[row] for row, name in enumerate(pose.bone_names)}
+    measured = rebuild(wire_positions)
+    # Independent Blender -> Unity basis: x stays x; y/z exchange; mm -> m.
+    np.testing.assert_allclose(measured['LeftHand'], [.1, .3, .2], atol=2e-6)
+    np.testing.assert_allclose(measured['RightHand'], [.1, .3, .2], atol=2e-6)
+    retained_offsets = rebuild(rest.local_positions_m)
+    assert np.linalg.norm(retained_offsets['LeftHand'] - retained_offsets['RightHand']) > .01
+    assert pose.source_timestamp_ns == moving.source_timestamp_ns
+
+
 @pytest.mark.parametrize('missing_metadata', [False, True])
 def test_default_streams_available_fingers_without_requiring_missing_fingers(human, missing_metadata):
     sample = sample_frame(human, perturb=True)

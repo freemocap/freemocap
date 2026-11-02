@@ -659,6 +659,7 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pyinstaller" },
+    { name = "pylsl" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "scikit-learn" },
@@ -677,9 +678,6 @@ cpu = [
 ]
 cuda = [
     { name = "skellytracker", extra = ["all-cuda"] },
-]
-lsl = [
-    { name = "pylsl" },
 ]
 trt = [
     { name = "skellytracker", extra = ["all-trt"] },
@@ -729,7 +727,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=25.0.1" },
     { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pyinstaller", specifier = ">=6.11.0" },
-    { name = "pylsl", marker = "extra == 'lsl'", specifier = ">=1.18.6,<2" },
+    { name = "pylsl", specifier = ">=1.18.6,<2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
@@ -744,7 +742,7 @@ requires-dist = [
     { name = "skellytracker", extras = ["all-trt"], marker = "extra == 'trt'", editable = "../skellytracker" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
-provides-extras = ["cuda", "trt", "cpu", "lsl"]
+provides-extras = ["cuda", "trt", "cpu"]
 
 [package.metadata.requires-dev]
 cpu = [{ name = "skellytracker", extras = ["all-cpu"], editable = "../skellytracker" }]

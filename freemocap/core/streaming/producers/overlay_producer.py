@@ -8,6 +8,7 @@ from __future__ import annotations
 
 
 import numpy as np
+from skellytracker.core.tracker.tracker_presets import DlcTrackerMetadata  # noqa: TC002 - runtime type checking
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.channel_helpers import assemble_channel_bytes, camera_2d_detections
@@ -17,6 +18,28 @@ from freemocap.core.streaming.producers.producer_contexts import FrameContext, S
 
 
 class OverlayProducer(ChannelProducer):
+    def fill_tracker(
+        self, frame_ctx: FrameContext, metadata: DlcTrackerMetadata,
+    ) -> list[ChannelBlock]:
+        """Publish Tracker-owned keypoints without requiring anatomical geometry."""
+        context = frame_ctx.stream_context
+        if context is None or frame_ctx.aggregator_output is None:
+            return []
+        names = metadata.keypoint_names
+        columns = ("x", "y", "visibility")
+        blocks = []
+        for camera_id in context.camera_ids:
+            detections = camera_2d_detections(
+                frame_ctx.aggregator_output, camera_id,
+                detector_type="dlc", stage_path=metadata.stage_path,
+            )
+            blocks.append(ChannelBlock(
+                kind=ChannelKind.OVERLAY_2D, names=names, columns=columns,
+                data=assemble_channel_bytes(names=names, columns=columns, positions=detections),
+                camera_id=camera_id, image_size=context.live_image_sizes.get(camera_id),
+            ))
+        return blocks
+
     def is_active(self, ctx: StreamContext) -> bool:
         return ctx.pipeline_live
 

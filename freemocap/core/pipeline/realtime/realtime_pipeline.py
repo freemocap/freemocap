@@ -14,6 +14,7 @@ import multiprocessing
 import multiprocessing.synchronize
 import uuid
 from dataclasses import dataclass
+from skellytracker.core.tracker.tracker_presets import DlcTrackerMetadata, dlc_tracker_metadata
 from queue import Empty
 
 from pydantic import BaseModel, ConfigDict
@@ -76,6 +77,7 @@ class RealtimePipeline:
     worker_registry: WorkerRegistry
     inference_service: InferenceService
     started: bool = False
+    tracker_metadata: DlcTrackerMetadata | None = None
     _latest_aggregation_output: AggregationNodeOutputMessage | None = None
     # Config stashed while a calibration recording temporarily forces Charuco-only
     # mode (skeleton inference paused). None whenever not in that mode.
@@ -204,6 +206,7 @@ class RealtimePipeline:
             realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> "RealtimePipeline":
         global_kill_flag = camera_group.ipc.global_kill_flag
+        tracker_metadata = cls._tracker_metadata_for(pipeline_config)
 
         # ONE id for the pipeline and its IPC — the aggregator's output message
         # carries ipc.pipeline_id, and consumers look the pipeline up by its id.
@@ -318,6 +321,7 @@ class RealtimePipeline:
                 pubsub=pubsub,
                 worker_registry=worker_registry,
                 inference_service=inference_service,
+                tracker_metadata=tracker_metadata,
             )
         except BaseException:
             try:
@@ -399,6 +403,9 @@ class RealtimePipeline:
             new_config.skeleton_inference_node_config != self.config.skeleton_inference_node_config
             or new_config.camera_node_config.skeleton_settings != self.config.camera_node_config.skeleton_settings
         )
+        metadata_changed = (inference_changed or new_config.camera_node_config.skeleton_tracking_enabled
+                            != self.config.camera_node_config.skeleton_tracking_enabled)
+        tracker_metadata = self._tracker_metadata_for(new_config) if metadata_changed else self.tracker_metadata
         if node is not None and (old_detector != new_detector or inference_changed):
             node.shutdown()
             self.skeleton_inference_node = None
@@ -425,6 +432,14 @@ class RealtimePipeline:
             message=PipelineConfigUpdateMessage(pipeline_config=new_config),
         )
         self.config = new_config
+        self.tracker_metadata = tracker_metadata
+
+    @staticmethod
+    def _tracker_metadata_for(config: RealtimePipelineConfig) -> DlcTrackerMetadata | None:
+        camera = config.camera_node_config
+        if camera.detector_type == "dlc" and camera.skeleton_tracking_enabled:
+            return dlc_tracker_metadata(sidecar_path=camera.dlc_model_path)
+        return None
 
     def enter_calibration_charuco_only_mode(self) -> None:
         """Pause skeleton inference for the duration of a calibration recording.

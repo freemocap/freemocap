@@ -135,6 +135,21 @@ def build_skeleton_stage_schema(
 def build_observation_annotator(tracker_config: TrackerConfig) -> KeypointAnnotator:
     """Compose configured stage annotations on the supplied image."""
     stage_annotators: dict[str, StageKeypointAnnotator] = {}
+    if tracker_config.preset_name == "dlc":
+        from skellytracker.core.tracker.tracker_presets import dlc_tracker_metadata
+        schemas = {}
+        for stage in tracker_config.stages:
+            for detector in stage.keypoint_detectors:
+                if detector.detector_type == "dlc":
+                    metadata = dlc_tracker_metadata(sidecar_path=detector.model_name)
+                    schemas[metadata.stage_path[-1]] = StageAnnotationSchema(
+                        connections=metadata.connections, keypoint_color=_CENTER_COLOR,
+                        connection_color=_CENTER_COLOR, draw_boxes=False)
+                elif isinstance(detector, CharucoDetectorConfig):
+                    stage_annotators[stage.name] = CharucoAnnotator(
+                        config=CharucoAnnotatorConfig(), board_def=detector.board)
+        return KeypointAnnotator(config=KeypointAnnotatorConfig(stage_schemas=schemas),
+                                 stage_annotators=stage_annotators)
     uses_mediapipe = False
     pending_stages = list(tracker_config.stages)
     while pending_stages:

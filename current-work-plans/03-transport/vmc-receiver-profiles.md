@@ -24,8 +24,9 @@ changing profiles can clear a pose left by the old binding; missing measurements
 are not synthesized.
 
 Available fingers are included by default. Missing finger measurements or a
-body-only model do not suppress valid body bones. The UI always includes fingers;
-the API retains `include_fingers` for existing clients. The Outputs popup has
+body-only model do not suppress valid body bones. The advanced VMC settings include
+a finger checkbox that starts enabled; disabling it sends `include_fingers=false`.
+The Outputs popup has
 separate VMC and LSL sections, each with its own settings and Start/Stop controls.
 Stop an active output before starting it with changed settings.
 

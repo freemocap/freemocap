@@ -10,6 +10,36 @@ export const operationDefinitions = {
     "path": "/shutdown",
     "asset": false
   },
+  "streaming_list_protocols": {
+    "method": "GET",
+    "path": "/freemocap/streaming/protocols",
+    "asset": false
+  },
+  "streaming_list_outputs": {
+    "method": "GET",
+    "path": "/freemocap/streaming/outputs",
+    "asset": false
+  },
+  "streaming_create_output": {
+    "method": "POST",
+    "path": "/freemocap/streaming/outputs",
+    "asset": false
+  },
+  "streaming_start_vmc": {
+    "method": "POST",
+    "path": "/freemocap/streaming/vmc/start",
+    "asset": false
+  },
+  "streaming_get_output": {
+    "method": "GET",
+    "path": "/freemocap/streaming/outputs/{output_id}",
+    "asset": false
+  },
+  "streaming_stop_output": {
+    "method": "DELETE",
+    "path": "/freemocap/streaming/outputs/{output_id}",
+    "asset": false
+  },
   "capture_start_mocap_recording": {
     "method": "POST",
     "path": "/freemocap/capture/mocap/start",
@@ -255,6 +285,26 @@ export const operationDefinitions = {
     "path": "/freemocap/onnx/session_providers",
     "asset": false
   },
+  "conversion_readiness_freemocap_dlc_readiness_get": {
+    "method": "GET",
+    "path": "/freemocap/dlc/readiness",
+    "asset": false
+  },
+  "inspect_model_freemocap_dlc_inspect_post": {
+    "method": "POST",
+    "path": "/freemocap/dlc/inspect",
+    "asset": false
+  },
+  "import_model_freemocap_dlc_import_post": {
+    "method": "POST",
+    "path": "/freemocap/dlc/import",
+    "asset": false
+  },
+  "import_status_freemocap_dlc_import__job_id__get": {
+    "method": "GET",
+    "path": "/freemocap/dlc/import/{job_id}",
+    "asset": false
+  },
   "track_telemetry_event_freemocap_telemetry_track_post": {
     "method": "POST",
     "path": "/freemocap/telemetry/track",
@@ -293,36 +343,6 @@ export const operationDefinitions = {
   "pause_camera_groups_skellycam_camera_group_all_pause_put": {
     "method": "PUT",
     "path": "/skellycam/camera/group/all/pause",
-    "asset": false
-  },
-  "streaming_stop_output": {
-    "method": "DELETE",
-    "path": "/freemocap/streaming/outputs/{output_id}",
-    "asset": false
-  },
-  "streaming_get_output": {
-    "method": "GET",
-    "path": "/freemocap/streaming/outputs/{output_id}",
-    "asset": false
-  },
-  "streaming_list_outputs": {
-    "method": "GET",
-    "path": "/freemocap/streaming/outputs",
-    "asset": false
-  },
-  "streaming_create_output": {
-    "method": "POST",
-    "path": "/freemocap/streaming/outputs",
-    "asset": false
-  },
-  "streaming_list_protocols": {
-    "method": "GET",
-    "path": "/freemocap/streaming/protocols",
-    "asset": false
-  },
-  "streaming_start_vmc": {
-    "method": "POST",
-    "path": "/freemocap/streaming/vmc/start",
     "asset": false
   }
 } as const;

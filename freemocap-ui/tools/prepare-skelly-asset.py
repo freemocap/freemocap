@@ -17,6 +17,9 @@ from scipy.spatial.transform import Rotation
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 
+# Reversible artwork trial; not a measured soft-tissue correction or model scale.
+SKULL_ARTWORK_SCALE = 0.90
+
 
 def basis(primary, secondary):
     primary = np.asarray(primary, dtype=float)
@@ -125,6 +128,8 @@ def prepare(addon_root, reference_model=None):
         if old == 'pelvis':
             width = skeleton.landmarks['left_hip_socket'].local_position.array - skeleton.landmarks['right_hip_socket'].local_position.array
             scale = np.linalg.norm(width) / np.linalg.norm(vertices[groups['pelvis_left'][0]] - vertices[groups['pelvis_right'][0]])
+        if name == 'skull':
+            scale *= SKULL_ARTWORK_SCALE
         remap = {index: row for row, index in enumerate(indices)}
         positions = ((vertices[indices] - head) @ rotation.T * scale).tolist()
         triangles, materials = [], []
@@ -147,6 +152,7 @@ def prepare(addon_root, reference_model=None):
     if not {i for face in asset['faces'] for i in face}.issubset(assigned):
         raise ValueError('Unmapped surface')
     return dict(version=1, coordinateSystem=asset['coordinate_system'],
+                artworkScales={'skull': SKULL_ARTWORK_SCALE},
                 source='freemocap_blender_addon/assets/skelly_full_mesh_20k_faces.blend',
                 sourceSha256=hashlib.sha256(asset_path.read_bytes()).hexdigest(),
                 landmarks={name: point.array.tolist() for name, point in rest.landmark_positions.items()},

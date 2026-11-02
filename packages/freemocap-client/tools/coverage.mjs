@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {operationDefinitions} from '../dist/generated/operations.js';
 const contract = JSON.parse(readFileSync('contracts/operations.json', 'utf8'));
-assert.equal(contract.public_http.length, 65);
+const schema = JSON.parse(readFileSync('contracts/openapi.json', 'utf8'));
+assert.equal(contract.public_http.length, Object.values(schema.paths).flatMap(methods =>
+    Object.values(methods).filter(operation => operation.operationId)).length);
 assert.deepEqual(Object.keys(operationDefinitions).sort(), contract.public_http.map(item => item.operation_id).sort());
 const lines = ['# HTTP operation coverage', '',
     'Generated from the reviewed ledger; run `npm run coverage` after building.', '',

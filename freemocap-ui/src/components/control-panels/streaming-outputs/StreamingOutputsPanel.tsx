@@ -19,12 +19,15 @@ const defaults = (schema: Schema): Record<string, unknown> => Object.fromEntries
     Object.entries(schema.properties ?? {}).filter(([, field]) => field.default != null)
         .map(([name, field]) => [name, field.default]));
 type Draft = {config: Record<string, unknown>; pipeline: string; queueCapacity: number};
-const initialDraft = (schema: Schema): Draft => ({config: defaults(schema), pipeline: '', queueCapacity: 8});
+const initialDraft = (schema: Schema): Draft => ({
+    config: {...defaults(schema), ...(schema.properties?.include_fingers ? {include_fingers: true} : {})},
+    pipeline: '', queueCapacity: 8,
+});
 
 /** Null selects the no-body default VMC route; edited settings use generic create. */
 export function outputStartBody(protocol: string, schema: Schema, draft: Draft) {
-    const config = protocol === 'vmc' ? {...draft.config, include_fingers: true} : draft.config;
-    const expected = {...defaults(schema), ...(protocol === 'vmc' ? {include_fingers: true} : {})};
+    const config = draft.config;
+    const expected = defaults(schema);
     const unchanged = Object.keys(config).length === Object.keys(expected).length
         && Object.entries(expected).every(([key, value]) => JSON.stringify(config[key]) === JSON.stringify(value));
     if (protocol === 'vmc' && schema.properties?.include_fingers?.default === true
@@ -147,7 +150,6 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
     }
 
     function fieldControl(protocol: string, schema: Schema, name: string, original: Field) {
-        if (name === 'include_fingers') return null;
         const field = original.anyOf?.find(item => item.type !== 'null') ?? original;
         const value = (drafts[protocol] ?? initialDraft(schema)).config[name];
         const update = (next: unknown) => updateDraft(protocol, schema, previous => ({...previous, config: {...previous.config, [name]: next}}));

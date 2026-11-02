@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import RealtimeAggregatorNodeConfig
@@ -23,3 +23,12 @@ class RealtimePipelineConfig(BaseModel):
     skeleton_inference_node_config: RealtimeSkeletonInferenceNodeConfig = Field(
         default_factory=RealtimeSkeletonInferenceNodeConfig,
     )
+
+    @model_validator(mode="after")
+    def validate_dlc_execution(self):
+        if self.camera_node_config.detector_type == "dlc":
+            if self.skeleton_inference_node_config.execution_provider not in ("cpu", "cuda"):
+                raise ValueError("DLC requires an explicit CPU or CUDA execution provider (FP32)")
+            if self.aggregator_config.triangulation_enabled or self.aggregator_config.skeleton_fitting_enabled:
+                raise ValueError("DLC currently provides image detections without an anatomical model; disable triangulation and skeleton fitting")
+        return self

@@ -28,7 +28,9 @@ class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
-    detector_type: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands"] = DEFAULT_DETECTOR_TYPE
+    detector_type: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands", "dlc"] = DEFAULT_DETECTOR_TYPE
+    dlc_model_path: str | None = None
+    dlc_confidence_threshold: float = Field(default=0.4, ge=0, le=1)
     # RTMW settings used by both rtmpose and rtmw_mediapipe_hands.
     rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = "rtmw-x-l_256x192"
     rtmpose_confidence_threshold: float = 0.4
@@ -66,7 +68,8 @@ class CameraNodeConfig(BaseModel):
         return (self.detector_type, self.rtmpose_model_name, self.rtmpose_confidence_threshold,
                 self.mediapipe_model_complexity, self.mediapipe_detection_confidence,
                 self.mediapipe_presence_confidence, self.mediapipe_tracking_confidence,
-                self.mediapipe_num_hands, self.mediapipe_num_faces, self.skeleton_tracker_config)
+                self.mediapipe_num_hands, self.mediapipe_num_faces, self.skeleton_tracker_config,
+                self.dlc_model_path, self.dlc_confidence_threshold)
 
     @property
     def tracking2d_enabled(self) -> bool:

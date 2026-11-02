@@ -53,6 +53,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/freemocap/streaming/protocols": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Protocols */
+        get: operations["streaming_list_protocols"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/streaming/outputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Outputs */
+        get: operations["streaming_list_outputs"];
+        put?: never;
+        /** Create Output */
+        post: operations["streaming_create_output"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/streaming/vmc/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start VMC with defaults (no request body)
+         * @description Start UDP VMC on 127.0.0.1:39539, or return the existing default output.
+         */
+        post: operations["streaming_start_vmc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/streaming/outputs/{output_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Output */
+        get: operations["streaming_get_output"];
+        put?: never;
+        post?: never;
+        /** Stop Output */
+        delete: operations["streaming_stop_output"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/freemocap/capture/mocap/start": {
         parameters: {
             query?: never;
@@ -932,6 +1005,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/freemocap/dlc/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Conversion Readiness */
+        get: operations["conversion_readiness_freemocap_dlc_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/dlc/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inspect Model */
+        post: operations["inspect_model_freemocap_dlc_inspect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/dlc/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Model */
+        post: operations["import_model_freemocap_dlc_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/dlc/import/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Import Status */
+        get: operations["import_status_freemocap_dlc_import__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/freemocap/telemetry/track": {
         parameters: {
             query?: never;
@@ -1070,79 +1211,6 @@ export interface paths {
         /** Set camera pause state */
         put: operations["pause_camera_groups_skellycam_camera_group_all_pause_put"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/freemocap/streaming/outputs/{output_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Output */
-        get: operations["streaming_get_output"];
-        put?: never;
-        post?: never;
-        /** Stop Output */
-        delete: operations["streaming_stop_output"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/freemocap/streaming/outputs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Outputs */
-        get: operations["streaming_list_outputs"];
-        put?: never;
-        /** Create Output */
-        post: operations["streaming_create_output"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/freemocap/streaming/protocols": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Protocols */
-        get: operations["streaming_list_protocols"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/freemocap/streaming/vmc/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Start VMC with defaults (no request body)
-         * @description Start UDP VMC on 127.0.0.1:39539, or return the existing default output.
-         */
-        post: operations["streaming_start_vmc"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1857,7 +1925,14 @@ export interface components {
              * @default rtmpose
              * @enum {string}
              */
-            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands";
+            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
+            /** Dlc Model Path */
+            dlc_model_path?: string | null;
+            /**
+             * Dlc Confidence Threshold
+             * @default 0.4
+             */
+            dlc_confidence_threshold?: number;
             /**
              * Rtmpose Model Name
              * @default rtmw-x-l_256x192
@@ -1925,7 +2000,14 @@ export interface components {
              * @default rtmpose
              * @enum {string}
              */
-            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands";
+            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
+            /** Dlc Model Path */
+            dlc_model_path?: string | null;
+            /**
+             * Dlc Confidence Threshold
+             * @default 0.4
+             */
+            dlc_confidence_threshold?: number;
             /**
              * Rtmpose Model Name
              * @default rtmw-x-l_256x192
@@ -2280,6 +2362,39 @@ export interface components {
              *     }
              */
             keypoint_reset_policy?: components["schemas"]["KeypointResetPolicyConfig"];
+        };
+        /** DlcConversionRequest */
+        DlcConversionRequest: {
+            /**
+             * Pose Config Path
+             * Format: path
+             */
+            pose_config_path: string;
+            /**
+             * Checkpoint Path
+             * Format: path
+             */
+            checkpoint_path: string;
+            /** Project Config Path */
+            project_config_path?: string | null;
+            /**
+             * Image Height
+             * @default 480
+             */
+            image_height?: number;
+            /**
+             * Image Width
+             * @default 640
+             */
+            image_width?: number;
+        };
+        /** DlcInspectRequest */
+        DlcInspectRequest: {
+            /**
+             * Sidecar Path
+             * Format: path
+             */
+            sidecar_path: string;
         };
         /** ExportInventory */
         ExportInventory: {
@@ -2904,6 +3019,78 @@ export interface components {
             /** Seconds Per Motion Frame */
             seconds_per_motion_frame?: number | null;
         };
+        /** OutputCapability */
+        OutputCapability: {
+            /** Protocol */
+            protocol: string;
+            /** Config Schema */
+            config_schema: {
+                [key: string]: unknown;
+            };
+            /**
+             * Overflow Policy
+             * @enum {string}
+             */
+            overflow_policy: "latest" | "fail";
+            /** Available */
+            available: boolean;
+            /** Unavailable Reason */
+            unavailable_reason?: string | null;
+        };
+        /** OutputState */
+        OutputState: {
+            /** Id */
+            id: string;
+            /** Protocol */
+            protocol: string;
+            /** Pipeline Id */
+            pipeline_id: string | null;
+            /** Active Pipeline Id */
+            active_pipeline_id?: string | null;
+            /**
+             * Status
+             * @default idle
+             * @enum {string}
+             */
+            status?: "idle" | "running" | "failed" | "stopped";
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
+            /** Queue Capacity */
+            queue_capacity: number;
+            /**
+             * Overflow Policy
+             * @enum {string}
+             */
+            overflow_policy: "latest" | "fail";
+            /**
+             * Frames Emitted
+             * @default 0
+             */
+            frames_emitted?: number;
+            /**
+             * Source Frame Gaps
+             * @default 0
+             */
+            source_frame_gaps?: number;
+            /**
+             * Queue Dropped Frames
+             * @default 0
+             */
+            queue_dropped_frames?: number;
+            /**
+             * Queue Overflows
+             * @default 0
+             */
+            queue_overflows?: number;
+            /** Last Frame Number */
+            last_frame_number?: number | null;
+            /** Last Capture Timestamp Ns */
+            last_capture_timestamp_ns?: string | null;
+            /** Error */
+            error?: string | null;
+        };
         /** PlaybackManifest */
         PlaybackManifest: {
             /** Recording Id */
@@ -3082,7 +3269,14 @@ export interface components {
              * @default rtmpose
              * @enum {string}
              */
-            detectorType?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands";
+            detectorType?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
+            /** Dlcmodelpath */
+            dlcModelPath?: string | null;
+            /**
+             * Dlcconfidencethreshold
+             * @default 0.4
+             */
+            dlcConfidenceThreshold?: number;
             /**
              * Rtmposemodelname
              * @description RTMPose wholebody model variant. Only used when detector_type='rtmpose'.
@@ -3456,6 +3650,7 @@ export interface components {
              *         "charuco_tracking_enabled": true,
              *         "confidence_threshold": 0.4,
              *         "detector_type": "rtmpose",
+             *         "dlc_confidence_threshold": 0.4,
              *         "mediapipe_detection_confidence": 0.5,
              *         "mediapipe_model_complexity": "lite",
              *         "mediapipe_num_faces": 1,
@@ -3986,6 +4181,22 @@ export interface components {
             /** Message */
             message?: string | null;
         };
+        /** StartOutputRequest */
+        StartOutputRequest: {
+            /** Protocol */
+            protocol: string;
+            /** Pipeline Id */
+            pipeline_id?: string | null;
+            /** Config */
+            config?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Queue Capacity
+             * @default 8
+             */
+            queue_capacity?: number;
+        };
         /** StartRecordingRequest */
         StartRecordingRequest: {
             /**
@@ -4296,94 +4507,6 @@ export interface components {
          * @enum {string}
          */
         WorkerMode: "process" | "thread";
-        /** OutputCapability */
-        OutputCapability: {
-            /** Protocol */
-            protocol: string;
-            /** Config Schema */
-            config_schema: {
-                [key: string]: unknown;
-            };
-            /**
-             * Overflow Policy
-             * @enum {string}
-             */
-            overflow_policy: "latest" | "fail";
-            /** Available */
-            available: boolean;
-            /** Unavailable Reason */
-            unavailable_reason?: string | null;
-        };
-        /** OutputState */
-        OutputState: {
-            /** Id */
-            id: string;
-            /** Protocol */
-            protocol: string;
-            /** Pipeline Id */
-            pipeline_id: string | null;
-            /** Active Pipeline Id */
-            active_pipeline_id?: string | null;
-            /**
-             * Status
-             * @default idle
-             * @enum {string}
-             */
-            status?: "idle" | "running" | "failed" | "stopped";
-            /** Config */
-            config: {
-                [key: string]: unknown;
-            };
-            /** Queue Capacity */
-            queue_capacity: number;
-            /**
-             * Overflow Policy
-             * @enum {string}
-             */
-            overflow_policy: "latest" | "fail";
-            /**
-             * Frames Emitted
-             * @default 0
-             */
-            frames_emitted?: number;
-            /**
-             * Source Frame Gaps
-             * @default 0
-             */
-            source_frame_gaps?: number;
-            /**
-             * Queue Dropped Frames
-             * @default 0
-             */
-            queue_dropped_frames?: number;
-            /**
-             * Queue Overflows
-             * @default 0
-             */
-            queue_overflows?: number;
-            /** Last Frame Number */
-            last_frame_number?: number | null;
-            /** Last Capture Timestamp Ns */
-            last_capture_timestamp_ns?: string | null;
-            /** Error */
-            error?: string | null;
-        };
-        /** StartOutputRequest */
-        StartOutputRequest: {
-            /** Protocol */
-            protocol: string;
-            /** Pipeline Id */
-            pipeline_id?: string | null;
-            /** Config */
-            config?: {
-                [key: string]: unknown;
-            };
-            /**
-             * Queue Capacity
-             * @default 8
-             */
-            queue_capacity?: number;
-        };
     };
     responses: never;
     parameters: never;
@@ -4433,6 +4556,210 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    streaming_list_protocols: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputCapability"][];
+                };
+            };
+        };
+    };
+    streaming_list_outputs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputState"][];
+                };
+            };
+        };
+    };
+    streaming_create_output: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartOutputRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputState"];
+                };
+            };
+            /** @description Unknown protocol */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Source or capacity conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Protocol runtime unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    streaming_start_vmc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputState"];
+                };
+            };
+            /** @description Source or capacity conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Protocol runtime unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    streaming_get_output: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                output_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputState"];
+                };
+            };
+            /** @description Unknown output */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    streaming_stop_output: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                output_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputState"];
+                };
+            };
+            /** @description Unknown output */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -6235,6 +6562,131 @@ export interface operations {
             };
         };
     };
+    conversion_readiness_freemocap_dlc_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    inspect_model_freemocap_dlc_inspect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DlcInspectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_model_freemocap_dlc_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DlcConversionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_status_freemocap_dlc_import__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     track_telemetry_event_freemocap_telemetry_track_post: {
         parameters: {
             query?: never;
@@ -6458,210 +6910,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
-            };
-        };
-    };
-    streaming_get_output: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                output_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OutputState"];
-                };
-            };
-            /** @description Unknown output */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    streaming_stop_output: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                output_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OutputState"];
-                };
-            };
-            /** @description Unknown output */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    streaming_list_outputs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OutputState"][];
-                };
-            };
-        };
-    };
-    streaming_create_output: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StartOutputRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OutputState"];
-                };
-            };
-            /** @description Unknown protocol */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Source or capacity conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Protocol runtime unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    streaming_list_protocols: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OutputCapability"][];
-                };
-            };
-        };
-    };
-    streaming_start_vmc: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OutputState"];
-                };
-            };
-            /** @description Source or capacity conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Protocol runtime unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

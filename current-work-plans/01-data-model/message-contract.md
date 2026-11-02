@@ -59,7 +59,14 @@ decode-vs-render split and no held descriptor). It carries:
   millimetres, or prefer the `SEGMENT_LENGTHS` channel, which carries fitted millimetres for every
   segment whether or not it was visible
   ([../02-pipeline/model-scale-fitting.md](../02-pipeline/model-scale-fitting.md)).
-- `trackers` — `TrackerObservation`: tracker_id, detector_type, model_id, channels.
+- `trackers` — `TrackerObservation`: tracker_id, detector_type, model_id, channels,
+  and optional `connection_groups` (name, keypoint-name pairs, color).
+  `model_id: null` means the detector output has no associated reconstruction model.
+  Its named `OVERLAY_2D` channels and Tracker-declared connections are sufficient
+  to display image keypoints; no anatomical landmark mapping, model instance or
+  geometry file is required. Empty declared connection groups mean points only.
+  These declarations travel with each self-describing frame; unchanged metadata
+  reuses prepared rendering indices.
 - `image` — the camera image bytes.
 
 **`models`, `instances` and `trackers` are plural, always.** A tracked human and a tracked charuco

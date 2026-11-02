@@ -522,12 +522,20 @@ class ModelInstance:
 class TrackerObservation:
     """One tracker's per-frame observation: its keypoint channels. model_id names
     the model whose landmarks this tracker's keypoints hydrate; the keypoint->landmark
-    mapping is deferred (the client already receives pre-hydrated landmarks)."""
+    mapping is deferred (the client already receives pre-hydrated landmarks).
+    Generic keypoint tracking has model_id=None and declares its own connection groups.
+    """
 
     tracker_id: str
     detector_type: str
-    model_id: str
+    model_id: str | None
     channels: tuple[ChannelBlock, ...]
+    connection_groups: tuple[ModelConnectionGroup, ...] = ()
+
+    def to_cbor_message(self) -> dict[str, Any]:
+        return dict(tracker_id=self.tracker_id, detector_type=self.detector_type,
+                    model_id=self.model_id, channels=self.channels,
+                    **({'connection_groups': self.connection_groups} if self.connection_groups else {}))
 
 
 # - Frame kind -

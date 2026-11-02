@@ -195,7 +195,8 @@ export type ModelInstance = z.infer<typeof ModelInstanceSchema>;
 export const TrackerObservationSchema = z.object({
   tracker_id: z.string(),
   detector_type: z.string(),
-  model_id: z.string(),
+  model_id: z.string().nullable(),
+  connection_groups: z.array(ModelConnectionGroupSchema).optional(),
   channels: z.array(ChannelBlockSchema),
 });
 export type TrackerObservation = z.infer<typeof TrackerObservationSchema>;

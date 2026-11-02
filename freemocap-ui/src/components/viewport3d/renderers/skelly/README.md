@@ -7,6 +7,15 @@ Scrub playback, pause/resume, and compare motion and fitted proportions. Check
 the skull, thorax, pelvis and hands, then inspect missing observations and a
 change of recording/model. The generic model layers remain independent.
 
+The current head-only polish trial uses 90% of the original skull artwork size,
+uniformly about the existing skull attachment origin. This changes only mesh
+vertices during preparation, not the scientific head landmarks, subject scale,
+pose or cervical attachment transform. Pelvis and torso artwork are unchanged.
+Compare the skull against Landmarks with Bones temporarily hidden; tilt/turn the
+head and inspect the neck connection. This is a reversible visual trial, not an
+anatomical soft-tissue estimate. `SKULL_ARTWORK_SCALE` in the preparation tool and
+the generated `artworkScales` metadata record the intentional addon difference.
+
 This is the addon's existing Skelly artwork fitted to the established Forge
 standard-human definition. It is not a new pose solver or a generic humanoid
 retargeter. The binding checks model rest landmarks, hierarchy, world-rest

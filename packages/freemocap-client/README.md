@@ -97,6 +97,29 @@ A custom `socketFactory` must implement the browser WebSocket event/property
 interface. HTTP default headers do not become WebSocket upgrade headers; browser
 WebSockets use the browser's authentication facilities.
 
+### Streams from other applications
+
+Another server can reuse this stream: construct `TransportService` with its socket
+URL and register the application's own message kinds. Each kind gets a parser (a Zod
+schema works) and an optional `version` (default 0). Its messages carry the standard
+envelope (`kind`, `version`, `timestamp`, `sequence`) and stay self-describing.
+
+```ts
+import {TransportService} from '@freemocap/client';
+import {z} from 'zod';
+
+const RobotState = z.object({kind: z.literal('robot_state'), version: z.literal(0),
+  timestamp: z.number(), sequence: z.number().int(), servos: z.record(z.string(), z.number())});
+const stream = new TransportService({url: 'ws://robot.local:8080/ws', kinds: {robot_state: RobotState}});
+stream.subscribeToKind('robot_state', state => console.log(state.servos));
+stream.connect();
+```
+
+Application messages reach `subscribeToKind` only, never `subscribeToMessages`.
+FreeMoCap's kinds cannot be redefined; a server that sends `frame` messages gets the
+usual frame, image and overlay subscriptions. Unregistered kinds and other versions
+are skipped, and malformed registered messages reach protocol-error subscribers.
+
 ## Recorded data
 
 ```js

@@ -54,3 +54,17 @@ Known and left as is: the right-hand skeleton colour `#FF00FF` in
 Undefined tokens still in use elsewhere: `--color-bg-darker`
 (calibration-module.css), `--color-text-tertiary` (log-terminal.css),
 `--color-border` (tutorial.css).
+
+## Graph-view plan checked against current code
+
+`experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0 lists what the
+graph-view design must use from the current pipeline, routes and progress feed.
+
+Please confirm at runtime (found by reading, not run):
+
+1. DLC processing with default export settings: `buildPosthocConfig` sends `exportOptions`
+   (data `['LANDMARKS_3D']`) and `dlcPosthocExecutionSettings` adds
+   `scientificExports {formats: [], data: []}`. Expect `migrate_export_settings` to reject the request
+   with "Conflicting export options". Run a DLC posthoc request from the UI or with the same payload.
+2. `rtmPoseConfidenceThreshold` default is 0.004 in `mocap-slice.ts` and 0.4 in
+   `mocap_task_config.py`. Report which value a UI-launched run actually uses.

@@ -40,10 +40,14 @@ Apple Silicon Mac; Python 3.12.14, Node 24.20.0, Playwright 1.59.0, Electron 35.
 - Typecheck: pass after client build.
 - Unit runner: 96 passing tests plus one reference-file skip, two camera assertions passing, and seven operation-progress tests passing (103 named passes total).
 - Static guard: 32 undefined-variable use locations (some with fallback values), two invalid icon paths, zero new hex values against the baseline. These are failures, not grandfathered passes.
-- Visual repeat: all 11 PNGs reproduce; the default modal POST matches the committed fixture. Existing separate request tests cover 36 alignment/filter combinations.
+- Visual repeat: all 11 PNG comparisons pass on repeat at the initial tolerance; the default modal POST matches the committed fixture. Existing separate request tests cover 36 alignment/filter combinations.
 - Contrast: baseline failures include 4.0:1 action-button text, 2.56:1 secondary labels, and 3.33:1 black button text. All three main surfaces and the modal have violations in stable disconnected state. Full node/ratio evidence is retained.
 - Initial existing E2E suite: 74 passed, 12 failed, 10 not reached. Missing fixture, incomplete Python setup, Edge default, stale streaming-output selectors and a Parquet setup timeout were identified. Configured rerun: 92 passed, three stale streaming-output tests failed, one real-Parquet test skipped without its file environment variable. All three then passed after updating their selectors and assertions to the existing VMC/LSL controls and explicit-refresh behavior; no product code changed. Original output is preserved.
 - Standard reference run failed before processing (worker lifecycle 5.10 s). Numerical test-data run passed: mocap 63.002 s; worker lifecycle 73.324 s; tracking 56.676 s. Timings are observations under concurrent UI testing, not isolated performance benchmarks. Sample-data numerical run passed: mocap 220.190 s; worker lifecycle 250.299 s. The pipeline directory suite passed all 29 tests; the 51-case reference suite is running.
+
+## First refactor comparison
+
+Design commit `367fd72c` (theme `52b97572`) was merged into the harness at `551bbb4f`. All 96 configured E2E tests pass with the real reference Parquet, with zero skips. Typecheck and unit runner pass with reference manifest supplied (104 named tests plus two camera checks). The complete modal POST is unchanged. Icon paths and hex additions pass; 26 undefined-variable locations remain. Eleven strict image comparisons record the intended palette changes. Contrast still fails, including newly reported white-on-gray controls at 3.41:1 and error text at 2.39:1. Pixel comparison now uses threshold zero because the default tolerance concealed subtle palette shifts; frozen baseline PNGs were not updated. The per-commit report is in the design checkout under `.test-artifacts/reports/367fd72c.md`.
 
 ## Harness audit
 

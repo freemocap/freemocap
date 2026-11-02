@@ -1,7 +1,6 @@
 import {DlcModelSettings} from '@/components/mocap-setup/dlc-model-settings';
-import React, { useCallback, useEffect, useRef } from 'react';
-import SubactionHeader from '@/components/ui-components/SubactionHeader';
-import IconButton from '@/components/ui-components/IconButton';
+import React, { useCallback } from 'react';
+import TrackerSettingsDialog from '@/components/mocap-setup/tracker-settings-dialog';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
@@ -23,7 +22,6 @@ const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }
 ];
 
 const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) => {
-    const modalRef = useRef<HTMLDivElement>(null);
     const { pipelineConfig, cameraNodeConfig, applyOrUpdatePipelineConfig } = useRealtimePipelineSync();
 
     const executionProvider = pipelineConfig.skeleton_inference_node_config?.execution_provider ?? null;
@@ -57,45 +55,13 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
         [applyOrUpdatePipelineConfig, pipelineConfig, cameraNodeConfig]
     );
 
-    useEffect(() => {
-        if (!open) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-
-        const handleClickOutside = (e: MouseEvent) => {
-            if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-                onClose();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        document.addEventListener('mousedown', handleClickOutside);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [open, onClose]);
-
     if (!open) return null;
 
     return (
-        <div
-            ref={modalRef}
-            className="RTP-settings-flyout pos-abs top-5 right-0 draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
-        >
-            <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
-
-                {/* Header */}
-                <div className="flex justify-content-space-between items-center">
-                    <SubactionHeader text="Skeleton Setup" />
-                    <IconButton icon="close-icon" onClick={onClose} />
-                </div>
-
+        <TrackerSettingsDialog title="Skeleton Setup" onClose={onClose}>
+            <div className="flex flex-col gap-2">
                 {/* Detector toggle */}
-                <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                <div className="flex p-1 flex-col gap-1">
                     <span className="text-sm">Detector</span>
                     <div className="flex flex-row gap-1">
                         <SegmentedControl
@@ -108,7 +74,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                     </div>
                 </div>
 
-                {detectorType === "dlc" && <DlcModelSettings context="realtime"/>}
+                {detectorType === "dlc" && <DlcModelSettings context="realtime" embedded/>}
 
                 {/* RTMPose settings */}
                 {(detectorType === "rtmpose" || detectorType === "rtmw_mediapipe_hands" || detectorType === "rtmw_onnx_hands") && (
@@ -216,7 +182,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                     </>
                 )}
             </div>
-        </div>
+        </TrackerSettingsDialog>
     );
 };
 

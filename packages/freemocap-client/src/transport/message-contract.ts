@@ -135,6 +135,15 @@ const AttachedSurfaceSchema = z.object({
   material: PresentationMaterialSchema, double_sided: z.boolean(),
 }).refine(surface => surface.indices.every(i => i < surface.positions.length / 3), 'Surface index out of bounds');
 export const ModelDefinitionSchema = z.object({
+  /** Original mesh frame survives object normalization; matrices are row-major 4x4. */
+  object_geometry: z.object({
+    feature_names: z.array(z.string()), segment_name: z.string(),
+    source_mesh_units: z.string(), mesh_sha256: z.string().nullable(),
+    reference_unit_mm: z.number().finite().positive(),
+    object_to_segment_reference: z.array(z.number().finite()).length(16),
+    source_mesh_to_segment_reference: z.array(z.number().finite()).length(16),
+    segment_reference_to_source_mesh: z.array(z.number().finite()).length(16),
+  }).optional(),
   tracker_connections: z.array(z.tuple([z.string(), z.string()])).optional(),
   model_id: z.string(),
   segments: z.array(RestSegmentSchema),

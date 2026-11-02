@@ -711,3 +711,35 @@
   claim = {push_sample creates a ctypes sample array; push_chunk uses a contiguous NumPy buffer; stream metadata and irregular buffer units are explicit.},
   note = {Audited installed canonical .venv/Lib/site-packages/pylsl/outlet.py and info.py for version1.18.6. Release URL identifies version; version-tag raw GitHub fetch was unavailable. No claim of end-to-end zero-copy.}
 }
+
+
+@misc{mdnCryptoRandomUUID,
+  author = {{MDN contributors}},
+  title = {Crypto: randomUUID() method},
+  url = {https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {crypto.randomUUID() is available only in secure contexts and returns a version 4 UUID string.},
+  note = {Opening section and return value read in the page source, mdn/content files/en-us/web/api/crypto/randomuuid/index.md (main branch); the SecureContext_header macro marks the secure-context requirement. Matches the observed absence of crypto.randomUUID on a page served over plain HTTP from a LAN address in Chromium 156.}
+}
+
+@misc{mdnCryptoGetRandomValues,
+  author = {{MDN contributors}},
+  title = {Crypto: getRandomValues() method},
+  url = {https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {getRandomValues() is the only member of the Crypto interface usable from an insecure context.},
+  note = {Statement read in the page source, mdn/content files/en-us/web/api/crypto/getrandomvalues/index.md (main branch).}
+}
+
+@misc{rfc9562,
+  author = {Davis, K. and Peabody, B. and Leach, P.},
+  title = {Universally Unique IDentifiers (UUIDs)},
+  url = {https://www.rfc-editor.org/rfc/rfc9562},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {A version 4 UUID fills random bits, then places the version number in the most significant four bits of octet 6 and variant bits 10 in the most significant bits of octet 8.},
+  year = {2024},
+  note = {Sections 4.1, 4.2 and 5.4 read in the plain-text edition. IETF Request for Comments 9562, Standards Track, May 2024; obsoletes RFC 4122.}
+}

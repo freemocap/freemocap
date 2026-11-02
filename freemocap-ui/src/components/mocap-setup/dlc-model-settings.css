@@ -1,0 +1,22 @@
+.tracker-dialog-overlay { position: fixed; inset: 0; z-index: 1500; background: var(--color-surface-overlay, #000a); }
+.tracker-settings-modal { width: calc(100vw - 40px); height: calc(100dvh - 40px); }
+.tracker-settings-modal .segmented-control-container { flex-wrap: wrap; }
+.tracker-settings-modal .modal-window-body { padding: 24px; }
+.tracker-settings-modal .mocap-settings-footer { padding: 12px 24px; align-items: flex-end; }
+.dlc-settings-form { width: 100%; max-width: 1100px; margin: 0 auto; color: var(--color-text-primary, #eee); }
+.dlc-section { display: flex; flex-direction: column; gap: 14px; padding: 24px 0; border-bottom: 1px solid var(--color-border-hairline, #444); }
+.dlc-section h2 { font-size: 20px; font-weight: 600; }
+.dlc-section p { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.dlc-section label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.dlc-section .input-field { width: 100%; box-sizing: border-box; min-height: 42px; padding: 10px 12px; color: var(--color-text-primary, #eee); background: var(--color-surface-ground, #171717); border: 1px solid var(--color-border-hairline-strong, #777); border-radius: 6px; }
+.dlc-section .input-field:focus { outline: 2px solid var(--color-accent, #7dd3fc); outline-offset: 2px; }
+.dlc-section .dlc-checkbox { flex-direction: row; align-items: center; }
+.dlc-checkbox input { width: 18px; height: 18px; }
+.dlc-optional { font-size: 13px; font-weight: 400; margin-left: 8px; }
+.dlc-model-summary, .dlc-feedback:not(:empty) { padding: 14px; border: 1px solid var(--color-border-hairline-strong, #666); border-radius: 6px; overflow-wrap: anywhere; }
+.dlc-feedback [role=alert] { color: #ffb4ab; }
+.dlc-feedback:not(:empty) { position: sticky; top: 0; z-index: 5; background: var(--color-surface-ground, #171717); }
+.dlc-section details summary { cursor: pointer; padding: 8px 0; }
+.dlc-action { align-self: flex-start; padding: 10px 16px; border: 1px solid #8a8a8a; border-radius: 6px; background: #353535; color: #fff; cursor: pointer; }
+.dlc-action:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 640px) { .tracker-settings-modal .modal-window-body { padding: 12px; } .dlc-section { padding: 16px 0; } }

@@ -4748,6 +4748,17 @@
             ],
             "title": "Dlc Model Path"
           },
+          "dlc_geometry_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlc Geometry Path"
+          },
           "dlc_confidence_threshold": {
             "type": "number",
             "maximum": 1.0,
@@ -4871,6 +4882,17 @@
               }
             ],
             "title": "Dlc Model Path"
+          },
+          "dlc_geometry_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlc Geometry Path"
           },
           "dlc_confidence_threshold": {
             "type": "number",
@@ -5753,51 +5775,78 @@
         "description": "Declarative description of a DetectionStage and its subtree."
       },
       "DlcConversionRequest": {
+        "additionalProperties": false,
         "properties": {
           "pose_config_path": {
-            "type": "string",
-            "format": "path",
-            "title": "Pose Config Path"
-          },
-          "checkpoint_path": {
-            "type": "string",
-            "format": "path",
-            "title": "Checkpoint Path"
-          },
-          "project_config_path": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "path"
+                "format": "path",
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "default": null,
+            "title": "Pose Config Path"
+          },
+          "checkpoint_path": {
+            "anyOf": [
+              {
+                "format": "path",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Checkpoint Path"
+          },
+          "project_config_path": {
+            "anyOf": [
+              {
+                "format": "path",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "title": "Project Config Path"
           },
           "image_height": {
-            "type": "integer",
-            "maximum": 8192.0,
-            "minimum": 32.0,
-            "title": "Image Height",
-            "default": 480
+            "anyOf": [
+              {
+                "maximum": 8192,
+                "minimum": 32,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Image Height"
           },
           "image_width": {
-            "type": "integer",
-            "maximum": 8192.0,
-            "minimum": 32.0,
-            "title": "Image Width",
-            "default": 640
+            "anyOf": [
+              {
+                "maximum": 8192,
+                "minimum": 32,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Image Width"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "pose_config_path",
-          "checkpoint_path"
-        ],
-        "title": "DlcConversionRequest"
+        "title": "DlcConversionRequest",
+        "type": "object"
       },
       "DlcInspectRequest": {
         "properties": {
@@ -7660,6 +7709,17 @@
               }
             ],
             "title": "Dlcmodelpath"
+          },
+          "dlcGeometryPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlcgeometrypath"
           },
           "dlcConfidenceThreshold": {
             "type": "number",

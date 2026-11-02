@@ -18,6 +18,7 @@ export interface CameraNodeConfig {
     charuco_board?: CharucoBoardConfigForPipeline;
     detector_type?: RealtimeDetectorType;
     dlc_model_path?: string | null;
+    dlc_geometry_path?: string | null;
     dlc_confidence_threshold?: number;
     rtmpose_model_name?: RTMPoseModelName;
     rtmpose_confidence_threshold?: number;

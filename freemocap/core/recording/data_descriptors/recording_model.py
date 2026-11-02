@@ -10,6 +10,7 @@ from skellytracker.core.io.tracker_mapping import TrackerMappingSnapshot
 from skellytracker.core.io.composite_tracker_mapping import CompositeTrackerMapping
 
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
+from freemocap.core.skeletons.rigid_object_geometry import RigidObjectGeometry
 
 
 class RecordedModel(BaseModel):
@@ -26,6 +27,8 @@ class RecordedModel(BaseModel):
     scale_reference_name: str
     anchor_segment_name: str | None = None
     tracker_connections: tuple[tuple[str, str], ...] = ()
+    object_geometry: RigidObjectGeometry | None = None
+    tracker_stage_path: tuple[str, ...] | None = None
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -38,6 +41,10 @@ class RecordedModel(BaseModel):
         historical records.
         """
         result = handler(self)
+        if self.object_geometry is None:
+            result.pop("object_geometry", None)
+        if self.tracker_stage_path is None:
+            result.pop("tracker_stage_path", None)
         if not self.tracker_connections:
             result.pop("tracker_connections", None)
         skeleton = result.get("skeleton", {})
@@ -83,6 +90,8 @@ class RecordedModel(BaseModel):
             detector_type=bundle.detector_type,
             tracker_keypoint_names=bundle.tracker_keypoint_names,
             tracker_connections=bundle.tracker_connections,
+            object_geometry=bundle.object_geometry,
+            tracker_stage_path=bundle.tracker_stage_path,
             skeleton=SkeletonSnapshot.capture(bundle.skeleton),
             rest_pose=RestPoseSnapshot.capture(bundle.rest_pose),
             mappings=bundle.landmark_mapping.mapping_snapshots(),
@@ -100,6 +109,8 @@ class RecordedModel(BaseModel):
             detector_type=self.detector_type,
             tracker_keypoint_names=self.tracker_keypoint_names,
             tracker_connections=self.tracker_connections,
+            object_geometry=self.object_geometry,
+            tracker_stage_path=self.tracker_stage_path,
             skeleton=skeleton,
             rest_pose=self.rest_pose.restore(skeleton),
             landmark_mapping=CompositeTrackerMapping(

@@ -1928,6 +1928,8 @@ export interface components {
             detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
+            /** Dlc Geometry Path */
+            dlc_geometry_path?: string | null;
             /**
              * Dlc Confidence Threshold
              * @default 0.4
@@ -2003,6 +2005,8 @@ export interface components {
             detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
+            /** Dlc Geometry Path */
+            dlc_geometry_path?: string | null;
             /**
              * Dlc Confidence Threshold
              * @default 0.4
@@ -2367,26 +2371,29 @@ export interface components {
         DlcConversionRequest: {
             /**
              * Pose Config Path
-             * Format: path
+             * @default null
              */
-            pose_config_path: string;
+            pose_config_path?: string | null;
             /**
              * Checkpoint Path
-             * Format: path
+             * @default null
              */
-            checkpoint_path: string;
-            /** Project Config Path */
+            checkpoint_path?: string | null;
+            /**
+             * Project Config Path
+             * @default null
+             */
             project_config_path?: string | null;
             /**
              * Image Height
-             * @default 480
+             * @default null
              */
-            image_height?: number;
+            image_height?: number | null;
             /**
              * Image Width
-             * @default 640
+             * @default null
              */
-            image_width?: number;
+            image_width?: number | null;
         };
         /** DlcInspectRequest */
         DlcInspectRequest: {
@@ -3294,6 +3301,8 @@ export interface components {
             detectorType?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
             /** Dlcmodelpath */
             dlcModelPath?: string | null;
+            /** Dlcgeometrypath */
+            dlcGeometryPath?: string | null;
             /**
              * Dlcconfidencethreshold
              * @default 0.4

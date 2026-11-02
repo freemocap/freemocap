@@ -15,7 +15,7 @@ export function realtimePipelineSettings(config: RealtimePipelineConfig): Realti
     return {...config, camera_node_config: cameraSettings};
 }
 
-/** Project UI preferences into the observation-only DLC execution contract. */
+/** DLC uses the existing triangulation controls, independently of model fitting. */
 export function realtimeExecutionSettings(config: RealtimePipelineConfig, dlcProvider: 'cpu' | 'cuda'): RealtimePipelineConfig {
     const settings = realtimePipelineSettings(config);
     if (settings.camera_node_config.detector_type !== 'dlc') return settings;
@@ -23,8 +23,8 @@ export function realtimeExecutionSettings(config: RealtimePipelineConfig, dlcPro
         ...settings,
         camera_node_config: {...settings.camera_node_config, charuco_tracking_enabled: false},
         skeleton_inference_node_config: {...settings.skeleton_inference_node_config, execution_provider: dlcProvider},
-        aggregator_config: {...settings.aggregator_config, triangulation_enabled: false, skeleton_fitting_enabled: false,
-            center_of_mass_enabled: false, calibration_toml_path: null, reference_transform: null},
+        aggregator_config: {...settings.aggregator_config, skeleton_fitting_enabled: !!settings.camera_node_config.dlc_geometry_path && settings.aggregator_config.triangulation_enabled,
+            center_of_mass_enabled: false},
     };
 }
 

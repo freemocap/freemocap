@@ -18,7 +18,7 @@ export const applyRealtimePipeline = createAsyncThunk<
     'realtime/apply',
     async (realtimeConfig, {getState, dispatch}) => {
         const isDlc = realtimeConfig.camera_node_config.detector_type === 'dlc';
-        if (!isDlc && getState().calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
+        if ((!isDlc || realtimeConfig.aggregator_config.triangulation_enabled) && getState().calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
         // Null is the product's default-calibration selection. The backend also
         // resolves null independently; load it here to keep the displayed file
         // and board definition in agreement before submitting the live config.
@@ -41,7 +41,7 @@ export const applyRealtimePipeline = createAsyncThunk<
         const realtimeEnabledIds = Object.keys(selectRealtimeEnabledCameraConfigs(getState()));
         const realtimeCameraIds = realtimeEnabledIds.length > 0 ? realtimeEnabledIds : null;
         const calibrationConfig = selectCalibrationConfig(getState());
-        if (!isDlc && getState().calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
+        if ((!isDlc || realtimeConfig.aggregator_config.triangulation_enabled) && getState().calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
         const selectedCalibration = selectLoadedCalibration(getState());
         const calibrationTomlPath = selectedCalibration?.path ?? null;
         // Automatic calibration may detect a different board than the editable

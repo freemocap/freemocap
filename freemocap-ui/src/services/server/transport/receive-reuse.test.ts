@@ -31,6 +31,39 @@ function projected(models: ResolvedModelFrame[]): ResolvedModelFrame[] {
     return readFrameBuffer(buffer, layout, 'modelFrames') as ResolvedModelFrame[];
 }
 
+test('self-contained object model retains its original mesh frame metadata', () => {
+    const source = frame();
+    const matrix = [1/60,0,0,-13/60, 0,1/60,0,7/60, 0,0,1/60,-2/60, 0,0,0,1];
+    const geometry = {feature_names: ['wrist'], segment_name: 'rigid_object', source_mesh_units: 'mm',
+        mesh_sha256: null, reference_unit_mm: 60, object_to_segment_reference: matrix,
+        source_mesh_to_segment_reference: matrix,
+        segment_reference_to_source_mesh: [60,0,0,13, 0,60,0,-7, 0,0,60,2, 0,0,0,1]};
+    source.models[0] = {...source.models[0], object_geometry: geometry};
+    const first = decoded(new MessageDecoder(), source);
+    assert.deepEqual(first.models[0].object_geometry, geometry);
+    const invalid = {...geometry, reference_unit_mm: 0};
+    assert.equal(ModelDefinitionSchema.safeParse({...source.models[0], object_geometry: invalid}).success, false);
+});
+
+test('model-only DLC metric keypoints decode and transfer to the viewport without a skeleton', () => {
+    const source = frame();
+    source.models = []; source.instances = []; source.image = undefined;
+    source.trackers = [{tracker_id: 'dlc-artifact-hash', detector_type: 'dlc', model_id: null,
+        connection_groups: [], channels: [{kind: 'KEYPOINTS_3D', names: ['arbitrary_z', 'arbitrary_a'],
+            columns: ['z', 'x', 'y'], data: new Uint8Array(new Float32Array([30,10,20,60,40,50]).buffer)}]}];
+    const resolved = new FrameResolver().resolve(decoded(new MessageDecoder(), source));
+    assert.deepEqual(resolved.models, []);
+    assert.ok(resolved.keypoints);
+    const points = {pointNames: resolved.keypoints.names, pointSources: resolved.keypoints.sources};
+    const layout = prepareFrameLayout('keypoints', points);
+    const buffer = new ArrayBuffer(layout.byteLength);
+    writeFrameBuffer(buffer, layout, 'keypoints', points);
+    const restored = readFrameBuffer(buffer, layout, 'keypoints') as typeof points;
+    assert.deepEqual(restored.pointNames, ['arbitrary_z', 'arbitrary_a']);
+    assert.deepEqual(keypointPosition(restored, 0), [10,20,30]);
+    assert.deepEqual(keypointPosition(restored, 1), [40,50,60]);
+});
+
 test('self-describing presentation metadata reuses existing caches and independently decodes after a reset', () => {
     const source = frame();
     source.models[0].segments = [{name: 'body', parent: null, primary_axis: 'z',

@@ -64,6 +64,11 @@ class InferenceClient:
     _closed: bool = False
     failure: Exception | None = None
     provider_status: tuple = ()
+    _cuda_first: bool = False
+    _preparation_checked: bool = False
+    _preparation_job: object | None = None
+    _preparation_finished: bool = False
+    preparation_status: str | None = None
 
     def submit(self, request: InferenceRequest) -> Future[dict[str, Observation]]:
         return self._service.submit(client=self, request=request)
@@ -82,6 +87,8 @@ class InferenceService:
     """
 
     def __init__(self, *, worker_registry: WorkerRegistry) -> None:
+        from freemocap.core.pipeline.inference_preparation import InferencePreparation
+        self._preparation = InferencePreparation(worker_registry)
         self._condition = Condition()
         self._clients: deque[InferenceClient] = deque()
         self._shutdown = multiprocessing.Value("b", False)
@@ -93,6 +100,7 @@ class InferenceService:
         )
 
     def start(self) -> None:
+        self._preparation.start()
         self.worker.start()
 
     def register(self, registration: InferenceRegistration) -> InferenceClient:
@@ -196,13 +204,34 @@ class InferenceService:
                         performance.record("inference.queue_wait", perf_counter() - pending.submitted_at)
                     if client._lease is None:
                         with performance.measure("inference.session_setup") if performance is not None else nullcontext():
+                            if client.registration.mode == InferenceMode.REALTIME and any(
+                                item.config.backend == "onnx" and item.config.execution_provider is None
+                                for item in client.registration.sessions
+                            ):
+                                from freemocap.core.tracking.execution_providers import advertised_providers
+                                client._cuda_first = "cuda" in advertised_providers()
                             client._lease = pool.create_tracker(
                                 config=client.registration.tracker_config, requests=client.registration.sessions,
+                                **({"cuda_first": True} if client._cuda_first else {}),
                             )
                             from freemocap.core.tracking.execution_providers import inspect_tracker_providers
                             statuses = inspect_tracker_providers(client._lease.tracker, client.registration.sessions)
                             with self._condition:
                                 client.provider_status = statuses
+                    if client._preparation_job is not None and not client._preparation_finished:
+                        from skellytracker.core.sessions.onnx_preparation import PreparationPhase
+                        job = client._preparation_job
+                        phase = job.snapshot().phase
+                        if phase in (PreparationPhase.READY, PreparationPhase.TRANSFERRED):
+                            activation = pool.activate_prepared(lease=client._lease, job=job)
+                            if activation.cleanup is not None:
+                                self._preparation.retire(activation.cleanup)
+                            from freemocap.core.tracking.execution_providers import inspect_tracker_providers
+                            statuses = inspect_tracker_providers(client._lease.tracker, client.registration.sessions)
+                            with self._condition:
+                                client.provider_status = statuses
+                                client.preparation_status = activation.error or "activated"
+                            client._preparation_finished = True
                     with performance.measure(f"inference.process_batch.images={len(pending.request.images)}") if performance is not None else nullcontext():
                         observations, client._states = client._lease.tracker.process_batch(
                             images=pending.request.images, frame_number=pending.request.frame_number, states=client._states,
@@ -226,6 +255,21 @@ class InferenceService:
                             pending.result.set_exception(CancelledError("Pipeline stopped during inference"))
                         else:
                             pending.result.set_result(observations)
+                    if client._cuda_first and not client._preparation_checked and not client._closed:
+                        client._preparation_checked = True
+                        try:
+                            from freemocap.core.tracking.execution_providers import advertised_providers
+                            if "trt" not in advertised_providers():
+                                client.preparation_status = "TensorRT is unavailable; using CUDA"
+                            else:
+                                job = pool.prepare_onnx(lease=client._lease)
+                                client._preparation_job = job
+                                if job is not None:
+                                    self._preparation.submit(job)
+                                else:
+                                    client.preparation_status = "This recipe remains on CUDA"
+                        except Exception as error:
+                            client.preparation_status = f"Preparation unavailable; using CUDA: {error}"
         finally:
             with self._condition:
                 self._closed = True
@@ -246,7 +290,9 @@ class InferenceService:
         with self._condition:
             return [{"pipeline_id": client.registration.pipeline_id,
                      "mode": client.registration.mode.value,
-                     "models": [asdict(status) for status in client.provider_status]}
+                     "models": [asdict(status) for status in client.provider_status],
+                     "preparation": client.preparation_status or (
+                         asdict(client._preparation_job.snapshot()) if client._preparation_job is not None else None)}
                     for client in self._clients if not client._closed]
 
     def close(self) -> None:
@@ -258,3 +304,4 @@ class InferenceService:
         self.worker.join(timeout=10.0)
         if self.worker.is_alive():
             raise RuntimeError("Inference is still executing native code; service shutdown did not finish")
+        self._preparation.close()

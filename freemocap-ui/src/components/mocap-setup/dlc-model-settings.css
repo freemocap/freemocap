@@ -15,8 +15,14 @@
 .dlc-optional { font-size: 13px; font-weight: 400; margin-left: 8px; }
 .dlc-model-summary, .dlc-feedback:not(:empty) { padding: 14px; border: 1px solid var(--color-border-hairline-strong, #666); border-radius: 6px; overflow-wrap: anywhere; }
 .dlc-feedback [role=alert] { color: #ffb4ab; }
+.dlc-feedback strong { display: block; font-size: 18px; margin-bottom: 8px; }
+.dlc-feedback p { margin: 8px 0; line-height: 1.4; }
+.dlc-feedback[data-state=selected] { border-color: var(--color-success, #57ab86); }
+.dlc-feedback[data-state=failed] { border-color: #ffb4ab; }
+.dlc-next-step { font-weight: 600; }
 .dlc-feedback:not(:empty) { position: sticky; top: 0; z-index: 5; background: var(--color-surface-ground, #171717); }
 .dlc-section details summary { cursor: pointer; padding: 8px 0; }
+.dlc-section > summary, .dlc-model-summary > summary { cursor: pointer; }
 .dlc-action { align-self: flex-start; padding: 10px 16px; border: 1px solid #8a8a8a; border-radius: 6px; background: #353535; color: #fff; cursor: pointer; }
 .dlc-action:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 640px) { .tracker-settings-modal .modal-window-body { padding: 12px; } .dlc-section { padding: 16px 0; } }

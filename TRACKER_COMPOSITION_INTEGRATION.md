@@ -239,7 +239,7 @@ preprocessing, output metadata, decoding and keypoint schemas belong in Tracker;
 Core must not add them to work around missing Tracker support.
 
 
-### Hand crop publication completed — 2026-11-01
+### Hand crop publication completed â€” 2026-11-01
 
 Correction 3 is implemented and tested. Tracker fixes the image-coordinate error,
 retains executed hand crop rectangles after dense keypoint assembly, and exposes
@@ -268,16 +268,32 @@ existing conversion jobs, CPU/CUDA FP32 inference, calibrated triangulation,
 recording and self-describing stream. Training and synthetic data generation are
 separate workflows; an already validated checkpoint can be used immediately.
 
-In the live camera view, open **Skeleton Setup**, choose **DLC**, then either
-inspect a converted sidecar or expand **Convert a DLC model** and supply the pose
-configuration, checkpoint and optional project configuration. Conversion runs on
-CPU in the optional environment selected by `SKELLYTRACKER_DLC_CONVERTER_PYTHON`;
-set that variable when launching the backend. The normal app environment need
-not contain PyTorch or DeepLabCut. Preserve the sidecar beside its ONNX artifact.
+In the live camera view, open **Skeleton Setup**, choose **DLC**, then click
+**Choose DLC project** and select the project's `config.yaml`. Tracker selects the
+latest saved epoch from its matching training run and infers the companion
+configuration and input size. Preparation starts automatically: reuse a validated
+conversion when available, otherwise convert on CPU and validate the result.
+The UI shows the checkpoint, elapsed time and estimates from measured conversions.
+An optional checkpoint picker overrides the latest-epoch default. Ambiguous
+training runs or missing dimensions request only the unresolved information.
+
+**Model ready and selected** means the resulting model was successfully applied
+to the running pipeline or saved for the next run. Conversion completion alone
+does not establish selection success. A failed application preserves the previous
+selection and offers **Retry selection** without converting again. After success,
+optionally choose object geometry, click **Done**, connect the cameras, and click
+the lightning bolt to start tracking. A running pipeline applies selection live.
+The separate **Load a different converted model (optional)** section accepts an
+existing sidecar; it is not another required step.
+
+Conversion uses Tracker's configured optional Python environment, including its
+persistent `~/.config/skellytracker/dlc-converter.json` or the explicit
+`SKELLYTRACKER_DLC_CONVERTER_PYTHON` override. The normal app environment need not
+contain PyTorch or DeepLabCut. Preserve the sidecar beside its ONNX artifact.
 Unsupported model architectures fail explicitly.
 
 Choose **CPU FP32** or **CUDA FP32** and enable 2D Tracking. The DLC settings
-checkbox **Triangulate calibrated camera views (3D keypoints)** uses the existing
+checkbox **Reconstruct 3D from calibrated cameras** uses the existing
 live triangulation setting. Calibrated multicamera points use the ordinary
 keypoint channel and viewport; they require neither an anatomical skeleton nor
 an STL. Without applicable multicamera calibration, the DLC stream retains its
@@ -296,7 +312,7 @@ Optional rigid-object/STL reconstruction is a separate geometry association.
 A detector's points do not define a mesh origin, axes, physical units or landmark
 correspondences. That association must preserve the authored mesh frame and use
 Forge reconstruction rather than a human model or a new solver in Core. This
-geometry association is selected in **Object geometry definition (optional)**.
+geometry association is selected in **Rigid object geometry (Optional)**.
 Click **Choose geometry** and select the feature-definition JSON. It is saved
 automatically; **Remove geometry** returns to keypoints only.
 With triangulation enabled, live fitting and posthoc reconstruction use the existing

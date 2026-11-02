@@ -39,6 +39,7 @@ function DlcSettingsForm({context}: {context: 'realtime' | 'posthoc'}) {
     const [busy, setBusy] = useState(false);
     const [status, setStatus] = useState('');
     const [job, setJob] = useState<DlcImportJob | null>(null);
+    const [selection, setSelection] = useState<{phase: 'applying' | 'selected' | 'failed'; model: DlcModelMetadata} | null>(null);
     const importId = useRef<string | null>(null);
     const preparing = job?.status === 'queued' || job?.status === 'running';
     const [poseConfig, setPoseConfig] = useState('');
@@ -67,12 +68,20 @@ function DlcSettingsForm({context}: {context: 'realtime' | 'posthoc'}) {
         else dispatch(pipelineConfigUpdated(config));
     };
     const selectModel = async (model: DlcModelMetadata) => {
-        if (context === 'realtime') await applySettings({...pipelineConfig,
-            camera_node_config: {...cameraNodeConfig, dlc_model_path: model.sidecar_path}});
-        setMetadata(model);
-        setModelPath(model.sidecar_path);
-        dispatch(mocapDlcSettingsChanged({dlcModelPath: model.sidecar_path}));
-        setStatus(`Model loaded: ${model.keypoint_names.length} keypoints. ${context === 'realtime' && isConnected ? 'Applied to the running pipeline.' : 'Saved for the next tracking run.'}`);
+        setSelection({phase: 'applying', model});
+        setStatus('');
+        try {
+            if (context === 'realtime') await applySettings({...pipelineConfig,
+                camera_node_config: {...cameraNodeConfig, dlc_model_path: model.sidecar_path}});
+            if (lifetime.current?.signal.aborted) return;
+            setMetadata(model);
+            setModelPath(model.sidecar_path);
+            dispatch(mocapDlcSettingsChanged({dlcModelPath: model.sidecar_path}));
+            setSelection({phase: 'selected', model});
+        } catch (reason) {
+            if (!lifetime.current?.signal.aborted) setSelection({phase: 'failed', model});
+            throw reason;
+        }
     };
     const selectModelRef = useRef(selectModel);
     selectModelRef.current = selectModel;
@@ -84,9 +93,13 @@ function DlcSettingsForm({context}: {context: 'realtime' | 'posthoc'}) {
                 if (controller.signal.aborted || importId.current !== result.job_id) return;
                 setJob(result);
                 if (result.status === 'complete' && result.result) {
-                    setStatus('Loading the prepared model…');
-                    await selectModelRef.current(result.result);
-                    setBusy(false);
+                    // Completing the job cleans up this polling effect. Model
+                    // application outlives that poll, so its errors must use the
+                    // component lifetime rather than the aborted poll signal.
+                    setBusy(true);
+                    try {await selectModelRef.current(result.result);} catch (reason) {
+                        if (!lifetime.current?.signal.aborted) setError(errorMessage(reason));
+                    } finally {if (!lifetime.current?.signal.aborted) setBusy(false);}
                 } else if (result.status === 'failed') {
                     setError(result.detail);
                     setBusy(false);
@@ -97,11 +110,12 @@ function DlcSettingsForm({context}: {context: 'realtime' | 'posthoc'}) {
         }, 1000);
         return () => {clearTimeout(timer); controller.abort();};
     }, [job]);
+    const errorMessage = (reason: unknown) => reason && typeof reason === 'object' && 'message' in reason ? String(reason.message) : String(reason);
     const perform = async (action: () => Promise<void>) => {
         setBusy(true); setError(''); setStatus('Working…');
         try {await action();} catch (reason) {
             if (!lifetime.current?.signal.aborted) {
-                setError(reason && typeof reason === 'object' && 'message' in reason ? String(reason.message) : String(reason));
+                setError(errorMessage(reason));
                 setStatus('');
             }
         } finally {if (!lifetime.current?.signal.aborted) setBusy(false);}
@@ -120,28 +134,36 @@ function DlcSettingsForm({context}: {context: 'realtime' | 'posthoc'}) {
     };
     const prepareProject = async (project: string, snapshot: string, useAnswers = false) => {
         if (!project) return;
+        setSelection(null);
+        setJob(null);
+        importId.current = null;
+        setStatus('Checking the project and latest checkpoint…');
         const next = await importDlcModel({project_config_path: project, ...(snapshot ? {checkpoint_path: snapshot} : {}),
             ...(useAnswers && poseConfig ? {pose_config_path: poseConfig} : {}),
             ...(useAnswers && imageWidth && imageHeight ? {image_width: imageWidth, image_height: imageHeight} : {})});
         importId.current = next.job_id;
         setJob(next); setStatus('');
     };
+    const modelReady = !busy && !isLoading && !error && !!metadata && metadata.sidecar_path === selectedPath && !preparing && selection?.phase !== 'applying' && selection?.phase !== 'failed' && job?.status !== 'failed';
     const fileSummary = (path: string | null | undefined) => <p className="dlc-selected-file" title={path ?? ''}>{path ? path.split(/[\\/]/).pop() : 'No file selected'}</p>;
     return <div className="dlc-settings-form">
         <section className="dlc-section">
             <h2>1. Prepare your DLC model</h2>
-            <p>Choose your DLC project. FreeMoCap uses its latest saved checkpoint, prepares the model if needed, then loads it. You can choose a specific checkpoint instead.</p>
+            <p>Choose your project's config.yaml. Conversion starts automatically when needed, then the model is selected for tracking.</p>
             <ButtonSm text="Choose DLC project…" className="primary accent" textColor="text-white" disabled={busy || preparing || isLoading || !isElectron}
                 onClick={() => void perform(async () => {
                     const path = await pickFile('Choose DLC project configuration', ['yaml','yml'], projectConfig);
                     if (path) {setPoseConfig(''); setImageWidth(null); setImageHeight(null); setProjectConfig(path); setCheckpoint(''); setStatus('Finding the latest checkpoint…'); await prepareProject(path, '');}
                 })}/>{fileSummary(projectConfig)}
-            <ButtonSm text="Choose checkpoint…" buttonType="secondary" textColor="text-white" disabled={busy || preparing || isLoading || !isElectron}
+            <details open={job?.required_fields?.includes('checkpoint_path') || undefined}><summary>Choose a different checkpoint (optional)</summary>
+            <p>Default: latest saved epoch in this project's training run.</p>
+            <ButtonSm text="Choose checkpoint…" buttonType="secondary" textColor="text-white" disabled={busy || preparing || isLoading || !isElectron || !projectConfig}
                 onClick={() => void perform(async () => {
                     const path = await pickFile('Choose DLC checkpoint', ['pt','pth'], checkpoint);
                     if (path) {setPoseConfig(''); setImageWidth(null); setImageHeight(null); setCheckpoint(path); setStatus('Checkpoint selected.'); await prepareProject(projectConfig, path);}
-                })}/>{checkpoint ? fileSummary(checkpoint) : <p>Default: latest saved epoch in this project's training run.</p>}
+                })}/>{checkpoint && fileSummary(checkpoint)}
             {checkpoint && <ButtonSm text="Use latest checkpoint" buttonType="secondary" textColor="text-white" disabled={busy || preparing || isLoading} onClick={() => void perform(async () => {setCheckpoint(''); setPoseConfig(''); setImageWidth(null); setImageHeight(null); await prepareProject(projectConfig,'');})}/>}
+            </details>
             {!isElectron && <p>Use the FreeMoCap desktop app for project and checkpoint file selection.</p>}
             {job?.stage === 'needs_input' && <div className="dlc-model-summary">
                 <p>{job.detail}</p>
@@ -152,36 +174,46 @@ function DlcSettingsForm({context}: {context: 'realtime' | 'posthoc'}) {
             </div>}
             {job?.status === 'failed' && <ButtonSm text="Retry preparation" buttonType="secondary" textColor="text-white" disabled={busy || preparing} onClick={() => void perform(() => prepareProject(projectConfig,checkpoint,true))}/>}
         </section>
-        <div aria-live="polite" className="dlc-feedback">
-            {job?.resolved_checkpoint_path && <p title={job.resolved_checkpoint_path}>Selected checkpoint: {job.resolved_checkpoint_path.split(/[\\/]/).pop()}</p>}
-            {job && <div><strong>{job.stage === 'ready' ? (job.cache_hit ? 'Ready — reused saved conversion' : 'Ready — conversion complete') : job.detail}</strong>
-                <p>{Math.floor(job.elapsed_seconds ?? 0)} s elapsed{preparing ? (job.estimated_remaining_seconds == null ? ' Â· Time estimate unavailable until a conversion has been measured.' : job.estimated_remaining_seconds <= 0 ? ' Â· Taking longer than the estimate.' : ` Â· About ${Math.ceil(job.estimated_remaining_seconds)} s remaining`) : ''}</p></div>}
-            {(busy || isLoading) && <p role="status">Working…</p>}
+        <div aria-live="polite" className="dlc-feedback" data-state={selection?.phase ?? (preparing ? 'preparing' : modelReady ? 'selected' : 'idle')}>
+            {preparing && <strong>Preparing model automatically</strong>}
+            {selection?.phase === 'applying' && <strong>Model prepared — applying selection…</strong>}
+            {selection?.phase === 'failed' && <><strong>Model prepared, but selection failed</strong>
+                <p>The previous tracker selection has not been replaced. Fix the error below, then retry; conversion does not need to run again.</p>
+                <ButtonSm text="Retry selection" buttonType="secondary" textColor="text-white" disabled={busy || isLoading}
+                    onClick={() => void perform(() => selectModel(selection.model))}/></>}
+            {modelReady && <><strong>Model ready and selected</strong>
+                <p>{metadata!.keypoint_names.length} keypoints · {metadata!.input_size[1]} × {metadata!.input_size[0]} input</p>
+                <p title={selectedPath ?? undefined}>Selected model: {metadata!.model_name}</p>
+                <p className="dlc-next-step">{context === 'posthoc' ? 'Next: click Done, then start processing your recording.' : isConnected ? 'Selected in the running pipeline. Click Done to view tracking.' : 'Next: click Done, connect your cameras, then click the lightning bolt to start tracking.'}</p>
+                <p>{selectedGeometry ? 'Object geometry is selected.' : 'For rigid-object pose, choose the geometry JSON below before clicking Done. Otherwise, track keypoints only.'}</p></>}
+            {job?.resolved_checkpoint_path && <p title={job.resolved_checkpoint_path}>Checkpoint: {job.resolved_checkpoint_path.split(/[\\/]/).pop()}</p>}
+            {job && <div><p>{job.status === 'complete' ? (job.cache_hit ? 'Reused a saved conversion.' : 'Conversion complete.') : job.detail}</p>
+                <p>{Math.floor(job.elapsed_seconds ?? 0)} s elapsed{preparing ? (job.estimated_remaining_seconds == null ? ' · Time estimate unavailable until a conversion has been measured.' : job.estimated_remaining_seconds <= 0 ? ' · Taking longer than the estimate.' : ` · About ${Math.ceil(job.estimated_remaining_seconds)} s remaining`) : ''}</p></div>}
+            {(busy || isLoading) && selection?.phase !== 'applying' && !preparing && <p role="status">{status || 'Working…'}</p>}
             {!busy && !isLoading && status && <p role="status">{status}</p>}
             {(error || (context === 'realtime' && pipelineError)) && <p role="alert">{error || pipelineError}</p>}
         </div>
-            {metadata && <div className="dlc-model-summary"><strong>{metadata.keypoint_names.length} keypoints Â· {metadata.input_size[1]} Ã— {metadata.input_size[0]}</strong>
-                <details><summary>Model details</summary><p>{metadata.keypoint_names.join(', ')}</p><p>{metadata.connections.length} declared connections Â· {metadata.resize_method}</p></details></div>}
-        <section className="dlc-section">
-            <h2>Already converted?</h2>
-            <p>Choose the converted model's YAML file. FreeMoCap checks it and loads its named keypoints.</p>
+        {metadata && <details className="dlc-model-summary"><summary>{modelReady ? 'Selected model details' : 'Previous tracker model (not the model being prepared)'}</summary>
+            <p>{metadata.model_name}: {metadata.keypoint_names.length} keypoints</p>
+            <p>{metadata.keypoint_names.join(', ')}</p><p>{metadata.connections.length} declared connections · {metadata.resize_method}</p>
+        </details>}
+        <details className="dlc-section"><summary>Load a different converted model (optional)</summary>
+            <p>Use this only for a model that has already been converted. It replaces the selected model.</p>
             <ButtonSm text="Choose converted model…" className="primary accent" textColor="text-white" disabled={busy || preparing || isLoading || !isElectron}
                 onClick={() => void perform(async () => {
                     const path = await pickFile('Choose DLC model', ['yaml','yml'], selectedPath ?? undefined);
-                    if (path) {setJob(null); importId.current = null; await selectModel(await inspectDlcModel(path, lifetime.current?.signal));}
+                    if (path) {setJob(null); setSelection(null); importId.current = null; await selectModel(await inspectDlcModel(path, lifetime.current?.signal));}
                 })}/>
-            {fileSummary(selectedPath)}
             {!isElectron && <p>Open the FreeMoCap desktop app to use the file picker. For a remote server, advanced settings accept a path on that server.</p>}
             <details><summary>Advanced: server model path</summary>
                 <label>Model file (.yaml)<input className="input-field" value={modelPath} onChange={event => setModelPath(event.target.value)}/></label>
                 <ButtonSm text="Load model path" buttonType="secondary" textColor="text-white" disabled={busy || preparing || isLoading || !modelPath.trim()}
-                    onClick={() => void perform(async () => {await selectModel(await inspectDlcModel(modelPath.trim(), lifetime.current?.signal));})}/>
+                    onClick={() => void perform(async () => {setJob(null); setSelection(null); importId.current = null; await selectModel(await inspectDlcModel(modelPath.trim(), lifetime.current?.signal));})}/>
             </details>
-
-        </section>
+        </details>
         <section className="dlc-section"><h2>2. Tracking</h2>
         <SettingRow info={{title: "DLC execution provider", text: "Explicit ONNX CPU or CUDA execution in FP32. Session startup verifies availability; no automatic fallback."}} label="DLC execution provider" control={<SettingSelectInput label="DLC execution provider"
-            value={saved.dlcExecutionProvider ?? 'cpu'} options={[{label: 'CPU Â· FP32', value: 'cpu'}, {label: 'CUDA Â· FP32', value: 'cuda'}]}
+            value={saved.dlcExecutionProvider ?? 'cpu'} options={[{label: 'CPU · FP32', value: 'cpu'}, {label: 'CUDA · FP32', value: 'cuda'}]}
             onChange={(value: 'cpu' | 'cuda') => {dispatch(mocapDlcSettingsChanged({dlcExecutionProvider: value})); if (context === 'realtime') triggerRealtimeApply();}}/>}/>
         <SettingRow info={{title: "Keypoint confidence", text: "Suppress model keypoints below this confidence threshold."}} label="Keypoint confidence" control={<ValueSelector value={confidence} min={0} max={1} step={0.05} unit=""
             onChange={value => {

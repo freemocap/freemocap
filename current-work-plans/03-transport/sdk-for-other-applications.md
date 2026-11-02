@@ -63,6 +63,9 @@ and compositing the canvas.
 
 ## Recommendations
 
+The integration review, [sdk-external-review.md](sdk-external-review.md), ranks these
+findings and expands them into a wish list for the multi-language and plugin work.
+
 1. **Merge the branch's changes into `sfn26` after review.** They are additive:
    FreeMoCap kinds, decoding and UI behavior are unchanged, except that the image
    reader now rejects a malformed payload instead of rendering its valid prefix.

@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike
 
-from freemocap_stream.messages import encode_message
+from freemocap_stream.messages import encode_message, integer
 
 FRAME_KIND = "frame"
 OVERLAY_2D = "OVERLAY_2D"
@@ -52,9 +52,9 @@ def uncalibrated_camera(
     width, height = image_size
     return {
         "id": camera_id,
-        "index": int(index),
+        "index": integer(index, "camera index"),
         "rotation": rotation,
-        "image_size": [int(width), int(height)],
+        "image_size": [integer(width, "width", minimum=1), integer(height, "height", minimum=1)],
         "intrinsics": None,
         "extrinsics": None,
         "world_position": [0.0, 0.0, 0.0],
@@ -92,10 +92,12 @@ def channel_block(
         "data": np.ascontiguousarray(rows).tobytes(),
     }
     if sample_status is not None:
-        status = np.asarray(sample_status, dtype=np.uint8)
+        status = np.asarray(sample_status)
         if status.shape != (rows.shape[0],):
             raise ValueError("Sample status needs one value per row")
-        block["sample_status"] = status.tobytes()
+        if status.size and (status.dtype.kind not in 'iu' or np.any(status < 0) or np.any(status > 255)):
+            raise ValueError("Sample status values must be integers from 0 to 255")
+        block["sample_status"] = status.astype(np.uint8).tobytes()
     if status_labels is not None:
         block["status_labels"] = list(status_labels)
     if camera_id is not None:
@@ -103,7 +105,8 @@ def channel_block(
     if names is not None:
         block["names"] = list(names)
     if image_size is not None:
-        block["image_size"] = [int(image_size[0]), int(image_size[1])]
+        block["image_size"] = [integer(image_size[0], "width", minimum=1),
+                               integer(image_size[1], "height", minimum=1)]
     return block
 
 
@@ -151,8 +154,8 @@ def encode_frame_message(
     return encode_message(
         FRAME_KIND,
         {
-            "frame_number": int(frame_number),
-            "model_sequence": int(model_sequence),
+            "frame_number": integer(frame_number, "frame number"),
+            "model_sequence": integer(model_sequence, "model sequence"),
             "convention": convention if convention is not None else coordinate_convention(),
             "cameras": list(cameras),
             "models": list(models),

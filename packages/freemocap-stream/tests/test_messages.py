@@ -5,6 +5,19 @@ import pytest
 from freemocap_stream import encode_message
 
 
+@pytest.mark.parametrize("value", [0.5, -1, True, "2"])
+@pytest.mark.parametrize("field", ["version", "sequence"])
+def test_integer_envelope_fields_are_never_coerced(field, value):
+    with pytest.raises(ValueError, match="integer"):
+        encode_message("robot.state", **{field: value})
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_timestamp_must_be_finite(value):
+    with pytest.raises(ValueError, match="finite"):
+        encode_message("robot.state", timestamp=value)
+
+
 def test_envelope_comes_first_then_payload_fields_in_order():
     decoded = cbor2.loads(encode_message("robot_state", {"servos": {"pan": 90}, "mode": "live"}, timestamp=1.5, sequence=3))
     assert list(decoded) == ["kind", "version", "timestamp", "sequence", "servos", "mode"]

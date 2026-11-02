@@ -16,6 +16,10 @@
       "types": "./dist/http.d.ts",
       "import": "./dist/http.js"
     },
+    "./stream": {
+      "types": "./dist/stream.d.ts",
+      "import": "./dist/stream.js"
+    },
     "./recording": {
       "types": "./dist/recording/index.d.ts",
       "import": "./dist/recording/index.js"

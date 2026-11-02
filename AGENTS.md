@@ -34,7 +34,7 @@ Core owns a change only when it inherently coordinates multiple subrepositories.
 Missing summary context is a reason to search, not to recreate component logic.
 Continue authorized work once purpose, ownership and validation are clear; ask
 only when consequential intent remains unresolved after targeted inspection.
-Preserve unrelated work and leave all Git mutations to the human.
+Preserve unrelated work and follow the workspace Git authorization and repository-scope policy.
 
 ## Self-describing transport is an intentional invariant
 

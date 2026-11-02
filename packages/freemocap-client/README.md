@@ -129,6 +129,37 @@ FreeMoCap's kinds cannot be redefined; a server that sends `frame` messages gets
 usual frame, image and overlay subscriptions. Unregistered kinds and other versions
 are skipped, and malformed registered messages reach protocol-error subscribers.
 
+## Generic streaming consumers
+
+Import `TransportService` from `@freemocap/client/stream` when you need streaming
+without FreeMoCap's HTTP operation bindings. The root export and browser bundle
+continue to provide the complete client.
+
+Application kind registrations are captured when the service is constructed.
+Changing the caller's registry, parser property or version later does not change
+the connection. Prefer names such as `my_app.robot_state` to avoid collisions;
+namespaces are a convention, not a prerequisite for existing kinds. A parser may
+return an application-specific projection; the incoming envelope is validated
+before it runs. Version defaults to zero. Unsupported versions are skipped.
+
+`subscribeToChannels` receives every channel in each incoming frame, including
+unknown kinds. Each view retains its descriptor, tracker or instance identity,
+channel index, row count and float32 values. The surrounding event carries source
+time, frame number, convention, models and cameras. Names omitted on the wire stay
+omitted; a custom channel's row meaning must be declared by its producer. No
+meaning or units are inferred from its spelling. Use `resolveChannelViews` for an
+already decoded frame. These views are read-only; copy before modifying or
+transferring buffers. Disconnect/reset emits `null`; the subscription does not
+replay an old frame on registration. No generic views are allocated without a
+subscriber.
+
+Detection and box overlays carry `trackerId`. Reconstructed overlays carry
+`instanceId` and `modelId`. These identify what the producer declared; they do not
+create temporal person tracking when the detector provides none.
+
+See the [UltraSkelly branch handoff](../../current-work-plans/03-transport/ultraskelly-consumer-handoff.md)
+for source-image pairing, build commands, acceptance checks and remaining work.
+
 ## Recorded data
 
 ```js

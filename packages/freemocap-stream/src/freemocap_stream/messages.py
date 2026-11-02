@@ -9,12 +9,21 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from enum import Enum
+from numbers import Integral
+import math
 from typing import Any
 
 import cbor2
 import numpy as np
 
 ENVELOPE_FIELDS = ("kind", "version", "timestamp", "sequence")
+
+
+def integer(value: int, name: str, *, minimum: int = 0) -> int:
+    """Validate identities before serialization; never truncate caller data."""
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral) or value < minimum:
+        raise ValueError(f"{name} must be an integer >= {minimum}")
+    return int(value)
 
 
 def encode_message(
@@ -31,15 +40,15 @@ def encode_message(
     views are copied into bytes. Numerical arrays travel as channel blocks
     (`freemocap_stream.frames.channel_block`), never as nested lists.
     """
-    if not kind:
+    if not isinstance(kind, str) or not kind.strip():
         raise ValueError("A message needs a kind")
-    if version < 0 or sequence < 0:
-        raise ValueError("Message version and sequence must be nonnegative")
+    if not math.isfinite(timestamp):
+        raise ValueError("Message timestamp must be finite")
     message: dict[str, Any] = {
         "kind": kind,
-        "version": int(version),
+        "version": integer(version, "version"),
         "timestamp": float(timestamp),
-        "sequence": int(sequence),
+        "sequence": integer(sequence, "sequence"),
     }
     for key, value in (payload or {}).items():
         if key in ENVELOPE_FIELDS:

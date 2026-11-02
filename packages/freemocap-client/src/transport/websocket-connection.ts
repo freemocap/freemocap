@@ -178,9 +178,11 @@ export class WebSocketConnection {
 
     /** Retry quietly until the caller explicitly disconnects, even after server errors. */
     private scheduleReconnect(): void {
-        if (this.reconnectTimer) return;
+        if (this.disconnectRequested || this.reconnectTimer) return;
 
         this.setState(ConnectionState.RECONNECTING);
+        // State subscribers can explicitly disconnect during this notification.
+        if (this.disconnectRequested) return;
         this.reconnectTimer = (typeof window === "undefined" ? globalThis : window).setTimeout(() => {
             this.reconnectTimer = null;
             this.setState(ConnectionState.DISCONNECTED);

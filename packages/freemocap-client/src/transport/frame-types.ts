@@ -63,6 +63,10 @@ export enum OverlayLayer {
 }
 
 export interface OverlayFrame {
+    /** Identity of the detector observation; absent for reconstructed overlays. */
+    trackerId?: string;
+    /** Identity within modelId for reconstructed overlays; not inferred for detectors. */
+    instanceId?: number;
     /** Detector-owned image keypoint connections; no reconstructed model required. */
     connectionGroups?: readonly ModelConnectionGroup[];
     cameraId: string;

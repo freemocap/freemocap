@@ -10,6 +10,15 @@ class Socket {
  open(){this.readyState=1;this.onopen?.({});}
  packet(value){const encoded=encode(value);this.onmessage?.({data:encoded.buffer.slice(encoded.byteOffset,encoded.byteOffset+encoded.byteLength)});}
 }
+
+for (const event of ['error','state-change']) test(`disconnect during ${event} prevents a retry`,async()=>{
+ let attempts=0;
+ const connection=new WebSocketConnection({url:'ws://server.invalid',reconnectDelay:1,
+  socketFactory:()=>{attempts++;throw Error('offline');}});
+ connection.on(event,value=>{if(event==='error'||value==='RECONNECTING') connection.disconnect();});
+ connection.connect();await new Promise(resolve=>setTimeout(resolve,20));
+ assert.equal(attempts,1);assert.equal(connection.getState(),'DISCONNECTED');connection.disconnect();
+});
 test('standalone client has no window dependency and exposes bidirectional socket traffic',()=>{
  assert.equal(typeof globalThis.window,'undefined');let socket;
  const client=createClient({baseUrl:'https://server.invalid/prefix',socketFactory:url=>(socket=new Socket(url))});

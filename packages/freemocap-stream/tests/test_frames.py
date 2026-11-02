@@ -23,6 +23,25 @@ def test_channel_rows_pack_as_little_endian_row_major_float32():
     assert block["image_size"] == [640, 480] and block["names"] == ["nose", "left_eye"]
 
 
+@pytest.mark.parametrize("status", [[0.5], [256], [-1], [True]])
+def test_sample_status_cannot_be_truncated_or_wrapped(status):
+    with pytest.raises(ValueError, match="integers"):
+        channel_block("custom", ["value"], [[1]], sample_status=status)
+
+
+@pytest.mark.parametrize("size", [(640.5, 480), (640, 0), (True, 480)])
+def test_image_sizes_are_positive_integers(size):
+    with pytest.raises(ValueError, match="integer"):
+        uncalibrated_camera("camera", 0, size)
+    with pytest.raises(ValueError, match="integer"):
+        channel_block("custom", ["value"], [[1]], image_size=size)
+
+
+def test_model_sequence_cannot_be_truncated():
+    with pytest.raises(ValueError, match="integer"):
+        encode_frame_message(frame_number=1, timestamp=0, cameras=[], model_sequence=0.5)
+
+
 def test_channel_shape_must_match_its_columns_and_names():
     with pytest.raises(ValueError, match="shape"):
         channel_block(OVERLAY_2D, ("x", "y"), [[1.0, 2.0, 3.0]])

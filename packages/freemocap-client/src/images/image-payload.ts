@@ -93,6 +93,7 @@ export function readImagePayload(data: ArrayBuffer | Uint8Array): ImagePayload {
         throw new Error("Image payload does not start with a payload header");
     }
     const frameNumber = Number(view.getBigInt64(IMAGE_PAYLOAD_HEADER_FIELDS.frame_number.offset, true));
+    if (!Number.isSafeInteger(frameNumber)) throw new Error('Image frame number exceeds exact JavaScript integer range');
     const cameraCount = view.getInt32(IMAGE_PAYLOAD_HEADER_FIELDS.number_of_cameras.offset, true);
     if (cameraCount < 1) throw new Error(`Image payload declares ${cameraCount} cameras`);
 
@@ -112,6 +113,9 @@ export function readImagePayload(data: ArrayBuffer | Uint8Array): ImagePayload {
         const idLength = idBytes.indexOf(0);
         const cameraId = asciiDecoder.decode(idLength < 0 ? idBytes : idBytes.subarray(0, idLength));
         const jpegLength = view.getInt32(field("jpeg_string_length"), true);
+        if (idBytes.subarray(0, idLength < 0 ? idBytes.length : idLength).some(byte => byte > 127)) {
+            throw new Error('Image camera ID must be ASCII');
+        }
         if (cameraId.length === 0) throw new Error(`Image payload camera ${camera} has an empty ID`);
         if (jpegLength < 1) throw new Error(`Image payload camera ${cameraId} declares ${jpegLength} JPEG bytes`);
         const jpegStart = offset + IMAGE_FRAME_HEADER_SIZE;
@@ -125,6 +129,10 @@ export function readImagePayload(data: ArrayBuffer | Uint8Array): ImagePayload {
             colorChannels: view.getInt32(field("color_channels"), true),
             jpeg: new Uint8Array(bytes.buffer, bytes.byteOffset + jpegStart, jpegLength),
         });
+        const image = images[images.length - 1];
+        if (image.cameraIndex < 0 || image.width < 1 || image.height < 1 || image.colorChannels < 1) {
+            throw new Error(`Invalid image dimensions or camera index for ${cameraId}`);
+        }
         offset = jpegStart + jpegLength;
     }
 

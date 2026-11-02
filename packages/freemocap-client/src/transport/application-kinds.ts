@@ -15,7 +15,7 @@ export interface ApplicationKind<T = unknown> {
     /** Message-shape version this client reads (default 0). Messages declaring
      *  another version are skipped like an unknown kind. */
     readonly version?: number;
-    /** Return the validated message, which still includes its envelope fields.
+    /** Return the validated application value; the envelope is validated separately.
      *  Throw when a message at the supported version is malformed. */
     parse(message: unknown): T;
 }
@@ -31,6 +31,13 @@ const ApplicationEnvelopeSchema = z.object({ kind: z.string(), ...ENVELOPE });
 /** Reject a registry that would redefine a FreeMoCap kind. */
 export function validateApplicationKinds(kinds: ApplicationKinds): void {
     for (const kind of Object.keys(kinds)) {
+        if (!kind.trim() || typeof kinds[kind]?.parse !== 'function') {
+            throw new Error('Application kinds need a nonempty name and a parser');
+        }
+        const version = kinds[kind].version ?? 0;
+        if (!Number.isSafeInteger(version) || version < 0) {
+            throw new Error(`Invalid version for application kind "${kind}"`);
+        }
         if ((KNOWN_KINDS as readonly string[]).includes(kind)) {
             throw new Error(`"${kind}" is a FreeMoCap message kind and cannot be redefined`);
         }

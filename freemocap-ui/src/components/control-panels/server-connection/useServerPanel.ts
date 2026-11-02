@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from 'react-i18next';
@@ -224,9 +225,7 @@ export function useServerPanel(): ServerPanelState {
         setError(null);
         setShutdownNotice(null);
         try {
-            const response = await fetch(serverUrls.endpoints.shutdown, {
-                method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15000),
-            });
+            const response = await serverClient().responses.shutdown_server_shutdown_post({cache: 'no-store', signal: AbortSignal.timeout(15000)});
             if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
             setShutdownNotice('Shutdown requested.');
         } catch (err) {

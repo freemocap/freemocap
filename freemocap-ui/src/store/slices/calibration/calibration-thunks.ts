@@ -1,3 +1,4 @@
+import {serverClient, recordingRequest} from '@/services/server/sdk';
 import {recordingProcessingUrl} from '@/services/recording/posthoc-processing';
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState} from "@/store";
@@ -21,8 +22,7 @@ export const loadRecordingCalibrationDefault = createAsyncThunk<
         const isCurrent = () => getState().calibration.loadRequestId === requestId
             && selectActiveRecordingFullPath(getState()) === directory;
         try {
-            const query = new URLSearchParams({recording_directory: directory});
-            const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/calibration/files?${query}`);
+            const response = await serverClient().responses.calibration_file_options_freemocap_calibration_files_get({query:{recording_directory:directory},});
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             const {recording_path: path}: {recording_path: string | null} = await response.json();
             if (!isCurrent()) throw Object.assign(new Error('Recording selection changed'), {name: 'AbortError'});
@@ -47,13 +47,7 @@ export const loadCalibrationForRecording = createAsyncThunk<
     'calibration/loadCalibrationForRecording',
     async ({ recordingId, recordingParentDirectory }, { rejectWithValue }) => {
         try {
-            const params = new URLSearchParams();
-            if (recordingParentDirectory) {
-                params.set('recording_parent_directory', recordingParentDirectory);
-            }
-            const qs = params.toString();
-            const url = `${serverUrls.getHttpUrl()}/freemocap/recordings/${encodeURIComponent(recordingId)}/calibration${qs ? `?${qs}` : ''}`;
-            const resp = await fetch(url);
+            const resp = await serverClient().responses.recordings_get_recording_calibration({path:{recording_id:recordingId},query:{recording_parent_directory:recordingParentDirectory},});
             if (resp.status === 404) {
                 return null;
             }
@@ -90,14 +84,13 @@ export const loadCalibrationToml = createAsyncThunk<
 );
 
 async function readCalibration(path: string): Promise<LoadedCalibration> {
-    const params = new URLSearchParams({path});
-    const response = await fetch(`${serverUrls.endpoints.calibrationContent}?${params}`);
+    const response = await serverClient().responses.calibration_content_freemocap_calibration_content_get({query:{path},});
     if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
     return LoadedCalibrationSchema.parse(await response.json());
 }
 
 async function readMostRecentCalibration(): Promise<LoadedCalibration | null> {
-    const response = await fetch(serverUrls.endpoints.calibrationMostRecent);
+    const response = await serverClient().responses.most_recent_calibration_freemocap_calibration_most_recent_get();
     if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
     return LoadedCalibrationSchema.nullable().parse(await response.json());
 }
@@ -108,7 +101,7 @@ export const restoreCalibrationSelection = createAsyncThunk<
     'calibration/restoreSelection',
     async (_, {dispatch, getState, requestId, rejectWithValue}) => {
         try {
-            const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/realtime/config`);
+            const response = await serverClient().responses.running_pipeline_config_freemocap_realtime_config_get({});
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             const config: RealtimePipelineConfig | null = await response.json();
             if (config === null) return await readMostRecentCalibration();
@@ -178,14 +171,10 @@ export const startCalibrationRecording = createAsyncThunk<
                 calibrationTaskConfig,
             });
 
-            const response = await fetch(serverUrls.endpoints.calibrationStartRecording, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    kind: 'calibration',
-                    config: calibrationTaskConfig,
-                }),
-            });
+            const response = await serverClient().responses.capture_start_calibration_recording({headers: { 'Content-Type': 'application/json' }, body: {
+                    calibrationRecordingDirectory,
+                    calibrationTaskConfig,
+                }});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -218,11 +207,7 @@ export const stopCalibrationRecording = createAsyncThunk<
             console.log(`🎬 Stoping calibration recording and starting calibration with: ${JSON.stringify(calibrationTaskConfig, null, 2)}`);
 
 
-            const response = await fetch(serverUrls.endpoints.calibrationStopRecording, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({calibrationTaskConfig}),
-            });
+            const response = await serverClient().responses.capture_stop_calibration_recording({headers: { 'Content-Type': 'application/json' }, body: {calibrationTaskConfig}});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -263,14 +248,7 @@ export const calibrateRecording = createAsyncThunk<
                 calibrationTaskConfig,
             });
 
-            const response = await fetch(recordingProcessingUrl(calibrationRecordingDirectory), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    kind: 'calibration',
-                    config: calibrationTaskConfig,
-                }),
-            });
+            const response = await serverClient().responses.process_recording_freemocap_recordings__recording_id__processing_post({...recordingRequest(calibrationRecordingDirectory),headers: { 'Content-Type': 'application/json' }, body: {kind:'calibration',config:calibrationTaskConfig}});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);

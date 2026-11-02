@@ -1,3 +1,4 @@
+import {serverClient, recordingRequest} from '@/services/server/sdk';
 import {recordingProcessingUrl} from '@/services/recording/posthoc-processing';
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import type {RootState} from "@/store";
@@ -43,7 +44,12 @@ function buildPosthocConfig(state: RootState) {
         mediapipeNumHands: config.mediapipeNumHands,
         mediapipeNumFaces: config.mediapipeNumFaces,
         calibrationTomlPath,
-        triangulationConfig: config.triangulation,
+        triangulationConfig: {
+            useOutlierRejection: config.triangulation.use_outlier_rejection,
+            minimumCamerasForTriangulation: config.triangulation.minimum_cameras_for_triangulation,
+            maximumCamerasToDrop: config.triangulation.maximum_cameras_to_drop,
+            targetReprojectionError: config.triangulation.target_reprojection_error,
+        },
         filterConfig: {
             enabled: config.posthoc_filter.enabled,
             method: config.posthoc_filter.method,
@@ -82,14 +88,10 @@ export const startMocapRecording = createAsyncThunk<
                 mocapTaskConfig: configWithCalibration,
             });
 
-            const response = await fetch(serverUrls.endpoints.mocapStartRecording, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const response = await serverClient().responses.capture_start_mocap_recording({headers: { 'Content-Type': 'application/json' }, body: {
                     mocapRecordingDirectory,
                     mocapTaskConfig: configWithCalibration,
-                }),
-            });
+                }});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -120,11 +122,7 @@ export const stopMocapRecording = createAsyncThunk<
 
             console.log(`🎬 Stopping mocap recording and starting mocap with: ${JSON.stringify(configWithCalibration, null, 2)}`);
 
-            const response = await fetch(serverUrls.endpoints.mocapStopRecording, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({mocapTaskConfig: configWithCalibration}),
-            });
+            const response = await serverClient().responses.capture_stop_mocap_recording({headers: { 'Content-Type': 'application/json' }, body: {mocapTaskConfig: configWithCalibration}});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -154,11 +152,7 @@ export const importVideos = createAsyncThunk<
     'mocap/importVideos',
     async ({ videoPaths, recordingName, baseDirectory, syncJobId }, { rejectWithValue }) => {
         try {
-            const response = await fetch(serverUrls.endpoints.importVideos, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoPaths, recordingName, baseDirectory, syncJobId }),
-            });
+            const response = await serverClient().responses.import_recording({headers: { 'Content-Type': 'application/json' }, body: { videoPaths, recordingName, baseDirectory, syncJobId }});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -196,11 +190,7 @@ export const checkVideoSync = createAsyncThunk<
     'mocap/checkVideoSync',
     async ({ videoPaths }, { rejectWithValue }) => {
         try {
-            const response = await fetch(serverUrls.endpoints.checkVideoSync, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoPaths }),
-            });
+            const response = await serverClient().responses.check_import_frame_counts({headers: { 'Content-Type': 'application/json' }, body: { videoPaths }});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -253,11 +243,7 @@ export const startVideoSync = createAsyncThunk<
     'mocap/startVideoSync',
     async ({ videoPaths, method, brightnessRatioThreshold }, { rejectWithValue }) => {
         try {
-            const response = await fetch(serverUrls.endpoints.synchronizeVideos, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoPaths, method, brightnessRatioThreshold }),
-            });
+            const response = await serverClient().responses.synchronize_freemocap_recording_import_synchronize_post({headers: { 'Content-Type': 'application/json' }, body: { videoPaths, method, brightnessRatioThreshold }});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -283,7 +269,7 @@ export const getSyncResult = createAsyncThunk<
     'mocap/getSyncResult',
     async ({ jobId }, { rejectWithValue }) => {
         try {
-            const response = await fetch(serverUrls.endpoints.synchronizeVideosResult(jobId));
+            const response = await serverClient().responses.get_task_freemocap_tasks__task_id__get({path:{task_id:`sync:${jobId}`},});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);
@@ -337,14 +323,10 @@ export const processMocapRecording = createAsyncThunk<
                 mocapTaskConfig: {...configWithCalibration, ...selection},
             });
 
-            const response = await fetch(recordingProcessingUrl(mocapRecordingDirectory), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const response = await serverClient().responses.process_recording_freemocap_recordings__recording_id__processing_post({...recordingRequest(mocapRecordingDirectory),headers: { 'Content-Type': 'application/json' }, body: {
                     kind: 'mocap',
                     config: {...configWithCalibration, ...selection},
-                }),
-            });
+                }});
 
             if (!response.ok) {
                 const errorMessage = await getDetailedErrorMessage(response);

@@ -354,6 +354,12 @@ jobs:
           fi
 
 
+      - name: Build local JavaScript client
+        working-directory: packages/freemocap-client
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+
       - name: Install UI dependencies
         run: |
           cd freemocap-ui

@@ -1,1 +1,2 @@
-export enum PlaybackSource {Raw = 'synchronized', Annotated = 'annotated'}
+// Compatibility path; numerical decoding and metadata are owned by the SDK.
+export * from '@freemocap/client/recording';

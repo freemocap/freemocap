@@ -34,7 +34,7 @@ test('graph controls use settings styling and board dialog escapes the scrolling
             builder.onResolve({filter: /useCalibration$/}, () => ({path: 'calibration', namespace: 'mock'}));
             builder.onResolve({filter: /ImportVideosModal$/}, () => ({path: 'import', namespace: 'mock'}));
             builder.onLoad({filter: /.*/, namespace: 'mock'}, args => ({loader: 'ts', resolveDir: path.resolve('.'), contents:
-                args.path === 'services' ? `export const useElectronIPC=()=>({api:null,isElectron:false}); export const useServer=()=>({connectedCameraIds:[],isConnected:true,isFailed:false}); export const serverUrls={endpoints:{onnxExecutionProviders:'http://localhost:53117/freemocap/onnx/execution_providers'}};` :
+                args.path === 'services' ? `export const useElectronIPC=()=>({api:null,isElectron:false}); export const useServer=()=>({connectedCameraIds:[],isConnected:true,isFailed:false}); export const serverUrls={getHttpUrl:()=> 'http://localhost:53117',endpoints:{onnxExecutionProviders:'http://localhost:53117/freemocap/onnx/execution_providers'}};` :
                 args.path === 'import' ? 'export default function ImportModal(){return null;}' :
                 `import {useAppSelector} from '@/store'; export const useCalibration=()=>({config:useAppSelector(state=>state.calibration.config),isLoading:false,isRecording:false,updateCalibrationConfig:()=>{}});`
             }));

@@ -57,7 +57,7 @@ for (const compatibility of [false, true]) test(`app playback plays, seeks, swit
         await server.listen();
         try {
             const app = await electron.launch({executablePath: process.env.FREEMOCAP_TEST_ELECTRON,
-                args: [entry, server.resolvedUrls!.local[0]], env: {...process.env, MEDIA_TEST: '1'}});
+                args: [...(process.env.FREEMOCAP_TEST_DISABLE_GPU === '1' ? ['--disable-gpu'] : []), entry, server.resolvedUrls!.local[0]], env: {...process.env, MEDIA_TEST: '1'}});
             try {
                 const page = await app.firstWindow();
                 await expect(page.locator('#bundle-ready')).toHaveText('true');

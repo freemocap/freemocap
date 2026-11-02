@@ -33,6 +33,7 @@ from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — beartype resolves the get_latest_aggregator_outputs return annotation at runtime
 from skelly_synchronize.core.models import SyncRequest
+from freemocap.core.streaming.outputs.manager import StreamingOutputManager
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,13 @@ class FreemocapApplication:
     posthoc_pipeline_manager: PosthocPipelineManager
     sync_job_manager: SyncJobManager
     camera_group_manager: CameraBackendManager
+    streaming_outputs: StreamingOutputManager = field(init=False)
+
+    def __post_init__(self) -> None:
+        from freemocap.core.streaming.outputs.registry import builtin_protocols
+        from freemocap.core.streaming.outputs.source import RuntimeOutputSource
+        self.streaming_outputs = StreamingOutputManager(
+            source=RuntimeOutputSource(self), protocols=builtin_protocols())
 
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
@@ -224,7 +232,10 @@ class FreemocapApplication:
     def close(self) -> None:
         self.global_kill_flag.value = True
         try:
-            self.shutdown_all_processing()
+            try:
+                self.streaming_outputs.close()
+            finally:
+                self.shutdown_all_processing()
         finally:
             self.inference_service.close()
 

@@ -378,6 +378,7 @@ async def app_lifespan(
             collector.cancel()
             with suppress(asyncio.CancelledError):
                 await collector
+            await get_freemocap_app().streaming_outputs.aclose()
     except Exception as error:
         app.state.fatal_error = error
         raise

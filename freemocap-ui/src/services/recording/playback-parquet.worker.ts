@@ -1,3 +1,4 @@
+import {serverResourceResponse} from '@/services/server/sdk';
 import {decodePlaybackParquet} from './playback-parquet';
 import {PlaybackLoadRequestSchema, type PlaybackLoadResult} from './playback-parquet-messages';
 
@@ -10,7 +11,7 @@ self.addEventListener('message', (event: MessageEvent<unknown>) => {
 async function load(input: unknown): Promise<void> {
     try {
         const {url, manifest} = PlaybackLoadRequestSchema.parse(input);
-        const response = await fetch(url, {cache: 'no-store'});
+        const response = await serverResourceResponse(url, {cache: 'no-store'});
         if (!response.ok) throw new Error(`Unable to load recording data: ${await response.text()}`);
         if (response.headers.get('ETag') !== `"${manifest.revision}"`) {
             throw new Error('Recording changed; reload the playback manifest');

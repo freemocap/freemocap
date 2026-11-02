@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import {useEffect, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store';
@@ -19,8 +20,7 @@ export function RecordingCalibrationOptions(): React.ReactElement {
         if (!directory) return;
         void (async () => {
             try {
-                const query = new URLSearchParams({recording_directory: directory});
-                const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/calibration/files?${query}`, {signal: controller.signal});
+                const response = await serverClient().responses.calibration_file_options_freemocap_calibration_files_get({query:{recording_directory:directory},signal: controller.signal});
                 if (!response.ok) throw new Error(await response.text());
                 const result: CalibrationFileOptions = await response.json();
                 if (controller.signal.aborted) return;

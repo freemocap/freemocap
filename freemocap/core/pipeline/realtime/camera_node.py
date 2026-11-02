@@ -7,6 +7,7 @@ Runs indefinitely until shutdown. Responds to pipeline config updates
 """
 from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 from freemocap.core.tracking.capture_timing import tracker_capture_timestamp_ms
+from freemocap.core.streaming.outputs.capture_time import camera_capture_timestamp_ns
 import logging
 import queue
 import time
@@ -321,6 +322,7 @@ class CameraNode(SourceNode):
                         camera_id=actual_camera_id,
                         frame_number=actual_frame_number,
                         capture_timestamp_s=capture_timestamp(frame_recarray),
+                        capture_timestamp_ns=camera_capture_timestamp_ns(frame_recarray),
                         charuco_observation=charuco_observation,
                         skeleton_observation=skeleton_observation,
                     ),

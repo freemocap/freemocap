@@ -10,7 +10,7 @@ against it (`freemocap-ui/.../transport/message-contract.ts`, cbor-x + Zod). Fra
 ## Envelope (every message)
 
 Every message carries `kind` (which handler), `version` (shape version, 0), `timestamp` (monotonic
-seconds), `sequence` (monotonic within a kind, per connection), then the kind payload. Full names, never
+seconds), `sequence` (frame number for frames; other kinds may retain the default), then the kind payload. Full names, never
 abbreviated. The payload fields spread into each kind variant.
 
 ## Kinds (the five kinds)
@@ -21,7 +21,7 @@ abbreviated. The payload fields spread into each kind variant.
 | log | record (a logging record) | LogStore (append) |
 | framerate | camera_group_id, backend_framerate, frontend_framerate | FramerateStore (fast) |
 | app_state | server_pid, state (camera groups + realtime pipelines) | connection slice (replace) |
-| progress | pipeline_id, pipeline_type, phase, progress_fraction, detail, recording_name, recording_path, camera_id | pipelines/mocap/calibration slices (replace) |
+| progress | snapshot (shared task registry, server identity and revision) | task subscribers (replace) |
 
 Adding a kind = one variant + one handler entry. An unknown kind or unsupported version is skipped +
 logged (fail soft — inbound data).

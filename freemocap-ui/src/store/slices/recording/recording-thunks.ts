@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {z} from 'zod';
 import {RootState} from '@/store/root-state-types';
@@ -31,11 +32,7 @@ export const startRecording = createAsyncThunk<
             mic_device_index: micDeviceIndex,
         });
 
-        const response = await fetch(serverUrls.endpoints.startRecording, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
+        const response = await serverClient().responses.start_recording_skellycam_camera_group_all_record_start_post({headers: { 'Content-Type': 'application/json' }, body: payload});
 
         if (!response.ok) {
             throw new Error(`Failed to start recording: ${response.statusText}`);
@@ -50,9 +47,7 @@ export const stopRecording = createAsyncThunk<
 >(
     'recording/stop',
     async () => {
-        const response = await fetch(serverUrls.endpoints.stopRecording, {
-            method: 'POST',
-        });
+        const response = await serverClient().responses.stop_recording_skellycam_camera_group_all_record_stop_post();
 
         if (!response.ok) {
             throw new Error(`Failed to stop recording: ${response.statusText}`);

@@ -26,9 +26,14 @@ retention, compatibility, and reproducible validation.
 ### React GUI
 0. Install Node.js
    - https://nodejs.org/en/download/
-1. Change directory to the `freemocap-ui` folder 
+1. Build the client package from the repository root:
+   - `cd packages/freemocap-client`
+   - `npm ci --ignore-scripts`
+   - `npm run build`
+   - `cd ../..`
+2. Change directory to the `freemocap-ui` folder
    - `cd freemocap-ui`
-2. Install dependencies
+3. Install dependencies
    - `npm install`
 
 ## Run the FreeMoCap application in development mode 
@@ -205,9 +210,11 @@ ___
 
 ## Documentation 
 
-Our documenation is hosted at: https://freemocap.github.io/documentation/index_md.html
+Our documentation is hosted at: https://docs.freemocap.org/
 
-That site is built using `writerside` from this repository: https://github.com/freemocap/documentation
+The public Docusaurus site lives in https://github.com/freemocap/freemocap.github.io.
+Core architecture documentation lives in `freemocap-docs/docs/` in this repository.
+The integrated server contract is documented in `freemocap-docs/docs/architecture/api-boundary.mdx`.
 
 ___
 

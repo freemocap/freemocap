@@ -678,6 +678,9 @@ cpu = [
 cuda = [
     { name = "skellytracker", extra = ["all-cuda"] },
 ]
+lsl = [
+    { name = "pylsl" },
+]
 trt = [
     { name = "skellytracker", extra = ["all-trt"] },
 ]
@@ -726,6 +729,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=25.0.1" },
     { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pyinstaller", specifier = ">=6.11.0" },
+    { name = "pylsl", marker = "extra == 'lsl'", specifier = ">=1.18.6,<2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
@@ -740,7 +744,7 @@ requires-dist = [
     { name = "skellytracker", extras = ["all-trt"], marker = "extra == 'trt'", editable = "../skellytracker" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
-provides-extras = ["cuda", "trt", "cpu"]
+provides-extras = ["cuda", "trt", "cpu", "lsl"]
 
 [package.metadata.requires-dev]
 cpu = [{ name = "skellytracker", extras = ["all-cpu"], editable = "../skellytracker" }]
@@ -1920,6 +1924,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/3b/fab1a12a21bf9223af012e5dd002b7d4265683d21d9fabbd0ccb347316e4/pyinstaller_hooks_contrib-2026.8.tar.gz", hash = "sha256:4d825786ad7a9b7dbcc52d612748a34562fe273461bcfd88f4d549c594bbf8f9", size = 176955, upload-time = "2026-09-30T07:53:52.56Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8f/f1/3eee0263b487e571aed9204257b45bc2a0b6fec34d0a1adade4d8d8a968c/pyinstaller_hooks_contrib-2026.8-py3-none-any.whl", hash = "sha256:6d21d65323ea4467753afc21f52d7d0e69416ae8101dd88269bf273ad48db084", size = 462145, upload-time = "2026-09-30T07:53:51.167Z" },
+]
+
+[[package]]
+name = "pylsl"
+version = "1.18.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/eb/b1/bb0c68594e055849ad6cec0573c0401c405809dc51c2ca4dc12b25c7160d/pylsl-1.18.6.tar.gz", hash = "sha256:f6eed95cc8eb75fe6bf2bcc1f5c1d91672b0cf56c528e93aca07569ffffe2be0", size = 48353, upload-time = "2026-10-14T21:40:06.142Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/79/13/21cc2b6ba0097db3f47b8e9561e791f2d8767e3de147ca763c76ba020a89/pylsl-1.18.6-py3-none-any.whl", hash = "sha256:dfc5046ed1cf2303814a0fdd7cd4c85c6db64409cf7fb9ccb558ebfb9e19a716", size = 50199, upload-time = "2026-10-14T21:39:59.794Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/8c/a321631d26c9933ced7c51fd455e161481c3dd4e2d2c17820164104fa284/pylsl-1.18.6-py3-none-macosx_11_0_universal2.whl", hash = "sha256:0e98ead8a6a24db608074c986f720cd9c0727e9a798f0eb9369b90ab9367fcf0", size = 737284, upload-time = "2026-10-14T21:40:01.277Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/a9/225d65b20dc80bad944d271354345e012d6666c72d5318b78e591a389997/pylsl-1.18.6-py3-none-manylinux_2_35_x86_64.whl", hash = "sha256:d184abba5318c85a456ff1ca88a1960e194ab7c7ac2f31b6d0a06726e36b91e1", size = 1302904, upload-time = "2026-10-14T21:40:02.628Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/96/bf1454712d30c7ad69975fb72e18bab8666adb2e3baf1c4cccec549aff2e/pylsl-1.18.6-py3-none-win_amd64.whl", hash = "sha256:2ea0d831cc38653a2fc69a6242ffeb2315b82ab31719c255330afe3d6b7421dc", size = 340339, upload-time = "2026-10-14T21:40:05.049Z" },
 ]
 
 [[package]]

@@ -1,8 +1,9 @@
+import {createHttpClient} from '@freemocap/client/http';
 import {EXECUTION_PROVIDERS, type ExecutionProviderName} from '@/types/execution-provider';
 
-export async function requestExecutionProviders(endpoint: string, signal?: AbortSignal,
+export async function requestExecutionProviders(baseUrl: string, signal?: AbortSignal,
     request: typeof fetch = fetch): Promise<ExecutionProviderName[]> {
-    const response = await request(endpoint, {signal});
+    const response = await createHttpClient({baseUrl, fetch: request}).responses.get_available_execution_providers_freemocap_onnx_execution_providers_get({signal});
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (!Array.isArray(data.available) || data.available.some((value: unknown) =>

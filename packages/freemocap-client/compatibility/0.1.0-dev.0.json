@@ -1,0 +1,390 @@
+{
+  "sdk_version": "0.1.0-dev.0",
+  "published": false,
+  "recorded_at": "2026-11-01T23:14:25.370635+00:00",
+  "contract": {
+    "baseline": {
+      "core_runtime": "90cd474e94eb320be22cadd2b65472108725dd54",
+      "core_handoff": "19acf12c68d008e0250fd8921b2d468f996a47a4",
+      "cam": "e9f70c200810d7aa68b24f7e71ad2294cf87ce93"
+    },
+    "public_http_operations": 59,
+    "websocket_shape_version": 0,
+    "message_kinds": [
+      "frame",
+      "log",
+      "framerate",
+      "app_state",
+      "progress"
+    ],
+    "openapi_sha256": "50dd794e7b7641d12d8ab6c573420765f23b97c9e90769a6fb103fa352d4c71e",
+    "ledger_sha256": "42da2560665cb8907fc642190203ba46f52b2f8885aaf52e7afa67716a3102f6",
+    "baseline_artifact_hashes": {
+      "openapi.json": "50dd794e7b7641d12d8ab6c573420765f23b97c9e90769a6fb103fa352d4c71e",
+      "registered-routes.json": "08c6df5d2b73bda65c0f9d9071bf2d470faae56bd8eb45a3e5071c9c9d09c80c"
+    }
+  },
+  "runtime": {
+    "node": "24.21.0",
+    "declared_node_engine": ">=22",
+    "python": "3.12.14",
+    "browser": "Microsoft Edge 156.0.4314.58",
+    "electron": "35.7.5",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "components": {
+      "freemocap": {
+        "head": "19acf12c68d008e0250fd8921b2d468f996a47a4",
+        "dirty": true
+      },
+      "skellycam": {
+        "head": "e9f70c200810d7aa68b24f7e71ad2294cf87ce93",
+        "dirty": false
+      },
+      "skellytracker": {
+        "head": "713a175ae21fa0fdeeeb1cb6f5955e0fd02b2005",
+        "dirty": false
+      },
+      "skellyforge": {
+        "head": "a7648e115f9a83ee80056137a438f72cadc579fe",
+        "dirty": false
+      }
+    },
+    "dependencies": {
+      "cbor-x": "1.6.5",
+      "zod": "4.3.6",
+      "hyparquet": "1.25.6",
+      "hyparquet-compressors": "1.1.2"
+    }
+  },
+  "validation": {
+    "sdk": {
+      "passed": 93,
+      "failed": 0,
+      "skipped": 0,
+      "strict_types": true,
+      "generated_source_reproduced_byte_for_byte": true,
+      "operation_coverage_entries": 59
+    },
+    "app": {
+      "node_checks": 82,
+      "operation_progress_checks": 7,
+      "camera_store_scripts": 2,
+      "affected_browser_checks": 21,
+      "native_video_checks": 3,
+      "strict_types": true,
+      "vite_test_build": true,
+      "earlier_browser_campaigns": "15 focused and71 expanded; initial failures/skips closed; overlapping campaigns are not added as unique tests"
+    },
+    "real_server": {
+      "recordings": [
+        {
+          "id": "freemocap_test_data",
+          "frames": 222,
+          "comparedValues": 82584,
+          "decodedChannels": 36,
+          "revision": "dfeba038fe4181477344727ee0c0aeb42460a4671307c0b87d95b5c36aa96343"
+        },
+        {
+          "id": "freemocap_sample_data",
+          "frames": 1108,
+          "comparedValues": 412176,
+          "decodedChannels": 36,
+          "revision": "5e85df959a423f2203ccc6b374add726d30ff3511fc4d71a5d20f7fea2679895"
+        }
+      ],
+      "landmark_values_compared": 494760,
+      "export_terminal_via": [
+        "HTTP",
+        "WebSocket"
+      ],
+      "http_error_cases": [
+        404,
+        422,
+        404,
+        409,
+        404,
+        409,
+        404
+      ],
+      "range_status": 206,
+      "download_hashes_match": true,
+      "reconnect_snapshots": true,
+      "request_abort": true,
+      "offline_error": "ECONNREFUSED",
+      "cleanup": {
+        "exit_code": 0,
+        "errors": []
+      },
+      "source_recordings_unchanged": true
+    },
+    "recorded_channel_socket_replay": {
+      "results": [
+        {
+          "recording": "freemocap_test_data",
+          "startFrame": 0,
+          "frames": 222,
+          "comparedValues": 82584,
+          "modelNotifications": 1,
+          "retainedDataUnchanged": true
+        },
+        {
+          "recording": "freemocap_test_data",
+          "startFrame": 37,
+          "frames": 185,
+          "comparedValues": 68820,
+          "modelNotifications": 1,
+          "retainedDataUnchanged": true
+        },
+        {
+          "recording": "freemocap_sample_data",
+          "startFrame": 0,
+          "frames": 1108,
+          "comparedValues": 412176,
+          "modelNotifications": 1,
+          "retainedDataUnchanged": true
+        },
+        {
+          "recording": "freemocap_sample_data",
+          "startFrame": 37,
+          "frames": 1071,
+          "comparedValues": 398412,
+          "modelNotifications": 1,
+          "retainedDataUnchanged": true
+        }
+      ],
+      "total_frames": 2586,
+      "float32_values_compared": 961992,
+      "encoder": "Core FrameMessage / encode_message",
+      "late_join_frame": 37,
+      "ping_pong_and_display_feedback": true,
+      "metadata_identity_and_retained_buffers": true,
+      "inference_rerun": false
+    },
+    "physical": {
+      "backend": "python",
+      "requested_fps": 30,
+      "camera_ids": [
+        "7599",
+        "ef51",
+        "8752",
+        "3e59"
+      ],
+      "providers": [
+        {
+          "pipeline_id": "8cad28",
+          "mode": "realtime",
+          "models": [
+            {
+              "model_name": "rtmw-x-l_256x192",
+              "requested_provider": "cuda",
+              "applied_providers": [
+                "CUDAExecutionProvider",
+                "CPUExecutionProvider"
+              ]
+            },
+            {
+              "model_name": "yolox-m",
+              "requested_provider": "cuda",
+              "applied_providers": [
+                "CUDAExecutionProvider",
+                "CPUExecutionProvider"
+              ]
+            }
+          ]
+        }
+      ],
+      "recorded_frames_per_camera": {
+        "ef51": 152,
+        "8752": 152,
+        "7599": 152,
+        "3e59": 152
+      },
+      "capture_fps": {
+        "ef51": 29.861752938292668,
+        "8752": 29.863388840012036,
+        "7599": 29.867581287169127,
+        "3e59": 29.868597161794906
+      },
+      "recording_audit_passed": true,
+      "sdk_messages": 76,
+      "sdk_resolved_frames": 71,
+      "sdk_protocol_errors": [],
+      "ui_observation_seconds": 20,
+      "ui_processed_frames": 317,
+      "ui_processed_arrival_fps": 15.821438048551071,
+      "ui_errors": [],
+      "ui_screenshot_reviewed": true,
+      "cleanup": {
+        "exit_code": 0,
+        "errors": []
+      },
+      "delayed_survivors": [],
+      "port_closed": true,
+      "input_hashes_unchanged": true,
+      "resources_released": true
+    },
+    "examples": [
+      {
+        "example": "inspect-server",
+        "exit_code": 0,
+        "validated": true
+      },
+      {
+        "example": "stream",
+        "exit_code": 0,
+        "validated": true
+      },
+      {
+        "example": "recording",
+        "exit_code": 0,
+        "validated": true
+      },
+      {
+        "example": "export",
+        "exit_code": 0,
+        "validated": true
+      }
+    ],
+    "documentation": {
+      "mdx_documents_compiled": 12,
+      "new_relative_links_verified": true,
+      "full_site_build": false
+    },
+    "package": {
+      "entries": 50,
+      "esm_entry_points": true,
+      "typescript_declarations": true,
+      "license_matches_core": true,
+      "published": false,
+      "dependencies_installed_for_smoke": false
+    }
+  },
+  "limitations": [
+    "Source development package; no npm publication or independent repository initialization.",
+    "Node22 is declared but this acceptance used Node24.21.0.",
+    "Recorded-channel socket replay verifies transport and float32 conversion; it is not a new inference replay or throughput benchmark.",
+    "Camera capture rate and processed/UI arrival rate are distinct; no30FPS processed-stream claim.",
+    "All59 HTTP bindings have conformance/type coverage; not every external side effect was run live, including Blender install/launch and microphone workflows.",
+    "Full Docusaurus site builds were not run in isolated documentation checkouts; affected MDX compilation is a separate check."
+  ],
+  "evidence_root": "Core checkout/.test-artifacts/w6",
+  "evidence_directories": [
+    "integration-evidence.json",
+    "server-acceptance-01",
+    "replay-03",
+    "live-01",
+    "examples-01"
+  ],
+  "sdk_source_sha256": {
+    "contracts/coverage.md": "e8334a313e8eeecb28fcf39f55a61eb356823623536aeca032bd8d2c920c9b9f",
+    "contracts/http-conformance.mjs": "72252076e777af466cfbacba73e1456a1f4e4e203ef2d9993535c75281afafc0",
+    "contracts/openapi.json": "50dd794e7b7641d12d8ab6c573420765f23b97c9e90769a6fb103fa352d4c71e",
+    "contracts/operations.json": "42da2560665cb8907fc642190203ba46f52b2f8885aaf52e7afa67716a3102f6",
+    "examples/export.mjs": "e31408d6a06334696787f7cac0024b2cadce84d5f81260ccb218ec40aac16c3a",
+    "examples/inspect-server.mjs": "adc0852933b602ca211cb38fdf4fa408166f8adf6db3207563d55e479b5ed845",
+    "examples/recording.mjs": "c6ec29ff1e894ebbab093b18056c567e083d83144bff509120db84d9f44d4945",
+    "examples/stream.mjs": "de55f451e572355fda4d4ed50844d66ad8561c3031362f3a096b11fc71b4ccc4",
+    "LICENSE": "6f1e622c82a380075843bb084a7ec3b1f1d12a4a02526d75e78b0924a860aa75",
+    "package-lock.json": "18a399a522bf3fd661aa5e3e164541b2106032f02cd5f11cfe6684edaf56c3f9",
+    "package.json": "2cb0d79a06efbb3f93efe132271d21812d3db48623e716464699545386a19156",
+    "README.md": "246520608fc52d6b01d1d17c20c613f27a9a04d5fbdfd2249bd6372807da1f68",
+    "src/generated/operations.ts": "c7859505674b116787da8652d8dbb2706b1ae9ffc704e530e3f54023cb6ab4ce",
+    "src/generated/schema.ts": "694bf36bb5dbd8931f5a745622c05d826375d5711969d1b9f86b9c8b1e72c405",
+    "src/http.ts": "c8c7f4a3da1db39929516cd50612d5e2b23d4d221d4c4c3eab42d1fc521d2416",
+    "src/index.ts": "06a4997f65b0b02b8c50fa9058f0a8e2a3c4dcac81c40ab0f3f12819c5e81d3a",
+    "src/recording/calibration.ts": "100f5d1bfe676274e58d966bc2d97f0cc563030f5b9cc519b4ae45f5cc8e14ed",
+    "src/recording/index.ts": "7bf6619fb61637bf6acd6c4add6a2d0c0245b23eec8599defe58a9f58cec2530",
+    "src/recording/playback-data.ts": "7dcf995f867f11c28998a42ba9cef9114d420578cb18a096b56c7c1ad6dff160",
+    "src/recording/playback-parquet.ts": "5e1e0ee927186563b35762bc55e29d7640467fdafbf3ba819a03217de9b8c848",
+    "src/recording/playback-source.ts": "e48f63accddead9a215a56bd89fd3e9e59acbcf85cfe0f901c053208f4e0d2c8",
+    "src/transport/cbor-codec.ts": "e57124e83e1deb62986503a2d071da2396712bc11dbfefa6694b0f8004e03a64",
+    "src/transport/content-equality.ts": "7f333c110d2927a4c2faa5ae3e8603293bb9f6859e80b5a391455e2c7764914f",
+    "src/transport/frame-resolution.ts": "36e39cb5faf51dd66cbac9872b46d075fd731b31de38c5a5fc0d61de84c487dd",
+    "src/transport/frame-types.ts": "f4af80c2a2e358161aea972116e27f5b73f085b3afb967f8be0cbe9dfdb8f0e4",
+    "src/transport/log-record.ts": "daa68116500ae090df880a02118edf13f6e618f7cacb7dd95bb18cfd0f32d9ea",
+    "src/transport/message-contract.ts": "7b9804683459c5263f9f1ac5bf66d61c7397577767e6e23fe68f8e2f1a3ac2d3",
+    "src/transport/snapshot-equality.ts": "6beecf2c26cc80e8a8d69fe2a15b3f802cf0e4e2c0098c333753b59faf370281",
+    "src/transport/TransportService.ts": "4da97ec6bbec0a354feb4a3ccf0d77d0c9e954d1a90d6c93cb75e59c1ca3d928",
+    "src/transport/websocket-connection.ts": "0543bded0ba84a6ae8e32666c186023ab79d48f7e27cc14bc9f89ba3a3e48859",
+    "tests/fixtures/generic-recording.json": "a8d28008c36b629d301bdb171a903543d5b5ad9129e0643c8f09b2430eea8c4f",
+    "tests/http.test.mjs": "ab428c791ae6dbca7ab3a76501bdbc4c4be9a4065207dafbc2f7302b0c558b37",
+    "tests/live-acceptance.mjs": "24185813afdbca42e1ce8d42042af3c06597a9425ed3338c61f61439c0947e39",
+    "tests/playback.test.ts": "021a979401931c1e9da4dd913e29215d713087078539713afd3b44a79ea67f2a",
+    "tests/recording.test.mjs": "389b32e427ae3c4998f162c5b333786cf65a567167f03745ea107958a77fecd0",
+    "tests/replay-acceptance.mjs": "4fdb2850cfcecc1a1ce9355cec6af36d445f7b11f7909c792587225970761d9a",
+    "tests/server-acceptance.mjs": "37903e301760662f1876fa85d06b4b8a3b6faa8b04c9fb6620179dbb0da708b0",
+    "tests/socket.test.mjs": "e9085c86295a2468b73ffe1c6ddd6bbd4cde3a27252b480d529c1b022597dfc1",
+    "tests/transport.test.ts": "1b7f421c3405cd976002e8ad816102beaa213074c3774b5098f946a6fb2ba8ac",
+    "tests/types.ts": "7a7f6cda38f8aa92657ceaddbb88abb7245b41ae3ea243feed05af90a38c9880",
+    "tools/check-examples.mjs": "e3cf8ea94ca913e9de7187666c1992963e90c871e7455acedf1e22801c226cd5",
+    "tools/compile-tests.mjs": "7e8936e26c8ae9d84d480c3adef8e198cf10f50dea68c6e730fe52b277371b35",
+    "tools/coverage.mjs": "ed2730b537adfac359e5e719ed1304b70479d9a10ed1f3b96e571e136bdefd22",
+    "tools/generate-operations.mjs": "9c18c3c8c1ce1a567d6cc9906079e6bdb6474f5a16fb39ba5fe7e2a91a30f6c8",
+    "tools/generate-recording-fixture.py": "aa398bf141aabc3c364347b7777900f59a2a5856a02a9faaa6cfdb1e2c4b081d",
+    "contracts/README.md": "361b2a0ed892972b4c541ea68106bd9c4e66b1d07cedd4725d09f5bd701d375a",
+    "compatibility/README.md": "bbbda68742e33901a17f19997d2c10e4ca15af95a0dd5c83b6f46efed413db77"
+  },
+  "core_checkout": {
+    "head": "19acf12c68d008e0250fd8921b2d468f996a47a4",
+    "tracked_diff_sha256": "28cf606a16c025745fb5abfeff766c9d6762c31a4a25ae49110bd88d127270ca",
+    "untracked_source_sha256": {
+      "current-work-plans/03-transport/server-sdk-handoff.md": "44d94affb194ad249b3a4bfc8434967049ff053329e858b30a9748172a22e530",
+      "freemocap-ui/e2e/sdk-capture-contract.spec.ts": "48ff2b5aca8c183d56445e60f0883d575a63b4969041cf2c395f297d22e8ea9d",
+      "freemocap-ui/src/services/server/sdk.ts": "883117fc15299e56768ee5c1b77315b277fb9603df6efd2e007be00579494b6c",
+      "freemocap-ui/src/services/server/transport/public-contract.test.ts": "3b18e07d2f14dd116632e47f6b2a440c7db3393fd2a37aa04c22de0c09b64412",
+      "freemocap-ui/tools/test-sdk-integration.mjs": "19253e777faab57dc7929d1ba47b5126b9639e15dffdd263ccf1992180b1f6a2",
+      "freemocap/tools/sdk_examples_validation.py": "b316ae962498feb5542aea89a8cc7867a3fc5a0716c40c17c23031b0617f12d3",
+      "freemocap/tools/sdk_live_validation.py": "8e5e8298503673017995171f2c034c23e90de91c32128945bcd997c69d0bf3ad",
+      "freemocap/tools/sdk_replay_validation.py": "6c874cc3ae2ccd7697830a21e62db57e7a974ed74314443a572a5506013a0f92",
+      "freemocap/tools/sdk_validation.py": "2f513199e58a68cc1e1bac83527f0e1eaef540e8ea3292b00cbb21a2039d8800",
+      "shared/server-contract/README.md": "717d68fef8fea986654292041a4d1b711b298857739082355c223d1741b93925",
+      "shared/server-contract/http-conformance.mjs": "72252076e777af466cfbacba73e1456a1f4e4e203ef2d9993535c75281afafc0",
+      "shared/server-contract/operations.json": "42da2560665cb8907fc642190203ba46f52b2f8885aaf52e7afa67716a3102f6"
+    }
+  },
+  "public_docs_checkout": {
+    "head": "da5d312fb722a445643720e157e5cdfcd9c8f837",
+    "tracked_diff_sha256": "57400b845b9c4903727db09b7e29872b25fe0823eb9a1ec2ffff3696bf22c27b",
+    "untracked_source_sha256": {
+      "docs/reference/javascript-client.md": "20d77d461d8fb3096fff1df52ac029070c404758bce0c1af16027c3623ff854c"
+    }
+  },
+  "compiled_sha256": {
+    "dist/generated/operations.d.ts": "28eebc8a626cd0ba64414122a02f465613e25417a8125b9da1a5bad3f880bbb0",
+    "dist/generated/operations.js": "a0ccb9ee9395011a2b0ff3ef733dd5e1fd5be20c39bcae5702b02b5d04e93c1e",
+    "dist/generated/schema.d.ts": "7c872638f2ebbc3cc547d029cbf047973960b04170529534bffdd27b4a91ee40",
+    "dist/generated/schema.js": "09137b30c7060495057e4acb073e6b8a218422d4bb96161d2b3a775a1030105f",
+    "dist/http.d.ts": "c830153ada64013dd5fcbcc74eb80902304f1deecaa2ec4e8f4b2c38db7f46a0",
+    "dist/http.js": "850552f9579add4ea2f4786c120a2457ec5b5f3c53447725facadf77ded87e78",
+    "dist/index.d.ts": "9033fdac4ed4381a41301c9ccc3ee3df37fb60238801b01843046f27529d7e45",
+    "dist/index.js": "d8b69319905ad6ccec8e6b4efc9319ee4d39784484996d0a4e71dd371e64895a",
+    "dist/recording/calibration.d.ts": "da92847e92ee762966a3b6f4a0601aafe9372fb56714a5113f66f146709ff355",
+    "dist/recording/calibration.js": "60ba622ed07913e579f8a3f3c9531b041f1695f3a19f0c730efce71203c6c5ae",
+    "dist/recording/index.d.ts": "f4ae9f2f573bbbbe2a9644c9ccfc99b4dcee6bb61d2c09e6ff1058a521b4066b",
+    "dist/recording/index.js": "f4ae9f2f573bbbbe2a9644c9ccfc99b4dcee6bb61d2c09e6ff1058a521b4066b",
+    "dist/recording/playback-data.d.ts": "6d07b857ea0bddc55183655480babc939b9394acd067dda840919da11322483e",
+    "dist/recording/playback-data.js": "e018d82463bdb5bbb0d222afd33640bda16d3bef3e5e34f6712d105cb798ebb7",
+    "dist/recording/playback-parquet.d.ts": "30639268f89fe3bb1ba5c505df83edb122175c72ddbf9bfe301494ac95b257f9",
+    "dist/recording/playback-parquet.js": "7dd058d724cff8b26f3af2bdcf4f0d78b8a10a79fcb670fad650c7112a894e9c",
+    "dist/recording/playback-source.d.ts": "1880e07451181dd091f527c4952120440c0e5ba1da455baa7331b31d41bc9a4a",
+    "dist/recording/playback-source.js": "3b1dd07f76563274296331aab2fb163be3acd91358e633528a99b07c50b72134",
+    "dist/transport/cbor-codec.d.ts": "979d44bbd16a876a5959d746c1c7b57fc9f269054f0c3821431ac1e7fd7e4527",
+    "dist/transport/cbor-codec.js": "e02d9cc999438f9c430c6ec7716023ea75f0fecdac2f70ff84521dc4a31ed15f",
+    "dist/transport/content-equality.d.ts": "a13e6b90340344966575885718ab630d9a391c741a173fba67ef3a6752250c1f",
+    "dist/transport/content-equality.js": "2a3053f519b78aefbb6f39d4581cd5f31f411b1f38e4cd97638fcd249288d76d",
+    "dist/transport/frame-resolution.d.ts": "a2d1d843151cc62c0be5592988ed6de015473f7abf475e725219ebf1d82d3c16",
+    "dist/transport/frame-resolution.js": "900c98de365b8ef31c410ad2086572da3b0e89dc2b332f8c9cf607377681059a",
+    "dist/transport/frame-types.d.ts": "c504edabfbcfc20d727222ea1a664f3897bc3074d29d3b6942c1f793d8c0873e",
+    "dist/transport/frame-types.js": "21369988049d9c068209a09992c6fd3a2e948f33a4915a82db96f57b8e9d0194",
+    "dist/transport/log-record.d.ts": "ad30156587411527bb23b798e3e886f31bc5dfd87f435e534915cae65f2a3790",
+    "dist/transport/log-record.js": "ae6f46d7a1995294cc8efeb3b86bc4dbcc74dd6a5b4709e3b969abcf95ab8412",
+    "dist/transport/message-contract.d.ts": "6f5ef5a47cc562f5a3944a9e9fc44b115924b22bdef3a6937dcfa8e411df6863",
+    "dist/transport/message-contract.js": "80907dfa5ff6cd1a6d07934bf3afe9b56544283f0b43fbb9974c90255b4181d4",
+    "dist/transport/snapshot-equality.d.ts": "14e0d223effe639afc73c6b6071e73124d997766586b5a33ea921b912a335e92",
+    "dist/transport/snapshot-equality.js": "5f958bd0a031b31d88d14815613701c3962d87c1102db3cc9924fafe6f4490e7",
+    "dist/transport/TransportService.d.ts": "657e694c5cb5b01d0643681867b2b5c31b394f0d8fc96862beb67fbdc24cdea6",
+    "dist/transport/TransportService.js": "99924c60b4728cf59cab0f4cfa882b479baafc5b3cb5ecd67b71e45b109b29c4",
+    "dist/transport/websocket-connection.d.ts": "a90c6ddfdba9d943f82f3e88ebfe50ab2d3092c8b6aef09340c1b817ca81546f",
+    "dist/transport/websocket-connection.js": "9758e0b780695b8c7a0f84ab05de815f723732f821bbbbe431b41ade1b078be3"
+  }
+}

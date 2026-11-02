@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {serverUrls} from '@/constants/server-urls';
 
 // Tour lifecycle events form a funnel so we can see WHERE people drop off, not
@@ -18,12 +19,7 @@ export type TourEvent =
 // so the opt-in decision stays in one place and we don't re-check it here.
 export function emitTourEvent(event: TourEvent, payload: Record<string, unknown>): void {
     try {
-        void fetch(serverUrls.endpoints.trackTelemetry, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({eventType: event, payload}),
-            keepalive: true, // let the event flush even if a route change unmounts us
-        }).catch(() => {});
+        void serverClient().responses.track_telemetry_event_freemocap_telemetry_track_post({headers: {'Content-Type': 'application/json'}, body: {eventType: event, payload}, keepalive: true}).catch(() => {});
     } catch {
         // ignore — telemetry must never break the tour
     }

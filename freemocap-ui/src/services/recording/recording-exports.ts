@@ -1,3 +1,5 @@
+import type {OperationInput} from '@freemocap/client';
+import {serverClient, recordingRequest} from '@/services/server/sdk';
 import {serverUrls} from '@/constants/server-urls';
 import {recordingLocationFromPath} from './recording-location';
 import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
@@ -7,10 +9,8 @@ export function recordingExportUrl(path: string, resource: '/exports' | '/export
     return serverUrls.recordingResource(location.recordingId, resource, location.recordingParentDirectory);
 }
 
-export async function createRecordingExport(path: string, options: object, signal?: AbortSignal): Promise<{task_id: string}> {
-    const response = await fetch(recordingExportUrl(path, '/exports'), {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(options), signal,
-    });
+export async function createRecordingExport(path: string, options: OperationInput<'create_export_freemocap_recordings__recording_id__exports_post'>['body'], signal?: AbortSignal): Promise<{task_id: string}> {
+    const response = await serverClient().responses.create_export_freemocap_recordings__recording_id__exports_post({...recordingRequest(path),headers: {'Content-Type': 'application/json'}, body: options, signal});
     if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
     return response.json();
 }
@@ -19,7 +19,7 @@ export async function createRecordingExport(path: string, options: object, signa
 export async function waitForTaskResult<T>(taskId: string, signal?: AbortSignal): Promise<T> {
     for (;;) {
         signal?.throwIfAborted();
-        const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/tasks/${encodeURIComponent(taskId)}`, {signal});
+        const response = await serverClient().responses.get_task_freemocap_tasks__task_id__get({path:{task_id:taskId},signal});
         if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
         const task = await response.json();
         if (task.status === 'complete') {

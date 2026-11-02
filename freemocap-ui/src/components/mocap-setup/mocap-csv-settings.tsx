@@ -1,3 +1,4 @@
+import {serverClient, recordingRequest} from '@/services/server/sdk';
 import {useEffect, useState} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {exportTallCsvUpdated} from '@/store/slices/mocap';
@@ -46,7 +47,7 @@ export default function MocapCsvSettings({path, processing, sourceRunId}: {path:
         if (!path || processing) return () => controller.abort();
         void (async () => {
             try {
-                const response = await fetch(endpoint!, {signal: controller.signal});
+                const response = await serverClient().responses.get_export_options_freemocap_recordings__recording_id__export_options_get({...recordingRequest(path!),signal: controller.signal});
                 if (response.status === 204) {
                     if (!controller.signal.aborted) setNoSavedResult(true);
                     return;

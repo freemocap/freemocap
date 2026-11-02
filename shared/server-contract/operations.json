@@ -1,0 +1,1462 @@
+{
+  "baseline": {
+    "core_runtime": "90cd474e94eb320be22cadd2b65472108725dd54",
+    "core_handoff": "19acf12c68d008e0250fd8921b2d468f996a47a4",
+    "cam": "e9f70c200810d7aa68b24f7e71ad2294cf87ce93"
+  },
+  "public_http": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "operation_id": "healthcheck_endpoint_health_get",
+      "handler": "healthcheck_endpoint",
+      "source": "freemocap/api/http/app/health.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/shutdown",
+      "operation_id": "shutdown_server_shutdown_post",
+      "handler": "shutdown_server",
+      "source": "freemocap/api/http/app/shutdown.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/capture/mocap/start",
+      "operation_id": "capture_start_mocap_recording",
+      "handler": "start_mocap_recording",
+      "source": "freemocap/api/http/mocap/mocap_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/capture/calibration/start",
+      "operation_id": "capture_start_calibration_recording",
+      "handler": "start_calibration_recording",
+      "source": "freemocap/api/http/calibration/calibration_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/capture/mocap/stop",
+      "operation_id": "capture_stop_mocap_recording",
+      "handler": "stop_mocap_recording",
+      "source": "freemocap/api/http/mocap/mocap_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/capture/calibration/stop",
+      "operation_id": "capture_stop_calibration_recording",
+      "handler": "stop_calibration_recording",
+      "source": "freemocap/api/http/calibration/calibration_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/recording-import",
+      "operation_id": "import_recording",
+      "handler": "import_videos",
+      "source": "freemocap/api/http/mocap/mocap_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/recording-import/check-sync",
+      "operation_id": "check_import_frame_counts",
+      "handler": "check_video_sync",
+      "source": "freemocap/api/http/mocap/mocap_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/recording-import/synchronize",
+      "operation_id": "synchronize_freemocap_recording_import_synchronize_post",
+      "handler": "synchronize",
+      "source": "freemocap/api/http/recording_import/import_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/recordings/{recording_id}/processing",
+      "operation_id": "process_recording_freemocap_recordings__recording_id__processing_post",
+      "handler": "process_recording",
+      "source": "freemocap/api/http/recordings/processing_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/stages",
+      "operation_id": "saved_stages_freemocap_recordings__recording_id__stages_get",
+      "handler": "saved_stages",
+      "source": "freemocap/api/http/recordings/processing_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/runs/{run_id}/stages",
+      "operation_id": "run_stages_freemocap_recordings__recording_id__runs__run_id__stages_get",
+      "handler": "run_stages",
+      "source": "freemocap/api/http/recordings/processing_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings",
+      "operation_id": "recordings_list_recordings",
+      "handler": "list_recordings",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/status",
+      "operation_id": "recordings_get_recording_status",
+      "handler": "get_recording_status",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/media",
+      "operation_id": "recordings_read_unprocessed_media",
+      "handler": "read_unprocessed_media",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/videos",
+      "operation_id": "recordings_list_videos",
+      "handler": "list_videos",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/videos/{video_id}",
+      "operation_id": "recordings_stream_video",
+      "handler": "stream_video",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision",
+        "inspect actual streaming response/content type and byte ranges; do not trust inferred JSON OpenAPI response"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/videos/{video_id}/browser",
+      "operation_id": "recordings_browser_video_stream",
+      "handler": "browser_video_stream",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision",
+        "inspect actual streaming response/content type and byte ranges; do not trust inferred JSON OpenAPI response"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/parquet",
+      "operation_id": "recordings_get_recording_parquet",
+      "handler": "get_recording_parquet",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision",
+        "inspect actual streaming response/content type and byte ranges; do not trust inferred JSON OpenAPI response"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/calibration",
+      "operation_id": "recordings_get_recording_calibration",
+      "handler": "get_recording_calibration",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/playback/manifest",
+      "operation_id": "recordings_get_playback_manifest",
+      "handler": "get_playback_manifest",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/playback/bundle",
+      "operation_id": "recordings_get_recording_bundle",
+      "handler": "get_recording_bundle",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/playback/tracker-schema",
+      "operation_id": "recordings_get_tracker_schema",
+      "handler": "get_tracker_schema",
+      "source": "freemocap/api/http/playback/playback_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}",
+      "operation_id": "describe_recording_freemocap_recordings__recording_id__get",
+      "handler": "describe_recording",
+      "source": "freemocap/api/http/recordings/resources_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/runs",
+      "operation_id": "list_recording_runs_freemocap_recordings__recording_id__runs_get",
+      "handler": "list_recording_runs",
+      "source": "freemocap/api/http/recordings/resources_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/runs/{run_id}/channels",
+      "operation_id": "list_run_channels_freemocap_recordings__recording_id__runs__run_id__channels_get",
+      "handler": "list_run_channels",
+      "source": "freemocap/api/http/recordings/resources_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/export-options",
+      "operation_id": "get_export_options_freemocap_recordings__recording_id__export_options_get",
+      "handler": "get_export_options",
+      "source": "freemocap/api/http/recordings/exports_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/recordings/{recording_id}/exports",
+      "operation_id": "list_exports_freemocap_recordings__recording_id__exports_get",
+      "handler": "list_exports",
+      "source": "freemocap/api/http/recordings/exports_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision",
+        "typed export kind; accepted task vs persisted artifact; stale revision and busy owner"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/recordings/{recording_id}/exports",
+      "operation_id": "create_export_freemocap_recordings__recording_id__exports_post",
+      "handler": "create_export",
+      "source": "freemocap/api/http/recordings/exports_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "recording parent preserved in URLs/cache identity; run ID differs from content revision",
+        "typed export kind; accepted task vs persisted artifact; stale revision and busy owner"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/tasks",
+      "operation_id": "all_tasks_freemocap_tasks_get",
+      "handler": "all_tasks",
+      "source": "freemocap/api/http/posthoc/tasks_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "HTTP/WS registry identity and revision ordering; cancel request differs from terminal cancellation"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/tasks/{task_id}",
+      "operation_id": "get_task_freemocap_tasks__task_id__get",
+      "handler": "get_task",
+      "source": "freemocap/api/http/posthoc/tasks_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "HTTP/WS registry identity and revision ordering; cancel request differs from terminal cancellation"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/tasks/{task_id}/cancel",
+      "operation_id": "cancel_task_freemocap_tasks__task_id__cancel_post",
+      "handler": "cancel_task",
+      "source": "freemocap/api/http/posthoc/tasks_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "HTTP/WS registry identity and revision ordering; cancel request differs from terminal cancellation"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/tasks/cancel",
+      "operation_id": "cancel_tasks_freemocap_tasks_cancel_post",
+      "handler": "cancel_tasks",
+      "source": "freemocap/api/http/posthoc/tasks_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "HTTP/WS registry identity and revision ordering; cancel request differs from terminal cancellation"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/realtime/filter-config",
+      "operation_id": "temporal_config_status_freemocap_realtime_filter_config_get",
+      "handler": "temporal_config_status",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/freemocap/realtime/filter-config",
+      "operation_id": "update_temporal_config_freemocap_realtime_filter_config_put",
+      "handler": "update_temporal_config",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/realtime/config",
+      "operation_id": "running_pipeline_config_freemocap_realtime_config_get",
+      "handler": "running_pipeline_config",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/realtime/apply",
+      "operation_id": "pipeline_apply_endpoint_freemocap_realtime_apply_post",
+      "handler": "pipeline_apply_endpoint",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/realtime/reset-skeleton-fitter",
+      "operation_id": "reset_skeleton_fitter_endpoint_freemocap_realtime_reset_skeleton_fitter_post",
+      "handler": "reset_skeleton_fitter_endpoint",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/freemocap/realtime/pipelines/{pipeline_id}",
+      "operation_id": "stop_realtime_pipeline",
+      "handler": "cancel_realtime_pipeline",
+      "source": "freemocap/api/http/mocap/mocap_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/freemocap/realtime/pipelines",
+      "operation_id": "stop_realtime_pipelines",
+      "handler": "cancel_realtime_pipelines",
+      "source": "freemocap/api/http/mocap/mocap_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/calibration/most-recent",
+      "operation_id": "most_recent_calibration_freemocap_calibration_most_recent_get",
+      "handler": "most_recent_calibration",
+      "source": "freemocap/api/http/calibration/calibration_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/calibration/content",
+      "operation_id": "calibration_content_freemocap_calibration_content_get",
+      "handler": "calibration_content",
+      "source": "freemocap/api/http/calibration/calibration_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/calibration/transform",
+      "operation_id": "transform_calibration_freemocap_calibration_transform_post",
+      "handler": "transform_calibration",
+      "source": "freemocap/api/http/calibration/calibration_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/calibration/files",
+      "operation_id": "calibration_file_options_freemocap_calibration_files_get",
+      "handler": "calibration_file_options",
+      "source": "freemocap/api/http/calibration/calibration_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/blender/detect",
+      "operation_id": "detect_blender_freemocap_blender_detect_get",
+      "handler": "detect_blender",
+      "source": "freemocap/api/http/blender/blender_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/blender/inspect",
+      "operation_id": "inspect_blender_endpoint_freemocap_blender_inspect_post",
+      "handler": "inspect_blender_endpoint",
+      "source": "freemocap/api/http/blender/blender_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/blender/addon/install",
+      "operation_id": "install_addon_freemocap_blender_addon_install_post",
+      "handler": "install_addon",
+      "source": "freemocap/api/http/blender/blender_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/blender/open",
+      "operation_id": "open_in_blender_endpoint_freemocap_blender_open_post",
+      "handler": "open_in_blender_endpoint",
+      "source": "freemocap/api/http/blender/blender_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/ffmpeg/detect",
+      "operation_id": "detect_ffmpeg_freemocap_ffmpeg_detect_get",
+      "handler": "detect_ffmpeg",
+      "source": "freemocap/api/http/ffmpeg/ffmpeg_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/onnx/execution_providers",
+      "operation_id": "get_available_execution_providers_freemocap_onnx_execution_providers_get",
+      "handler": "get_available_execution_providers",
+      "source": "freemocap/api/http/onnx/onnx_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/onnx/session_providers",
+      "operation_id": "get_session_providers_freemocap_onnx_session_providers_get",
+      "handler": "get_session_providers",
+      "source": "freemocap/api/http/onnx/onnx_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/telemetry/track",
+      "operation_id": "track_telemetry_event_freemocap_telemetry_track_post",
+      "handler": "track_telemetry_event",
+      "source": "freemocap/api/http/telemetry/telemetry_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/skellycam/camera/detect",
+      "operation_id": "cameras_detect_endpoint_skellycam_camera_detect_post",
+      "handler": "cameras_detect_endpoint",
+      "source": "skellycam/api/http/cameras/camera_router.py",
+      "owner": "SkellyCam",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/skellycam/camera/microphone/detect",
+      "operation_id": "microphone_detect_endpoint_skellycam_camera_microphone_detect_get",
+      "handler": "microphone_detect_endpoint",
+      "source": "skellycam/api/http/cameras/camera_router.py",
+      "owner": "SkellyCam",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/skellycam/camera/group/apply",
+      "operation_id": "camera_group_apply_post_endpoint_skellycam_camera_group_apply_post",
+      "handler": "camera_group_apply_post_endpoint",
+      "source": "skellycam/api/http/cameras/camera_router.py",
+      "owner": "SkellyCam",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/skellycam/camera/group/all/record/start",
+      "operation_id": "start_recording_skellycam_camera_group_all_record_start_post",
+      "handler": "start_recording",
+      "source": "skellycam/api/http/cameras/camera_router.py",
+      "owner": "SkellyCam",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/skellycam/camera/group/all/record/stop",
+      "operation_id": "stop_recording_skellycam_camera_group_all_record_stop_post",
+      "handler": "stop_recording",
+      "source": "skellycam/api/http/cameras/camera_router.py",
+      "owner": "SkellyCam",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/skellycam/camera/group/close/all",
+      "operation_id": "close_all_camera_groups_skellycam_camera_group_close_all_delete",
+      "handler": "close_all_camera_groups",
+      "source": "skellycam/api/http/cameras/camera_router.py",
+      "owner": "SkellyCam",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/skellycam/camera/group/all/pause",
+      "operation_id": "pause_camera_groups_skellycam_camera_group_all_pause_put",
+      "handler": "pause_camera_groups",
+      "source": "skellycam/api/http/cameras/camera_router.py",
+      "owner": "SkellyCam",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "stateful command effect and cleanup; physical verification requires exclusive coordinator slot"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/freemocap/streaming/outputs/{output_id}",
+      "operation_id": "streaming_stop_output",
+      "handler": "stop_output",
+      "source": "freemocap/api/http/streaming/streaming_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "server-owned output lifecycle and observed status",
+        "independent request/error conformance"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/streaming/outputs",
+      "operation_id": "streaming_list_outputs",
+      "handler": "list_outputs",
+      "source": "freemocap/api/http/streaming/streaming_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "server-owned output lifecycle and observed status",
+        "independent request/error conformance"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/streaming/outputs/{output_id}",
+      "operation_id": "streaming_get_output",
+      "handler": "get_output",
+      "source": "freemocap/api/http/streaming/streaming_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "server-owned output lifecycle and observed status",
+        "independent request/error conformance"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/streaming/protocols",
+      "operation_id": "streaming_list_protocols",
+      "handler": "list_protocols",
+      "source": "freemocap/api/http/streaming/streaming_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "server-owned output lifecycle and observed status",
+        "independent request/error conformance"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/streaming/outputs",
+      "operation_id": "streaming_create_output",
+      "handler": "create_output",
+      "source": "freemocap/api/http/streaming/streaming_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "server-owned output lifecycle and observed status",
+        "independent request/error conformance"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/streaming/vmc/start",
+      "operation_id": "streaming_start_vmc",
+      "handler": "start_vmc",
+      "source": "freemocap/api/http/streaming/streaming_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "no-body defaults and matching active-output reuse",
+        "distinct custom output and stopped-output restart"
+      ]
+    }
+  ],
+  "nonpublic_registered": [
+    {
+      "path": "/openapi.json",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "openapi",
+      "public": false,
+      "module": "fastapi.applications",
+      "kind": "Route",
+      "classification": "Supported schema introspection utility; fetch OpenAPI document"
+    },
+    {
+      "path": "/docs",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "swagger_ui_html",
+      "public": false,
+      "module": "fastapi.applications",
+      "kind": "Route",
+      "classification": "Server navigation/static documentation; not a domain SDK operation"
+    },
+    {
+      "path": "/docs/oauth2-redirect",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "swagger_ui_redirect",
+      "public": false,
+      "module": "fastapi.applications",
+      "kind": "Route",
+      "classification": "Server navigation/static documentation; not a domain SDK operation"
+    },
+    {
+      "path": "/redoc",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "redoc_html",
+      "public": false,
+      "module": "fastapi.applications",
+      "kind": "Route",
+      "classification": "Server navigation/static documentation; not a domain SDK operation"
+    },
+    {
+      "path": "/",
+      "methods": [
+        "GET"
+      ],
+      "name": "root",
+      "public": false,
+      "module": "freemocap.app.app",
+      "kind": "APIRoute",
+      "classification": "Server navigation/static documentation; not a domain SDK operation"
+    },
+    {
+      "path": "/favicon.ico",
+      "methods": [
+        "GET"
+      ],
+      "name": "favicon",
+      "public": false,
+      "module": "freemocap.app.app",
+      "kind": "APIRoute",
+      "classification": "Server navigation/static documentation; not a domain SDK operation"
+    },
+    {
+      "path": "/websocket/connect",
+      "methods": [],
+      "name": "websocket_server_connect",
+      "public": false,
+      "module": "freemocap.api.websocket.websocket_connect",
+      "kind": "APIWebSocketRoute",
+      "classification": "Supported bidirectional WebSocket; separate message contract"
+    },
+    {
+      "path": "/freemocap/exports/scientific",
+      "methods": [
+        "GET"
+      ],
+      "name": "export_selection",
+      "public": false,
+      "module": "freemocap.api.http.posthoc.exports_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/exports/scientific",
+      "methods": [
+        "POST"
+      ],
+      "name": "save_channel_exports",
+      "public": false,
+      "module": "freemocap.api.http.posthoc.exports_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/exports/jobs/{job_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_export_job",
+      "public": false,
+      "module": "freemocap.api.http.posthoc.exports_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/exports/jobs/{job_id}/cancel",
+      "methods": [
+        "POST"
+      ],
+      "name": "stop_export_job",
+      "public": false,
+      "module": "freemocap.api.http.posthoc.exports_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/exports/tall-csv",
+      "methods": [
+        "GET"
+      ],
+      "name": "selection",
+      "public": false,
+      "module": "freemocap.api.http.posthoc.exports_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/exports/tall-csv",
+      "methods": [
+        "POST"
+      ],
+      "name": "save_tall_csv",
+      "public": false,
+      "module": "freemocap.api.http.posthoc.exports_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/posthoc/tasks",
+      "methods": [
+        "GET"
+      ],
+      "name": "task_snapshot",
+      "public": false,
+      "module": "freemocap.api.http.posthoc.tasks_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/calibration/recording/start",
+      "methods": [
+        "POST"
+      ],
+      "name": "start_calibration_recording",
+      "public": false,
+      "module": "freemocap.api.http.calibration.calibration_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/calibration/recording/stop",
+      "methods": [
+        "POST"
+      ],
+      "name": "stop_calibration_recording",
+      "public": false,
+      "module": "freemocap.api.http.calibration.calibration_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/calibration/recording/calibrate",
+      "methods": [
+        "POST"
+      ],
+      "name": "calibrate_recording",
+      "public": false,
+      "module": "freemocap.api.http.calibration.calibration_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/calibration/posthoc/pipelines/{pipeline_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cancel_posthoc_pipeline",
+      "public": false,
+      "module": "freemocap.api.http.calibration.calibration_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/calibration/posthoc/pipelines",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cancel_posthoc_pipelines",
+      "public": false,
+      "module": "freemocap.api.http.calibration.calibration_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/start",
+      "methods": [
+        "POST"
+      ],
+      "name": "start_mocap_recording",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/stop",
+      "methods": [
+        "POST"
+      ],
+      "name": "stop_mocap_recording",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/check_sync",
+      "methods": [
+        "POST"
+      ],
+      "name": "check_video_sync",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/synchronize",
+      "methods": [
+        "POST"
+      ],
+      "name": "synchronize_videos",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/synchronize/{job_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_synchronize_result",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/import",
+      "methods": [
+        "POST"
+      ],
+      "name": "import_videos",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/process",
+      "methods": [
+        "POST"
+      ],
+      "name": "process_mocap_recording",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/recording/process/stages",
+      "methods": [
+        "GET"
+      ],
+      "name": "saved_mocap_stages",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/posthoc/pipelines/{pipeline_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cancel_posthoc_pipeline",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/posthoc/pipelines",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cancel_posthoc_pipelines",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/realtime/pipelines/{pipeline_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cancel_realtime_pipeline",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/realtime/pipelines",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cancel_realtime_pipelines",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/mocap/synchronization/jobs/{job_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cancel_synchronization_job",
+      "public": false,
+      "module": "freemocap.api.http.mocap.mocap_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/blender/export",
+      "methods": [
+        "POST"
+      ],
+      "name": "export_to_blender_endpoint",
+      "public": false,
+      "module": "freemocap.api.http.blender.blender_router",
+      "kind": "APIRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/media",
+      "methods": [
+        "GET"
+      ],
+      "name": "read_unprocessed_media",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/manifest",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_playback_manifest",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/viewer",
+      "methods": [
+        "GET"
+      ],
+      "name": "parquet_viewer",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Supported explicit legacy utility; viewer HTML or leased Parquet bytes; not a recording identity replacement"
+    },
+    {
+      "path": "/freemocap/playback/parquet",
+      "methods": [
+        "GET"
+      ],
+      "name": "serve_parquet",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Supported explicit legacy utility; viewer HTML or leased Parquet bytes; not a recording identity replacement"
+    },
+    {
+      "path": "/freemocap/playback/recordings",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_recordings",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_recording_status",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/videos",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_videos",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/videos/{video_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "stream_video",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/videos/{video_id}/browser",
+      "methods": [
+        "GET"
+      ],
+      "name": "browser_video_stream",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/parquet",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_recording_parquet",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/calibration",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_recording_calibration",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/tracker-schema",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_tracker_schema",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    },
+    {
+      "path": "/freemocap/playback/{recording_id}/bundle",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_recording_bundle",
+      "public": false,
+      "module": "freemocap.api.http.playback.playback_router",
+      "kind": "RecordingReadRoute",
+      "classification": "Compatibility alias; use canonical W3 operation for accepted baseline; no old-version support inferred"
+    }
+  ],
+  "websocket": [
+    {
+      "interaction": "connect /websocket/connect; client_id/connection_id diagnostics",
+      "source": "freemocap/api/websocket/websocket_connect.py",
+      "sdk": "planned",
+      "evidence": "pending"
+    },
+    {
+      "interaction": "frame: complete models/cameras/convention, instance/tracker channels, image and diagnostics",
+      "source": "freemocap/core/streaming/message_model.py:FrameMessage",
+      "sdk": "planned",
+      "evidence": "pending"
+    },
+    {
+      "interaction": "log",
+      "source": "freemocap/core/streaming/message_model.py:LogMessage",
+      "sdk": "planned",
+      "evidence": "pending"
+    },
+    {
+      "interaction": "framerate",
+      "source": "freemocap/core/streaming/message_model.py:FramerateMessage",
+      "sdk": "planned",
+      "evidence": "pending"
+    },
+    {
+      "interaction": "app_state",
+      "source": "freemocap/core/streaming/message_model.py:AppStateMessage",
+      "sdk": "planned",
+      "evidence": "pending"
+    },
+    {
+      "interaction": "progress: task registry snapshot",
+      "source": "freemocap/core/streaming/message_model.py:ProgressMessage",
+      "sdk": "planned",
+      "evidence": "pending"
+    },
+    {
+      "interaction": "client JSON frameNumber/displayImageSizes; no ack gating",
+      "source": "freemocap/api/websocket/client_messages.py",
+      "sdk": "planned",
+      "evidence": "pending"
+    },
+    {
+      "interaction": "ping/pong text, disconnect/reconnect and cleanup",
+      "source": "freemocap/api/websocket/websocket_server.py",
+      "sdk": "planned",
+      "evidence": "pending"
+    }
+  ],
+  "source_hashes": {
+    "openapi.json": "52be908e430d91bb5eadcd222d0b21806b522fb00b0ebab9f606d2bc09313587"
+  },
+  "output_control_delta": {
+    "date": "2026-11-01",
+    "operations": 5,
+    "total": 64,
+    "verification": "All 64 operation IDs/methods/paths checked against actual FastAPI router registration without starting application lifespan.",
+    "baseline_registered_routes_hash": "08c6df5d2b73bda65c0f9d9071bf2d470faae56bd8eb45a3e5071c9c9d09c80c"
+  },
+  "vmc_quick_start_delta": {
+    "operations": 1,
+    "total": 65,
+    "verification": "No requestBody; actual router registration and focused default/reuse tests."
+  }
+}

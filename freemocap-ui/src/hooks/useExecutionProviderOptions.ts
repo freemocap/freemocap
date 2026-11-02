@@ -7,7 +7,7 @@ import {requestExecutionProviders, executionProviderOptions} from "@/services/se
 /** Query the connected server again after reconnects or server changes. */
 export function useExecutionProviderOptions(selected: ExecutionProviderName | null) {
     const {isConnected, serverPid} = useAppSelector(state => state.connection);
-    const endpoint = serverUrls.endpoints.onnxExecutionProviders;
+    const endpoint = serverUrls.getHttpUrl();
     const [loaded, setLoaded] = useState<{key: string; providers: ExecutionProviderName[]} | null>(null);
     const key = `${endpoint}:${serverPid}:${isConnected}`;
     useEffect(() => {

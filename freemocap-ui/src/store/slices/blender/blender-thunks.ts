@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {createRecordingExport, waitForTaskResult} from '@/services/recording/recording-exports';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
@@ -19,7 +20,7 @@ export const detectBlender = createAsyncThunk<
     'blender/detect',
     async (_, {rejectWithValue}) => {
         try {
-            const response = await fetch(serverUrls.endpoints.blenderDetect);
+            const response = await serverClient().responses.detect_blender_freemocap_blender_detect_get();
             if (!response.ok) {
                 return rejectWithValue(await getDetailedErrorMessage(response));
             }
@@ -105,16 +106,12 @@ export const openRecordingInBlender = createAsyncThunk<
 
             const blenderExePath = blender.blenderExePath ?? blender.detectedBlenderExePath;
 
-            const response = await fetch(serverUrls.endpoints.blenderOpen, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
+            const response = await serverClient().responses.open_in_blender_endpoint_freemocap_blender_open_post({headers: {'Content-Type': 'application/json'}, body: {
                     recordingFolderPath,
                     blenderExePath,
                     package: blender.packageName,
                     developmentBuildHash: blender.developmentBuildHash,
-                }),
-            });
+                }});
 
             if (!response.ok) {
                 return rejectWithValue(await getDetailedErrorMessage(response));

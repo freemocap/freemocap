@@ -1,3 +1,4 @@
+import {serverResourceResponse} from '@/services/server/sdk';
 /** Native media presentation with an in-memory codec compatibility stream. */
 export interface VideoEntry {videoId: string; filename: string; streamUrl: string; sizeBytes: number}
 
@@ -82,7 +83,7 @@ export class BrowserVideo {
             url.pathname += '/browser';
             url.searchParams.set('start_seconds', String(time));
             url.searchParams.set('duration_seconds', String(Math.max(0.1, this.duration - time)));
-            const response = await fetch(url, {signal});
+            const response = await serverResourceResponse(url, {signal});
             if (!response.ok || !response.body) throw new Error(`Video conversion failed (${response.status}): ${await response.text()}`);
             const reader = response.body.getReader();
             const update = (operation: () => void): Promise<void> => new Promise((resolve, reject) => {

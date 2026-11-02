@@ -19,7 +19,8 @@
     "build:dev": "tsc && vite build && electron-builder --config.mac.hardenedRuntime=false --config.mac.notarize=false",
     "preview": "vite preview",
     "pree2e": "vite build --mode=test",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:sdk": "tsc --noEmit && node tools/test-sdk-integration.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -50,7 +51,8 @@
     "superjson": "^2.2.2",
     "three": "0.183.2",
     "tree-kill": "^1.2.2",
-    "zod": "^4.1.5"
+    "zod": "^4.1.5",
+    "@freemocap/client": "file:../packages/freemocap-client"
   },
   "devDependencies": {
     "@playwright/test": "^1.42.1",

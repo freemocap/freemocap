@@ -1,3 +1,4 @@
+import {serverClient} from '@/services/server/sdk';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {serverUrls} from '@/constants/server-urls';
 import type {RootState} from '@/store/root-state-types';
@@ -6,7 +7,7 @@ import {applyTaskSnapshot} from '@/services/server/task-progress';
 
 export const fetchTaskSnapshot = createAsyncThunk<void, void, {state: RootState}>('pipelines/fetchTaskSnapshot', async (_, {dispatch, getState, signal}) => {
     const initialInstance = getState().pipelines.serverInstanceId;
-    const response = await fetch(`${serverUrls.getHttpUrl()}/freemocap/tasks`, {signal});
+    const response = await serverClient().responses.all_tasks_freemocap_tasks_get({signal});
     if (!response.ok) throw new Error(await response.text());
     const snapshot = TaskRegistrySnapshotSchema.parse(await response.json());
     const current = getState().pipelines;
@@ -20,8 +21,7 @@ export const stopPipeline = createAsyncThunk<string, string, {state: RootState}>
         const pipeline = Object.values(getState().pipelines.activePipelines)
             .find(item => item.basePipelineId === pipelineId);
         if (!pipeline?.pipelineType) throw new Error(`Missing task type for pipeline ${pipelineId}`);
-        const base = serverUrls.getHttpUrl();
-        const response = await fetch(`${base}/freemocap/tasks/${encodeURIComponent(pipelineId)}/cancel`, {method: 'POST'});
+        const response = await serverClient().responses.cancel_task_freemocap_tasks__task_id__cancel_post({path:{task_id:pipelineId},});
         if (!response.ok) throw new Error(await response.text());
         await dispatch(fetchTaskSnapshot()).unwrap();
         return pipelineId;

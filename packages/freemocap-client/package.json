@@ -1,0 +1,55 @@
+{
+  "name": "@freemocap/client",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "description": "Standalone client for the accepted FreeMoCap HTTP and self-describing WebSocket contracts",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "import": "./dist/http.js"
+    },
+    "./recording": {
+      "types": "./dist/recording/index.d.ts",
+      "import": "./dist/recording/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "contracts",
+    "examples",
+    "compatibility"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript contracts/openapi.json --default-non-nullable false -o src/generated/schema.ts && node tools/generate-operations.mjs",
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && tsc -p tsconfig.tests.json && node tools/compile-tests.mjs && node --test tests/*.test.mjs .test-artifacts/*.test.mjs && npm run coverage:check && npm run examples:check",
+    "coverage": "node tools/coverage.mjs",
+    "coverage:check": "node tools/coverage.mjs --check",
+    "examples:check": "node tools/check-examples.mjs"
+  },
+  "dependencies": {
+    "cbor-x": "1.6.5",
+    "zod": "4.3.6",
+    "hyparquet": "1.25.6",
+    "hyparquet-compressors": "1.1.2"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "openapi-typescript": "7.13.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "0.27.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

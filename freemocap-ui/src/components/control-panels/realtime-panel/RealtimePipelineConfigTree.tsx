@@ -1,6 +1,7 @@
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import {TemporalFilterControls} from './TemporalFilterControls';
-import {DETECTOR_OPTIONS} from '@/components/mocap-setup/detector-options';
+import {DETECTOR_OPTIONS, REALTIME_DETECTOR_OPTIONS} from '@/components/mocap-setup/detector-options';
+import type {RealtimeDetectorType} from '@/store/slices/realtime/realtime-types';
 import React, {useCallback} from "react";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {PosthocFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/PosthocFilterConfigPanel";
@@ -75,7 +76,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     const calibration = useAppSelector(selectLoadedCalibration);
 
     // ── Active detector type unified across contexts ───────────────────────────
-    const activeDetectorType: DetectorType =
+    const activeDetectorType: RealtimeDetectorType =
         context === "realtime"
             ? (cameraNodeConfig.detector_type ?? "rtmpose")
             : (posthocDetectorType ?? "rtmpose");
@@ -86,6 +87,9 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
             dispatch(pipelineConfigUpdated({
                 ...pipelineConfig,
                 camera_node_config: { ...cameraNodeConfig, ...updates },
+                skeleton_inference_node_config: updates.detector_type === 'rtmw_onnx_hands'
+                    ? {...pipelineConfig.skeleton_inference_node_config, execution_provider: 'cuda'}
+                    : pipelineConfig.skeleton_inference_node_config,
             }));
             triggerRealtimeApply();
         },
@@ -97,7 +101,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
             ? (inferenceNodeConfig?.execution_provider ?? null)
             : (posthocExecutionProvider ?? null);
 
-    const executionProviderOptions = useExecutionProviderOptions(activeExecutionProvider);
+    const availableProviderOptions = useExecutionProviderOptions(activeExecutionProvider);
+    const executionProviderOptions = activeDetectorType === 'rtmw_onnx_hands'
+        ? availableProviderOptions.filter(({value}) => value === 'cpu' || value === 'cuda')
+        : availableProviderOptions;
 
     const handleSetExecutionProvider = useCallback((provider: ExecutionProviderName | null) => {
         if (context === "realtime") {
@@ -111,10 +118,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         }
     }, [context, dispatch, pipelineConfig, inferenceNodeConfig, triggerRealtimeApply, setPosthocExecutionProvider]);
 
-    const handleSetDetectorType = useCallback((type: DetectorType) => {
+    const handleSetDetectorType = useCallback((type: RealtimeDetectorType) => {
         if (context === "realtime") {
             handleCameraNodeConfigUpdate({ detector_type: type });
-        } else {
+        } else if (type !== 'rtmw_onnx_hands') {
             setPosThocDetectorType(type);
         }
     }, [context, handleCameraNodeConfigUpdate, setPosThocDetectorType]);
@@ -183,7 +190,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Skeleton"
                     checked={skeletonEnabled}
                     onToggle={onSkeletonToggle}
-                    summaryWhenCollapsed={activeDetectorType === "rtmpose" ? "RTMW" : activeDetectorType === "mediapipe" ? "MediaPipe" : "RTMW + MediaPipe hands"}
+                    summaryWhenCollapsed={REALTIME_DETECTOR_OPTIONS.find(option => option.value === activeDetectorType)?.label}
                 >
                     <div className="p-1 flex flex-col gap-1 pl-4" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
 
@@ -191,7 +198,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         <div className="flex flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Detector</span>
                             <div className="flex flex-row gap-1">
-                                {DETECTOR_OPTIONS.map(({value: type, label}) => (
+                                {(context === 'realtime' ? REALTIME_DETECTOR_OPTIONS : DETECTOR_OPTIONS).map(({value: type, label}) => (
                                     <button
                                         key={type}
                                         className={`button sm br-1 ${activeDetectorType === type ? "primary accent" : "quaternary"}`}

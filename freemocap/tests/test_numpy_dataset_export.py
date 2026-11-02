@@ -10,7 +10,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from skellyforge.core.data_tensors import (
-    CompanionTensor, DefinitionDocument, RecordingDataset, ScientificProvenance,
+    CompanionTensor, DefinitionDocument, RecordingDataset, DataProvenance,
     TensorLayout, TimeSeries, read_numpy_dataset,
 )
 from freemocap.core.recording.exports import arrays, numpy_dataset, publication, wide_csv
@@ -87,7 +87,7 @@ def test_runtime_dataset_values_go_directly_to_writer(scientific_recording, monk
                 CompanionTensor('confidence_scores', np.full(confidence_layout.shape, .75, dtype=np.float32), confidence_layout))
             tensor = replace(original.data_tensor, data_values=values,
                 tensor_layout=replace(original.data_tensor.tensor_layout, dtype=values.dtype),
-                scientific_provenance=ScientificProvenance('runtime_prediction', 'runtime_test', ('input_fixture',)),
+                data_provenance=DataProvenance('runtime_prediction', 'runtime_test', ('input_fixture',)),
                 companion_tensors=companions).immutable_copy()
             series = TimeSeries(tensor, original.sample_timing)
         document = DefinitionDocument('runtime:fixture', '{ "meaning": "scientific input", "weights": [0.25, 0.75] }')
@@ -99,7 +99,7 @@ def test_runtime_dataset_values_go_directly_to_writer(scientific_recording, monk
         actual = restored.time_series[0]
         assert actual.data_tensor.data_values.dtype.str == '>f4'
         assert actual.data_tensor.tensor_layout == tensor.tensor_layout
-        assert actual.data_tensor.scientific_provenance == tensor.scientific_provenance
+        assert actual.data_tensor.data_provenance == tensor.data_provenance
         np.testing.assert_array_equal(actual.data_tensor.data_values, tensor.data_values)
         assert np.signbit(actual.data_tensor.data_values[0, 0, 1])
         for found, expected in zip(actual.data_tensor.companion_tensors, tensor.companion_tensors, strict=True):

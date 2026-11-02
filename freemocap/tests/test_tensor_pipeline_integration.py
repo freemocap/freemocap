@@ -15,7 +15,7 @@ from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellyforge.core.skeleton.pose.hydration_batch import LandmarkPoseGeometry
 
 from skellyforge.core.data_tensors import (
-    AxisDefinition, CompanionTensor, DataTensor, SampleTiming, ScientificProvenance,
+    AxisDefinition, CompanionTensor, DataTensor, SampleTiming, DataProvenance,
     SourceIdentity, TensorLayout, TimeSeries,
 )
 from freemocap.core.recording.exports.arrays import available_channels, ordered_arrays
@@ -50,7 +50,7 @@ def tracker_tensor(keypoints: Keypoints, source_identity: SourceIdentity) -> Dat
     confidence = CompanionTensor("confidence_scores", keypoints.visibility,
                                  TensorLayout(axes=(entities,), dtype=keypoints.visibility.dtype))
     return DataTensor(keypoints.xyz, layout,
-                      ScientificProvenance("tracker_output", "keypoints_admission"), (confidence,))
+                      DataProvenance("tracker_output", "keypoints_admission"), (confidence,))
 
 
 class TrackerTensorTests(unittest.TestCase):
@@ -114,7 +114,7 @@ class ForgeTensorTests(unittest.TestCase):
                             dtype=values.dtype, component_units=tuple(declared.components.values()),
                             source_identity=identity, channel_kind=kind, reference_id=declared.reference_frame)
                         tensor = DataTensor(values, layout,
-                            ScientificProvenance("model_estimate", "landmark_pose_recovery", model_id=model_id), (status,))
+                            DataProvenance("model_estimate", "landmark_pose_recovery", model_id=model_id), (status,))
                         series = TimeSeries(tensor, timeline)
                         self.assertIs(series.data_tensor.data_values, values)
                         self.assertIs(series.data_tensor.companion_values("solver_status"), recovered.status)

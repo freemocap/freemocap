@@ -89,7 +89,7 @@ def test_reference_numpy_channels_fit_evidence_and_definitions(tmp_path):
         first_tensor = first.data_tensor if hasattr(first, 'data_tensor') else first
         second_tensor = second.data_tensor if hasattr(second, 'data_tensor') else second
         assert first_tensor.tensor_layout == second_tensor.tensor_layout
-        assert first_tensor.scientific_provenance == second_tensor.scientific_provenance
+        assert first_tensor.data_provenance == second_tensor.data_provenance
         assert first_tensor.data_values.dtype.str == second_tensor.data_values.dtype.str
         np.testing.assert_array_equal(first_tensor.data_values, second_tensor.data_values)
         for first_companion, second_companion in zip(first_tensor.companion_tensors, second_tensor.companion_tensors, strict=True):

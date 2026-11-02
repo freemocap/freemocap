@@ -11,7 +11,7 @@ from operator import index as integer_index
 
 import numpy as np
 
-from skellyforge.core.data_tensors.data_tensor import ScientificProvenance
+from skellyforge.core.data_tensors.data_tensor import DataProvenance
 from skellyforge.core.data_tensors.layout_definitions import SourceIdentity
 from skellyforge.core.data_tensors.sample_timing import SampleTiming
 from skellyforge.core.data_tensors.time_series import TimeSeries
@@ -46,7 +46,7 @@ class ObservationSeries:
             clock_id=f'camera:{self.camera_id}', source_identity=identity,
             sample_ids=arrays.frames, timestamps_s=arrays.timestamps)
         object.__setattr__(self, 'time_series', arrays.to_time_series(sample_timing=timeline,
-            scientific_provenance=ScientificProvenance(meaning='saved image predictions',
+            data_provenance=DataProvenance(meaning='saved image predictions',
                 operation_id='saved_observations', input_refs=(arrays.context.source,)), source_identity=identity))
 
     @property

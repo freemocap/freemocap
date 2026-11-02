@@ -15,7 +15,7 @@ from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit, sc
 from skellyforge.core.skeleton.pose.rigid_body_diagnostics import ResidualBatchGeometry
 
 from skellyforge.core.data_tensors import (
-    AxisDefinition, CompanionTensor, DataTensor, ScientificProvenance, SourceIdentity, TensorLayout,
+    AxisDefinition, CompanionTensor, DataTensor, DataProvenance, SourceIdentity, TensorLayout,
 )
 from freemocap.core.skeletons.rotation_output import canonical_joint_angle_array, canonical_quaternion_array
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
@@ -33,7 +33,7 @@ def _channel_metadata(model_id, sample_positions, names, components, channel_kin
     source = SourceIdentity(source_id=model_source_name(model_id), model_id=model_id)
     return (TensorLayout(axes=axes, dtype=np.float64, source_identity=source, channel_kind=str(channel_kind)),
             TensorLayout(axes=axes, dtype=bool), TensorLayout(axes=axes[:-1], dtype=np.uint8),
-            ScientificProvenance("model_estimate", "recording_reconstruction", model_id=model_id))
+            DataProvenance("model_estimate", "recording_reconstruction", model_id=model_id))
 
 
 def reconstruction_tensor(*, model_id: str, sample_positions: AxisDefinition, names: tuple[str, ...],

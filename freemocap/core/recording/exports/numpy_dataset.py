@@ -7,7 +7,7 @@ import numpy as np
 
 from skellyforge.core.data_tensors import (
     CompanionTensor, DefinitionDocument, RecordingDataset, SampleTiming,
-    ScientificProvenance, SourceIdentity, TensorLayout, TimeSeries,
+    DataProvenance, SourceIdentity, TensorLayout, TimeSeries,
 )
 from freemocap.core.recording.exports.arrays import available_channels, MAX_RESIDENT_ARRAY_BYTES
 from freemocap.core.recording.parquet_storage.channel_arrays import read_channel_arrays
@@ -103,12 +103,12 @@ def saved_channel_tensor(view, run_id, item, *, source_hash, scratch, cancelled=
     context, channel, static_values = item
     run = view.metadata.runs[run_id]
     source = declared_source(run, context)
-    provenance = ScientificProvenance(
+    provenance = DataProvenance(
         meaning='saved_model_output' if source.model_id is not None else 'saved_processing_output',
         operation_id=f'saved_stage:{channel.stage}', input_refs=(f'parquet_sha256:{source_hash}',), model_id=source.model_id)
     with read_channel_arrays(view, run_id, context, channel, static_values=static_values,
             scratch=scratch, max_resident_bytes=MAX_RESIDENT_ARRAY_BYTES, cancelled=cancelled) as arrays:
-        tensor = arrays.to_data_tensor(scientific_provenance=provenance, source_identity=source)
+        tensor = arrays.to_data_tensor(data_provenance=provenance, source_identity=source)
         if context.static and context.channel in {'SEGMENT_SCALES', 'SEGMENT_LENGTHS'}:
             saved_fit = next((fit for fit in run.scale_fits if fit.fit is not None
                 and (fit.sensor_group, fit.source) == (context.sensor_group, context.source)), None)

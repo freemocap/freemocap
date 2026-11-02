@@ -121,3 +121,9 @@ Full output: `.test-artifacts/baselines/reference-tests.log`; JUnit: `.test-arti
 ## Watching
 
 The active `freemocap-ui-integration-watch` chat heartbeat checks the local refactor remote every five minutes. Its durable cursor is `.test-artifacts/watch/last-tested.json`. It stays quiet when unchanged and reports completed new results. Keep this Mac and the desktop app running. Test-managed backend and Vite servers were stopped after the initial run.
+
+## Graph-view handoff diagnostics
+
+`e2e/mocap-backend-contract.spec.ts` captures real Redux-thunk POSTs, then feeds their config into the actual Python `PosthocMocapPipelineConfig`. It characterizes the reported DLC export conflict and verifies that the default UI threshold 0.004 overrides the backend-only default 0.4. This diagnostic passes when the existing rejection is reproduced; it does not certify successful DLC processing. It uses `FREEMOCAP_TEST_PYTHON` and runs with `npm run test:standard`. After the production defect is fixed, change the diagnostic to require accepted, unambiguous export settings.
+
+Run the standard suite and visual suite sequentially. Their Vite configurations can invalidate a shared dependency optimizer cache if run concurrently, causing HTTP 504 Outdated Optimize Dep and an empty React root. Restart the visual Vite server after the standard suite before comparing screenshots.

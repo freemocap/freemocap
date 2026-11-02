@@ -52,8 +52,9 @@ side effect was run. Source datasets remain unchanged and server cleanup is chec
 
 ## Streaming output delta (2026-11-01)
 
-The reviewed HTTP inventory now has 65 operations: the original 59 plus five
-additive output controls and the no-body VMC quick start. The original compatibility records remain historical
+The reviewed HTTP inventory now has 69 operations: the original 59 plus five
+additive output controls, the no-body VMC quick start, and four DLC readiness,
+inspection, import and import-status operations. The original compatibility records remain historical
 59-operation evidence. The output delta does not change scientific messages,
 recording paths, or capture commands.
 

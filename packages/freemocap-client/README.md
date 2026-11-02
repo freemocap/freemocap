@@ -2,7 +2,7 @@
 
 `@freemocap/client` is a standalone ESM client for the accepted FreeMoCap server
 contract. JavaScript and TypeScript use the same implementation. It provides all
-65 supported HTTP operations, binary resources, task controls, the bidirectional
+69 supported HTTP operations, binary resources, task controls, the bidirectional
 WebSocket, and recording decoding. It does not require React, Electron or Python.
 
 Version `0.1.0-dev.0` is private and **not published to npm**. It targets the exact
@@ -170,7 +170,7 @@ The examples retain generic model/channel names and do not require a renderer.
 overrides trace actual server handlers because inferred OpenAPI does not describe
 those bytes. `npm test` builds, checks negative TypeScript cases and runs independent
 HTTP/decoder/socket/recording tests. `npm run coverage:check` verifies the documented
-operation inventory against the generated bindings. `npm run examples:check`
+69-operation inventory against the generated bindings. `npm run examples:check`
 checks example syntax; real example execution is a separate owned-server gate.
 For native JPEG decoding, which Node lacks, run `node tools/serve-static.mjs` and
 open `/tests/browser/bundle-check.html` in a browser; it imports the browser bundle

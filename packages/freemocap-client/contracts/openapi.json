@@ -4731,6 +4731,7 @@
               "rtmpose",
               "mediapipe",
               "rtmw_mediapipe_hands",
+              "rtmw_onnx_hands",
               "dlc"
             ],
             "title": "Detector Type",
@@ -4854,6 +4855,7 @@
               "rtmpose",
               "mediapipe",
               "rtmw_mediapipe_hands",
+              "rtmw_onnx_hands",
               "dlc"
             ],
             "title": "Detector Type",
@@ -7171,6 +7173,42 @@
               "fail"
             ],
             "title": "Overflow Policy"
+          },
+          "readiness": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "preparing",
+                  "waiting_for_receiver",
+                  "sending"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Readiness"
+          },
+          "frames_before_ready": {
+            "type": "integer",
+            "title": "Frames Before Ready",
+            "default": 0
+          },
+          "frames_without_receivers": {
+            "type": "integer",
+            "title": "Frames Without Receivers",
+            "default": 0
+          },
+          "outlets_advertised": {
+            "type": "integer",
+            "title": "Outlets Advertised",
+            "default": 0
+          },
+          "outlets_connected": {
+            "type": "integer",
+            "title": "Outlets Connected",
+            "default": 0
           },
           "frames_emitted": {
             "type": "integer",

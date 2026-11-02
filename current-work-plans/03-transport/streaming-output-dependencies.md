@@ -4,7 +4,7 @@
 "Okay, a couple of hard corrections there, but in general, I think what you're saying looks good. Let's nail this all down into checklist tasks and whatnot, and then let's get into it, ?"
 Global/child wording below is frozen. Shared runtime 2.1–2.3 is locally verified,
 including real-server SDK and browser controls. Canonical integration remains
-coordinator-owned; live LSL and rendered/live VMC acceptance remain open.
+coordinator-owned; live LSL is accepted and rendered/live VMC acceptance remains open.
 LSL/VMC protocol preparation runs in separately owned files; root owns native mesh.
 Canonical implementation has since advanced beyond this isolated source tree:
 the SDK now has 65 HTTP operations, VMC has a no-body quick start, and the UI uses
@@ -12,7 +12,7 @@ an Outputs toolbar dropdown without timer polling. The default VMC profile is
 now `vrm0_normalized`, with partial ancestor-valid branches. Read
 `streaming-ecosystem-status-roadmap.md` for current evidence and proposed next
 expansions. The approved global/child wording below remains unchanged; open live
-and rendered acceptance tasks remain open. Publication is coordinator-owned.
+VMC rendered acceptance remains open; LSL acceptance closed on 2026-11-02. Publication is coordinator-owned.
 This supersedes the dependency ordering in
 `streaming-outputs-vmc-first.md`: LSL does not wait for VMC retargeting, and native
 Skelly visualization is a separate lane. Existing JS/TS completion and evidence
@@ -73,7 +73,7 @@ child checklist remains linear. This proposal changes prior sequencing explicitl
 
 - [ ] **1.** Complete integration and verification of the existing JS/TS SDK and default-app changes under the coordinator's current landing plan.
 - [x] **2.** Deliver the shared server output lifecycle, HTTP/SDK surface and UI controls with independent, nonblocking source consumption.
-- [ ] **3.** Deliver the LSL numerical bridge with verified schema, timing, delivery behavior and independent receiver evidence.
+- [x] **3.** Deliver the LSL numerical bridge with verified schema, timing, delivery behavior and independent receiver evidence.
 - [ ] **4.** Deliver the VMC pose adapter with verified humanoid mapping and a receiving-avatar demonstration.
 - [ ] **5.** Deliver scaled Skelly visualization in the native UI for live and recorded motion through the mesh owner's inspected implementation plan.
 - [ ] **6.** Deliver Python and Rust SDKs with full supported controls, streaming and recording access through independent language-owner checklists.
@@ -120,7 +120,7 @@ loss/overflow explicitly. A slow output must not block acquisition or inference.
 
 - [x] **3.1.** Define and independently test LSL channel metadata, stream identity/topology, source-to-LSL clock mapping and missing/drop semantics using existing reference data.
 - [x] **3.2.** Implement the LSL outlet projection through the shared output runtime and verify start, stop, schema changes and transport failure behavior.
-- [ ] **3.3.** Validate reference replay and coordinated live capture with an independent LSL inlet or recorder, comparing values, timestamps, sample counts and cleanup.
+- [x] **3.3.** Validate reference replay and coordinated live capture with an independent LSL inlet or recorder, comparing values, timestamps, sample counts and cleanup.
 
 Use the LSL library for transport/discovery/synchronization. Test the chosen
 rate/chunking policy rather than assuming a nominal rate or arrival timestamp
@@ -143,7 +143,7 @@ Custom Skelly VRM creation is not part of this child list.
 ## Open engineering work and approval boundary
 
 No new product interview is needed. LSL clock/delivery mapping and reference
-validation are implemented; fresh live numeric acceptance remains open. Canonical
+validation and live viewing/saved-recording acceptance are complete. Canonical
 VMC now includes a normalized VRM0 default and an opt-in original-reference profile;
 rendered receiver acceptance, placement and partial-body behavior remain open.
 Native mesh work remains separately owned. Do not repeat completed contract
@@ -154,3 +154,17 @@ assertions. Actual live capture requires a coordinated hardware slot. No receive
 outlet, avatar exporter or mesh prototype was launched for this planning revision.
 The user subsequently approved execution through the coordinator. Root consolidates
 integration and assigns active owners; renderer/asset files remain outside W6 ownership.
+
+## LSL acceptance closed — 2026-11-02
+
+The coordinator relayed the user's explicit acceptance: "Alright, Nexus Dynamics
+LSL viewer is cool. This seems to be working. That's awesome. LSL viewer is working
+and Streamer is working. That's great." Global 3 and child 3.3 are complete; the
+LSL blocker checklist is retired. Evidence includes 40 passing focused tests,
+both reference recordings through native LSL, the 37-outlet availability/cleanup
+run, and the user's XDF (37 streams, 158 samples each, matching raw timestamps
+and published/status provenance). Source frame-number gaps and numerical missingness
+remain documented evidence, not reopened LSL blockers. Scientific pose accuracy
+and broader platform/long-duration coverage are distinct from this acceptance.
+Grouping changes remain an unapproved future proposal. VMC 4.3 is the next active
+feature task; Python/Rust work remains deferred. Root owns shared integration state.

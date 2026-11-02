@@ -1925,7 +1925,7 @@ export interface components {
              * @default rtmpose
              * @enum {string}
              */
-            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
+            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
             /**
@@ -2000,7 +2000,7 @@ export interface components {
              * @default rtmpose
              * @enum {string}
              */
-            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
+            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
             /**
@@ -3064,6 +3064,28 @@ export interface components {
              * @enum {string}
              */
             overflow_policy: "latest" | "fail";
+            /** Readiness */
+            readiness?: ("preparing" | "waiting_for_receiver" | "sending") | null;
+            /**
+             * Frames Before Ready
+             * @default 0
+             */
+            frames_before_ready?: number;
+            /**
+             * Frames Without Receivers
+             * @default 0
+             */
+            frames_without_receivers?: number;
+            /**
+             * Outlets Advertised
+             * @default 0
+             */
+            outlets_advertised?: number;
+            /**
+             * Outlets Connected
+             * @default 0
+             */
+            outlets_connected?: number;
             /**
              * Frames Emitted
              * @default 0

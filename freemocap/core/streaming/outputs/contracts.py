@@ -38,9 +38,17 @@ class OutputSource(Protocol):
     def poll(self) -> SourceBatch: ...
 
 
+@dataclass(frozen=True, slots=True)
+class OutputEmission:
+    sent: bool
+    readiness: Literal['waiting_for_receiver', 'sending']
+    outlets_advertised: int
+    outlets_connected: int
+
+
 @runtime_checkable
 class OutputEmitter(Protocol):
-    def emit(self, sample: OutputSample) -> None: ...
+    def emit(self, sample: OutputSample) -> OutputEmission | None: ...
     def close(self) -> None: ...
 
 
@@ -63,6 +71,11 @@ class OutputState(BaseModel):
     config: dict
     queue_capacity: int
     overflow_policy: Literal["latest", "fail"]
+    readiness: Literal['preparing', 'waiting_for_receiver', 'sending'] | None = None
+    frames_before_ready: int = 0
+    frames_without_receivers: int = 0
+    outlets_advertised: int = 0
+    outlets_connected: int = 0
     frames_emitted: int = 0
     source_frame_gaps: int = 0
     queue_dropped_frames: int = 0

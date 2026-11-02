@@ -28,7 +28,7 @@ class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
-    detector_type: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands", "dlc"] = DEFAULT_DETECTOR_TYPE
+    detector_type: Literal["rtmpose", "mediapipe", "rtmw_mediapipe_hands", "rtmw_onnx_hands", "dlc"] = DEFAULT_DETECTOR_TYPE
     dlc_model_path: str | None = None
     dlc_confidence_threshold: float = Field(default=0.4, ge=0, le=1)
     # RTMW settings used by both rtmpose and rtmw_mediapipe_hands.

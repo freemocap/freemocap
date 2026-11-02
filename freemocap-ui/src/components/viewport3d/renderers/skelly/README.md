@@ -16,6 +16,25 @@ head and inspect the neck connection. This is a reversible visual trial, not an
 anatomical soft-tissue estimate. `SKULL_ARTWORK_SCALE` in the preparation tool and
 the generated `artworkScales` metadata record the intentional addon difference.
 
+The torso now has a separate **attachment-based artwork correction**. The
+addon's `upper_arm.L/R_origin` helpers identify shoulder joint centers (the same
+semantics used by its rest-pose empty markers). The original torso-length fit
+placed these anchors too close together and anterior to the model's shoulder
+origins. Preparation moves each side toward its model rest attachment, with
+displacement proportional to lateral distance from the spine. The centerline,
+including chest and neck anchors, stays fixed. `torsoSocketFit` records both
+sets of anchors; no mesh bounding-box target or arbitrary torso multiplier is
+used. This is an explicit improvement over the addon's native uniform-length
+fit, not a claim that its current implementation already performs this step.
+
+The correction is baked into the artwork once. Existing per-frame segment
+poses/scales are unchanged; no new rig or vertex update loop is added. A rigid
+thorax still cannot follow independently moving clavicles perfectly, and
+different independently fitted clavicle proportions can leave residual gaps.
+Review with arms resting, then extended, and with one shoulder raised: compare
+the scapula/humerus connection while checking that the central neck and lower
+torso attachment have not shifted. Skull size remains at the accepted 90% fit.
+
 This is the addon's existing Skelly artwork fitted to the established Forge
 standard-human definition. It is not a new pose solver or a generic humanoid
 retargeter. The binding checks model rest landmarks, hierarchy, world-rest
@@ -71,6 +90,12 @@ The tests exercise current geometry compatibility, sign-equivalent quaternions,
 known rigid transforms, differing lengths, missing data, reordered rows, model
 replacement and geometry/material/bone-texture disposal. They also print CPU
 transform preparation timing, explicitly excluding WebGL/GPU time.
+
+Run `tools/test_prepare_skelly_asset.py` with Core's Python for shoulder-anchor
+checks. They verify exact symmetric/asymmetric target attachment, fixed
+centerline, unchanged inputs, unit/scale covariance and invalid-anchor rejection.
+The Blender oracle compares its original fit plus the declared skull and torso
+artwork corrections; it does not silently redefine the reference algorithm.
 
 `tools/check-skelly-blender.py` runs inside an existing Blender with
 `--background --factory-startup --python-exit-code 1`. After `--`, supply addon

@@ -662,6 +662,56 @@
   note = {Reviewed PR description and state only; this is instrumentation, not evidence of inference acceleration. Companion FreeMoCap PR 867 was closed without merging at review time.}
 }
 
+@misc{lslOutletConsumerReadiness,
+  title = {liblsl stream outlet consumer readiness},
+  author = {{LabStreamingLayer contributors}},
+  url = {https://labstreaminglayer.readthedocs.io/projects/liblsl/ref/outlet.html},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {Outlets advertise streams and expose have_consumers and wait_for_consumers independently of receiver disk recording.},
+  note = {Read outlet creation and consumer methods; implementation uses nonblocking per-outlet have_consumers instead of blocking acquisition while waiting.}
+}
+
+@misc{lslNumericGroupingFaq,
+  title = {LSL frequently asked questions},
+  author = {{LabStreamingLayer contributors}},
+  url = {https://labstreaminglayer.readthedocs.io/info/faqs.html},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {Compatible numeric quantities can share a common vector; splitting shared-timestamp samples across streams increases receiver complexity.},
+  note = {Reviewed Multiple data types in a single stream, local clock and timestamp accuracy sections.}
+}
+
+@misc{lslUserGuideDiscovery,
+  title = {LSL user guide basic operation},
+  author = {{LabStreamingLayer contributors}},
+  url = {https://labstreaminglayer.readthedocs.io/info/user_guide.html},
+  urldate = {2026-11-02},
+  review = {full-text},
+  claim = {Outlet discovery uses UDP queries and data uses inlet TCP connections; discovery and subscription are separate phases.},
+  note = {Reviewed the short Basic Operation page.}
+}
+
+@misc{labRecorderWorkflow,
+  title = {LabRecorder README},
+  author = {{LabStreamingLayer contributors}},
+  url = {https://raw.githubusercontent.com/labstreaminglayer/App-LabRecorder/master/README.md},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {Update refreshes advertised streams; selected streams are recorded to XDF after Start.},
+  note = {Reviewed Usage and File Format; no GUI automation or XDF file validation was performed.}
+}
+
+@misc{pylsl1186InstalledWheel,
+  title = {pylsl 1.18.6 installed Python binding},
+  author = {{LabStreamingLayer contributors}},
+  url = {https://pypi.org/project/pylsl/1.18.6/},
+  urldate = {2026-11-02},
+  review = {source-code},
+  claim = {push_sample creates a ctypes sample array; push_chunk uses a contiguous NumPy buffer; stream metadata and irregular buffer units are explicit.},
+  note = {Audited installed canonical .venv/Lib/site-packages/pylsl/outlet.py and info.py for version1.18.6. Release URL identifies version; version-tag raw GitHub fetch was unavailable. No claim of end-to-end zero-copy.}
+}
+
 @misc{mdnCryptoRandomUUID,
   author = {{MDN contributors}},
   title = {Crypto: randomUUID() method},

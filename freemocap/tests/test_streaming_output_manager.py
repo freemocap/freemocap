@@ -207,3 +207,58 @@ async def test_failed_but_unfinished_workers_still_count_toward_resource_limit()
             emitter.release.set()
         await manager.aclose()
     assert all(emitter.closed for emitter in emitters)
+
+
+@pytest.mark.asyncio
+async def test_preparation_does_not_buffer_history_or_block_other_outputs():
+    from freemocap.core.streaming.outputs.contracts import OutputEmission
+    class Preparing(Emitter):
+        def prepare(self, sample):
+            self.entered.set()
+            assert self.release.wait(2)
+            return OutputEmission(False, 'waiting_for_receiver', 2, 0)
+    source, slow, fast = Source(), Preparing(), Emitter()
+    manager = StreamingOutputManager(source=source, protocols=(definition('lsl', slow), definition('fast', fast)))
+    try:
+        first = await manager.start(StartOutputRequest(protocol='lsl', queue_capacity=1))
+        second = await manager.start(StartOutputRequest(protocol='fast'))
+        source.put(0)
+        await until(slow.entered.is_set)
+        for number in range(1, 21):
+            source.put(number)
+            await until(lambda: manager.get(first.id).frames_before_ready == number)
+            await until(lambda: manager.get(second.id).frames_emitted == number + 1)
+        assert manager.get(first.id).readiness == 'preparing'
+        assert manager.outputs[first.id].queue.empty()
+        assert manager.get(first.id).queue_overflows == 0
+        await until(lambda: manager.get(second.id).frames_emitted == 21)
+        slow.release.set()
+        await until(lambda: manager.get(first.id).readiness == 'waiting_for_receiver')
+        assert manager.get(first.id).frames_before_ready == 21
+        expected = source.put(21)
+        await until(lambda: manager.get(first.id).frames_emitted == 1)
+        assert slow.samples == [expected]
+        assert manager.get(first.id).last_capture_timestamp_ns == str(expected.source_timestamp_ns)
+    finally:
+        slow.release.set()
+        await manager.aclose()
+
+
+@pytest.mark.asyncio
+async def test_connected_receiver_without_available_sample_is_not_counted_as_missing_receiver():
+    from freemocap.core.streaming.outputs.contracts import OutputEmission
+    class Absent(Emitter):
+        def emit(self, sample):
+            self.samples.append(sample)
+            return OutputEmission(False, 'sending', 1, 1)
+    source, emitter = Source(), Absent()
+    manager = StreamingOutputManager(source=source, protocols=(definition('lsl', emitter),))
+    try:
+        state = await manager.start(StartOutputRequest(protocol='lsl'))
+        source.put(0)
+        await until(lambda: manager.get(state.id).readiness == 'sending')
+        result = manager.get(state.id)
+        assert result.outlets_connected == 1
+        assert result.frames_emitted == result.frames_without_receivers == 0
+    finally:
+        await manager.aclose()

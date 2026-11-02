@@ -1,7 +1,8 @@
 # Core repository guidance
 
-Follow the containing workspace's ownership and review rules. Leave changes
-unstaged and uncommitted for human review.
+Follow the containing workspace's ownership and Git authorization rules. The owner
+authorizes staging, commits, and pushes for task-related cleanup and integration.
+Commit messages must be one sentence or less, with no agent name or attribution.
 
 When external research, documentation, tutorials or source code informs a change,
 follow [CITATIONS.md](CITATIONS.md): register the source in root `references.bib`,

@@ -58,8 +58,8 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --stop-alert-icon: url("../assets/icons/stop_alert_icon.svg");
   --stop-icon: url("../assets/icons/stop_icon.svg");
   --fit-icon: url("../assets/icons/fit_icon.svg");
-  --import-icon: url("../assets/icons/import-icon.svg");
-  --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
+  --import-icon: url("../assets/icons/import_icon.svg");
+  --importVideos-icon: url("../assets/icons/importvideos_icon.svg");
   --github-icon: url("../assets/icons/github_icon.svg");
   --externallink-icon: url("../assets/icons/externallink_icon.svg");
   --dropdown-icon: url("../assets/icons/dropdown_icon.svg");
@@ -287,18 +287,26 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   background-color: var(--color-icon-idle);
 }
 .arrowdown-icon {
-  background-image: var(--dropdown-icon);
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
 }
 .arrowup-icon {
-  background-image: var(--dropdown-icon);
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
   transform: rotate(180deg);
 }
 .arrowright-icon {
-  background-image: var(--dropdown-icon);
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
   transform: rotate(90deg);
 }
 .arrowleft-icon {
-  background-image: var(--dropdown-icon);
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
   transform: rotate(-90deg);
 }
 
@@ -458,11 +466,15 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 }
 
 .import-icon {
-  background-image: var(--import-icon);
+  -webkit-mask-image: var(--import-icon);
+  mask-image: var(--import-icon);
+  background-color: var(--color-icon-primary);
 }
 
 .importVideos-icon {
-  background-image: var(--importVideos-icon);
+  -webkit-mask-image: var(--importVideos-icon);
+  mask-image: var(--importVideos-icon);
+  background-color: var(--color-icon-primary);
 }
 
 .github-icon {
@@ -596,7 +608,9 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 }
 
 .subcat-icon {
-  background-image: var(--subcat-icon);
+  -webkit-mask-image: var(--subcat-icon);
+  mask-image: var(--subcat-icon);
+  background-color: var(--color-icon-dim);
 }
 
 .download-icon {

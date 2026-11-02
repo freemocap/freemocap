@@ -58,6 +58,40 @@ Send both as binary WebSocket messages. The output matches FreeMoCap's and
 SkellyCam's encoders byte for byte; `tests/test_conformance.py` checks that
 wherever FreeMoCap and SkellyCam are installed.
 
+## Delivering to clients
+
+Frames and state snapshots replace one another, so delivery is newest-wins: a
+slow client receives fewer, newer messages instead of a growing backlog, and a
+client that joins late gets the current message at once. `Latest` holds the
+newest message of one stream. `StreamConnection` follows any number of them for
+one client and sends everything through a single writer, answering the client's
+`ping` heartbeat with `pong`. With aiohttp:
+
+```python
+import asyncio
+from aiohttp import WSMsgType, web
+from freemocap_stream import Latest, StreamConnection
+
+frames, robot_state = Latest(), Latest()  # your loops call frames.publish(frame_message) etc.
+
+async def stream(request: web.Request) -> web.WebSocketResponse:
+    socket = web.WebSocketResponse()
+    await socket.prepare(request)
+    connection = StreamConnection(socket.send_bytes, socket.send_str)
+    sending = asyncio.create_task(connection.follow(frames, robot_state))
+    try:
+        async for message in socket:
+            if message.type == WSMsgType.TEXT:
+                await connection.receive_text(message.data)
+    finally:
+        sending.cancel()
+    return socket
+```
+
+Publish on the event loop's thread; from another thread use
+`loop.call_soon_threadsafe(frames.publish, message)`. Encode each message once,
+however many clients follow it.
+
 ## Development
 
 ```sh

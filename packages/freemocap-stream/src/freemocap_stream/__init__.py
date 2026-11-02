@@ -1,4 +1,5 @@
 """Send FreeMoCap's self-describing WebSocket stream from any Python server."""
+from freemocap_stream.delivery import Latest, StreamConnection
 from freemocap_stream.frames import (
     BOXES_2D,
     FRAME_KIND,
@@ -17,8 +18,10 @@ __all__ = [
     "BOXES_2D",
     "ENVELOPE_FIELDS",
     "FRAME_KIND",
+    "Latest",
     "OVERLAY_2D",
     "PayloadImage",
+    "StreamConnection",
     "channel_block",
     "connection_group",
     "coordinate_convention",

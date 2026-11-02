@@ -1,0 +1,24 @@
+[project]
+name = "freemocap-stream"
+version = "0.1.0.dev0"
+description = "Send FreeMoCap's self-describing WebSocket stream from any Python server"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.11"
+dependencies = [
+    "cbor2>=5.6",
+    "numpy>=1.26",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/freemocap_stream"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

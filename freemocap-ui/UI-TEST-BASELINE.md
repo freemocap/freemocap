@@ -42,11 +42,46 @@ Apple Silicon Mac; Python 3.12.14, Node 24.20.0, Playwright 1.59.0, Electron 35.
 - Static guard: 32 undefined-variable use locations (some with fallback values), two invalid icon paths, zero new hex values against the baseline. These are failures, not grandfathered passes.
 - Visual repeat: all 11 PNGs reproduce; the default modal POST matches the committed fixture. Existing separate request tests cover 36 alignment/filter combinations.
 - Contrast: baseline failures include 4.0:1 action-button text, 2.56:1 secondary labels, and 3.33:1 black button text. All three main surfaces and the modal have violations in stable disconnected state. Full node/ratio evidence is retained.
-- Initial existing E2E suite: 74 passed, 12 failed, 10 not reached. Missing fixture, incomplete Python setup, Edge default, stale streaming-output selectors and a Parquet setup timeout were identified. Configured rerun is pending; original output is preserved.
-- Standard reference run failed before processing (worker lifecycle 5.10 s). Numerical test-data run passed: mocap 63.002 s; worker lifecycle 73.324 s; tracking 56.676 s. Timings are observations under concurrent UI testing, not isolated performance benchmarks. Sample-data run and complete test matrices are pending.
+- Initial existing E2E suite: 74 passed, 12 failed, 10 not reached. Missing fixture, incomplete Python setup, Edge default, stale streaming-output selectors and a Parquet setup timeout were identified. Configured rerun: 92 passed, three stale streaming-output tests failed, one real-Parquet test skipped without its file environment variable. All three then passed after updating their selectors and assertions to the existing VMC/LSL controls and explicit-refresh behavior; no product code changed. Original output is preserved.
+- Standard reference run failed before processing (worker lifecycle 5.10 s). Numerical test-data run passed: mocap 63.002 s; worker lifecycle 73.324 s; tracking 56.676 s. Timings are observations under concurrent UI testing, not isolated performance benchmarks. Sample-data numerical run passed: mocap 220.190 s; worker lifecycle 250.299 s. The pipeline directory suite passed all 29 tests; the 51-case reference suite is running.
 
 ## Harness audit
 
 `npm test` and `poe test-reference` were missing; explicit entry points now exist. Nox still installs `.[dev]` although dev is a dependency group, and its legacy file lists need separate maintenance; the direct configured environment is used here. Some historical TESTING.md file names no longer exist. Main-screen visual and contrast assertions, modal full-request comparison, and source style/icon checks were missing. Existing component specs remain useful and are retained.
 
 No live cameras are attached. UI no-camera state is covered; real capture, camera enumeration accuracy and capture timing are not certified. CUDA provider-switch cases cannot run on this CPU-only Mac and must be reported individually. Other missing prerequisites or failed tests are not classified as camera skips.
+
+## Measured numerical reference baseline
+
+These operation intervals overlap and must not be summed. Calibration solver time is narrower than complete calibration. Parquet checksums identify these exact artifacts; a fresh run can differ because it includes run identity and timestamps. Numerical equality checks in the reference suite are the semantic regression guard.
+
+| Operation | Test data (222 frames), s | Sample data (1,108 frames), s |
+| --- | ---: | ---: |
+| Reading videos and detecting poses and requested board points | 56.6756 | 192.1594 |
+| Drawing tracking overlays and saving annotated video 1 | 3.5389 | 16.7058 |
+| Drawing tracking overlays and saving annotated video 2 | 3.4915 | 16.5922 |
+| Matching camera views and calculating 3D points | 0.3791 | 1.7729 |
+| Preparing detected image points for saving | 0.0350 | 0.0478 |
+| Saving detected image points to disk | 0.3156 | 1.7674 |
+| Filling gaps and smoothing 3D point movements | 0.0091 | 0.0632 |
+| Orienting 3D motion in the recording coordinate system | 0.3392 | 1.4876 |
+| Preparing 3D points for skeleton fitting | 0.0019 | 0.0094 |
+| Preparing reconstructed 3D points for saving | 0.0005 | 0.0005 |
+| Saving reconstructed 3D points to disk | 1.0911 | 5.3881 |
+| Fitting skeleton body dimensions to this recording | 0.0701 | 0.2092 |
+| Calculating skeleton positions and joint rotations | 0.6903 | 3.0821 |
+| Saving reconstructed motion to the recording Parquet file | 0.7622 | 4.0126 |
+| Drawing tracking overlays and saving annotated video 3 | 2.5551 | 11.1368 |
+
+| Artifact | SHA-256 |
+| --- | --- |
+| freemocap_test_data_data.parquet | `a5f2649d5071ea9eb9d0bbb013da642ed789ffac096ace1c27f6b31b7f0018d1` |
+| freemocap_test_data_camera_calibration.toml | `95ad6396dbf6babb196da3d70f724f350363584caef8f75986d0728aacd4c9f6` |
+| freemocap_sample_data_data.parquet | `1c28762383480a74bf08bdef8c51bbcfc9122071b60e1888e34483d0cb780eef` |
+| freemocap_sample_data_camera_calibration.toml | `a67e9861f1b07d268d25dfd1d770a2e68e3a8c672e27b7eeda4214567107497f` |
+
+Re-extract and independently verify checksums from checkout root:
+
+```sh
+python3 freemocap-ui/tools/reference-baseline.py --prepared-root .test-artifacts/prepared-numerical --output .test-artifacts/baselines/reference-numerical.json
+```

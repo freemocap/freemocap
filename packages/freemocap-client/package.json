@@ -23,6 +23,10 @@
     "./images": {
       "types": "./dist/images/index.d.ts",
       "import": "./dist/images/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/browser/freemocap-client.js"
     }
   },
   "files": [
@@ -35,7 +39,8 @@
   ],
   "scripts": {
     "generate": "openapi-typescript contracts/openapi.json --default-non-nullable false -o src/generated/schema.ts && node tools/generate-operations.mjs",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && npm run build:browser",
+    "build:browser": "node tools/build-browser.mjs",
     "test": "npm run build && tsc -p tsconfig.tests.json && node tools/compile-tests.mjs && node --test tests/*.test.mjs .test-artifacts/*.test.mjs && npm run coverage:check && npm run examples:check",
     "coverage": "node tools/coverage.mjs",
     "coverage:check": "node tools/coverage.mjs --check",

@@ -18,7 +18,10 @@ In a consuming project, run `npm install /absolute/path/to/freemocap-client`.
 The default app uses this package through a local file dependency within the same
 repository. Package interfaces and tests remain independent of the application.
 Node 22+ is declared; the compatibility record names the runtimes actually tested.
-Browsers consume the ESM package through a bundler. There is no CommonJS or CDN build.
+Bundled browser apps import the ESM package. Pages without a bundler can load
+`dist/browser/freemocap-client.js` (also exported as `@freemocap/client/browser`):
+one minified ES module with its dependencies inlined and a source map, built by
+`npm run build`. There is no CommonJS or CDN build.
 
 ```js
 import {createClient} from '@freemocap/client';
@@ -167,8 +170,11 @@ The examples retain generic model/channel names and do not require a renderer.
 overrides trace actual server handlers because inferred OpenAPI does not describe
 those bytes. `npm test` builds, checks negative TypeScript cases and runs independent
 HTTP/decoder/socket/recording tests. `npm run coverage:check` verifies the documented
-65-operation inventory against the generated bindings. `npm run examples:check`
+operation inventory against the generated bindings. `npm run examples:check`
 checks example syntax; real example execution is a separate owned-server gate.
+For native JPEG decoding, which Node lacks, run `node tools/serve-static.mjs` and
+open `/tests/browser/bundle-check.html` in a browser; it imports the browser bundle
+without a bundler and reports each check.
 
 Core provides `python -m freemocap.tools.sdk_validation`, `sdk_replay_validation`,
 `sdk_live_validation` and `sdk_examples_validation` for integration acceptance.

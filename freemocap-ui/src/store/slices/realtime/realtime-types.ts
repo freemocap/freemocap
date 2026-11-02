@@ -10,11 +10,13 @@ export interface CharucoBoardConfigForPipeline {
     aruco_dictionary_enum?: number;
 }
 
+export type RealtimeDetectorType = DetectorType | 'rtmw_onnx_hands';
+
 export interface CameraNodeConfig {
     charuco_tracking_enabled: boolean;
     skeleton_tracking_enabled: boolean;
     charuco_board?: CharucoBoardConfigForPipeline;
-    detector_type?: DetectorType;
+    detector_type?: RealtimeDetectorType;
     dlc_model_path?: string | null;
     dlc_confidence_threshold?: number;
     rtmpose_model_name?: RTMPoseModelName;

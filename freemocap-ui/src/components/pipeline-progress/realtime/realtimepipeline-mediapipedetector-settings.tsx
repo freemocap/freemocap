@@ -7,9 +7,9 @@ import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
 import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
 import { useExecutionProviderOptions } from '@/hooks/useExecutionProviderOptions';
-import { DetectorType, ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
-import { CameraNodeConfig } from '@/store/slices/realtime/realtime-types';
-import { DETECTOR_OPTIONS } from '@/components/mocap-setup/detector-options';
+import { ExecutionProviderName, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
+import { CameraNodeConfig, RealtimeDetectorType } from '@/store/slices/realtime/realtime-types';
+import { REALTIME_DETECTOR_OPTIONS } from '@/components/mocap-setup/detector-options';
 
 interface RTPSkeletonSetupProps {
     open: boolean;
@@ -27,7 +27,10 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
     const { pipelineConfig, cameraNodeConfig, applyOrUpdatePipelineConfig } = useRealtimePipelineSync();
 
     const executionProvider = pipelineConfig.skeleton_inference_node_config?.execution_provider ?? null;
-    const executionProviderOptions = useExecutionProviderOptions(executionProvider);
+    const availableProviderOptions = useExecutionProviderOptions(executionProvider);
+    const executionProviderOptions = cameraNodeConfig.detector_type === 'rtmw_onnx_hands'
+        ? availableProviderOptions.filter(({value}) => value === 'cpu' || value === 'cuda')
+        : availableProviderOptions;
 
     const handleExecutionProviderChange = useCallback(
         (provider: ExecutionProviderName | null) => {
@@ -39,13 +42,16 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
         [applyOrUpdatePipelineConfig, pipelineConfig]
     );
 
-    const detectorType: DetectorType = cameraNodeConfig.detector_type ?? "rtmpose";
+    const detectorType: RealtimeDetectorType = cameraNodeConfig.detector_type ?? "rtmpose";
 
     const handleCameraNodeUpdate = useCallback(
         (updates: Partial<CameraNodeConfig>) => {
             applyOrUpdatePipelineConfig({
                 ...pipelineConfig,
                 camera_node_config: { ...cameraNodeConfig, ...updates },
+                skeleton_inference_node_config: updates.detector_type === 'rtmw_onnx_hands'
+                    ? {...pipelineConfig.skeleton_inference_node_config, execution_provider: 'cuda'}
+                    : pipelineConfig.skeleton_inference_node_config,
             });
         },
         [applyOrUpdatePipelineConfig, pipelineConfig, cameraNodeConfig]
@@ -96,8 +102,8 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                             size="sm"
                             className="segmented-control-sm bg-darkgray"
                             value={detectorType ?? "rtmpose"}
-                            options={DETECTOR_OPTIONS}
-                            onChange={(value) => handleCameraNodeUpdate({ detector_type: value as DetectorType })}
+                            options={REALTIME_DETECTOR_OPTIONS}
+                            onChange={(value) => handleCameraNodeUpdate({ detector_type: value as RealtimeDetectorType })}
                         />
                     </div>
                 </div>
@@ -105,10 +111,12 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                 {detectorType === "dlc" && <DlcModelSettings context="realtime"/>}
 
                 {/* RTMPose settings */}
-                {(detectorType === "rtmpose" || detectorType === "rtmw_mediapipe_hands") && (
+                {(detectorType === "rtmpose" || detectorType === "rtmw_mediapipe_hands" || detectorType === "rtmw_onnx_hands") && (
                     <>
                         <p className="text-sm text-gray p-1">
-                            {detectorType === 'rtmw_mediapipe_hands'
+                            {detectorType === 'rtmw_onnx_hands'
+                                ? 'Experimental RTMW body and face with ONNX palm and hand models. Uses CUDA; CPU is also supported. Compare hand quality with the MediaPipe hands option.'
+                                : detectorType === 'rtmw_mediapipe_hands'
                                 ? 'RTMW body and face with cropped MediaPipe hands. The execution provider applies to RTMW; MediaPipe hands run on CPU.'
                                 : '133 keypoints (body, hands, face) via YOLOX + RTMW. Uses GPU batched inference when available.'}
                         </p>
@@ -154,12 +162,12 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                 )}
 
                 {/* MediaPipe settings */}
-                {(detectorType === "mediapipe" || detectorType === "rtmw_mediapipe_hands") && (
+                {(detectorType === "mediapipe" || detectorType === "rtmw_mediapipe_hands" || detectorType === "rtmw_onnx_hands") && (
                     <>
                         <p className="text-sm text-gray p-1">
                             {detectorType === 'mediapipe'
                                 ? 'Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.'
-                                : 'MediaPipe confidence settings below apply to the hands.'}
+                                : 'The confidence settings below apply to the hands.'}
                         </p>
 
                         {/* Model size */}
@@ -197,14 +205,14 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                         </div>
 
                         {/* Tracking confidence */}
-                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                        {detectorType !== 'rtmw_onnx_hands' && <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Tracking confidence</span>
                             <ValueSelector
                                 value={cameraNodeConfig.mediapipe_tracking_confidence ?? 0.5}
                                 min={0} max={1} step={0.05} unit=""
                                 onChange={(v) => handleCameraNodeUpdate({ mediapipe_tracking_confidence: v })}
                             />
-                        </div>
+                        </div>}
                     </>
                 )}
             </div>

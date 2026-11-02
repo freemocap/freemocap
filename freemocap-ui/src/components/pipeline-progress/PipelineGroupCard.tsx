@@ -48,7 +48,7 @@ function SubProgressBar({
         : `${pipeline.progress ?? 0}%`;
 
   const progressColor = isFailed
-    ? "var(--color-error)"
+    ? "var(--color-danger)"
     : isComplete
       ? "var(--color-success)"
       : "var(--color-info)";
@@ -105,7 +105,7 @@ export default function PipelineGroupCard({
 
 
   const borderColor = group.isFailed
-    ? "var(--color-error)"
+    ? "var(--color-danger)"
     : group.isComplete
       ? "var(--color-success)"
       : "var(--color-border-secondary)";
@@ -202,7 +202,7 @@ export default function PipelineGroupCard({
                 icon="stop-alert-icon"
                 className="icon-size-25 p-01"
                 onClick={() => dispatch(stopPipeline(group.basePipelineId))}
-                style={{ color: "var(--color-error)" }}
+                style={{ color: "var(--color-danger)" }}
                 tooltip={true}
                 tooltipText="Stop pipeline"
               />

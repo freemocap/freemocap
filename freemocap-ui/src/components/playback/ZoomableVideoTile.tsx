@@ -50,7 +50,7 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
             {hasError && (
                 <div className="pos-abs inset-0 flex flex-col items-center justify-center gap-1 p-4 text-center z-5" style={{
                     backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                    color: 'var(--color-error, #ff6b6b)',
+                    color: 'var(--color-danger-text)',
                 }}>
                     <span className="text sm" style={{fontWeight: 600}}>{t("videoPlaybackError")}</span>
                     <span className="text xs" style={{color: '#aaa', wordBreak: 'break-all'}}>{filename}</span>

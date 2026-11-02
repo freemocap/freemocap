@@ -87,8 +87,8 @@
 .formalism-fields { display: grid; gap: 4px; }
 .formalism-card .transform-matrix { gap: 4px; padding: 3px; border-color: color-mix(in srgb, var(--color-text-muted, #aaa) 35%, transparent); }
 .formalism-info.prompt-tooltip-container { position: relative; inset: auto; width: auto; max-width: 100%; transform: none; margin-bottom: 6px; }
-.formalism-rejected { border-color: var(--color-error, #ed5362); animation: formalism-reject 300ms ease-out; }
-@keyframes formalism-reject { from { background: #ed536233; } to { background: transparent; } }
+.formalism-rejected { border-color: var(--color-danger); animation: formalism-reject 300ms ease-out; }
+@keyframes formalism-reject { from { background: var(--color-danger-surface); } to { background: transparent; } }
 .position-units.transform-representation { margin-left: auto; margin-right: 6px; padding: 1px; }
 .position-units .segmented-control-button { flex: none; padding: 0 6px; }
 .position-units .segmented-control-button p { padding: 1px; }

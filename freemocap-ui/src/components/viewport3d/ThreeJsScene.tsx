@@ -14,6 +14,7 @@ import {ModelConnectionRenderer} from "@/components/viewport3d/renderers/ModelCo
 import {MocapCameraRenderer} from "@/components/viewport3d/renderers/MocapCameraRenderer";
 import {CenterOfMassRenderer} from "@/components/viewport3d/renderers/CenterOfMassRenderer";
 import {RigidBodyBoneRenderer} from "@/components/viewport3d/renderers/RigidBodyBoneRenderer";
+import {SkellyMeshRenderer} from "./renderers/SkellyMeshRenderer";
 import {SegmentAxesRenderer} from "@/components/viewport3d/renderers/SegmentAxesRenderer";
 import {ViewportPicker} from "@/components/viewport3d/renderers/ViewportPicker";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
@@ -121,6 +122,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             {(visibility.face || visibility.faceConnections) && <FaceRenderer />}
             {visibility.cameras && <MocapCameraRenderer />}
             {visibility.bones && <RigidBodyBoneRenderer />}
+            {visibility.skellyMesh && <SkellyMeshRenderer />}
             {visibility.segmentAxes && <SegmentAxesRenderer />}
             <ViewportPicker />
             <BloomLayer />

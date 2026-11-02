@@ -16,6 +16,8 @@ export interface PointStyle {
 export interface ViewportVisibility {
     /** Solid rigid-body segments of the tracked model, colored by body side. */
     bones: boolean;
+    /** Authored Skelly artwork for the compatible standard-human model. */
+    skellyMesh: boolean;
     /** Thin lines joining parent → child segment origins. */
     boneLines: boolean;
     /** Anatomical points on the tracked model. */
@@ -47,6 +49,7 @@ export type LayerKey = keyof ViewportVisibility;
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
     bones: true,
+    skellyMesh: false,
     boneLines: true,
     landmarks: false,
     segmentAxes: true,

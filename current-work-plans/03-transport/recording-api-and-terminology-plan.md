@@ -350,8 +350,8 @@ mock-only tests. Update the maintained recording and transport contracts.
 ## Execution and review requirements
 
 Every selected stage starts with current instructions, branch/status/diff, and
-relevant dependency declarations. Preserve user work and keep all changes
-unstaged and uncommitted. The human owns Git state and commit/push handoffs.
+relevant dependency declarations. Preserve user work. Commit and push on the
+assigned branch with one-sentence messages that name no person or agent.
 Never mutate multiple independent repositories in one implementation stage.
 
 Before tests or diagnostics create files, identify output paths and verify the

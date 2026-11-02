@@ -28,8 +28,9 @@ Governing documents already in the repo, read these first:
   `.venv/Scripts/python.exe -B experiments/executable_graph_lab/synthetic/server.py --port 8766`.
   Screenshots exist locally at `.test-artifacts/graph-lab-live/full-pipeline.png` and
   `fixed-zoom-styling.png`.
-- Workspace rules in `../project/AGENTS.md`: never mutate Git state, leave edits unstaged, ignore
-  generated artifacts before creating them, prefer `.test-artifacts/`.
+- Workspace rules in `../project/AGENTS.md`: commit and push on your own branch with one-sentence
+  messages that name no person or agent, ignore generated artifacts before creating them, prefer
+  `.test-artifacts/`.
 
 ## 2. Decisions the user made in this session
 

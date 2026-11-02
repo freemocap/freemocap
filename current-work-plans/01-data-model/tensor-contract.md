@@ -599,7 +599,8 @@ One sub-agent per approved task, with integration review and validation before
 starting the next. Core owns integration contracts. Tracker and Forge remain
 independent; neither imports the other or core. For the approved Global 4 work,
 the owner authorized local integration through the existing editable dependencies
-without commit/push pauses. Agents do not mutate Git state.
+without commit/push pauses. Agents may commit and push on their assigned branch
+with one-sentence messages that name no person or agent.
 
 Baseline measurement and fixture design are internal work of the affected tasks;
 no speedup is promised without measurements. Completed runtime changes and their

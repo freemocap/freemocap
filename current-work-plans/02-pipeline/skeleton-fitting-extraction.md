@@ -70,5 +70,5 @@ Removing the optimizer is not a data-model redesign. Audit scalar-row repetition
 and export representation separately. Wide CSV, NPZ and Blender integration remain
 subsequent milestones. Do not reintroduce solver compatibility as part of them.
 
-The human reviews, commits and pushes FreeMoCap's cleanup on
-`development-streaming`; agents do not mutate Git state.
+FreeMoCap's cleanup lands on `development-streaming`. Agents may commit and push
+there with one-sentence messages that name no person or agent.

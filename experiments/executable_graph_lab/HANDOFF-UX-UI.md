@@ -19,7 +19,7 @@ All paths below are relative to that repository unless stated otherwise.
 
 If a required field or control is absent, record the missing capability and proposed contract in the return handoff. Do not silently invent it or implement a replacement server. Do not add scheduling, scientific validity, completion, or dependency rules to frontend code.
 
-The user will relay handoffs between agents. Do not message another chat without explicit authorization. Leave all changes unstaged and uncommitted. Follow workspace and repository AGENTS.md, including artifact ignores and preservation of other work.
+The user will relay handoffs between agents. Do not message another chat without explicit authorization. Commit and push on your own branch with one-sentence messages that name no person or agent; stay on that branch, and stop to ask before working in a different repository. Follow workspace and repository AGENTS.md, including artifact ignores and preservation of other work.
 
 ## Read these first
 

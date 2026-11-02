@@ -65,8 +65,13 @@ uv run --group dev python -m pytest
 ```
 
 The conformance tests skip unless FreeMoCap and SkellyCam import. From the
-FreeMoCap checkout, after `uv sync --locked --group dev`:
+FreeMoCap checkout's root, after `uv sync --locked --group dev`, this overlays the
+package on FreeMoCap's environment without changing it:
 
 ```sh
-uv run --no-sync --with-editable ../packages/freemocap-stream python -m pytest ../packages/freemocap-stream/tests
+uv run --no-sync --with-editable packages/freemocap-stream python -m pytest packages/freemocap-stream/tests -p no:cacheprovider
 ```
+
+`@freemocap/client` decodes this package's output in
+`packages/freemocap-client/tests/python-stream.test.mjs`; regenerate its fixture
+with `tools/generate-python-stream-fixture.py` there.

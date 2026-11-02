@@ -1,0 +1,70 @@
+{
+  "kind": "mocap",
+  "config": {
+    "bodyAlignment": {
+      "mode": "auto",
+      "additional_transform": null
+    },
+    "cameraMatching": {
+      "automatically_match": true,
+      "failure_policy": "continue"
+    },
+    "anchorSegmentName": "pelvis",
+    "exportTallCsv": false,
+    "exportOptions": {
+      "formats": [],
+      "data": [
+        "LANDMARKS_3D"
+      ]
+    },
+    "charucoTrackingEnabled": true,
+    "boardMode": "auto",
+    "charucoBoard": {
+      "squares_x": 5,
+      "squares_y": 3,
+      "square_length_mm": 54
+    },
+    "detectorType": "rtmpose",
+    "dlcModelPath": null,
+    "dlcConfidenceThreshold": 0.4,
+    "rtmPoseModelName": "rtmw-x-l_256x192",
+    "rtmPoseConfidenceThreshold": 0.004,
+    "executionProvider": null,
+    "mediapipeModelComplexity": "heavy",
+    "mediapipeDetectionConfidence": 0.5,
+    "mediapipePresenceConfidence": 0.5,
+    "mediapipeTrackingConfidence": 0.5,
+    "mediapipeNumHands": 2,
+    "mediapipeNumFaces": 1,
+    "calibrationTomlPath": "/recordings/baseline/calibration.toml",
+    "triangulationConfig": {
+      "useOutlierRejection": true,
+      "minimumCamerasForTriangulation": 2,
+      "maximumCamerasToDrop": 1,
+      "targetReprojectionError": 0.02
+    },
+    "filterConfig": {
+      "enabled": true,
+      "method": "butter_low_pass",
+      "cutoff": 6,
+      "order": 4
+    },
+    "exportToBlender": true,
+    "blenderImportRoute": "auto",
+    "blenderPackage": null,
+    "blenderDevelopmentBuildHash": null,
+    "blenderExportConfig": {
+      "formats": [],
+      "rest_pose": "tpose",
+      "apply_foot_locking": false,
+      "limit_hand_markers_range_of_motion": false
+    },
+    "blenderExePath": null,
+    "autoOpenBlendFile": true,
+    "startStage": "observations",
+    "stopStage": "reconstruction",
+    "baseRunId": 0,
+    "runSaveMode": "overwrite",
+    "pipelineImplementation": "typed_dataflow"
+  }
+}

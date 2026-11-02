@@ -3,7 +3,7 @@ import {build} from 'esbuild';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
-test.use({channel: process.env.PLAYWRIGHT_CHANNEL ?? 'msedge', viewport: {width: 800, height: 600}});
+test.use({channel: process.env.PLAYWRIGHT_CHANNEL || undefined, viewport: {width: 800, height: 600}});
 
 test.beforeEach(async ({page}) => {
     const root = process.cwd();

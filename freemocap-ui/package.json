@@ -20,13 +20,18 @@
     "preview": "vite preview",
     "pree2e": "vite build --mode=test",
     "e2e": "playwright test",
-    "test:sdk": "tsc --noEmit && node tools/test-sdk-integration.mjs"
+    "test:sdk": "tsc --noEmit && node tools/test-sdk-integration.mjs",
+    "test:styles": "node tools/check-ui-styles.mjs",
+    "test:harness": "playwright test --config playwright.harness.config.ts",
+    "test:standard": "playwright test --config playwright.standard.config.ts",
+    "test": "npm run test:sdk"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@freemocap/client": "file:../packages/freemocap-client",
     "@monaco-editor/react": "^4.7.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
@@ -51,10 +56,10 @@
     "superjson": "^2.2.2",
     "three": "0.183.2",
     "tree-kill": "^1.2.2",
-    "zod": "^4.1.5",
-    "@freemocap/client": "file:../packages/freemocap-client"
+    "zod": "^4.1.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.42.1",
     "@types/d3": "^7.4.3",
     "@types/js-yaml": "^4.0.9",
@@ -71,5 +76,9 @@
     "vite": "^7.3.1",
     "vite-plugin-electron": "^0.28.8",
     "vite-plugin-electron-renderer": "^0.14.5"
+  },
+  "allowScripts": {
+    "electron@35.7.5": true,
+    "esbuild@0.27.4": true
   }
 }

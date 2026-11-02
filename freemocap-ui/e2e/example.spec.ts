@@ -7,7 +7,7 @@ test('production UI connects to its owned backend and closes cleanly', async ({}
     test.setTimeout(240_000);
     // The old scaffold checked a Vite demo title and overwrote a tracked image.
     // Use the application's existing observer and its isolated server lifecycle.
-    await promisify(execFile)(process.env.FREEMOCAP_TEST_PYTHON ?? resolve('../.venv/Scripts/python.exe'),
+    await promisify(execFile)(process.env.FREEMOCAP_TEST_PYTHON ?? resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),
         ['-B', '-m', 'freemocap.tools.hardware_validation', 'ui-idle', '--output', info.outputPath('application')],
         {cwd: resolve('..'), windowsHide: true, timeout: 230_000});
 });

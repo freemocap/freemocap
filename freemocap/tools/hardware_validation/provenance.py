@@ -15,7 +15,7 @@ def capture_provenance() -> dict:
     packages = {}
     repositories = {}
     for name in ('freemocap', 'skellycam', 'skellycam_rust', 'skellytracker', 'skellyforge',
-                 'numpy', 'opencv-contrib-python', 'onnxruntime-gpu', 'uvicorn', 'websockets'):
+                 'numpy', 'opencv-contrib-python', 'onnxruntime', 'onnxruntime-gpu', 'av', 'psutil', 'uvicorn', 'websockets'):
         try:
             distribution = importlib.metadata.distribution(name)
         except importlib.metadata.PackageNotFoundError:

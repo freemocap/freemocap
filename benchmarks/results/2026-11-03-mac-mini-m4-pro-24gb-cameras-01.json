@@ -1,0 +1,2745 @@
+{
+  "schema_version": 1,
+  "started_utc": "2026-11-03T12:19:31.106477+00:00",
+  "machine": {
+    "label": "mac-mini-m4-pro-24gb",
+    "os": "macOS-26.6.2-arm64-arm-64bit",
+    "architecture": "arm64",
+    "cpu": "Apple M4 Pro",
+    "physical_cores": 12,
+    "logical_cores": 12,
+    "memory_bytes": 25769803776,
+    "gpu": [
+      {
+        "sppci_cores": "16",
+        "sppci_model": "Apple M4 Pro"
+      }
+    ],
+    "available_onnx_providers": [
+      "CoreMLExecutionProvider",
+      "AzureExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "thread_environment": {
+      "OMP_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "NUMBA_NUM_THREADS": null
+    }
+  },
+  "conditions": "Shared desktop with other agents and apps active; AC power; no controlled thermal or cache warmup; one A68-1600W attached.",
+  "provenance": {
+    "started_utc": "2026-11-03T12:19:31.591490+00:00",
+    "python": "3.12.14 (main, Sep  1 2026, 14:09:38) [Clang 22.1.3 ]",
+    "executable": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap/.venv/bin/python",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "packages": {
+      "freemocap": {
+        "version": "2.0.0a25",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/freemocap",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/freemocap/__init__.py"
+      },
+      "skellycam": {
+        "version": "2.0.0a6",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellycam",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/skellycam/skellycam/__init__.py"
+      },
+      "skellycam_rust": {
+        "version": "0.1.0",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellycam/skellycam-rust",
+          "dir_info": {
+            "editable": false
+          }
+        }
+      },
+      "skellytracker": {
+        "version": "2024.9.1019",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellytracker",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/skellytracker/skellytracker/__init__.py"
+      },
+      "skellyforge": {
+        "version": "2024.12.1009",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellyforge",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/skellyforge/skellyforge/__init__.py"
+      },
+      "numpy": {
+        "version": "2.4.6",
+        "direct_url": null
+      },
+      "opencv-contrib-python": {
+        "version": "4.12.0.88",
+        "direct_url": null
+      },
+      "uvicorn": {
+        "version": "0.54.0",
+        "direct_url": null
+      },
+      "websockets": {
+        "version": "17.4",
+        "direct_url": null
+      }
+    },
+    "repositories": {
+      "freemocap": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks",
+        "head": "5b6adb51a1f4dcc26d13e23dcaf886e8d8b299b5",
+        "status": "?? freemocap/tools/machine_benchmarks.py\n",
+        "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_files": {
+          "freemocap/tools/machine_benchmarks.py": {
+            "bytes": 13560,
+            "sha256": "dac6154e259a74a4af1072f8f100dfc7f8fbb99a0de885b52f1b077c3cb6cbd6"
+          }
+        }
+      },
+      "skellycam": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/skellycam",
+        "head": "e7eeda45ea2e3eb8342e5bc5a23efa70c3738c31",
+        "status": " M uv.lock\n",
+        "tracked_diff_sha256": "b44167b0a07edc54c1f8fe1d722f818c02d42ef31aeeac2e0e0753d53a0546bb",
+        "untracked_files": {}
+      },
+      "skellytracker": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/skellytracker",
+        "head": "089c8eaa5dcf712b7f4d12045e136777bb957419",
+        "status": " M uv.lock\n",
+        "tracked_diff_sha256": "6dfc175b19a06cdfc4c5d0c8f5e16cb941f0fb9116984563b047d94744350313",
+        "untracked_files": {}
+      },
+      "skellyforge": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/skellyforge",
+        "head": "a54761f19bcbfc96a4de4ced8725a04fed059685",
+        "status": " M uv.lock\n",
+        "tracked_diff_sha256": "77861f3c8d52d50be121ac65ccac70aa6cbcdc89f1d604412d98a3621c37a69a",
+        "untracked_files": {}
+      }
+    }
+  },
+  "load_before": {
+    "available_memory_bytes": 13681704960,
+    "system_cpu_percent": 37.9,
+    "load_average": [
+      4.81689453125,
+      3.5205078125,
+      3.05029296875
+    ]
+  },
+  "cases": [
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "record",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {
+        "recordings[0].cameras.3ece.measured_fps": 19.929789841611733,
+        "recordings[0].cameras.3ece.p99_interval_ms": 66.37429796000016,
+        "recordings[0].cameras.3ece.missing_frame_numbers": 0,
+        "stream.delivery.measured_fps": 19.894092713419806,
+        "stream.delivery.p99_interval_ms": 78.21563574645553,
+        "stream.delivery.missing_frame_numbers": 0,
+        "stream.source_frames_received.measured_fps": 19.96300258157086,
+        "stream.source_frames_received.p99_interval_ms": 66.47268636224908,
+        "stream.source_frames_received.missing_frame_numbers": 0,
+        "stream.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 9.157203250004386,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "record-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "recordings": [
+          {
+            "cameras": {
+              "3ece": {
+                "frame_count": 101,
+                "measured_fps": 19.929789841611733,
+                "median_interval_ms": 49.541083500000084,
+                "p99_interval_ms": 66.37429796000016,
+                "maximum_interval_ms": 71.24449999999999,
+                "p99_nominal_jitter_ms": 33.04096462666683,
+                "missing_frame_numbers": 0,
+                "within_one_percent_of_requested_fps": false,
+                "decoded_frames": 101,
+                "decoded_shapes": [
+                  [
+                    720,
+                    1280,
+                    3
+                  ]
+                ],
+                "first_image": {
+                  "width": 1280,
+                  "height": 720,
+                  "mean_brightness": 99.00114474826388,
+                  "brightness_std": 76.57086211273722,
+                  "black_fraction": 0.07004231770833333,
+                  "white_fraction": 0.012056206597222223
+                },
+                "video_matches_capture_timestamps": true
+              }
+            },
+            "matching_camera_frame_indices": true,
+            "host_timestamp_spread_ms": {
+              "median": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0
+            },
+            "timestamp_interpretation": "Host timestamp spread is not sensor exposure synchronization. Python DirectShow grab-call timestamps and Rust frame-available timestamps describe different events.",
+            "passed": false
+          }
+        ],
+        "stream": {
+          "delivery": {
+            "frame_count": 99,
+            "measured_fps": 19.894092713419806,
+            "median_interval_ms": 55.950749996554805,
+            "p99_interval_ms": 78.21563574645553,
+            "maximum_interval_ms": 83.37179200316314,
+            "p99_nominal_jitter_ms": 44.88230241312219,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 99,
+            "measured_fps": 19.96300258157086,
+            "median_interval_ms": 49.53693725110497,
+            "p99_interval_ms": 66.47268636224908,
+            "maximum_interval_ms": 71.24450000264915,
+            "p99_nominal_jitter_ms": 33.13935302891575,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                100.29147135416666,
+                100.29693576388888,
+                100.04654513888889,
+                100.03333767361111,
+                100.04229166666667,
+                100.07253038194445,
+                100.03990451388889,
+                100.04897569444445,
+                100.0506857638889,
+                100.05200954861111,
+                100.06325954861111,
+                100.0800390625,
+                100.13840277777778,
+                100.133203125,
+                100.16725694444445,
+                100.2151345486111,
+                100.3108029513889,
+                100.31276909722222,
+                100.33688368055556,
+                100.37331597222222,
+                100.33595052083334,
+                100.31454427083334,
+                100.355078125,
+                100.36704861111112,
+                100.34848958333333,
+                100.34294704861111,
+                100.33735677083334,
+                100.36124565972223,
+                100.36861111111111,
+                100.38196614583333,
+                100.34794270833333,
+                100.3669314236111,
+                100.39266059027777,
+                100.37700520833333,
+                100.37043402777778,
+                100.38694010416667,
+                100.38068576388889,
+                100.36966579861111,
+                100.39018663194445,
+                100.36131944444445,
+                100.37308159722222,
+                100.35538628472223,
+                100.3020703125,
+                100.26383246527777,
+                100.2075,
+                100.214296875,
+                100.21177517361112,
+                100.21528645833334,
+                100.21479166666667,
+                100.22903645833334,
+                100.19638020833334,
+                100.18013454861111,
+                100.23652777777778,
+                100.21772569444444,
+                100.19928385416667,
+                100.20955295138889,
+                100.23573350694444,
+                100.21387586805555,
+                100.218359375,
+                100.22819878472222,
+                100.22565104166667,
+                100.20993923611111,
+                100.2289453125,
+                100.24806857638889,
+                100.49295138888888,
+                100.61268229166667,
+                100.58761284722222,
+                100.61848524305556,
+                100.68047743055556,
+                100.75399739583334,
+                100.7336545138889,
+                100.67787760416667,
+                100.65089409722222,
+                100.52907986111111,
+                100.48553385416666,
+                100.46076822916666,
+                100.52828559027778,
+                100.62220052083333,
+                100.68427083333333,
+                100.75710503472222,
+                100.79346354166667,
+                100.83944444444444,
+                100.84632378472222,
+                100.89802517361112,
+                100.95457899305555,
+                100.97159288194445,
+                100.97293836805555,
+                100.9980078125,
+                100.99829861111111,
+                100.99275173611112,
+                101.01231336805556,
+                101.00666666666666,
+                100.98005208333333,
+                100.9647265625,
+                100.93377604166666,
+                100.88650607638888,
+                100.78101996527778,
+                100.47265625,
+                100.37301215277778
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 100.29147135416666,
+                "brightness_std": 76.11550032068209,
+                "black_fraction": 0.010355902777777778,
+                "white_fraction": 0.01376736111111111
+              }
+            }
+          }
+        },
+        "error": "AssertionError: Recording failed capture/video checks",
+        "elapsed_seconds": 9.157203250004386
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "pause-resume",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "stream.delivery.measured_fps": 19.948409737743454,
+        "stream.delivery.p99_interval_ms": 73.52612493894414,
+        "stream.delivery.missing_frame_numbers": 0,
+        "stream.source_frames_received.measured_fps": 19.861720610352155,
+        "stream.source_frames_received.p99_interval_ms": 63.0421920621302,
+        "stream.source_frames_received.missing_frame_numbers": 0,
+        "stream.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 4.82642783299525,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "pause-resume",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "passed",
+        "stream": {
+          "delivery": {
+            "frame_count": 20,
+            "measured_fps": 19.948409737743454,
+            "median_interval_ms": 48.46720799832838,
+            "p99_interval_ms": 73.52612493894414,
+            "maximum_interval_ms": 74.05224999820348,
+            "p99_nominal_jitter_ms": 40.192791605610786,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 20,
+            "measured_fps": 19.861720610352155,
+            "median_interval_ms": 49.70358349964954,
+            "p99_interval_ms": 63.0421920621302,
+            "maximum_interval_ms": 65.52199950237991,
+            "p99_nominal_jitter_ms": 29.708858728796866,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                99.2444140625,
+                99.23887152777777,
+                99.27096788194444,
+                99.2512890625,
+                99.26047309027778,
+                99.29231770833333,
+                99.28736979166666,
+                99.26315538194444,
+                99.29559027777778,
+                99.30736979166667,
+                99.31151041666666,
+                99.28333333333333,
+                99.31126302083334,
+                99.30851996527778,
+                99.32018663194444,
+                99.32625868055555,
+                99.33437065972223,
+                99.33390190972223,
+                99.332734375,
+                99.36690104166667
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 99.2444140625,
+                "brightness_std": 77.20890940463771,
+                "black_fraction": 0.013394097222222222,
+                "white_fraction": 0.019192708333333332
+              }
+            }
+          }
+        },
+        "elapsed_seconds": 4.82642783299525
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "close-during-recording",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {
+        "recording.cameras.3ece.measured_fps": 19.95849568452105,
+        "recording.cameras.3ece.p99_interval_ms": 65.71615309000006,
+        "recording.cameras.3ece.missing_frame_numbers": 0
+      },
+      "elapsed_seconds": 4.810178250001627,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "close-during-recording",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "recording": {
+          "cameras": {
+            "3ece": {
+              "frame_count": 81,
+              "measured_fps": 19.95849568452105,
+              "median_interval_ms": 49.53302149999994,
+              "p99_interval_ms": 65.71615309000006,
+              "maximum_interval_ms": 65.85497900000004,
+              "p99_nominal_jitter_ms": 32.382819756666734,
+              "missing_frame_numbers": 0,
+              "within_one_percent_of_requested_fps": false,
+              "decoded_frames": 81,
+              "decoded_shapes": [
+                [
+                  720,
+                  1280,
+                  3
+                ]
+              ],
+              "first_image": {
+                "width": 1280,
+                "height": 720,
+                "mean_brightness": 98.32450520833333,
+                "brightness_std": 77.82579079776092,
+                "black_fraction": 0.07151584201388889,
+                "white_fraction": 0.016475694444444446
+              },
+              "video_matches_capture_timestamps": true
+            }
+          },
+          "matching_camera_frame_indices": true,
+          "host_timestamp_spread_ms": {
+            "median": 0.0,
+            "p99": 0.0,
+            "maximum": 0.0
+          },
+          "timestamp_interpretation": "Host timestamp spread is not sensor exposure synchronization. Python DirectShow grab-call timestamps and Rust frame-available timestamps describe different events.",
+          "passed": false
+        },
+        "error": "AssertionError: Closing cameras left an incomplete recording",
+        "elapsed_seconds": 4.810178250001627
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "repeat-apply",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "stream.delivery.measured_fps": 19.738644760142282,
+        "stream.delivery.p99_interval_ms": 76.11922624098952,
+        "stream.delivery.missing_frame_numbers": 0,
+        "stream.source_frames_received.measured_fps": 19.796508820528068,
+        "stream.source_frames_received.p99_interval_ms": 62.96777716110228,
+        "stream.source_frames_received.missing_frame_numbers": 0,
+        "stream.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 3.950202749998425,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "repeat-apply",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "passed",
+        "stream": {
+          "delivery": {
+            "frame_count": 20,
+            "measured_fps": 19.738644760142282,
+            "median_interval_ms": 60.01283400109969,
+            "p99_interval_ms": 76.11922624098952,
+            "maximum_interval_ms": 76.30104100098833,
+            "p99_nominal_jitter_ms": 42.785892907656184,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 20,
+            "measured_fps": 19.796508820528068,
+            "median_interval_ms": 49.83493749750778,
+            "p99_interval_ms": 62.96777716110228,
+            "maximum_interval_ms": 65.45408350211801,
+            "p99_nominal_jitter_ms": 29.634443827768944,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                103.46791666666667,
+                103.44580295138888,
+                103.42753472222222,
+                103.50697048611111,
+                103.52774739583333,
+                103.56345052083333,
+                103.56351996527778,
+                103.56952690972223,
+                103.600234375,
+                103.63170572916667,
+                103.62887586805556,
+                103.59352430555556,
+                103.27265190972223,
+                102.79076822916667,
+                103.24631944444444,
+                103.45739583333334,
+                102.8957421875,
+                102.40185329861112,
+                102.28555555555556,
+                102.32053819444444
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 103.46791666666667,
+                "brightness_std": 77.20419232576435,
+                "black_fraction": 0.01173611111111111,
+                "white_fraction": 0.02699652777777778
+              }
+            }
+          }
+        },
+        "elapsed_seconds": 3.950202749998425
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "change-backend",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.14060600000084378,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "change-backend",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "busy_rejection": 409,
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.14060600000084378
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "disconnect-reconnect-stream",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "stream.delivery.measured_fps": 19.962052830977402,
+        "stream.delivery.p99_interval_ms": 77.91324438032461,
+        "stream.delivery.missing_frame_numbers": 0,
+        "stream.source_frames_received.measured_fps": 19.883863845586184,
+        "stream.source_frames_received.p99_interval_ms": 63.663024120614864,
+        "stream.source_frames_received.missing_frame_numbers": 0,
+        "stream.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 4.898766500002239,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "disconnect-reconnect-stream",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "passed",
+        "stream": {
+          "delivery": {
+            "frame_count": 20,
+            "measured_fps": 19.962052830977402,
+            "median_interval_ms": 60.376084002200514,
+            "p99_interval_ms": 77.91324438032461,
+            "maximum_interval_ms": 78.60529200115707,
+            "p99_nominal_jitter_ms": 44.57991104699128,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 20,
+            "measured_fps": 19.883863845586184,
+            "median_interval_ms": 49.356728995917365,
+            "p99_interval_ms": 63.663024120614864,
+            "maximum_interval_ms": 66.48635400051717,
+            "p99_nominal_jitter_ms": 30.329690787281532,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                102.66806857638889,
+                102.67069444444445,
+                102.719375,
+                102.70094618055556,
+                102.70790798611111,
+                102.69297743055556,
+                102.7229470486111,
+                102.70279513888889,
+                102.71648871527778,
+                102.70677083333334,
+                102.73827256944445,
+                102.7297482638889,
+                102.7496484375,
+                102.72917100694444,
+                102.75625868055556,
+                102.58604166666667,
+                102.6250390625,
+                102.60950086805556,
+                102.57870225694444,
+                102.60946614583334
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 102.66806857638889,
+                "brightness_std": 78.27625280347566,
+                "black_fraction": 0.015052083333333334,
+                "white_fraction": 0.028797743055555554
+              }
+            }
+          }
+        },
+        "elapsed_seconds": 4.898766500002239
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "exposure",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {
+        "before.delivery.measured_fps": 19.75932193279532,
+        "before.delivery.p99_interval_ms": 76.12388999667019,
+        "before.delivery.missing_frame_numbers": 0,
+        "before.source_frames_received.measured_fps": 19.856225688877306,
+        "before.source_frames_received.p99_interval_ms": 63.785845279926434,
+        "before.source_frames_received.missing_frame_numbers": 0,
+        "before.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 1.3617095419976977,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "exposure-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "exposure"
+        },
+        "status": "failed",
+        "before": {
+          "delivery": {
+            "frame_count": 20,
+            "measured_fps": 19.75932193279532,
+            "median_interval_ms": 64.14129100448918,
+            "p99_interval_ms": 76.12388999667019,
+            "maximum_interval_ms": 76.21537499653641,
+            "p99_nominal_jitter_ms": 42.79055666333685,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 20,
+            "measured_fps": 19.856225688877306,
+            "median_interval_ms": 49.66991650144337,
+            "p99_interval_ms": 63.785845279926434,
+            "maximum_interval_ms": 66.60385400027735,
+            "p99_nominal_jitter_ms": 30.452511946593102,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                102.61797309027777,
+                102.61352864583333,
+                102.62096354166667,
+                102.63333767361111,
+                102.60576388888889,
+                102.60711805555556,
+                102.61694010416667,
+                102.62088107638888,
+                102.64015190972222,
+                102.6097265625,
+                102.63111111111111,
+                102.6472048611111,
+                102.63191840277777,
+                102.66946614583334,
+                102.63688368055556,
+                102.65280381944444,
+                102.62848958333333,
+                102.61456597222222,
+                102.61419704861112,
+                102.63023003472222
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 102.61797309027777,
+                "brightness_std": 78.37526613052441,
+                "black_fraction": 0.012651909722222222,
+                "white_fraction": 0.029075520833333333
+              }
+            }
+          }
+        },
+        "apply_response": {
+          "group_id": "08adaf",
+          "camera_configs": {
+            "3ece": {
+              "camera_id": "3ece",
+              "camera_index": 0,
+              "camera_name": "A68-1600W",
+              "use_this_camera": true,
+              "resolution": {
+                "height": 720,
+                "width": 1280
+              },
+              "color_channels": 3,
+              "pixel_format": "RGB",
+              "exposure_mode": "MANUAL",
+              "exposure": 0,
+              "framerate": 30.00003,
+              "rotation": -1,
+              "capture_fourcc": "MJPG",
+              "writer_fourcc": "X264"
+            }
+          }
+        },
+        "error": "AssertionError: Requested exposure was not applied to 3ece",
+        "elapsed_seconds": 1.3617095419976977
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "rotation",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "before.delivery.measured_fps": 16.70180927748187,
+        "before.delivery.p99_interval_ms": 77.54124885934289,
+        "before.delivery.missing_frame_numbers": 0,
+        "before.source_frames_received.measured_fps": 16.835686842405273,
+        "before.source_frames_received.p99_interval_ms": 67.06672306056134,
+        "before.source_frames_received.missing_frame_numbers": 0,
+        "before.duplicate_source_frames": 0,
+        "after.delivery.measured_fps": 19.00938286134371,
+        "after.delivery.p99_interval_ms": 77.7628750007716,
+        "after.delivery.missing_frame_numbers": 0,
+        "after.source_frames_received.measured_fps": 18.73409109263671,
+        "after.source_frames_received.p99_interval_ms": 66.63983472040854,
+        "after.source_frames_received.missing_frame_numbers": 0,
+        "after.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 5.228926959003729,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "rotation-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "rotation"
+        },
+        "status": "passed",
+        "before": {
+          "delivery": {
+            "frame_count": 16,
+            "measured_fps": 16.70180927748187,
+            "median_interval_ms": 65.42991699825507,
+            "p99_interval_ms": 77.54124885934289,
+            "maximum_interval_ms": 77.60795899957884,
+            "p99_nominal_jitter_ms": 44.20791552600955,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 16,
+            "measured_fps": 16.835686842405273,
+            "median_interval_ms": 64.39760399371153,
+            "p99_interval_ms": 67.06672306056134,
+            "maximum_interval_ms": 67.09645850060042,
+            "p99_nominal_jitter_ms": 33.73338972722801,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                104.33515625,
+                104.30168836805555,
+                104.2923046875,
+                104.26418836805556,
+                104.2149392361111,
+                104.18365017361111,
+                104.1946701388889,
+                104.2190407986111,
+                104.25953559027778,
+                104.25887152777777,
+                104.32907552083333,
+                104.33838541666667,
+                104.38039496527777,
+                104.43702256944445,
+                104.48897135416667,
+                104.61569010416666
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 104.33515625,
+                "brightness_std": 78.55262719815633,
+                "black_fraction": 0.009131944444444444,
+                "white_fraction": 0.034861111111111114
+              }
+            }
+          }
+        },
+        "apply_response": {
+          "group_id": "051132",
+          "camera_configs": {
+            "3ece": {
+              "camera_id": "3ece",
+              "camera_index": 0,
+              "camera_name": "A68-1600W",
+              "use_this_camera": true,
+              "resolution": {
+                "height": 720,
+                "width": 1280
+              },
+              "color_channels": 3,
+              "pixel_format": "RGB",
+              "exposure_mode": "MANUAL",
+              "exposure": 0,
+              "framerate": 30.00003,
+              "rotation": 0,
+              "capture_fourcc": "MJPG",
+              "writer_fourcc": "X264"
+            }
+          }
+        },
+        "after": {
+          "delivery": {
+            "frame_count": 18,
+            "measured_fps": 19.00938286134371,
+            "median_interval_ms": 65.36895799945341,
+            "p99_interval_ms": 77.7628750007716,
+            "maximum_interval_ms": 77.795375000278,
+            "p99_nominal_jitter_ms": 44.429541667438265,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 18,
+            "measured_fps": 18.73409109263671,
+            "median_interval_ms": 49.868958005390596,
+            "p99_interval_ms": 66.63983472040854,
+            "maximum_interval_ms": 66.70395800028928,
+            "p99_nominal_jitter_ms": 33.30650138707521,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                106.16481336805556,
+                106.66053819444444,
+                107.22196180555555,
+                107.66856770833333,
+                108.01021267361111,
+                107.41370659722222,
+                107.4580251736111,
+                107.51196614583333,
+                107.32697048611111,
+                107.59484375,
+                107.8025390625,
+                104.32712239583333,
+                104.47727430555555,
+                104.55561631944444,
+                104.64179253472223,
+                105.03365451388889,
+                105.11883246527778,
+                105.13651909722222
+              ],
+              "first_frame": {
+                "width": 360,
+                "height": 640,
+                "mean_brightness": 106.16481336805556,
+                "brightness_std": 79.16306720276536,
+                "black_fraction": 0.009995659722222222,
+                "white_fraction": 0.05046875
+              }
+            }
+          }
+        },
+        "rotation_response": {
+          "correlations": {
+            "-1": 0.04695940881051523,
+            "0": 0.9939593313529459,
+            "1": 0.04912774750959023,
+            "2": -0.1271189491897542
+          },
+          "detected_rotation": 0,
+          "outcome": "pass"
+        },
+        "elapsed_seconds": 5.228926959003729
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "exposure-auto",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "before.delivery.measured_fps": 20.396154717012173,
+        "before.delivery.p99_interval_ms": 77.50253367048572,
+        "before.delivery.missing_frame_numbers": 0,
+        "before.source_frames_received.measured_fps": 19.847779462268175,
+        "before.source_frames_received.p99_interval_ms": 64.06295450287868,
+        "before.source_frames_received.missing_frame_numbers": 0,
+        "before.duplicate_source_frames": 0,
+        "after.delivery.measured_fps": 20.42481342496205,
+        "after.delivery.p99_interval_ms": 74.49134331145615,
+        "after.delivery.missing_frame_numbers": 0,
+        "after.source_frames_received.measured_fps": 19.873326851567427,
+        "after.source_frames_received.p99_interval_ms": 62.859936855966204,
+        "after.source_frames_received.missing_frame_numbers": 0,
+        "after.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 2.496487292002712,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "exposure-auto-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "exposure-auto"
+        },
+        "status": "passed",
+        "before": {
+          "delivery": {
+            "frame_count": 19,
+            "measured_fps": 20.396154717012173,
+            "median_interval_ms": 42.999375000363216,
+            "p99_interval_ms": 77.50253367048572,
+            "maximum_interval_ms": 77.70266599982278,
+            "p99_nominal_jitter_ms": 44.16920033715238,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 19,
+            "measured_fps": 19.847779462268175,
+            "median_interval_ms": 49.44803125181352,
+            "p99_interval_ms": 64.06295450287868,
+            "maximum_interval_ms": 66.8245620036032,
+            "p99_nominal_jitter_ms": 30.729621169545347,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                104.0161328125,
+                103.88049913194445,
+                103.75743489583333,
+                103.6841796875,
+                103.62804253472223,
+                103.66082899305556,
+                103.653515625,
+                103.66967447916667,
+                103.67120659722222,
+                103.65034288194444,
+                103.58110243055556,
+                103.52998697916667,
+                103.4888888888889,
+                103.48561197916666,
+                103.49825954861112,
+                103.55414930555555,
+                103.56067274305556,
+                103.57465277777777,
+                103.60625434027777
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 104.0161328125,
+                "brightness_std": 78.48044312060152,
+                "black_fraction": 0.012960069444444444,
+                "white_fraction": 0.04973524305555556
+              }
+            }
+          }
+        },
+        "apply_response": {
+          "group_id": "051132",
+          "camera_configs": {
+            "3ece": {
+              "camera_id": "3ece",
+              "camera_index": 0,
+              "camera_name": "A68-1600W",
+              "use_this_camera": true,
+              "resolution": {
+                "height": 720,
+                "width": 1280
+              },
+              "color_channels": 3,
+              "pixel_format": "RGB",
+              "exposure_mode": "AUTO",
+              "exposure": 0,
+              "framerate": 30.00003,
+              "rotation": -1,
+              "capture_fourcc": "MJPG",
+              "writer_fourcc": "X264"
+            }
+          }
+        },
+        "after": {
+          "delivery": {
+            "frame_count": 19,
+            "measured_fps": 20.42481342496205,
+            "median_interval_ms": 49.2364580022695,
+            "p99_interval_ms": 74.49134331145615,
+            "maximum_interval_ms": 74.52941600058693,
+            "p99_nominal_jitter_ms": 41.15800997812281,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 19,
+            "measured_fps": 19.873326851567427,
+            "median_interval_ms": 49.52788549780962,
+            "p99_interval_ms": 62.859936855966204,
+            "maximum_interval_ms": 65.33416649472201,
+            "p99_nominal_jitter_ms": 29.526603522632865,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                103.6142578125,
+                103.64106770833334,
+                103.63663194444445,
+                103.68450086805555,
+                103.63087239583334,
+                103.59453559027777,
+                103.5562109375,
+                103.55888888888889,
+                103.54847222222222,
+                103.45643663194444,
+                103.3916015625,
+                103.30883680555556,
+                103.18888454861111,
+                103.11427083333334,
+                103.0798046875,
+                103.08183159722222,
+                103.09735677083333,
+                103.09650173611111,
+                103.10721354166667
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 103.6142578125,
+                "brightness_std": 78.39498759849988,
+                "black_fraction": 0.013072916666666667,
+                "white_fraction": 0.04828125
+              }
+            }
+          }
+        },
+        "elapsed_seconds": 2.496487292002712
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "exposure-recommend",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "before.delivery.measured_fps": 20.40783257509201,
+        "before.delivery.p99_interval_ms": 80.76523575000465,
+        "before.delivery.missing_frame_numbers": 0,
+        "before.source_frames_received.measured_fps": 19.85090362353248,
+        "before.source_frames_received.p99_interval_ms": 63.00643742739337,
+        "before.source_frames_received.missing_frame_numbers": 0,
+        "before.duplicate_source_frames": 0,
+        "after.delivery.measured_fps": 20.267552341294262,
+        "after.delivery.p99_interval_ms": 76.85789375318564,
+        "after.delivery.missing_frame_numbers": 0,
+        "after.source_frames_received.measured_fps": 19.83188847484322,
+        "after.source_frames_received.p99_interval_ms": 63.41547794458163,
+        "after.source_frames_received.missing_frame_numbers": 0,
+        "after.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 7.335635750001529,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "exposure-recommend-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "exposure-recommend"
+        },
+        "status": "passed",
+        "before": {
+          "delivery": {
+            "frame_count": 19,
+            "measured_fps": 20.40783257509201,
+            "median_interval_ms": 43.42485400047735,
+            "p99_interval_ms": 80.76523575000465,
+            "maximum_interval_ms": 81.48316699953284,
+            "p99_nominal_jitter_ms": 47.431902416671306,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 19,
+            "measured_fps": 19.85090362353248,
+            "median_interval_ms": 49.575771001400426,
+            "p99_interval_ms": 63.00643742739337,
+            "maximum_interval_ms": 65.59770849708002,
+            "p99_nominal_jitter_ms": 29.673104094060033,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                103.51544270833334,
+                103.49208333333333,
+                103.48198784722223,
+                103.50139756944445,
+                103.51877604166667,
+                103.61129340277778,
+                103.66242621527778,
+                103.72533854166667,
+                103.87546006944444,
+                103.94051215277777,
+                104.04826388888888,
+                104.12518229166666,
+                104.24185763888889,
+                104.34940104166667,
+                104.508359375,
+                104.61105902777778,
+                104.71997829861111,
+                104.83993055555555,
+                104.92815972222222
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 103.51544270833334,
+                "brightness_std": 78.40638341002233,
+                "black_fraction": 0.013289930555555555,
+                "white_fraction": 0.04767361111111111
+              }
+            }
+          }
+        },
+        "apply_response": {
+          "group_id": "051132",
+          "camera_configs": {
+            "3ece": {
+              "camera_id": "3ece",
+              "camera_index": 0,
+              "camera_name": "A68-1600W",
+              "use_this_camera": true,
+              "resolution": {
+                "height": 720,
+                "width": 1280
+              },
+              "color_channels": 3,
+              "pixel_format": "RGB",
+              "exposure_mode": "MANUAL",
+              "exposure": 0,
+              "framerate": 30.00003,
+              "rotation": -1,
+              "capture_fourcc": "MJPG",
+              "writer_fourcc": "X264"
+            }
+          }
+        },
+        "after": {
+          "delivery": {
+            "frame_count": 19,
+            "measured_fps": 20.267552341294262,
+            "median_interval_ms": 48.26222950214287,
+            "p99_interval_ms": 76.85789375318564,
+            "maximum_interval_ms": 76.9961250043707,
+            "p99_nominal_jitter_ms": 43.5245604198523,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 19,
+            "measured_fps": 19.83188847484322,
+            "median_interval_ms": 49.64652074704645,
+            "p99_interval_ms": 63.41547794458163,
+            "maximum_interval_ms": 66.01831250009127,
+            "p99_nominal_jitter_ms": 30.082144611248292,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                105.0604513888889,
+                105.05220920138889,
+                105.09946614583333,
+                105.084453125,
+                105.07240885416667,
+                105.04934027777777,
+                105.09446180555555,
+                105.0979904513889,
+                105.09691840277777,
+                105.05306423611111,
+                105.08220052083334,
+                105.09084201388889,
+                105.09685329861111,
+                105.08395399305556,
+                105.09310329861111,
+                105.08284288194444,
+                105.07878472222222,
+                105.08654947916666,
+                105.08567708333334
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 105.0604513888889,
+                "brightness_std": 78.40394567915658,
+                "black_fraction": 0.011393229166666666,
+                "white_fraction": 0.05042534722222222
+              }
+            }
+          }
+        },
+        "elapsed_seconds": 7.335635750001529
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "resolution",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "before.delivery.measured_fps": 20.135428475554633,
+        "before.delivery.p99_interval_ms": 72.21316224968177,
+        "before.delivery.missing_frame_numbers": 0,
+        "before.source_frames_received.measured_fps": 19.82256556155217,
+        "before.source_frames_received.p99_interval_ms": 63.51993118012612,
+        "before.source_frames_received.missing_frame_numbers": 0,
+        "before.duplicate_source_frames": 0,
+        "after.delivery.measured_fps": 19.86105363674198,
+        "after.delivery.p99_interval_ms": 71.82979062316008,
+        "after.delivery.missing_frame_numbers": 0,
+        "after.source_frames_received.measured_fps": 19.848141700596308,
+        "after.source_frames_received.p99_interval_ms": 62.96534500157577,
+        "after.source_frames_received.missing_frame_numbers": 0,
+        "after.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 6.386667624996335,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "resolution-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "resolution"
+        },
+        "status": "passed",
+        "before": {
+          "delivery": {
+            "frame_count": 19,
+            "measured_fps": 20.135428475554633,
+            "median_interval_ms": 49.27308349942905,
+            "p99_interval_ms": 72.21316224968177,
+            "maximum_interval_ms": 72.53316599963,
+            "p99_nominal_jitter_ms": 38.87982891634844,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 19,
+            "measured_fps": 19.82256556155217,
+            "median_interval_ms": 49.58912474830868,
+            "p99_interval_ms": 63.51993118012612,
+            "maximum_interval_ms": 65.84270849998575,
+            "p99_nominal_jitter_ms": 30.186597846792793,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                105.09161892361111,
+                105.08870225694444,
+                105.11983940972222,
+                105.09191840277778,
+                105.10948350694444,
+                105.11317274305556,
+                105.11257378472222,
+                105.11450954861111,
+                105.12072916666666,
+                105.11921006944445,
+                105.10820746527777,
+                105.10665798611112,
+                105.115078125,
+                105.12282118055556,
+                105.12527777777778,
+                105.12855902777778,
+                105.12943142361111,
+                105.13569444444444,
+                105.11738715277778
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 105.09161892361111,
+                "brightness_std": 78.40263332565078,
+                "black_fraction": 0.012078993055555556,
+                "white_fraction": 0.05018663194444444
+              }
+            }
+          }
+        },
+        "apply_response": {
+          "group_id": "0feb01",
+          "camera_configs": {
+            "3ece": {
+              "camera_id": "3ece",
+              "camera_index": 0,
+              "camera_name": "A68-1600W",
+              "use_this_camera": true,
+              "resolution": {
+                "height": 480,
+                "width": 640
+              },
+              "color_channels": 3,
+              "pixel_format": "RGB",
+              "exposure_mode": "MANUAL",
+              "exposure": 0,
+              "framerate": 30.00003,
+              "rotation": -1,
+              "capture_fourcc": "MJPG",
+              "writer_fourcc": "X264"
+            }
+          }
+        },
+        "after": {
+          "delivery": {
+            "frame_count": 20,
+            "measured_fps": 19.86105363674198,
+            "median_interval_ms": 56.3449999972363,
+            "p99_interval_ms": 71.82979062316008,
+            "maximum_interval_ms": 71.8499580034404,
+            "p99_nominal_jitter_ms": 38.49645728982674,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 20,
+            "measured_fps": 19.848141700596308,
+            "median_interval_ms": 49.55570850142976,
+            "p99_interval_ms": 62.96534500157577,
+            "maximum_interval_ms": 65.79962500109104,
+            "p99_nominal_jitter_ms": 29.63201166824244,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                114.43363281250001,
+                112.56298177083335,
+                112.51036458333334,
+                112.52053385416667,
+                112.32651041666668,
+                110.16960937500001,
+                110.20485677083335,
+                110.13002604166667,
+                110.18970052083334,
+                108.05789062500001,
+                108.05950520833333,
+                108.10856770833334,
+                108.04799479166667,
+                108.06670572916667,
+                108.10947916666667,
+                108.07234375,
+                108.04929687500001,
+                108.01776041666668,
+                108.03266927083334,
+                108.00977864583334
+              ],
+              "first_frame": {
+                "width": 320,
+                "height": 240,
+                "mean_brightness": 114.4336328125,
+                "brightness_std": 78.796067191018,
+                "black_fraction": 0.014244791666666666,
+                "white_fraction": 0.05518229166666667
+              }
+            }
+          }
+        },
+        "elapsed_seconds": 6.386667624996335
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "repeat-record-start",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 10.137590541999089,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "repeat-record-start",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"Timed out waiting for cameras to pause: ['3ece']\"}",
+        "elapsed_seconds": 10.137590541999089
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "stop-without-recording",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "stream.delivery.measured_fps": 19.990819142635278,
+        "stream.delivery.p99_interval_ms": 76.89638737603673,
+        "stream.delivery.missing_frame_numbers": 0,
+        "stream.source_frames_received.measured_fps": 19.872961653361887,
+        "stream.source_frames_received.p99_interval_ms": 63.58834061960807,
+        "stream.source_frames_received.missing_frame_numbers": 0,
+        "stream.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 3.765775332998601,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "stop-without-recording",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "passed",
+        "stream": {
+          "delivery": {
+            "frame_count": 20,
+            "measured_fps": 19.990819142635278,
+            "median_interval_ms": 63.55712500226218,
+            "p99_interval_ms": 76.89638737603673,
+            "maximum_interval_ms": 77.36374999512918,
+            "p99_nominal_jitter_ms": 43.56305404270339,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 20,
+            "measured_fps": 19.872961653361887,
+            "median_interval_ms": 49.56325000239303,
+            "p99_interval_ms": 63.58834061960807,
+            "maximum_interval_ms": 66.05414549994748,
+            "p99_nominal_jitter_ms": 30.25500728627473,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                99.89119357638889,
+                99.87267361111111,
+                99.87654079861112,
+                99.86176649305555,
+                99.88874565972222,
+                99.8717361111111,
+                99.85005208333334,
+                99.87877604166667,
+                99.8804904513889,
+                99.87370225694444,
+                99.88494357638889,
+                99.89569010416666,
+                99.88236979166666,
+                99.90538628472223,
+                99.92562934027778,
+                99.91846788194445,
+                99.92540798611111,
+                99.94877604166666,
+                99.91196180555555,
+                99.91799479166667
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 99.89119357638889,
+                "brightness_std": 77.18424687622262,
+                "black_fraction": 0.011888020833333334,
+                "white_fraction": 0.04073350694444444
+              }
+            }
+          }
+        },
+        "elapsed_seconds": 3.765775332998601
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "python",
+        "case": "pause-during-recording",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "passed",
+      "metrics": {
+        "stream.delivery.measured_fps": 19.712722510831725,
+        "stream.delivery.p99_interval_ms": 71.46860937544261,
+        "stream.delivery.missing_frame_numbers": 0,
+        "stream.source_frames_received.measured_fps": 19.83397742663481,
+        "stream.source_frames_received.p99_interval_ms": 63.42478850216139,
+        "stream.source_frames_received.missing_frame_numbers": 0,
+        "stream.duplicate_source_frames": 0
+      },
+      "elapsed_seconds": 5.790166291997593,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "pause-during-recording",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "passed",
+        "stream": {
+          "delivery": {
+            "frame_count": 20,
+            "measured_fps": 19.712722510831725,
+            "median_interval_ms": 58.40412500401726,
+            "p99_interval_ms": 71.46860937544261,
+            "maximum_interval_ms": 71.56679199397331,
+            "p99_nominal_jitter_ms": 38.135276042109275,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "source_frames_received": {
+            "frame_count": 20,
+            "measured_fps": 19.83397742663481,
+            "median_interval_ms": 49.68741649645381,
+            "p99_interval_ms": 63.42478850216139,
+            "maximum_interval_ms": 66.31495850160718,
+            "p99_nominal_jitter_ms": 30.091455168828062,
+            "missing_frame_numbers": 0,
+            "within_one_percent_of_requested_fps": false
+          },
+          "duplicate_source_frames": 0,
+          "continuity_passed": true,
+          "cameras": {
+            "3ece": {
+              "brightness_samples": [
+                99.97384548611112,
+                99.99411892361111,
+                99.96102864583334,
+                99.96484375,
+                99.96733506944445,
+                99.96170138888888,
+                99.95287326388889,
+                99.97466145833333,
+                99.95973090277778,
+                99.9583203125,
+                99.9494140625,
+                99.97571180555556,
+                99.97695746527778,
+                99.9850390625,
+                100.00481770833333,
+                99.98542534722222,
+                99.98885416666667,
+                99.99417534722222,
+                99.97322482638889,
+                99.99783420138888
+              ],
+              "first_frame": {
+                "width": 640,
+                "height": 360,
+                "mean_brightness": 99.97384548611112,
+                "brightness_std": 77.20651644946072,
+                "black_fraction": 0.012105034722222222,
+                "white_fraction": 0.041171875
+              }
+            }
+          }
+        },
+        "recording_response": [
+          {
+            "recording_name": "capture",
+            "recording_path": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/.test-artifacts/machine-benchmarks/camera-suite-01/suite/python/pause-during-recording/capture",
+            "number_of_cameras": 1,
+            "number_of_frames": 86,
+            "total_duration_sec": 5.279,
+            "mean_framerate": 19.86,
+            "mean_inter_camera_sync_ms": 0.0,
+            "framerate_stats": {
+              "median": 20.22414255399452,
+              "mean": 19.858560350284716,
+              "std": 2.3318552112504993,
+              "min": 0.9378460508319894,
+              "max": 24.60053588331336
+            },
+            "frame_duration_stats": {
+              "median": 49.445854,
+              "mean": 61.9248664235294,
+              "std": 109.6325874700922,
+              "min": 40.649521,
+              "max": 1066.273083
+            },
+            "inter_camera_grab_range_ms_stats": {
+              "median": 0.0,
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            }
+          }
+        ],
+        "elapsed_seconds": 5.790166291997593
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "record",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.031154541997238994,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "record-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.031154541997238994
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "pause-resume",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.0104225420000148,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "pause-resume",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.0104225420000148
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "close-during-recording",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.010109625000040978,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "close-during-recording",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.010109625000040978
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "repeat-apply",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.01011416699475376,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "repeat-apply",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.01011416699475376
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "change-backend",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.010001666996686254,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "change-backend",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.010001666996686254
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "disconnect-reconnect-stream",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.00988054099434521,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "disconnect-reconnect-stream",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.00988054099434521
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "exposure",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.009801125001104083,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "exposure-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "exposure"
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.009801125001104083
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "rotation",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.00988929199957056,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "rotation-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "rotation"
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.00988929199957056
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "exposure-auto",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.009674458997324109,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "exposure-auto-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "exposure-auto"
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.009674458997324109
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "exposure-recommend",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.010007666001911275,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "exposure-recommend-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "exposure-recommend"
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.010007666001911275
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "resolution",
+        "camera_count": 1,
+        "requested_camera_count": 1,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.009597750002285466,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "resolution-3ece",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [
+            "3ece"
+          ],
+          "control_name": "resolution"
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.009597750002285466
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "repeat-record-start",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.009483250003540888,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "repeat-record-start",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.009483250003540888
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "stop-without-recording",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.009858042001724243,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "stop-without-recording",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.009858042001724243
+      },
+      "server_errors": []
+    },
+    {
+      "workload": {
+        "kind": "camera",
+        "backend": "rust",
+        "case": "pause-during-recording",
+        "camera_count": 1,
+        "requested_camera_count": 0,
+        "initial_resolution": [
+          1280,
+          720
+        ],
+        "requested_fps": 30,
+        "capture_fourcc": "MJPG",
+        "writer_fourcc": "X264"
+      },
+      "status": "failed",
+      "metrics": {},
+      "elapsed_seconds": 0.010075041995150968,
+      "camera_inventory": [
+        {
+          "index": 0,
+          "name": "A68-1600W",
+          "vendor_id": 13375,
+          "product_id": 37642,
+          "path": "0x3120000343f930a",
+          "backend_id": 1200,
+          "backend_name": "AVFOUNDATION",
+          "camera_id": "3ece"
+        }
+      ],
+      "evidence": {
+        "case": {
+          "case_name": "pause-during-recording",
+          "camera_ids": [
+            "3ece"
+          ],
+          "requested_ids": [],
+          "control_name": ""
+        },
+        "status": "failed",
+        "error": "ApiResponseError: HTTP 500: {\"detail\":\"No cameras detected\"}",
+        "elapsed_seconds": 0.010075041995150968
+      },
+      "server_errors": []
+    }
+  ],
+  "status": "failed",
+  "command": [
+    "<HOME>/code-stuff/github/freemocap/project/repos/freemocap/.venv/bin/python",
+    "-B",
+    "-m",
+    "freemocap.tools.hardware_validation",
+    "camera-suite",
+    "--output",
+    "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/.test-artifacts/machine-benchmarks/camera-suite-01/suite",
+    "--backend",
+    "both",
+    "--suite",
+    "extended"
+  ],
+  "returncode": 1,
+  "elapsed_s": 80.00322679099918,
+  "load_after": {
+    "available_memory_bytes": 11927207936,
+    "system_cpu_percent": 6.5,
+    "load_average": [
+      5.20654296875,
+      3.857421875,
+      3.2138671875
+    ]
+  }
+}

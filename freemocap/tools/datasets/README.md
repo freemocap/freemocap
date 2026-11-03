@@ -486,3 +486,9 @@ evidence, and compares retained RTMW keypoints exactly. It does not measure live
 FPS or establish hand-position accuracy. See
 [the integration results](../../../TRACKER_COMPOSITION_INTEGRATION.md) for scope,
 measurements and current limitations.
+
+## Cross-machine records
+
+Use the [machine benchmark wrapper](../../../benchmarks/README.md) to run this same
+workflow with machine/resource provenance and portable JSON/Markdown records. It
+also wraps the existing physical-camera suite and groups comparable workloads.

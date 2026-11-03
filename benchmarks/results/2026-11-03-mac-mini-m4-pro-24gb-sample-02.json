@@ -1,0 +1,550 @@
+{
+  "schema_version": 1,
+  "started_utc": "2026-11-03T12:27:25.609021+00:00",
+  "machine": {
+    "label": "mac-mini-m4-pro-24gb",
+    "os": "macOS-26.6.2-arm64-arm-64bit",
+    "architecture": "arm64",
+    "cpu": "arm",
+    "physical_cores": 12,
+    "logical_cores": 12,
+    "memory_bytes": 25769803776,
+    "gpu": [
+      {
+        "sppci_cores": "16",
+        "sppci_model": "Apple M4 Pro"
+      }
+    ],
+    "available_onnx_providers": [
+      "CoreMLExecutionProvider",
+      "AzureExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "thread_environment": {
+      "OMP_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "NUMBA_NUM_THREADS": null
+    }
+  },
+  "conditions": "Shared desktop with other agents/apps active; AC power; cached model assets; fresh calibration and processing; Blender excluded.",
+  "provenance": {
+    "started_utc": "2026-11-03T12:27:26.004065+00:00",
+    "python": "3.12.14 (main, Sep  1 2026, 14:09:38) [Clang 22.1.3 ]",
+    "executable": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap/.venv/bin/python",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "packages": {
+      "freemocap": {
+        "version": "2.0.0a25",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/freemocap",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/freemocap/__init__.py"
+      },
+      "skellycam": {
+        "version": "2.0.0a6",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellycam",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/skellycam/skellycam/__init__.py"
+      },
+      "skellycam_rust": {
+        "version": "0.1.0",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellycam/skellycam-rust",
+          "dir_info": {
+            "editable": false
+          }
+        }
+      },
+      "skellytracker": {
+        "version": "2024.9.1019",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellytracker",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/skellytracker/skellytracker/__init__.py"
+      },
+      "skellyforge": {
+        "version": "2024.12.1009",
+        "direct_url": {
+          "url": "file://<HOME>/code-stuff/github/freemocap/project/repos/skellyforge",
+          "dir_info": {
+            "editable": true
+          }
+        },
+        "module_path": "<HOME>/code-stuff/github/freemocap/project/repos/skellyforge/skellyforge/__init__.py"
+      },
+      "numpy": {
+        "version": "2.4.6",
+        "direct_url": null
+      },
+      "opencv-contrib-python": {
+        "version": "4.12.0.88",
+        "direct_url": null
+      },
+      "onnxruntime": {
+        "version": "1.31.1",
+        "direct_url": null
+      },
+      "av": {
+        "version": "19.0.2",
+        "direct_url": null
+      },
+      "psutil": {
+        "version": "7.2.2",
+        "direct_url": null
+      },
+      "uvicorn": {
+        "version": "0.54.0",
+        "direct_url": null
+      },
+      "websockets": {
+        "version": "17.4",
+        "direct_url": null
+      }
+    },
+    "repositories": {
+      "freemocap": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks",
+        "head": "5b6adb51a1f4dcc26d13e23dcaf886e8d8b299b5",
+        "status": " M freemocap/tests/test_dataset_workflow.py\n M freemocap/tools/datasets/README.md\n M freemocap/tools/hardware_validation/provenance.py\n?? benchmarks/\n?? freemocap/tests/test_machine_benchmarks.py\n?? freemocap/tools/machine_benchmarks.py\n",
+        "tracked_diff_sha256": "5cfbbad04d1e4b49166f71941fe597e3e8e2270bdd3e8621c65355c330923f6f",
+        "untracked_files": {
+          "benchmarks/README.md": {
+            "bytes": 6408,
+            "sha256": "885551bb30c007093bed4dffe17ce35b483335ee6afbd6f628b43c57382685b7"
+          },
+          "freemocap/tests/test_machine_benchmarks.py": {
+            "bytes": 6927,
+            "sha256": "2337784627b7c8490778c6062fe828bbe60bdc7c5d4949ff360353815685e450"
+          },
+          "freemocap/tools/machine_benchmarks.py": {
+            "bytes": 17797,
+            "sha256": "f649f8cf9c62bf7349dcbaa5fef55b4c7206efccc4a49b809fe991024849c0ef"
+          }
+        }
+      },
+      "skellycam": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/skellycam",
+        "head": "e7eeda45ea2e3eb8342e5bc5a23efa70c3738c31",
+        "status": " M uv.lock\n",
+        "tracked_diff_sha256": "b44167b0a07edc54c1f8fe1d722f818c02d42ef31aeeac2e0e0753d53a0546bb",
+        "untracked_files": {}
+      },
+      "skellytracker": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/skellytracker",
+        "head": "089c8eaa5dcf712b7f4d12045e136777bb957419",
+        "status": " M uv.lock\n",
+        "tracked_diff_sha256": "6dfc175b19a06cdfc4c5d0c8f5e16cb941f0fb9116984563b047d94744350313",
+        "untracked_files": {}
+      },
+      "skellyforge": {
+        "path": "<HOME>/code-stuff/github/freemocap/project/repos/skellyforge",
+        "head": "a54761f19bcbfc96a4de4ced8725a04fed059685",
+        "status": " M uv.lock\n",
+        "tracked_diff_sha256": "77861f3c8d52d50be121ac65ccac70aa6cbcdc89f1d604412d98a3621c37a69a",
+        "untracked_files": {}
+      }
+    }
+  },
+  "load_before": {
+    "available_memory_bytes": 16405135360,
+    "system_cpu_percent": 3.6,
+    "load_average": [
+      7.45751953125,
+      6.0322265625,
+      4.43017578125
+    ]
+  },
+  "cases": [
+    {
+      "workload": {
+        "kind": "dataset",
+        "dataset": "sample_data",
+        "output_profile": "numerical",
+        "tracker_preset": "rtmpose",
+        "calibration": "fresh",
+        "implementation": "graph",
+        "filtering": true,
+        "videos": [
+          {
+            "sha256": "55a9196351fd5536d475e327dbc520efa07cd2929c7c3622914239db18a256b3",
+            "width": 720,
+            "height": 1280,
+            "decoded_frames": 1108,
+            "nominal_fps": 30.0
+          },
+          {
+            "sha256": "f14d27bc6aac7fbfe049ccbfb41b50d47f49c227d896bfb884ea99941dfbd425",
+            "width": 720,
+            "height": 1280,
+            "decoded_frames": 1108,
+            "nominal_fps": 30.0
+          },
+          {
+            "sha256": "9fcda5f12a6cae7844245103c929739de058913c4c0c1f3a2d91e570f35ffc42",
+            "width": 720,
+            "height": 1280,
+            "decoded_frames": 1108,
+            "nominal_fps": 30.0
+          }
+        ]
+      },
+      "status": "passed",
+      "metrics": {
+        "worker_elapsed_s": 226.37486891700246,
+        "synchronized_frames_per_worker_second": 4.894536241150666,
+        "camera_images_per_worker_second": 14.683608723451998
+      },
+      "processing_summaries": [
+        "2026-11-03 07:27:56,679 INFO   [rtmw-x-l_256x192] session ready in 0.0s  device_id=0  active providers: CPUExecutionProvider",
+        "2026-11-03 07:27:56,705 INFO   [yolox-m] session ready in 0.0s  device_id=0  active providers: CPUExecutionProvider",
+        "2026-11-03 07:27:57,617 INFO ONNX model=rtmw-x-l_256x192 requested_provider=cpu applied_providers=('CPUExecutionProvider',)",
+        "2026-11-03 07:27:57,617 INFO ONNX model=yolox-m requested_provider=cpu applied_providers=('CPUExecutionProvider',)",
+        "Posthoc performance [fcc68143-bd98-4838-b9c9-5c5c4b98bb0f] outcome=complete; wall=198.125s",
+        "Completed detection: 1108 synchronized frames; 3324 camera images."
+      ],
+      "worker": {
+        "version": 1,
+        "implementation": "graph",
+        "operation": "process",
+        "scope": "worker_lifecycle",
+        "status": "complete",
+        "elapsed_s": 226.37486891700246,
+        "error": null
+      },
+      "executed_settings": {
+        "anchor_segment_name": "pelvis",
+        "pipeline_implementation": "typed_dataflow",
+        "graph_execution_provider": "auto",
+        "graph_annotate": true,
+        "start_stage": "observations",
+        "stop_stage": "reconstruction",
+        "base_run_id": 0,
+        "run_save_mode": "overwrite",
+        "sensor_group": null,
+        "camera_matching": {
+          "automatically_match": true,
+          "failure_policy": "continue",
+          "minimum_point_visibility": 0.5,
+          "minimum_frames": 6,
+          "minimum_points_per_frame": 6,
+          "minimum_valid_fraction": 0.9,
+          "minimum_ray_angle_degrees": 1.0,
+          "maximum_median_error": 2.0,
+          "maximum_p90_error": 5.0,
+          "maximum_search_nodes": 250000,
+          "minimum_score_gap": 0.05
+        },
+        "body_alignment": {
+          "mode": "auto",
+          "additional_transform": null,
+          "reprojection_scale_px": 5.0,
+          "body": {
+            "minimum_quality": 0.5,
+            "minimum_duration_seconds": 0.5,
+            "maximum_gap_seconds": 0.2,
+            "maximum_deviation_degrees": 15.0
+          },
+          "ground": {
+            "maximum_speed": 50.0,
+            "maximum_plane_distance": 15.0,
+            "minimum_spread": 20.0,
+            "minimum_quality": 0.5,
+            "minimum_dwell_seconds": 0.25,
+            "maximum_gap_seconds": 0.2,
+            "minimum_support_fraction": 0.75,
+            "maximum_body_tilt_degrees": 45.0,
+            "maximum_hypotheses": 512
+          }
+        },
+        "filter_config": {
+          "enabled": true,
+          "method": "butter_low_pass",
+          "cutoff": 6.0,
+          "order": 4
+        },
+        "charuco_tracking_enabled": true,
+        "board_mode": "explicit",
+        "charuco_board": {
+          "squares_x": 7,
+          "squares_y": 5,
+          "square_length_mm": 58.0,
+          "marker_length_ratio": 0.8,
+          "aruco_dictionary_enum": 2,
+          "aruco_marker_length_mm": 46.400000000000006
+        },
+        "detector_type": "rtmpose",
+        "dlc_model_path": null,
+        "dlc_confidence_threshold": 0.4,
+        "rtmpose_model_name": "rtmw-x-l_256x192",
+        "rtmpose_confidence_threshold": 0.4,
+        "execution_provider": null,
+        "mediapipe_model_complexity": "heavy",
+        "mediapipe_detection_confidence": 0.5,
+        "mediapipe_presence_confidence": 0.5,
+        "mediapipe_tracking_confidence": 0.5,
+        "mediapipe_num_hands": 2,
+        "mediapipe_num_faces": 1,
+        "video_fps": 30.0,
+        "tracker_config": {
+          "stages": [
+            {
+              "name": "body",
+              "object_detector": {
+                "detector_type": "yolox_person",
+                "session_backend": "onnx",
+                "model_name": "yolox-m",
+                "score_threshold": 0.7,
+                "nms_threshold": 0.45,
+                "max_detections": 1
+              },
+              "keypoint_detectors": [
+                {
+                  "detector_type": "rtmpose",
+                  "session_backend": "onnx",
+                  "model_name": "rtmw-x-l_256x192",
+                  "confidence_threshold": 0.4
+                }
+              ],
+              "children": [],
+              "bbox_policy": {
+                "redetect_interval": 150,
+                "fitness_checks": [],
+                "keypoint_bbox_expansion": 0.05,
+                "keypoint_bbox_min_visibility": 0.0,
+                "min_shrink_ratio_per_frame": 0.995,
+                "min_detected_bbox_ratio": 0.5,
+                "min_bbox_size_px": 80.0
+              },
+              "bbox_smoothing": {
+                "min_cutoff": 3.0,
+                "beta": 0.02,
+                "d_cutoff": 1.0,
+                "reset_after_seconds": 0.5
+              },
+              "keypoint_smoothing": null,
+              "keypoint_reset_policy": {
+                "max_consecutive_misses": null,
+                "backoff_multiplier": 2.0,
+                "max_backoff_misses": null
+              }
+            }
+          ],
+          "preset_name": "rtmpose",
+          "keypoint_assembly": null
+        },
+        "calibration_toml_path": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/.test-artifacts/machine-benchmarks/sample-02/prepared/freemocap_sample_data/current/recordings/freemocap_sample_data/freemocap_sample_data_camera_calibration.toml",
+        "triangulation_config": {
+          "use_outlier_rejection": true,
+          "minimum_cameras_for_triangulation": 2,
+          "maximum_cameras_to_drop": 2,
+          "target_reprojection_error": 0.02
+        },
+        "export_tall_csv": false,
+        "export_options": {
+          "wide_csv": null,
+          "data": [
+            "LANDMARKS_3D"
+          ],
+          "formats": []
+        },
+        "blender_import_route": "parquet_segments",
+        "blender_package": null,
+        "blender_development_build_hash": null,
+        "blender_export": {
+          "formats": [],
+          "rest_pose": "tpose",
+          "apply_foot_locking": false,
+          "limit_hand_markers_range_of_motion": false
+        },
+        "export_to_blender": false,
+        "blender_exe_path": null,
+        "auto_open_blend_file": false
+      },
+      "validation": {
+        "rows": 9310524,
+        "frames": 1108,
+        "finite_values": {
+          "OVERLAY_2D": 1700856,
+          "RAW_KEYPOINTS_3D": 490311,
+          "KEYPOINTS_3D": 507021,
+          "LANDMARKS_3D": 481242,
+          "ROTATIONS_WORLD": 262748
+        },
+        "parquet_sha256": "cf15abf410c22fedff56abcec80a4f5e13e1e2818a8219a978828798b4a9ea09",
+        "calibration_updates": {
+          "camera_group:8491d7": {
+            "path": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/.test-artifacts/machine-benchmarks/sample-02/prepared/freemocap_sample_data/attempts/1e3d1313/current/recordings/freemocap_sample_data/freemocap_sample_data_camera_calibration.toml",
+            "expected_mtime_ms": 1793708876018.2703,
+            "transformations": [
+              {
+                "operation": "person",
+                "quaternion_wxyz": [
+                  -0.4612659416148629,
+                  -0.5366502011772843,
+                  0.5969083446252884,
+                  -0.3780750200677532
+                ],
+                "translation_mm": [
+                  -44.26009838084707,
+                  2223.023401799104,
+                  1426.154226867156
+                ]
+              }
+            ],
+            "recording_id": "freemocap_sample_data"
+          }
+        },
+        "source_revision": "15f9501269a0f6d84879362f474009bceb3bbe5937be8d7850894a52b28e54c1",
+        "run_id": 0,
+        "sensor_group": "camera_group:8491d7",
+        "alignment_outcomes": {
+          "calibrated_world": "foot_support"
+        },
+        "provenance_stages": {
+          "timing": {
+            "attempt_id": "12f8da63267f48118522e9153e151165",
+            "recorded_at": "2026-11-03T12:30:50.258866+00:00",
+            "defaults_saved": true
+          },
+          "observations": {
+            "attempt_id": "12f8da63267f48118522e9153e151165",
+            "recorded_at": "2026-11-03T12:30:50.258866+00:00",
+            "defaults_saved": true
+          },
+          "biomechanics": {
+            "attempt_id": "12f8da63267f48118522e9153e151165",
+            "recorded_at": "2026-11-03T12:30:50.258866+00:00",
+            "defaults_saved": true
+          },
+          "reconstruction": {
+            "attempt_id": "12f8da63267f48118522e9153e151165",
+            "recorded_at": "2026-11-03T12:30:50.258866+00:00",
+            "defaults_saved": true
+          },
+          "triangulation": {
+            "attempt_id": "12f8da63267f48118522e9153e151165",
+            "recorded_at": "2026-11-03T12:30:50.258866+00:00",
+            "defaults_saved": true
+          },
+          "filtering": {
+            "attempt_id": "12f8da63267f48118522e9153e151165",
+            "recorded_at": "2026-11-03T12:30:50.258866+00:00",
+            "defaults_saved": true
+          },
+          "scale_fit": {
+            "attempt_id": "12f8da63267f48118522e9153e151165",
+            "recorded_at": "2026-11-03T12:30:50.258866+00:00",
+            "defaults_saved": true
+          }
+        },
+        "outputs": {
+          "version": 1,
+          "profile": "numerical",
+          "required": [
+            "parquet"
+          ],
+          "artifacts": {
+            "parquet": {
+              "path": "freemocap_sample_data_data.parquet",
+              "sha256": "cf15abf410c22fedff56abcec80a4f5e13e1e2818a8219a978828798b4a9ea09",
+              "source_sha256": "cf15abf410c22fedff56abcec80a4f5e13e1e2818a8219a978828798b4a9ea09",
+              "source_revision": "15f9501269a0f6d84879362f474009bceb3bbe5937be8d7850894a52b28e54c1",
+              "run_id": 0,
+              "sensor_group": "camera_group:8491d7",
+              "validator_version": 1,
+              "status": "passed",
+              "checks": {
+                "frames": 1108,
+                "rows": 9310524
+              }
+            }
+          }
+        }
+      },
+      "calibration": {
+        "board": {
+          "squares_x": 7,
+          "squares_y": 5,
+          "square_length_mm": 58.0,
+          "marker_length_ratio": 0.8,
+          "aruco_dictionary_enum": 2,
+          "aruco_marker_length_mm": 46.400000000000006
+        },
+        "reprojection_error_px": 0.3503662147071939,
+        "initial_cost": 0.0,
+        "final_cost": 0.3503662147071939,
+        "n_iterations": 0,
+        "time_seconds": 1.974573291001434,
+        "n_observations_used": 3324,
+        "n_observations_rejected": 0,
+        "aligned": false,
+        "solver_method": "anipose",
+        "recording_info": {
+          "recording_name": "freemocap_sample_data",
+          "recording_directory": "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/.test-artifacts/machine-benchmarks/sample-02/prepared/freemocap_sample_data/attempts/1e3d1313/current/recordings",
+          "recording_uuid": "dedf842d-c839-4263-9575-195845c3bb6d",
+          "mic_device_index": -1,
+          "recording_start_timestamp": {
+            "unix_timestamp_utc": 1793708851.459284,
+            "unix_timestamp_local": 1793708851.459284,
+            "unix_timestamp_utc_isoformat": "2026-11-03T12:27:31.459284+00:00",
+            "unix_timestamp_local_isoformat": "2026-11-03T07:27:31.459284-05:00",
+            "local_time_zone": "America/New_York",
+            "human_friendly_utc": "2026-11-03 12:27:31.459284",
+            "human_friendly_local": "2026-11-03 07:27:31.459284",
+            "day_of_week": "Tuesday",
+            "calendar_week": 45,
+            "day_of_year": 307,
+            "is_leap_year": false,
+            "perf_counter_ns": 52334262288791
+          }
+        },
+        "alignment_method": null,
+        "alignment_recording_id": null,
+        "alignment_result": null,
+        "transformation_history": []
+      }
+    }
+  ],
+  "status": "passed",
+  "command": [
+    "<HOME>/code-stuff/github/freemocap/project/repos/freemocap/.venv/bin/python",
+    "-B",
+    "-m",
+    "freemocap.tools.datasets",
+    "process",
+    "sample_data",
+    "--recordings-root",
+    "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/.test-artifacts/machine-benchmarks/raw",
+    "--prepared-root",
+    "<HOME>/code-stuff/github/freemocap/project/repos/freemocap-machine-benchmarks/.test-artifacts/machine-benchmarks/sample-02/prepared",
+    "--output-profile",
+    "numerical",
+    "--tracker-preset",
+    "rtmpose",
+    "--timeout",
+    "1800"
+  ],
+  "returncode": 0,
+  "elapsed_s": 230.2762662919995,
+  "load_after": {
+    "available_memory_bytes": 17006493696,
+    "system_cpu_percent": 6.8,
+    "load_average": [
+      7.66064453125,
+      6.3115234375,
+      4.9169921875
+    ]
+  }
+}

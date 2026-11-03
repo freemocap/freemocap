@@ -78,14 +78,18 @@ def check_fresh_outputs(recording: Path, result: dict) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.slow
-def test_fresh_calibration_and_mocap_publish_current_recording():
+def test_fresh_calibration_and_mocap_publish_current_recording(tmp_path):
     calls = []
+    producer_root = tmp_path / "fresh-producer"
+    shared_marker = prepared_root() / TEST_DATA.name / "ready.json"
+    original_marker = shared_marker.read_bytes() if shared_marker.exists() else None
 
     def validate(recording: Path, result: dict) -> None:
         calls.append(recording)
         check_fresh_outputs(recording, result)
 
-    prepare(TEST_DATA, recordings_root=recordings_root(), prepared_root=prepared_root(),
+    prepare(TEST_DATA, recordings_root=recordings_root(), prepared_root=producer_root,
             fresh=True, timeout=1800.0, validate_fresh=validate)
     assert len(calls) == 1, "A cached result must not satisfy the producer test"
-    assert not (prepared_root() / TEST_DATA.name / "scratch").exists()
+    assert not (producer_root / TEST_DATA.name / "scratch").exists()
+    assert (shared_marker.read_bytes() if shared_marker.exists() else None) == original_marker, "Fresh producer must not replace shared workflow fixtures"

@@ -16,7 +16,7 @@ test('processing selector offers the graph and an unavailable custom pipeline', 
     await page.getByRole('button', {name: 'Typed data flow graph V1'}).click();
     await expect(page.getByRole('option')).toHaveCount(2);
     await expect(page.getByRole('option', {name: 'Typed data flow graph V1'})).toHaveAttribute('aria-selected', 'true');
-    const custom = page.getByRole('option', {name: 'Add custom pipeline…'});
+    const custom = page.getByRole('option', {name: 'Select custom pipeline…'});
     await expect(custom).toHaveAttribute('aria-disabled', 'true');
     await custom.locator('.button-sm-group').hover();
     await expect(page.getByRole('tooltip')).toHaveText('Coming soon');

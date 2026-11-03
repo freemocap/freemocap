@@ -133,7 +133,7 @@ export default function MocapStageSelection({path, onChange, onSourceRunChange}:
                     <input id={`mocap-stage-${stage}`} type="checkbox" checked={runs} disabled={!canSelect}
                         onChange={event => toggleStage(index, event.target.checked)}/>
                     <label htmlFor={`mocap-stage-${stage}`} className="mocap-stage-label">{label}</label>
-                    <SettingsSummaryChip tone={runs ? 'positive' : 'quiet'}>{status}</SettingsSummaryChip>
+                    <SettingsSummaryChip tone={runs ? 'active' : status === 'Removed after save' ? 'caution' : 'quiet'}>{status}</SettingsSummaryChip>
                 </li>;
             })}
         </ol>

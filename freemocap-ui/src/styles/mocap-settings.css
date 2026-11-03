@@ -265,6 +265,10 @@
   color: var(--color-text-inactive);
 }
 
+.mocap-stage input[type="checkbox"] {
+  accent-color: var(--color-info-strong);
+}
+
 .mocap-stage + .mocap-stage {
   border-top: 1px solid var(--color-border-hairline);
 }
@@ -282,7 +286,7 @@
 }
 
 .mocap-stage-runs {
-  border-left-color: var(--color-success);
+  border-left-color: var(--color-info-strong);
   color: var(--color-text-primary);
 }
 

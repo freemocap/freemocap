@@ -49,7 +49,7 @@ test('graph controls use settings styling and board dialog escapes the scrolling
     const pipeline = page.getByRole('group', {name: 'Processing pipeline', exact: true});
     await pipeline.getByRole('button', {name: 'Typed data flow graph V1'}).click();
     await expect(pipeline.getByRole('option', {name: 'Typed data flow graph V1'})).toHaveAttribute('aria-selected', 'true');
-    await expect(pipeline.getByRole('option', {name: 'Add custom pipeline…'})).toHaveAttribute('aria-disabled', 'true');
+    await expect(pipeline.getByRole('option', {name: 'Select custom pipeline…'})).toHaveAttribute('aria-disabled', 'true');
     await pipeline.getByRole('button', {name: 'Typed data flow graph V1'}).click();
     await expect(page.getByRole('combobox',{name:'Execution provider',exact:true})).toBeVisible();
     await page.getByRole('button',{name:/^Configure board/}).click();

@@ -160,6 +160,8 @@
   /* Words in the warning colour. --color-warning is a fill; as small text it
      fails AA on the dark grounds. */
   --color-warning-text: var(--warning-300);
+  /* Words in the info colour: work that an action will do. */
+  --color-info-text: var(--blue-300);
 
   /* Error / Danger */
   --color-danger: var(--red-500);

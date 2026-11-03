@@ -1,45 +1,22 @@
-import React, {type ReactNode, useEffect, useMemo, useRef, useState} from "react";
-import CaptureVolumeSettings from './capture-volume-settings';
-import CameraGeometrySummary from './camera-geometry-summary';
-import ModalWindowControls from '@/components/ui-components/ModalWindowControls';
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
-import SubactionHeader from "@/components/ui-components/SubactionHeader";
-import SettingRow from '@/components/common/settings-layout/setting-row';
-import ProcessingPipelineSelect from './processing-pipeline-select';
-import SettingsSection from "@/components/common/settings-layout/settings-section";
-import SettingsSummaryChip from "@/components/common/settings-layout/settings-summary-chip";
-
-import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
-import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
-import MocapDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
-import MocapBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
-import MocapExportSettings from './mocap-export-settings';
-import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-settings";
 import {useMocap} from "@/hooks/useMocap";
+import {useBlender} from "@/hooks/useBlender";
 import {useAppSelector} from "@/store/hooks";
-import {RTMPOSE_MODELS} from "@/store/slices/mocap";
-import MocapStageSelection from './mocap-stage-selection';
-import {PROCESSING_STAGES} from '@/services/recording/posthoc-processing';
-import {selectSourceRunId, selectStageSelection} from '@/store/slices/processing-stages';
+import {selectStageChoice, selectStageRows, selectStageSelection} from '@/store/slices/processing-stages';
+import {PROCESSING_STAGES, type ResumeStage} from '@/services/recording/posthoc-processing';
 import {useSavedStageInventory} from '@/hooks/useSavedStageInventory';
 import {useProcessingPlan} from '@/hooks/useProcessingPlan';
-import ProcessingGraphView, {GraphNotice} from '@/components/processing-graph/ProcessingGraphView';
-import type {LaunchedRun} from '@/components/processing-graph/graph-model';
-import type {PanelSection} from '@/components/processing-graph/section-graph';
-import {useSectionSettings} from '@/components/processing-graph/useSectionSettings';
-import {selectBlender} from '@/store/slices/blender';
 import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
-
-enum SetupSection {
-    Directory = 'Recording directory',
-    Stages = 'Processing stages',
-    Detectors = 'Detectors',
-    CameraGeometry = 'Camera geometry',
-    Triangulation = 'Triangulation',
-    PostProcessing = 'Post-processing',
-    Exports = 'Exports',
-    Blender = 'Blender',
-}
+import ProcessingGraphView, {type GraphFocus} from '@/components/processing-graph/ProcessingGraphView';
+import type {LaunchedRun} from '@/components/processing-graph/graph-model';
+import {type DraftStage, type NodeId, stageGraph, type StageGraph} from '@/components/processing-graph/stage-graph';
+import ProcessingPipelineSelect from './processing-pipeline-select';
+import ProcessingOutline from './processing-outline';
+import StageSection from './stage-section';
+import {SaveResultsSelect, StageInventoryStatus, StartFromSelect} from './processing-run-controls';
+import {type SectionId, useProcessingSections} from './processing-sections';
+import './mocap-processing.css';
 
 type MocapMode = "recording" | "playback";
 
@@ -48,25 +25,25 @@ interface MocapSetupModalProps {
     mode?: MocapMode;
 }
 
+const RUN_STATUS: Record<LaunchedRun['status'], string> = {queued: 'Queued', running: 'Running', complete: 'Complete', failed: 'Failed', cancelled: 'Cancelled'};
+
+/** The Mocap processing window: the outline on the left, the list or the graph beside it, and Process at the top. */
 const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playback"}) => {
     useRecordingCalibrationDefault(mode === 'playback');
-    const {
-        canProcessMocapRecording,
-        isLoading,
-        isRecording,
-        mocapRecordingPath,
-        dispatchProcessMocapRecording,
-        validateDirectory,
-    } = useMocap();
-
+    const playback = mode === 'playback';
+    const {canProcessMocapRecording, isLoading, isRecording, mocapRecordingPath, dispatchProcessMocapRecording, validateDirectory} = useMocap();
+    const {exportToBlenderEnabled, effectiveBlenderExePath} = useBlender();
     const config = useAppSelector(state => state.mocap.config);
-    const blender = useAppSelector(selectBlender);
-    const sourceRunId = useAppSelector(selectSourceRunId);
     const stageSelection = useAppSelector(selectStageSelection);
+    const stageRows = useAppSelector(selectStageRows);
+    const stageChoice = useAppSelector(selectStageChoice);
     const processSelection = useMemo(() => stageSelection ? {...stageSelection, pipelineImplementation: 'typed_dataflow' as const} : null, [stageSelection]);
-    const [view, setView] = useState<'list' | 'graph'>('list');
-    const graphView = mode === 'playback' && view === 'graph';
-    useSavedStageInventory(mode === 'playback' ? mocapRecordingPath : null);
+    const sections = useProcessingSections(mode);
+    const [view, setView] = useState<'list' | 'graph'>('graph');
+    const graphView = playback && view === 'graph';
+    const [focus, setFocus] = useState<GraphFocus | null>(null);
+    useSavedStageInventory(playback ? mocapRecordingPath : null);
+
     const [launchedTaskId, setLaunchedTaskId] = useState<string | null>(null);
     const [launching, setLaunching] = useState(false);
     const pipelines = useAppSelector(state => state.pipelines.activePipelines);
@@ -78,11 +55,25 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                 .sort((a, b) => a.cameraId!.localeCompare(b.cameraId!, undefined, {numeric: true}))
                 .map(pipeline => ({cameraId: pipeline.cameraId!, fraction: pipeline.progress === null ? null : pipeline.progress / 100, detail: pipeline.detail}))}
         : null, [launched, pipelines]);
-    const sectionSettings = useSectionSettings();
+    const active = run !== null && ['queued', 'running'].includes(run.status);
     const planState = useProcessingPlan(graphView && !launchedTaskId ? mocapRecordingPath : null, processSelection);
+
+    const graph = useMemo((): StageGraph | {error: string} => {
+        const stages = Object.fromEntries(PROCESSING_STAGES.map(([stage], index): [ResumeStage, DraftStage] => {
+            const row = stageRows[index];
+            return [stage, {runs: row.runs, reusedFrom: !row.runs && row.outcome === 'Reuse saved' ? `from Run ${stageChoice?.run_id ?? 0}` : null}];
+        })) as Record<ResumeStage, DraftStage>;
+        try {
+            return stageGraph({stages, blenderOn: exportToBlenderEnabled, blenderFound: Boolean(effectiveBlenderExePath),
+                exportsOn: config.exportAfterProcessing, exportChannels: config.exportChannels, plan: run ? null : planState.preview?.plan ?? null, run});
+        } catch (reason) {
+            return {error: reason instanceof Error ? reason.message : String(reason)};
+        }
+    }, [stageRows, stageChoice, exportToBlenderEnabled, effectiveBlenderExePath, config.exportAfterProcessing, config.exportChannels, planState.preview, run]);
+
     const launchProcessing = async (selection: NonNullable<typeof processSelection>): Promise<void> => {
         setLaunching(true);
-        setView('graph');
+        setFocus(null);
         try {
             const accepted = await dispatchProcessMocapRecording(selection).unwrap();
             if (!accepted.pipeline_id) throw new Error('The server accepted processing without a task id');
@@ -92,171 +83,88 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
         }
     };
 
-
     useEffect(() => {
         if (mocapRecordingPath) validateDirectory(mocapRecordingPath);
     }, [mocapRecordingPath, validateDirectory]);
 
     const processBlockedReason = useMemo((): string | null => {
-        if (canProcessMocapRecording) return null;
+        if (canProcessMocapRecording) return stageSelection ? null : 'Select a stage to process';
         if (isRecording) return "Stop recording before processing";
         if (isLoading) return "Processing already in progress";
         if (!mocapRecordingPath) return "Select a recording folder to process";
         return null;
-    }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath]);
+    }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, stageSelection]);
 
-    const [activeSection, setActiveSection] = useState(SetupSection.Directory);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const panels = useRef<Partial<Record<SetupSection, HTMLDivElement>>>({});
-
-    /* Every summary states only what IS. A chip given nothing to say removes
-       itself rather than reporting an absence. */
-    const detectorSummary = (): ReactNode => {
-        if (config.detectorType === "dlc") return <SettingsSummaryChip>DLC · 2D keypoints</SettingsSummaryChip>;
-        if (config.detectorType === "mediapipe") {
-            return <SettingsSummaryChip>{`MediaPipe · ${config.mediapipeModelComplexity}`}</SettingsSummaryChip>;
-        }
-        const model = RTMPOSE_MODELS.find(entry => entry.value === config.rtmPoseModelName);
-        return <SettingsSummaryChip>{[config.detectorType === 'rtmw_mediapipe_hands' ? 'RTMW + MediaPipe hands' : 'RTMW', model?.label].filter(Boolean).join(' · ')}</SettingsSummaryChip>;
-    };
-
-    const recordingName = mocapRecordingPath?.split(/[\\/]/).filter(Boolean).pop() ?? '';
-
-    const sections: {name: SetupSection; summary?: ReactNode; content: ReactNode}[] = [
-        {
-            name: SetupSection.Directory,
-            summary: recordingName
-                ? <SettingsSummaryChip tone="path" title={mocapRecordingPath ?? ''}>{recordingName}</SettingsSummaryChip>
-                : undefined,
-            content: <ProcessingDirectorySettings open onClose={() => {}}/>,
-        },
-        {
-            name: SetupSection.Stages,
-            summary: <SettingsSummaryChip>
-                {stageSelection
-                    ? `from ${PROCESSING_STAGES.find(([stage]) => stage === stageSelection.startStage)?.[1] ?? stageSelection.startStage}`
-                    : ''}
-            </SettingsSummaryChip>,
-            content: <>
-                <SettingRow label="Processing pipeline" info={{title: 'Processing pipeline',
-                    text: 'Typed data flow graph V1 is the default. Select the stages to run. Start from videos, saved 2D tracking, saved 3D points, or saved skeleton fits.'}}
-                    control={<ProcessingPipelineSelect/>}/>
-                <MocapStageSelection path={mocapRecordingPath}/>
-
-            </>,
-        },
-        {
-            name: SetupSection.Detectors,
-            summary: <>
-                {detectorSummary()}
-                <SettingsSummaryChip tone="quiet">{config.charucoTrackingEnabled ? '+ Charuco' : ''}</SettingsSummaryChip>
-            </>,
-            content: <MocapDetectorSettings/>,
-        },
-        {
-            name: SetupSection.CameraGeometry,
-            summary: <CameraGeometrySummary mode={mode}/>,
-            content: <CaptureVolumeSettings mode={mode}/>,
-        },
-        {
-            name: SetupSection.Triangulation,
-            summary: <SettingsSummaryChip>
-                {config.triangulation.use_outlier_rejection
-                    ? `outlier rejection · ≥${config.triangulation.minimum_cameras_for_triangulation} cams`
-                    : ''}
-            </SettingsSummaryChip>,
-            content: <TriangulationSettings/>,
-        },
-        {
-            name: SetupSection.PostProcessing,
-            summary: <SettingsSummaryChip>
-                {config.posthoc_filter.enabled ? `Butterworth · ${config.posthoc_filter.cutoff} Hz · order ${config.posthoc_filter.order}` : 'Filtering off'}
-            </SettingsSummaryChip>,
-            content: <PosthocFilterSettings/>,
-        },
-        {
-            name: SetupSection.Exports,
-            summary: <SettingsSummaryChip>{config.exportAfterProcessing && config.exportFormats?.includes('wide_csv') ? 'Wide CSV after processing' : 'Exports on request'}{config.exportTallCsv ? ' · Tall CSV on' : ''}</SettingsSummaryChip>,
-            content: <MocapExportSettings sourceRunId={sourceRunId} key={mocapRecordingPath} path={mocapRecordingPath} processing={isLoading || isRecording}/>,
-        },
-        {
-            name: SetupSection.Blender,
-            summary: <>
-                <SettingsSummaryChip>{blender.exportToBlenderEnabled ? 'Export after processing' : 'Export off'}</SettingsSummaryChip>
-                <SettingsSummaryChip tone="quiet">{blender.exportConfig.formats.map(format => format.toUpperCase()).join(' · ')}</SettingsSummaryChip>
-            </>,
-            content: <MocapBlenderSettings/>,
-        },
-    ];
-
+    const [activeSection, setActiveSection] = useState<SectionId>('recording');
+    const listRef = useRef<HTMLDivElement>(null);
+    const panels = useRef<Partial<Record<SectionId, HTMLDivElement>>>({});
     useEffect(() => {
+        if (graphView) return;
         const observer = new IntersectionObserver(entries => {
             for (const entry of entries) {
                 if (!entry.isIntersecting) continue;
-                const section = Object.values(SetupSection).find(name => panels.current[name] === entry.target);
-                if (section) setActiveSection(section);
+                const id = (Object.keys(panels.current) as SectionId[]).find(key => panels.current[key] === entry.target);
+                if (id) setActiveSection(id);
             }
-        }, {root: scrollContainerRef.current, rootMargin: '0px 0px -65% 0px', threshold: 0});
-        Object.values(panels.current).forEach(panel => observer.observe(panel));
+        }, {root: listRef.current, rootMargin: '0px 0px -65% 0px', threshold: 0});
+        Object.values(panels.current).forEach(panel => panel && observer.observe(panel));
         return () => observer.disconnect();
-    }, []);
+    }, [graphView]);
+
+    const pick = (id: SectionId): void => {
+        setActiveSection(id);
+        if (graphView) setFocus({id: id as NodeId, explain: false});
+        else panels.current[id]?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    };
+    const runStates = run && 'nodes' in graph ? Object.fromEntries(graph.nodes.map(node => [node.id, node.state])) as Partial<Record<SectionId, string>> : null;
+    const notice = launching ? <p role="status" className="pg-notice">Starting the run…</p>
+        : launchedTaskId && !launched ? <p role="status" className="pg-notice">Waiting for the server to report the run…</p>
+            : launchedTaskId && !run ? <p role="alert" className="pg-notice warn">The server reported the run without its processing plan.</p>
+                : planState.failure ? <p role="alert" className="pg-notice warn">Could not build the processing plan: {planState.failure}</p>
+                    : planState.preview?.errors.length ? <p role="alert" className="pg-notice warn">Process cannot run with these settings: {planState.preview.errors.join(' · ')}</p>
+                        : null;
+    const recordingName = mocapRecordingPath?.split(/[\\/]/).filter(Boolean).pop() ?? '';
+    const done = 'nodes' in graph ? graph.nodes.filter(node => node.state === 'complete').length : 0;
+    const steps = 'nodes' in graph ? graph.nodes.filter(node => !['not run', 'off', 'skipped', 'reused'].includes(node.state)).length : 0;
 
     return <>
         <div className="pos-fixed inset-0 bg-surface-overlay z-10" onClick={onClose}/>
-        <div role="dialog" aria-label="Mocap processing" aria-modal="true"
-            className={`mocap-settings-modal pos-fixed flex flex-col br-2${graphView ? ' graph-view' : ''}`}>
-            <ModalWindowControls title="Mocap processing"/>
-            <div className="mocap-settings-layout flex flex-row flex-1">
-                <nav aria-label="Mocap setup sections" className="mocap-settings-navigation flex flex-col">
-                    {mode === 'playback' && <div role="group" aria-label="View" className="mocap-view-switch">
-                        {(['list', 'graph'] as const).map(option => <button key={option} type="button" aria-pressed={view === option}
-                            className={`mocap-view-switch-option${view === option ? ' selected' : ''}`} onClick={() => setView(option)}>
-                            {option === 'list' ? 'List' : 'Graph'}</button>)}
-                    </div>}
-                    {!graphView && <SubactionHeader text="Mocap setup" className="text-gray"/>}
-                    {!graphView && sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <ButtonSm key={section.name} text={section.name}
-                        buttonType={activeSection === section.name ? 'activated' : 'idle'}
-                        className="full-width quaternary" textClass="mocap-section-link"
-                        onClick={() => {
-                            panels.current[section.name]?.scrollIntoView({behavior: 'smooth', block: 'start'});
-                            setActiveSection(section.name);
-                        }}/>)}
-                </nav>
-                {graphView && <div className="mocap-settings-content flex-1">
-                    {launching ? <GraphNotice warn={false}>Starting the run…</GraphNotice>
-                        : launchedTaskId && !launched ? <GraphNotice warn={false}>Waiting for the server to report run {launchedTaskId}…</GraphNotice>
-                        : launchedTaskId && !run ? <GraphNotice warn>The server reported run {launchedTaskId} without its processing plan.</GraphNotice>
-                        : <ProcessingGraphView planState={planState} run={run} settings={sectionSettings} onNewDraft={() => setLaunchedTaskId(null)}
-                            sectionContent={(name: PanelSection) =>
-                                <div className="settings-layout">{sections.find(section => section.name === name)?.content}</div>}/>}
+        <div role="dialog" aria-label="Mocap processing" aria-modal="true" className="mocap-processing pos-fixed flex flex-col"
+            onKeyDown={event => {if (event.key === 'Escape' && !focus) onClose?.();}}>
+            <header className="mp-title">
+                <h1>Mocap processing</h1>
+                {recordingName && <span className="mp-recording" title={mocapRecordingPath ?? ''}>{recordingName}</span>}
+                <button type="button" className="mp-close" aria-label="Close Mocap processing" onClick={onClose}>
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+            </header>
+            <div className="mp-head">
+                {playback && <div role="group" aria-label="View" className="mp-seg">
+                    {(['list', 'graph'] as const).map(option => <button key={option} type="button" aria-pressed={view === option}
+                        className={view === option ? 'on' : ''} onClick={() => {setView(option); setFocus(null);}}>{option === 'list' ? 'List' : 'Graph'}</button>)}
                 </div>}
-                <div ref={scrollContainerRef} style={graphView ? {display: 'none'} : undefined} className="mocap-settings-content settings-layout flex-1 overflow-y-auto">
-                    {sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <div key={section.name}
-                        ref={element => {
-                            if (element) panels.current[section.name] = element;
-                            else delete panels.current[section.name];
-                        }}>
-                        <SettingsSection title={section.name} summary={section.summary}>
-                            {section.content}
-                        </SettingsSection>
-                    </div>)}
-                </div>
+                {playback && <span className={`mp-status ${run ? run.status : 'draft'}`}><i/>{run ? `${RUN_STATUS[run.status]} · ${done} of ${steps} done` : 'Draft'}</span>}
+                {run && !active && <button type="button" className="mp-small-button" onClick={() => setLaunchedTaskId(null)}>New draft</button>}
+                {playback && <><StartFromSelect/><SaveResultsSelect/><ProcessingPipelineSelect/><StageInventoryStatus/></>}
+                {playback
+                    ? <ButtonSm text={active ? 'Processing…' : 'Process Mocap'} textColor="text-white" iconClass="processmocap-icon" buttonType=""
+                        className="primary accent mp-process" disabled={!canProcessMocapRecording || !processSelection || launching || active}
+                        onClick={() => {if (processSelection) void launchProcessing(processSelection);}}
+                        tooltip tooltipPosition="pos-bottom" tooltipText={processBlockedReason ?? 'Start mocap processing'}/>
+                    : <ButtonSm text="Done" textColor="text-white" buttonType="" className="primary accent mp-process" onClick={onClose}/>}
             </div>
-            <footer className="mocap-settings-footer flex flex-col align-end gap-2">
-                <div className="mocap-settings-actions flex flex-row gap-2">
-                    <ButtonSm text={launchedTaskId ? 'Close' : 'Cancel'} buttonType="quaternary" onClick={onClose}/>
-                    {mode === "playback" ? (
-                        <ButtonSm text="Process Mocap" textColor="text-white" iconClass="processmocap-icon"
-                            buttonType="" className="primary accent"
-                            onClick={() => {if (processSelection) void launchProcessing(processSelection);}}
-                            disabled={!canProcessMocapRecording || !stageSelection || launching} tooltip tooltipPosition="pos-top"
-                            tooltipText={processBlockedReason ?? (stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
-                    ) : (
-                        <ButtonSm text="Save" textColor="text-white" buttonType="" className="primary accent"
-                            onClick={onClose} tooltip tooltipPosition="pos-top" tooltipText="Save mocap settings"/>
-                    )}
-                </div>
-            </footer>
+            <div className="mp-body">
+                <ProcessingOutline sections={sections} active={graphView ? focus?.id ?? null : activeSection} playback={playback} states={runStates} onPick={pick}/>
+                <main className="mp-main">
+                    {graphView
+                        ? <ProcessingGraphView graph={graph} sections={sections} notice={notice} locked={active} focus={focus} onFocus={setFocus}/>
+                        : <div ref={listRef} className="mp-list settings-layout">
+                            {sections.map(section => <div key={section.id} ref={element => {
+                                if (element) panels.current[section.id] = element;
+                                else delete panels.current[section.id];
+                            }}><StageSection section={section} playback={playback}>{section.content}</StageSection></div>)}
+                        </div>}
+                </main>
+            </div>
         </div>
     </>;
 };

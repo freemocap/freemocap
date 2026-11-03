@@ -69,6 +69,15 @@ for (const settings of ['new', 'historical', 'conflicting']) test(`recording exp
         const save = page.getByRole('button',{name:'Export saved result',exact:true});
         const npy = page.getByRole('switch', {name:'NumPy NPY arrays (optional)', exact:true});
         const npz = page.getByRole('switch', {name:'NumPy NPZ archive', exact:true});
+        if (settings !== 'historical') {
+            // New and reset settings export Wide CSV, NPZ and the notebook after processing; clear them to start from no formats.
+            for (const name of ['Wide CSV', 'NumPy NPZ archive', 'Jupyter Notebook Explorer']) {
+                await expect(page.getByRole('switch', {name, exact:true})).toBeChecked();
+                await page.getByRole('switch', {name, exact:true}).uncheck();
+            }
+            await expect(page.getByRole('switch', {name:'Export selected formats after processing', exact:true})).toBeChecked();
+            await page.getByRole('switch', {name:'Export selected formats after processing', exact:true}).uncheck();
+        }
         await expect(npy).not.toBeChecked();
         if (settings === 'historical') {await expect(npz).toBeChecked(); await npz.uncheck();}
         await expect(npz).not.toBeChecked();

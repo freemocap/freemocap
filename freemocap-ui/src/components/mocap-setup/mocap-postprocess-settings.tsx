@@ -4,8 +4,6 @@ import ValueSelector from '@/components/ui-components/ValueSelector';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingsGroupHeading from '@/components/common/settings-layout/settings-group-heading';
 import SettingToggleSwitch from '@/components/common/settings-layout/setting-toggle-switch';
-import SkeletonAnchorSetting from './skeleton-anchor-setting';
-import {anchorSegmentNameUpdated} from '@/store/slices/mocap/mocap-slice';
 
 
 const SAMPLING_RATE_INFO = {
@@ -45,10 +43,8 @@ const FILTER_GROUP_INFO = {
 export default function PosthocFilterSettings() {
     const dispatch = useAppDispatch();
     const config = useAppSelector(selectPosthocFilterConfig);
-    const anchor = useAppSelector(state => state.mocap.config.anchorSegmentName);
 
     return <>
-        <SkeletonAnchorSetting value={anchor} onChange={value => dispatch(anchorSegmentNameUpdated(value))}/>
         <SettingsGroupHeading text="Butterworth low-pass filter" info={FILTER_GROUP_INFO}/>
         <SettingRow label="Filter trajectories" info={FILTER_GROUP_INFO} control={<SettingToggleSwitch label="Filter trajectories"
             isToggled={config.enabled} onToggle={enabled => dispatch(posthocFilterConfigUpdated({enabled}))}/>}/>

@@ -16,7 +16,8 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
             import {Provider, useSelector} from 'react-redux';
             import {store} from './src/store/store';
             import {selectStageSelection} from './src/store/slices/processing-stages';
-            import Stages from './src/components/mocap-setup/mocap-stage-selection';
+            import {SaveResultsSelect, StageInventoryStatus, StageToggle, StartFromSelect} from './src/components/mocap-setup/processing-run-controls';
+            import {STAGE_TITLES} from './src/components/mocap-setup/stage-titles';
             import {useSavedStageInventory} from './src/hooks/useSavedStageInventory';
             import {serverUrls} from './src/constants/server-urls';
             serverUrls.setHost(location.hostname); serverUrls.setPort(Number(location.port));
@@ -25,7 +26,8 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
                 useSavedStageInventory('/recordings/' + path);
                 return <main><h1>Processing stages</h1><select aria-label="Recording" value={path} onChange={e => setPath(e.target.value)}>
                     <option>partial</option><option>complete</option><option>new</option><option>broken</option></select>
-                    <Stages path={'/recordings/' + path}/>
+                    <StartFromSelect/><SaveResultsSelect/><StageInventoryStatus/>
+                    {Object.entries(STAGE_TITLES).map(([stage, title]) => <label key={stage}><StageToggle stage={stage} title={title}/>{title}</label>)}
                     <button disabled={!selection}>Process Mocap</button><output>{JSON.stringify(selection)}</output></main>;
             }
             createRoot(document.getElementById('root')).render(<React.StrictMode><Provider store={store}><App/></Provider></React.StrictMode>);
@@ -59,7 +61,6 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
         await expect(reconstruction).toBeEnabled();
         await page.getByRole('combobox', {name: 'Save results', exact: true}).selectOption('new_run');
         await expect(page.locator('output')).toContainText('"runSaveMode":"new_run"');
-        await expect(page.locator('p[role="status"]')).toContainText('Read from Run 2');
         await page.screenshot({path: testInfo.outputPath('new-run-selection.png'), fullPage: true});
         await page.getByRole('combobox', {name: 'Save results', exact: true}).selectOption('overwrite');
         await expect(page.locator('output')).toContainText('"runSaveMode":"overwrite"');

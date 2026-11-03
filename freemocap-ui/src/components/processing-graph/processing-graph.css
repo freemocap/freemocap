@@ -1,168 +1,5 @@
-/* Processing graph: the Mocap panel's sections as cards and wires (design canvas board 12).
-   Card row heights are set inline from section-layout.ts so ports and wires line up. */
-
-.pg-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-  min-height: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--color-text-primary);
-}
-
-.pg-toolbar {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pg-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid var(--color-bg-tertiary);
-  background: var(--color-surface-control);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.pg-status i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-text-help);
-}
-
-.pg-status.running i {
-  background: var(--graph-run);
-  box-shadow: 0 0 0 3px var(--graph-run-tint);
-}
-
-.pg-status.complete i {
-  background: var(--graph-ok);
-}
-
-.pg-status.failed i {
-  background: var(--graph-bad);
-}
-
-.pg-zoom {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 8px;
-  border: 1px solid var(--color-bg-tertiary);
-  background: var(--color-surface-raised);
-}
-
-.pg-zoom-level {
-  min-width: 48px;
-  text-align: center;
-  font: 12px ui-monospace, Menlo, Consolas, monospace;
-  color: var(--color-text-muted);
-}
-
-.pg-btn {
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-primary);
-  font: 500 12px inherit;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.pg-btn:hover {
-  background: var(--color-bg-tertiary);
-}
-
-.pg-btn.icon {
-  width: 28px;
-  padding: 0;
-  font-size: 15px;
-}
-
-/* ---------- processing stages strip ---------- */
-.pg-stages {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  min-height: 46px;
-  padding: 6px 16px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px solid var(--color-bg-tertiary);
-  background: var(--color-surface-raised);
-}
-
-.pg-stages-heading {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: var(--color-text-help);
-}
-
-.pg-stage {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  white-space: nowrap;
-  color: var(--color-text-muted);
-}
-
-.pg-stage.runs {
-  color: var(--color-text-primary);
-}
-
-.pg-stage input {
-  margin: 0;
-  accent-color: var(--color-info-strong);
-}
-
-.pg-stages-save {
-  padding: 4px 8px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
-.pg-stages-save:hover {
-  background: var(--color-bg-tertiary);
-}
-
-.pg-stages-save b {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-/* ---------- canvas ---------- */
-.pg-body {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  border-radius: 8px;
-  border: 1px solid var(--color-border-hairline);
-  overflow: hidden;
-}
+/* Processing graph (design canvas boards 14-17): stage nodes with sockets, real settings, progress and saved files,
+   wired by the data they pass. Node row heights come from stage-layout.ts so sockets and wires line up. */
 
 .pg-canvas {
   position: absolute;
@@ -170,6 +7,9 @@
   overflow: hidden;
   cursor: grab;
   touch-action: none;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
   background-image: radial-gradient(var(--graph-canvas-dot) 1px, transparent 1.2px);
   background-size: 24px 24px;
@@ -179,6 +19,10 @@
   cursor: grabbing;
 }
 
+.pg-canvas.explaining {
+  cursor: default;
+}
+
 .pg-world {
   position: absolute;
   left: 0;
@@ -186,6 +30,17 @@
   transform-origin: 0 0;
 }
 
+.pg-world.animate {
+  transition: transform 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-world.animate {
+    transition: none;
+  }
+}
+
+/* ---------- wires ---------- */
 .pg-wires {
   position: absolute;
   left: 0;
@@ -197,23 +52,22 @@
   fill: none;
   stroke-width: 3;
   stroke-linecap: round;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .pg-wire.quiet {
-  opacity: 0.18;
+  opacity: 0.2;
   stroke-dasharray: 6 6;
 }
 
 .pg-wire.flow {
   opacity: 1;
-  stroke-width: 3.5;
-  stroke-dasharray: 6 6;
+  stroke-dasharray: 7 6;
   animation: pg-flow 0.7s linear infinite;
 }
 
 @keyframes pg-flow {
-  to { stroke-dashoffset: -24; }
+  to { stroke-dashoffset: -26; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -222,13 +76,453 @@
   }
 }
 
+/* ---------- nodes ---------- */
+.pg-node {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--graph-node-fill);
+  border: 1.5px solid #3c4747;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  cursor: default;
+}
+
+.pg-node.quiet {
+  opacity: 0.5;
+}
+
+.pg-node.reused {
+  opacity: 0.62;
+}
+
+.pg-node.running {
+  border-color: var(--graph-run-line);
+  box-shadow: 0 0 0 4px rgba(134, 194, 197, 0.22), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.pg-node.complete {
+  border-color: var(--graph-ok-line);
+}
+
+.pg-node.failed {
+  border-color: var(--graph-bad-line);
+}
+
+.pg-node.focused {
+  opacity: 1;
+  border-color: var(--blue-300);
+  box-shadow: 0 0 0 3px rgba(134, 194, 197, 0.3), 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.pg-node.explaining {
+  z-index: 3;
+}
+
+.pg-node-head {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  border-radius: 8.5px 8.5px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.pg-node-head.source {
+  background: #1d3a52;
+}
+
+.pg-node-head.stage {
+  background: #1f4446;
+}
+
+.pg-node-head.sink {
+  background: #3a2a4e;
+}
+
+.pg-node-head .mp-stage-toggle {
+  margin: 0;
+}
+
+.pg-node-head .setting-toggle-switch {
+  flex: none;
+}
+
+.pg-node-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pg-node-title small {
+  margin-right: 6px;
+  font: 600 11px ui-monospace, Menlo, Consolas, monospace;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pg-pill {
+  flex: none;
+  max-width: 130px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.pg-pill.running,
+.pg-pill.queued {
+  color: var(--graph-run);
+}
+
+.pg-pill.complete {
+  color: var(--graph-ok);
+}
+
+.pg-pill.failed {
+  color: var(--graph-bad);
+}
+
+.pg-pill.skipped {
+  color: var(--color-warning-text);
+}
+
+.pg-head-button {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+
+.pg-head-button:hover,
+.pg-head-button.on {
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+}
+
+.pg-head-button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* ---------- sockets ---------- */
+.pg-port {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+.pg-port.out {
+  justify-content: flex-end;
+  font-weight: 600;
+}
+
+.pg-socket {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  margin-top: -6.5px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-primary);
+}
+
+.pg-port.in .pg-socket {
+  left: -7px;
+}
+
+.pg-port.out .pg-socket {
+  right: -7px;
+}
+
+.pg-port-name small {
+  margin-left: 5px;
+  font: 400 10.5px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-help);
+}
+
+/* ---------- settings inside a node: label left, control right, no static notes ---------- */
+.pg-node-settings {
+  --settings-control-column: 170px;
+  --settings-row-min-height: 28px;
+  gap: 2px;
+  padding: 2px 10px 4px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+.pg-node-settings .settings-note:not(.settings-note-error) {
+  display: none;
+}
+
+.pg-node-settings .setting-row {
+  column-gap: 10px;
+  padding: 1px 0;
+}
+
+.pg-node-settings .setting-row-label {
+  font-size: 12px;
+}
+
+.pg-node-settings .settings-group-heading {
+  padding: 6px 0 2px;
+  font-size: 10.5px;
+}
+
+.pg-node-settings .settings-dependent-group {
+  padding-left: 10px;
+}
+
+.pg-node-settings.locked {
+  opacity: 0.7;
+}
+
+/* ---------- progress ---------- */
+.pg-bars {
+  margin: 6px 10px 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+.pg-bar {
+  height: 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px 70px;
+  gap: 8px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+}
+
+.pg-bar-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pg-bar-track {
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--color-border-hairline);
+}
+
+.pg-bar-track i {
+  display: block;
+  height: 100%;
+  background: var(--graph-run);
+  transition: width 0.3s ease;
+}
+
+.pg-bar.complete .pg-bar-track i {
+  background: var(--graph-ok);
+}
+
+.pg-bar.failed .pg-bar-track i {
+  background: var(--graph-bad);
+}
+
+.pg-bar-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: right;
+  font: 10.5px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-help);
+}
+
+/* ---------- saved files ---------- */
+.pg-disk {
+  margin: 6px 10px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  font: 10.5px ui-monospace, Menlo, Consolas, monospace;
+}
+
+.pg-disk.read {
+  color: var(--graph-read);
+}
+
+.pg-disk.write {
+  color: var(--graph-write);
+}
+
+.pg-disk svg {
+  flex: none;
+  width: 13px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.pg-file {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  cursor: pointer;
+}
+
+.pg-file:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ---------- explain: the node in front, the graph covered, callouts pointing at each part ---------- */
+.pg-explain-cover {
+  position: absolute;
+  inset: -100000px;
+  z-index: 2;
+  background: var(--explain-cover);
+}
+
+.pg-explain {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.pg-leaders {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.pg-leaders path {
+  fill: none;
+  stroke: var(--explain-arrow);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.pg-leaders marker path {
+  fill: var(--explain-arrow);
+  stroke: none;
+}
+
+.pg-callout {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 16px 13px;
+  border-radius: 12px;
+  background: var(--explain-fill);
+  border: 2px solid var(--explain-line);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+}
+
+.pg-callout b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--explain-title);
+}
+
+.pg-callout b i {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--explain-arrow);
+  color: #2b1f05;
+  font: 700 11px/18px Inter, system-ui, sans-serif;
+  font-style: normal;
+  text-align: center;
+}
+
+.pg-callout-text {
+  padding-left: 26px;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--explain-text);
+}
+
+/* ---------- zoom toolbar and notices ---------- */
+.pg-zoom {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--color-bg-tertiary);
+  background: var(--color-surface-raised);
+}
+
+.pg-zoom span {
+  min-width: 46px;
+  text-align: center;
+  font: 12px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-muted);
+}
+
+.pg-zoom button {
+  height: 26px;
+  min-width: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: 500 12px inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pg-zoom button:hover {
+  background: var(--color-bg-tertiary);
+}
+
 .pg-notice {
   position: absolute;
   left: 50%;
   top: 16px;
-  z-index: 2;
+  z-index: 5;
   transform: translateX(-50%);
-  max-width: 80%;
+  max-width: 70%;
   margin: 0;
   padding: 6px 14px;
   border-radius: 10px;
@@ -243,366 +537,27 @@
   border-color: var(--warning-900);
 }
 
-/* ---------- section cards ---------- */
-.pg-card {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  padding: 0;
-  border-radius: 12px;
-  border: 1.5px solid var(--color-bg-tertiary);
-  background: var(--graph-node-fill);
-  box-shadow: var(--shadow-raised-low);
-  color: var(--color-text-primary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.pg-card > span {
-  display: block;
-  flex: none;
-}
-
-.pg-card:hover {
-  border-color: var(--color-bg-elevated);
-}
-
-.pg-card:focus-visible,
-.pg-card.selected {
-  outline: 2px solid var(--blue-300);
-  outline-offset: 3px;
-}
-
-.pg-card.complete {
-  border-color: var(--graph-ok-line);
-}
-
-.pg-card.running {
-  border-color: var(--graph-run-line);
-  box-shadow: 0 0 0 4px rgba(134, 194, 197, 0.22), var(--shadow-raised-low);
-}
-
-.pg-card.failed {
-  border-color: var(--graph-bad);
-}
-
-.pg-card.cancelled {
+.pg-node.skipped {
+  border-color: var(--warning-900);
   border-style: dashed;
 }
 
-.pg-card.quiet {
-  opacity: 0.45;
-}
-
-.pg-card-head {
-  display: flex !important;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 11px 16px 0;
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--color-border-hairline-strong);
-}
-
-.pg-card-titles {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.pg-card-title {
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -0.2px;
-}
-
-.pg-card-sections {
-  margin-top: 3px;
+/* Long setting explanations show three lines; hovering a callout shows the rest over its neighbours. */
+.pg-callout-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font: 10.5px ui-monospace, Menlo, Consolas, monospace;
-  color: var(--color-text-help);
 }
 
-.pg-pill {
-  flex: none;
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 999px;
-  border: 1px solid var(--color-bg-tertiary);
-  background: var(--color-surface-control);
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--color-text-muted);
+.pg-callout:hover {
+  z-index: 1;
 }
 
-.pg-pill.running,
-.pg-pill.will-run {
-  border-color: var(--graph-run-line);
-  background: var(--graph-run-tint);
-  color: var(--graph-run);
+.pg-callout:hover .pg-callout-text {
+  -webkit-line-clamp: unset;
 }
 
-.pg-pill.complete {
-  border-color: var(--graph-ok-line);
-  background: var(--graph-ok-tint);
-  color: var(--graph-ok);
-}
-
-.pg-pill.failed {
-  border-color: var(--graph-bad-line);
-  background: var(--graph-bad-tint);
-  color: var(--graph-bad);
-}
-
-.pg-pill.reused {
-  border-color: var(--graph-read);
-  background: var(--graph-read-tint);
-  color: var(--graph-read);
-}
-
-.pg-ports {
-  position: relative;
-  border-bottom: 1px solid var(--color-border-hairline-strong);
-}
-
-.pg-port {
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-}
-
-.pg-port.out {
-  justify-content: flex-end;
-}
-
-.pg-socket {
-  position: absolute;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  margin-top: -7px;
-  border-radius: 50%;
-  border: 2px solid var(--color-bg-primary);
-  box-sizing: border-box;
-}
-
-.pg-port.in .pg-socket {
-  left: -8px;
-}
-
-.pg-port.out .pg-socket {
-  right: -8px;
-}
-
-.pg-port-name {
-  padding: 0 16px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 12.5px;
-}
-
-.pg-port-name.out {
-  font-weight: 600;
-}
-
-.pg-port-name small {
-  font: 10.5px ui-monospace, Menlo, Consolas, monospace;
-  color: var(--color-text-help);
-}
-
-.pg-settings {
-  padding-left: 16px;
-  padding-right: 16px;
-}
-
-.pg-group {
-  display: block;
-}
-
-.pg-group-heading {
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: 4px;
-  box-sizing: border-box;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--color-text-help);
-}
-
-.pg-setting {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12.5px;
-}
-
-.pg-setting > span {
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.pg-setting b {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font: 12px ui-monospace, Menlo, Consolas, monospace;
-}
-
-.pg-bars {
-  padding-left: 16px;
-  padding-right: 16px;
-  border-top: 1px solid var(--color-border-hairline-strong);
-}
-
-.pg-bar-row {
-  display: grid;
-  grid-template-columns: 1fr 96px 70px;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-}
-
-.pg-bar-label {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--color-text-muted);
-}
-
-.pg-bar-track {
-  display: block;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--color-border-hairline-strong);
-}
-
-.pg-bar-track i {
-  display: block;
-  height: 100%;
-  background: var(--graph-run);
-  transition: width 0.25s ease-out;
-}
-
-.pg-bar-row.complete .pg-bar-track i {
-  background: var(--graph-ok);
-}
-
-.pg-bar-row.failed .pg-bar-track i {
-  background: var(--graph-bad);
-}
-
-.pg-bar-text {
-  text-align: right;
-  font: 11px ui-monospace, Menlo, Consolas, monospace;
-  color: var(--color-text-help);
-}
-
-.pg-disk {
-  display: flex !important;
-  align-items: center;
-  gap: 8px;
-  margin-top: auto;
-  padding: 0 16px;
-  box-sizing: border-box;
-  border-top: 1px solid var(--color-border-hairline-strong);
-  font: 11px ui-monospace, Menlo, Consolas, monospace;
-}
-
-.pg-disk.read {
-  color: var(--graph-read);
-}
-
-.pg-disk.write {
-  color: var(--graph-write);
-}
-
-.pg-disk svg {
-  flex: none;
-}
-
-.pg-disk path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-}
-
-.pg-disk span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* ---------- details panel ---------- */
-.pg-details {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
-  width: min(420px, 100%);
-  box-sizing: border-box;
-  overflow-y: auto;
-  padding: 16px 18px;
-  border-left: 1px solid var(--color-bg-tertiary);
-  background: var(--color-surface-raised);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
-}
-
-.pg-details-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pg-details-head h2 {
-  flex: 1;
-  margin: 0;
-  font-size: 17px;
-  font-weight: 650;
-}
-
-.pg-details h3 {
-  margin: 18px 0 8px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--color-text-help);
-}
-
-.pg-details-bars {
-  margin-top: 12px;
-}
-
-.pg-path {
-  display: block;
-  margin-bottom: 4px;
-  overflow-wrap: anywhere;
-  font: 11px ui-monospace, Menlo, Consolas, monospace;
-}
-
-.pg-path.read {
-  color: var(--graph-read);
-}
-
-.pg-path.write {
-  color: var(--graph-write);
-}
-
-.pg-help {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--color-text-help);
+.pg-canvas.explaining .pg-zoom {
+  display: none;
 }

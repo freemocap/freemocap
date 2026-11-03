@@ -76,6 +76,17 @@ Processing, Process Mocap and Save in the mocap modal, Calibrate from active rec
 calibration, Start Recording idle and while recording (the recording state needs the server), Stop Mocap
 Recording in the mocap task panel. Contrast checks should now pass for these buttons.
 
+## Processing stages colours and custom pipeline label
+
+- Processing stages keeps its checkboxes and selection rules. Ticks use `--color-info-strong`; a running stage's
+  rail is teal; "Run" and "Rerun" use the new `active` summary-chip tone (`--color-info-text`, `--blue-300`);
+  "Removed after save" uses the new `caution` tone (`--color-warning-text`). Green stays for live/OK only.
+- The pipeline dropdown's disabled entry reads "Select custom pipeline…" with the "Coming soon" tooltip.
+  `processing-pipeline-select.spec.ts` and `mocap-graph-settings.spec.ts` follow the new name.
+
+Run: E2E suite (both specs above and `staged-processing.spec.ts`), visual and contrast checks. Look at: Processing
+stages with all stages running, with a saved run and a later start, and with an early finish over saved stages.
+
 ## Backend asks (local agent builds; UI branch reviews and consumes)
 
 Current-code facts the UI relies on: `experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0.

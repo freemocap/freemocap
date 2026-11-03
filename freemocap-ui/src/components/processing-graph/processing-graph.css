@@ -2,6 +2,7 @@
    Geometry is fixed in SVG units; zoom scales the drawing. */
 
 .pg-shell {
+  position: relative;
   display: flex;
   min-height: 0;
   height: 100%;
@@ -616,13 +617,20 @@ svg.lod-low .pg-port-none {
 }
 
 /* ---------- inspector ---------- */
+/* Opens over the graph's right edge when a node is clicked, so the graph always has the full width. */
 .pg-inspector {
-  flex: 0 0 352px;
-  width: 352px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  width: min(352px, 100%);
+  box-sizing: border-box;
   overflow-y: auto;
   padding: 18px;
   background: var(--color-surface-raised);
   border-left: 1px solid var(--color-bg-tertiary);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -641,10 +649,9 @@ svg.lod-low .pg-port-none {
   font-weight: 400;
 }
 
-.pg-empty {
-  padding: 24px 0;
-  font-size: 12.5px;
-  color: var(--color-text-help);
+.pg-inspector-close {
+  float: right;
+  margin: -8px -8px 0 8px;
 }
 
 .pg-eyebrow {
@@ -897,4 +904,34 @@ svg.lod-low .pg-port-none {
 
 .pg-reads + .pg-help {
   margin-top: 8px;
+}
+
+.pg-lane.complete .pg-bar {
+  fill: var(--graph-ok);
+}
+
+.pg-lane.failed .pg-bar {
+  fill: var(--graph-bad);
+}
+
+.pg-step {
+  margin-bottom: 8px;
+}
+
+.pg-step-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pg-step-head b {
+  font: 500 11px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-help);
+  white-space: nowrap;
+}
+
+.pg-step .pg-pbar {
+  margin: 4px 0 0;
 }

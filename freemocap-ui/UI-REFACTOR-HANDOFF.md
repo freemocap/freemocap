@@ -114,6 +114,26 @@ row), after a completed export, with unavailable data selected; Blender's advanc
 Run: full E2E (especially `staged-processing`, `mocap-config-request`, the frozen modal request), unit and pipeline
 suites, and the backend tests from `89224110` on this branch.
 
+## Graph view in the mocap processing window
+
+- Playback mode has a List | Graph switch at the top of the window's navigation. Graph view posts the same
+  configuration Process sends (`mocapProcessingConfig` in `mocap-thunks.ts`) to
+  `POST /freemocap/recordings/{id}/processing/plan`, 250 ms after the last settings change, and draws the plan.
+- `components/processing-graph/`: `graph-model.ts` turns plan nodes into titled operations and adds a source
+  terminal for each `read_record`/`read_live` effect and a sink for each `write_disk`/`display` effect;
+  `graph-layout.ts` is the Graph Lab layered layout in TypeScript; `ProcessingGraphView.tsx` draws it with pan,
+  wheel zoom and Fit, and the side panel shows the selected node's files and its real settings section.
+- An unknown plan node id fails loudly in the view ("no title for plan node …"); add it to `graph-model.ts`.
+- The saved-stage inventory now loads once per recording in the modal (`useSavedStageInventory`).
+- `graph-model.test.ts` checks three plans built from the production recipes
+  (`tools/make-processing-plan-fixtures.py` regenerates them).
+
+Run: unit suite (11 new graph tests), full E2E. Then, with the server and `freemocap_sample_data`: open Mocap
+processing in playback, switch to Graph, and capture: full run fitted; zoomed on Detect poses in videos with it
+selected; start at Gap filling (saved run) ; finish at Triangulation; a configuration the server rejects (for
+example no calibration file) showing the errors. Save to `.test-artifacts/ui-inventory/graph-*.png`.
+Report any plan node the view cannot name.
+
 ## Backend asks (local agent builds; UI branch reviews and consumes)
 
 Current-code facts the UI relies on: `experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0.

@@ -1,10 +1,9 @@
-import {useEffect} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
 import SettingsSummaryChip from '@/components/common/settings-layout/settings-summary-chip';
 import {
-    choiceKey, choiceSelected, recordingPathCleared, savedStagesRequested, saveModeSelected, stageToggled,
+    choiceKey, choiceSelected, saveModeSelected, stageToggled,
     selectStageChoice, selectStageChoices, selectStageRows, type RunSaveMode,
 } from '@/store/slices/processing-stages';
 
@@ -13,6 +12,7 @@ const SAVED_RESULT_INFO = {
     text: <p>Choose the saved run and camera group supplying inputs. Save results below determines whether this run is overwritten or preserved.</p>,
 };
 
+/** The Processing stages controls; the owner loads the saved-stage inventory with useSavedStageInventory. */
 export default function MocapStageSelection({path}: {path: string | null}) {
     const dispatch = useAppDispatch();
     const inventory = useAppSelector(state => state.processingStages.inventory);
@@ -22,15 +22,6 @@ export default function MocapStageSelection({path}: {path: string | null}) {
     const choices = useAppSelector(selectStageChoices);
     const choice = useAppSelector(selectStageChoice);
     const rows = useAppSelector(selectStageRows);
-
-    useEffect(() => {
-        if (!path) {
-            dispatch(recordingPathCleared());
-            return;
-        }
-        const request = dispatch(savedStagesRequested(path));
-        return () => request.abort();
-    }, [dispatch, path]);
 
     if (!path) return <p className="settings-note">Select a recording folder to inspect saved stages.</p>;
     if (error) return <p role="alert" className="settings-note settings-note-error">Could not inspect saved stages: {error}</p>;

@@ -305,6 +305,12 @@ export const getSyncResult = createAsyncThunk<
     }
 );
 
+/** The mocap processing configuration sent by Process and by the plan preview: one source for both. */
+export function mocapProcessingConfig(state: RootState, selection: StageSelection | void) {
+    return {...buildPosthocConfig(state), ...selection,
+        ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)};
+}
+
 export const processMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; results?: unknown; pipeline_id?: string },
     StageSelection | void,
@@ -320,16 +326,13 @@ export const processMocapRecording = createAsyncThunk<
                 return rejectWithValue('No mocap recording path available. Please set a recording directory or record a mocap first.');
             }
 
-            const configWithCalibration = buildPosthocConfig(state);
+            const config = mocapProcessingConfig(state, selection);
 
-            console.log('🔧 Processing recording:', {
-                mocapRecordingDirectory,
-                mocapTaskConfig: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)},
-            });
+            console.log('🔧 Processing recording:', {mocapRecordingDirectory, mocapTaskConfig: config});
 
             const response = await serverClient().responses.process_recording_freemocap_recordings__recording_id__processing_post({...recordingRequest(mocapRecordingDirectory),headers: { 'Content-Type': 'application/json' }, body: {
                     kind: 'mocap',
-                    config: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)},
+                    config,
                 }});
 
             if (!response.ok) {

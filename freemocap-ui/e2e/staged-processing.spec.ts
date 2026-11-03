@@ -17,10 +17,12 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
             import {store} from './src/store/store';
             import {selectStageSelection} from './src/store/slices/processing-stages';
             import Stages from './src/components/mocap-setup/mocap-stage-selection';
+            import {useSavedStageInventory} from './src/hooks/useSavedStageInventory';
             import {serverUrls} from './src/constants/server-urls';
             serverUrls.setHost(location.hostname); serverUrls.setPort(Number(location.port));
             function App() {
                 const [path, setPath] = useState('partial'); const selection = useSelector(selectStageSelection);
+                useSavedStageInventory('/recordings/' + path);
                 return <main><h1>Processing stages</h1><select aria-label="Recording" value={path} onChange={e => setPath(e.target.value)}>
                     <option>partial</option><option>complete</option><option>new</option><option>broken</option></select>
                     <Stages path={'/recordings/' + path}/>

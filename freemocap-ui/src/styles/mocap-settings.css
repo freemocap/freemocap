@@ -293,3 +293,37 @@
 .mocap-stage-runs .mocap-stage-index {
   color: var(--color-text-secondary);
 }
+
+/* List | Graph view switch at the top of the navigation */
+.mocap-view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: var(--color-surface-ground);
+  border: 1px solid var(--color-border-hairline);
+}
+
+.mocap-view-switch-option {
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mocap-view-switch-option:hover {
+  color: var(--color-text-primary);
+}
+
+.mocap-view-switch-option.selected {
+  background: var(--color-surface-control);
+  color: var(--color-text-primary);
+  box-shadow: inset 0 0 0 1px var(--color-border-control);
+}

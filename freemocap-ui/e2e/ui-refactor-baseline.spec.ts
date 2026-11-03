@@ -12,6 +12,7 @@ test('Mocap modal visual sections and complete processing request', async ({page
     const requests: unknown[] = [];
     await page.route('**/*', async route => {
         const url = route.request().url();
+        if (route.request().method() === 'POST' && url.includes('/processing/plan?')) {await route.abort(); return;}
         if (route.request().method() === 'POST') {requests.push(route.request().postDataJSON()); await route.fulfill({json:{success:true,task_id:'baseline-task'}}); return;}
         if (url.includes('/stages?')) {await route.fulfill({json:{selected_run_id:0,runs:[]}}); return;}
         if (url.includes('execution_providers')) {await route.fulfill({json:{available:['CPUExecutionProvider']}}); return;}
@@ -64,6 +65,7 @@ test('Mocap modal visual sections and complete processing request', async ({page
     await page.addStyleTag({content:'*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}'});
     const modal=page.getByRole('dialog',{name:'Mocap processing',exact:true});
     await expect(modal).toBeVisible();
+    await page.evaluate(()=>document.fonts.ready);
     const contrast: unknown[] = [];
     await page.getByRole('group',{name:'View',exact:true}).getByRole('button',{name:'List',exact:true}).click();
     for (const section of ['Recording','2D tracking','Triangulation','Gap filling and filtering','Person scale fitting','Skeleton reconstruction','Blender','Exports']) {

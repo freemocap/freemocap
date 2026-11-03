@@ -119,10 +119,12 @@ suites, and the backend tests from `89224110` on this branch.
 - Playback mode has a List | Graph switch at the top of the window's navigation. Graph view posts the same
   configuration Process sends (`mocapProcessingConfig` in `mocap-thunks.ts`) to
   `POST /freemocap/recordings/{id}/processing/plan`, 250 ms after the last settings change, and draws the plan.
-- `components/processing-graph/`: `graph-model.ts` turns plan nodes into titled operations and adds a source
-  terminal for each `read_record`/`read_live` effect and a sink for each `write_disk`/`display` effect;
-  `graph-layout.ts` is the Graph Lab layered layout in TypeScript; `ProcessingGraphView.tsx` draws it with pan,
-  wheel zoom and Fit, and the side panel shows the selected node's files and its real settings section.
+- `components/processing-graph/` draws the plan with the approved Graph Lab design (design canvas boards 2–6):
+  per-data-type slot and wire colours (`--graph-type-*` in `color.css`), cut-corner load and save cards with
+  folder rails (`--graph-read`, `--graph-write`), dashed annotation wires, hover focus, legend, left-to-right
+  and top-down layouts, 75% readable starting zoom, Fit all / 100% / Focus node, and the node inspector with
+  the settings it reads, the real settings section, typed inputs and outputs, files read, and the GraphNode.
+  Load or save comes only from the node's declared effects; save cards show the written path once a run reports it.
 - An unknown plan node id fails loudly in the view ("no title for plan node …"); add it to `graph-model.ts`.
 - The saved-stage inventory now loads once per recording in the modal (`useSavedStageInventory`).
 - `graph-model.test.ts` checks three plans built from the production recipes

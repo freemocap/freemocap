@@ -10,19 +10,23 @@ test('saved stages default to resume, enforce dependencies, and reset for anothe
     const uiRoot = fileURLToPath(new URL('../', import.meta.url));
     const bundle = await build({bundle: true, write: false, outdir: 'staged-test', format: 'esm', platform: 'browser',
         absWorkingDir: uiRoot, alias: {'@': resolve(uiRoot, 'src')}, define: {'import.meta.env.DEV': 'false'},
+        loader: {'.yaml': 'text', '.svg': 'dataurl'},
         stdin: {resolveDir: uiRoot, loader: 'tsx', contents: `
             import React, {useState} from 'react'; import {createRoot} from 'react-dom/client';
+            import {Provider, useSelector} from 'react-redux';
+            import {store} from './src/store/store';
+            import {selectStageSelection} from './src/store/slices/processing-stages';
             import Stages from './src/components/mocap-setup/mocap-stage-selection';
             import {serverUrls} from './src/constants/server-urls';
             serverUrls.setHost(location.hostname); serverUrls.setPort(Number(location.port));
             function App() {
-                const [path, setPath] = useState('partial'); const [selection, setSelection] = useState(null);
+                const [path, setPath] = useState('partial'); const selection = useSelector(selectStageSelection);
                 return <main><h1>Processing stages</h1><select aria-label="Recording" value={path} onChange={e => setPath(e.target.value)}>
                     <option>partial</option><option>complete</option><option>new</option><option>broken</option></select>
-                    <Stages path={'/recordings/' + path} onChange={setSelection}/>
+                    <Stages path={'/recordings/' + path}/>
                     <button disabled={!selection}>Process Mocap</button><output>{JSON.stringify(selection)}</output></main>;
             }
-            createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
+            createRoot(document.getElementById('root')).render(<React.StrictMode><Provider store={store}><App/></Provider></React.StrictMode>);
         `}});
     const server = createServer((request, response) => {
         if (request.url?.includes('/stages?')) {

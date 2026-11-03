@@ -17,10 +17,10 @@ from an environment without GitHub credentials and cannot push. The owner does n
 
 - [x] **1.** Port the Skull colour, icon and progress-colour edits onto the current `sfn26-ui-refactor` files and commit them after checking that every image file is free of the signed block.
 - [x] **2.** Write `freemocap-ui/UI-REFACTOR-HANDOFF.md`, saying what each commit changed and what the local agent should run against it, and commit it.
-- [ ] **3.** Inventory the current `freemocap-ui` screens against the FreeMoCap UI design system and publish the mismatch list as a board on the design canvas.
-- [ ] **4.** Redesign the Mocap processing modal's list view on the canvas from that inventory and implement the approved version in `mocap-setup-modal.tsx` and its settings sections.
-- [ ] **5.** Move the "Processing stages" choices (start stage, stop stage, saved run to start from, overwrite or keep that run) from `MocapStageSelection` component state into the shared mocap Redux store, so the list view and the graph view read and edit the same values.
-- [ ] **6.** Backend work in "Backend asks" below, built by the local agent; this branch reviews it and consumes it.
+- [x] **3.** Inventory the current `freemocap-ui` screens against the FreeMoCap UI design system and publish the mismatch list as a board on the design canvas.
+- [x] **4.** Redesign the Mocap processing modal's list view on the canvas from that inventory and implement the approved version in `mocap-setup-modal.tsx` and its settings sections.
+- [x] **5.** Move the "Processing stages" choices (start stage, stop stage, saved run to start from, overwrite or keep that run) from `MocapStageSelection` component state into the shared mocap Redux store, so the list view and the graph view read and edit the same values.
+- [x] **6.** Backend work in "Backend asks" below, built by the local agent; this branch reviews it and consumes it.
 - [ ] **7.** Implement the Graph view in the playback Mocap processing modal by porting the Graph Lab renderer and inspector to React/TypeScript.
 - [ ] **8.** Connect live operation progress from task snapshots to the Graph view nodes by operation id.
 - [ ] **9.** Merge the latest `sfn26` into `sfn26-ui-refactor`, resolve conflicts, and hand the branch off for the merge back.
@@ -100,6 +100,19 @@ stages with all stages running, with a saved run and a later start, and with an 
 Run: `recording-exports.spec.ts` (3 cases), `tall-csv-export.spec.ts`, `blender-package.spec.ts`, then the full E2E,
 visual and contrast checks. Look at: Exports with no saved result, with a saved run, during an export (Cancel export
 row), after a completed export, with unavailable data selected; Blender's advanced diagnostics disclosure.
+
+## a13aded1 Merge the processing plan backend; stage choices in shared state
+
+- `a13aded1` merges `89224110` from `sfn26-ui-harness` (plan preview route, node stage and effects, operations
+  initialised from the plan, plan on snapshots, files read and written). Backend asks 1–5 are in this branch.
+- `store/slices/processing-stages/`: the Processing stages choices (saved run and sensor group, save mode, start and
+  stop) and the saved-stage inventory live in Redux. `selectStageSelection`, `selectSourceRunId` and
+  `selectStageRows` (per-stage outcome) are what the list and graph views read. Selection rules are unchanged.
+- `MocapStageSelection` takes only `path`; the mocap modal reads the selection from the store.
+- `staged-processing.spec.ts` renders the component inside the store provider.
+
+Run: full E2E (especially `staged-processing`, `mocap-config-request`, the frozen modal request), unit and pipeline
+suites, and the backend tests from `89224110` on this branch.
 
 ## Backend asks (local agent builds; UI branch reviews and consumes)
 

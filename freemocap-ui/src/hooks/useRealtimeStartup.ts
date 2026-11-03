@@ -66,7 +66,7 @@ export function useRealtimeStartup() {
     const snapshot = local?.identity === identity && local.basis === taskVersion ? local.snapshot : pushed?.success ? pushed.data : null;
     const staleReady = snapshot?.status === 'ready' && ((!realtime.isConnected && !realtime.applyPending)
         || (realtime.applyPending && task?.task_id === pendingBaseline.current));
-    return {snapshot: connected && !staleReady ? snapshot : null, pending: realtime.applyPending,
+    return {snapshot: connected && !staleReady ? snapshot : null, pending: realtime.applyPending, operationId: task?.task_id ?? null,
         statusError: commandError ?? (pushed?.success ? null : statusError), statusUnavailable: !pushed?.success && statusUnavailable,
         stop: (!statusUnavailable || pushed?.success) && !commandPending && connected ? stop : undefined,
         retry: (!statusUnavailable || pushed?.success) && !commandPending && connected && !realtime.applyPending ? retry : undefined};

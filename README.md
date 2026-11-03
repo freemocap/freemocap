@@ -178,10 +178,11 @@ Auto and older saved TensorRT selections use CUDA when available, with the
 existing platform fallback otherwise. Explicit CPU selections remain CPU.
 There is no background TensorRT preparation or automatic provider switching.
 
-The **Processing** control beside the lightning button shows camera startup,
-model loading/warmup, elapsed time and first-frame details without resizing the
-viewer. Startup updates use the existing WebSocket progress subscription,
-including retained status after reconnect, with no recurring HTTP status polling.
+The **Realtime processing** toolbar button starts and stops processing. During
+startup it shows the current stage and a spinner; click it to cancel startup.
+The button turns green when processing is ready and offers retry after a failure.
+Errors appear in the application's error banner. Startup updates use the existing
+WebSocket progress subscription, with no recurring HTTP status polling.
 Camera images stream as soon as capture produces them. The same stream adds
 matched processing results when available; a processing delay or failure returns
 to raw preview, clearing old overlays without restarting capture.

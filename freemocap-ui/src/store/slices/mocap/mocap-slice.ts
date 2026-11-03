@@ -61,6 +61,9 @@ export type MediapipeModelComplexity = "lite" | "full" | "heavy";
 export {EXECUTION_PROVIDERS} from '@/types/execution-provider';
 export type {ExecutionProviderName} from '@/types/execution-provider';
 
+/** Exported after processing unless turned off; the recording's Parquet file is always written. */
+const DEFAULT_EXPORT_FORMATS: ExportFormat[] = ['wide_csv', 'npy', 'notebook'];
+
 export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
     { label: "Default", value: "rtmw-x-l_256x192" },
     { label: "High Res", value: "rtmw-x-l_384x288" },
@@ -211,10 +214,10 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     bodyAlignmentMode: 'auto',
     anchorSegmentName: "pelvis",
     exportTallCsv: false,
-    exportFormats: [],
+    exportFormats: DEFAULT_EXPORT_FORMATS,
     exportChannels: ['LANDMARKS_3D'],
     exportChannelOverrides: null,
-    exportAfterProcessing: false,
+    exportAfterProcessing: true,
     referenceTransform: null,
     referenceTransformEnabled: false,
 };
@@ -263,10 +266,10 @@ export const mocapSlice = createSlice({
     initialState,
     reducers: {
         exportSettingsReset: (state) => {
-            state.config.exportFormats = [];
+            state.config.exportFormats = DEFAULT_EXPORT_FORMATS;
             state.config.exportChannels = ['LANDMARKS_3D'];
             state.config.exportChannelOverrides = null;
-            state.config.exportAfterProcessing = false;
+            state.config.exportAfterProcessing = true;
             state.exportSettingsError = null;
         },
         exportChannelsUpdated: (state, action: PayloadAction<ExportChannelKind[]>) => {

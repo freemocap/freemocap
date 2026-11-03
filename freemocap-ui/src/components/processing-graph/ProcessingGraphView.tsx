@@ -1,148 +1,216 @@
-// The Mocap panel's sections as a node graph (design canvas board 12): Recording → SkellyTracker → SkellyForge →
-// Blender add-on and Exports. Each card shows its section's settings, its progress bars and what it reads or saves;
-// clicking a card opens the real settings sections beside the graph.
-import {type PointerEvent, type ReactNode, type WheelEvent, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
-import type {ProcessingPlanState} from '@/hooks/useProcessingPlan';
-import {useAppDispatch, useAppSelector} from '@/store/hooks';
-import {selectStageChoice, selectStageRows, stageToggled} from '@/store/slices/processing-stages';
-import type {LaunchedRun} from './graph-model';
-import {DATA, type PanelSection, type SectionBar, type SectionGraph, sectionGraph, type SectionId, type SectionNode,
-    type SectionSettings, type SectionState} from './section-graph';
-import {type Box, portOffset, ROWS, sectionLayout} from './section-layout';
+// The Mocap processing window's graph view (design canvas boards 14-17): the sections as nodes in two rows,
+// each node carrying its stage switch, its data sockets, its real settings, its progress and its saved files.
+// The magnifier zooms onto one node; the info button zooms onto it, covers the graph and points at each part.
+import {type PointerEvent, type ReactNode, type WheelEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {useExplainScope, useExplainTarget, type ExplainEntry} from '@/components/common/settings-layout/explain-registry';
+import {electronIpc} from '@/services/electron-ipc/electron-ipc';
+import {BlenderToggle, ExportsToggle, StageToggle} from '@/components/mocap-setup/processing-run-controls';
+import type {ProcessingSection} from '@/components/mocap-setup/processing-sections';
+import {basename} from './graph-model';
+import {DATA, type DataKey, type GraphNode, type NodeBar, type NodeId, type NodeState, type StageGraph} from './stage-graph';
+import {type Box, NODE_WIDTH, portOffset, ROWS, type StageLayout, stageLayout} from './stage-layout';
+import {DATA_TEXT, SAVE_TEXT, STAGE_TEXT} from './explain-copy';
 import './processing-graph.css';
 
+/** The node the graph is zoomed onto, and whether its parts are being explained. */
+export interface GraphFocus {id: NodeId; explain: boolean}
+
 interface ProcessingGraphViewProps {
-    /** The plan the current settings would run; drawn while no run is shown. */
-    planState: ProcessingPlanState;
-    /** The launched run to draw live, or null for the draft. */
-    run: LaunchedRun | null;
-    settings: SectionSettings;
-    /** Leaves the launched run and returns to the draft. */
-    onNewDraft: () => void;
-    /** The real settings section of the Mocap panel with this name. */
-    sectionContent: (section: PanelSection) => ReactNode;
+    graph: StageGraph | {error: string};
+    sections: ProcessingSection[];
+    /** Run-wide notices: the plan cannot be built, or the server rejects these settings. */
+    notice: ReactNode;
+    locked: boolean;
+    focus: GraphFocus | null;
+    onFocus: (focus: GraphFocus | null) => void;
 }
 
-/** Camera: the graph point at the canvas's top-left corner, and the zoom. */
 interface Camera {x: number; y: number; z: number}
 
 const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 2;
-const SIDE = 24;
-const RUN_STATUS: Record<LaunchedRun['status'], string> = {queued: 'Queued', running: 'Running', complete: 'Complete', failed: 'Failed', cancelled: 'Cancelled'};
-const colour = (data: keyof typeof DATA): string => `var(--graph-type-${DATA[data].colour})`;
-const quiet = (state: SectionState | null): boolean => state === 'not run' || state === 'off';
-const stateClass = (state: SectionState | null): string => state ? state.replace(' ', '-') : '';
+const MAX_ZOOM = 2.2;
+const FIT_MARGIN = 24;
+const colour = (data: DataKey): string => `var(--graph-type-${DATA[data].colour})`;
+const stateClass = (state: NodeState): string => state.replace(' ', '-');
+const quiet = (state: NodeState): boolean => state === 'not run' || state === 'off';
 
-function StatePill({state}: {state: SectionState | null}) {
-    if (!state) return null;
-    return <span className={`pg-pill ${stateClass(state)}`}>{state}</span>;
-}
-
-function Bars({bars}: {bars: SectionBar[]}) {
-    return <>{bars.map(bar => <span key={bar.label} className={`pg-bar-row ${stateClass(bar.state)}`} style={{height: ROWS.bar}}>
+function Bars({bars}: {bars: NodeBar[]}) {
+    return <div className="pg-bars">{bars.map(bar => <div key={bar.label} className={`pg-bar ${stateClass(bar.state)}`}>
         <span className="pg-bar-label">{bar.label}</span>
         <span className="pg-bar-track" role="progressbar" aria-label={bar.label} aria-valuemin={0} aria-valuemax={100}
-            aria-valuenow={bar.fraction === null ? undefined : Math.round(bar.fraction * 100)}>
-            <i style={{width: `${100 * (bar.fraction ?? 0)}%`}}/></span>
+            aria-valuenow={bar.fraction === null ? undefined : Math.round(bar.fraction * 100)}><i style={{width: `${100 * (bar.fraction ?? 0)}%`}}/></span>
         <span className="pg-bar-text">{bar.text}</span>
-    </span>)}</>;
+    </div>)}</div>;
 }
 
-function Card({node, box, selected, onPick}: {node: SectionNode; box: Box; selected: boolean; onPick: () => void}) {
-    const ports = [...node.inputs.map(data => ({data, direction: 'in' as const})), ...node.outputs.map(data => ({data, direction: 'out' as const}))];
-    return <button type="button" aria-label={`${node.title} details`} onClick={onPick}
-        className={`pg-card ${stateClass(node.state)}${selected ? ' selected' : ''}${quiet(node.state) ? ' quiet' : ''}`}
-        style={{left: box.x, top: box.y, width: box.w, height: box.h}}>
-        <span className="pg-card-head" style={{height: ROWS.head}}>
-            <span className="pg-card-titles">
-                <span className="pg-card-title">{node.title}</span>
-                <span className="pg-card-sections">{node.panelSections.join(' · ')}</span>
-            </span>
-            <StatePill state={node.state}/>
-        </span>
-        <span className="pg-ports" style={{height: ports.length * ROWS.port}}>
-            {ports.map(({data, direction}) => {
-                const y = portOffset(node, direction, data) - ROWS.head;
-                return <span key={`${direction}:${data}`} className={`pg-port ${direction}`} style={{top: y - ROWS.port / 2, height: ROWS.port}}>
-                    <i className="pg-socket" style={{background: colour(data)}}/>
-                    {direction === 'in'
-                        ? <span className="pg-port-name">{DATA[data].name}</span>
-                        : <span className="pg-port-name out" style={{color: colour(data)}}>{DATA[data].name}
-                            {DATA[data].detail && <small> {DATA[data].detail}</small>}</span>}
-                </span>;
-            })}
-        </span>
-        <span className="pg-settings" style={{paddingTop: ROWS.settingsPad / 2, paddingBottom: ROWS.settingsPad / 2}}>
-            {node.groups.map((group, index) => <span key={group.heading ?? index} className="pg-group">
-                {group.heading && <span className="pg-group-heading" style={{height: ROWS.heading}}>{group.heading}</span>}
-                {group.rows.map(row => <span key={row.label} className="pg-setting" style={{height: ROWS.setting}}>
-                    <span>{row.label}</span><b>{row.value}</b></span>)}
-            </span>)}
-        </span>
-        {node.bars.length > 0 && <span className="pg-bars" style={{paddingTop: ROWS.barsPad / 2, paddingBottom: ROWS.barsPad / 2}}><Bars bars={node.bars}/></span>}
-        <span className={`pg-disk ${node.disk.direction}`} style={{height: ROWS.foot}}>
-            <svg width="16" height="13" viewBox="0 0 16 13" aria-hidden="true"><path d="M1 3a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z"/></svg>
-            <span>{node.disk.text}</span>
-        </span>
-    </button>;
-}
+const openFolder = (path: string): void => {
+    if (!electronIpc) return;
+    void electronIpc.fileSystem.openFolder.mutate({path: path.replace(/[\\/][^\\/]+$/, '')});
+};
 
-function Details({node, live, sectionContent, onClose}: {node: SectionNode; live: boolean; sectionContent: ProcessingGraphViewProps['sectionContent']; onClose: () => void}) {
-    return <aside className="pg-details" aria-label={`${node.title} settings`}>
-        <div className="pg-details-head">
-            <h2>{node.title}</h2>
-            <StatePill state={node.state}/>
-            <button type="button" className="pg-btn icon" aria-label="Close details" onClick={onClose}>×</button>
-        </div>
-        {node.bars.length > 0 && <div className="pg-details-bars"><Bars bars={node.bars}/></div>}
-        {node.reads.length > 0 && <><h3>Reads</h3>{node.reads.map(path => <code key={path} className="pg-path read">{path}</code>)}</>}
-        {node.writes.length > 0 && <><h3>Saved</h3>{node.writes.map(path => <code key={path} className="pg-path write">{path}</code>)}</>}
-        {live && <p className="pg-help">This run keeps the settings it started with. Choose New draft to change settings for the next run.</p>}
-        {!live && node.panelSections.map(section => <section key={section} className="pg-details-section">
-            <h3>{section}</h3>
-            <div className="settings-layout">{sectionContent(section)}</div>
-        </section>)}
-    </aside>;
-}
-
-/** The Processing stages checkboxes in one row, using the same store actions as the list view. */
-function StageStrip({locked}: {locked: boolean}) {
-    const dispatch = useAppDispatch();
-    const rows = useAppSelector(selectStageRows);
-    return <div className="pg-stages" role="group" aria-label="Processing stages">
-        <span className="pg-stages-heading">Processing stages</span>
-        {rows.map((row, index) => <label key={row.stage} className={`pg-stage${row.runs ? ' runs' : ''}`}>
-            <input type="checkbox" checked={row.runs} disabled={locked || !row.canSelect}
-                onChange={event => dispatch(stageToggled({index, checked: event.target.checked}))}/>
-            {row.label}
-        </label>)}
+function Port({data, direction}: {data: DataKey; direction: 'in' | 'out'}) {
+    const explain = useExplainTarget(`${direction}:${data}`, `${DATA[data].name}${DATA[data].detail ? `, ${DATA[data].detail}` : ''}`,
+        DATA_TEXT[data], direction === 'in' ? 'left' : 'right');
+    return <div ref={explain} className={`pg-port ${direction}`} style={{height: ROWS.port}}>
+        <i className="pg-socket" style={{background: colour(data)}}/>
+        <span className="pg-port-name" style={direction === 'out' ? {color: colour(data)} : undefined}>
+            {DATA[data].name}{DATA[data].detail && <small> {DATA[data].detail}</small>}</span>
     </div>;
 }
 
-/** The saved run the stages start from and where results go; opens the full Processing stages section. */
-function RunSource({onOpen}: {onOpen: () => void}) {
-    const choice = useAppSelector(selectStageChoice);
-    const saveMode = useAppSelector(state => state.processingStages.saveMode);
-    const runId = choice?.run_id ?? 0;
-    return <button type="button" className="pg-stages-save" onClick={onOpen}>
-        Start from <b>Run {runId}</b> · Save results: <b>{saveMode === 'new_run' ? 'New run' : `Overwrite Run ${runId}`}</b>
-    </button>;
+function Disk({node, section}: {node: GraphNode; section: ProcessingSection}) {
+    const files = node.id === 'recording' ? node.reads : node.writes.length ? node.writes : node.saves;
+    const explain = useExplainTarget('disk', 'Saved data', node.id === 'recording' ? 'The files this run reads from the recording folder.' : SAVE_TEXT, 'left');
+    if (!files.length) return null;
+    const verb = node.id === 'recording' ? 'reads' : node.writes.length ? 'saved' : 'saves';
+    return <div ref={explain} className={`pg-disk ${node.id === 'recording' ? 'read' : 'write'}`} aria-label={`${section.title} files`}>
+        <svg viewBox="0 0 16 13" aria-hidden="true"><path d="M1 3a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2z"/></svg>
+        <span>{verb}</span>
+        {(node.id === 'recording' && files.length > 2 ? [files[0]] : files).map(path => <button key={path} type="button" className="pg-file" title={path}
+            onClick={() => openFolder(path)}>{basename(path)}</button>)}
+        {node.id === 'recording' && files.length > 2 && <span>+{files.length - 1}</span>}
+    </div>;
 }
 
-/** The Mocap panel's sections as a graph, drawing the draft plan or a launched run. */
-export default function ProcessingGraphView({planState, run, settings, onNewDraft, sectionContent}: ProcessingGraphViewProps) {
-    const {preview, loading, failure} = run ? {preview: null, loading: false, failure: null} : planState;
-    const built = useMemo((): {graph: SectionGraph; layout: ReturnType<typeof sectionLayout>} | {error: string} => {
-        try {
-            const graph = sectionGraph(settings, run ? null : preview?.plan ?? null, run);
-            return {graph, layout: sectionLayout(graph)};
-        } catch (reason) {
-            return {error: reason instanceof Error ? reason.message : String(reason)};
+function Node({node, section, box, focused, explaining, locked, onMeasure, onFocus, onEntries}: {
+    node: GraphNode; section: ProcessingSection; box: Box; focused: boolean; explaining: boolean; locked: boolean;
+    onMeasure: (id: NodeId, height: number) => void; onFocus: (focus: GraphFocus | null) => void;
+    onEntries: (id: NodeId, entries: () => ExplainEntry[]) => void;
+}) {
+    const {entries, Scope} = useExplainScope();
+    useEffect(() => onEntries(node.id, entries), [node.id, entries, onEntries]);
+    const element = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        const current = element.current;
+        if (!current) return;
+        const observer = new ResizeObserver(() => onMeasure(node.id, current.offsetHeight));
+        observer.observe(current);
+        return () => observer.disconnect();
+    }, [node.id, onMeasure]);
+    return <div ref={element} role="group" aria-label={section.title}
+        className={`pg-node ${stateClass(node.state)}${quiet(node.state) ? ' quiet' : ''}${focused ? ' focused' : ''}${explaining ? ' explaining' : ''}`}
+        style={{left: box.x, top: box.y, width: NODE_WIDTH}}>
+        <Scope>
+            <Header node={node} section={section} focused={focused} explaining={explaining} onFocus={onFocus}/>
+            <div className="pg-ports" style={{paddingTop: ROWS.portsPad, paddingBottom: ROWS.portsPad}}>
+                {node.outputs.map(data => <Port key={`out:${data}`} data={data} direction="out"/>)}
+                {node.inputs.map(data => <Port key={`in:${data}`} data={data} direction="in"/>)}
+            </div>
+            {section.content !== null && <div className={`pg-node-settings settings-layout${locked ? ' locked' : ''}`} inert={locked}>{section.content}</div>}
+            {node.bars.length > 0 && <Bars bars={node.bars}/>}
+            <Disk node={node} section={section}/>
+        </Scope>
+    </div>;
+}
+
+function Header({node, section, focused, explaining, onFocus}: {
+    node: GraphNode; section: ProcessingSection; focused: boolean; explaining: boolean; onFocus: (focus: GraphFocus | null) => void;
+}) {
+    const explain = useExplainTarget('stage', section.number ? `${section.number} · ${section.title}` : section.title, STAGE_TEXT[node.id], 'left');
+    const kind = node.id === 'recording' ? 'source' : node.id === 'blender' || node.id === 'exports' ? 'sink' : 'stage';
+    return <div ref={explain} className={`pg-node-head ${kind}`} style={{height: ROWS.head}}>
+        {section.stage && <StageToggle stage={section.stage} title={section.title}/>}
+        {node.id === 'blender' && <BlenderToggle/>}
+        {node.id === 'exports' && <ExportsToggle/>}
+        <span className="pg-node-title">{section.number !== null && <small>{section.number}</small>}{section.title}</span>
+        {(node.provenance || !['will run', 'waiting'].includes(node.state)) &&
+            <span className={`pg-pill ${stateClass(node.state)}`}>{node.provenance ?? node.state}</span>}
+        <button type="button" className={`pg-head-button${explaining ? ' on' : ''}`} aria-label={`Explain ${section.title}`} aria-pressed={explaining}
+            onClick={() => onFocus(explaining ? null : {id: node.id, explain: true})}>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.2v4M8 4.8v.2"/></svg></button>
+        <button type="button" className={`pg-head-button${focused && !explaining ? ' on' : ''}`} aria-label={`Zoom to ${section.title}`}
+            aria-pressed={focused && !explaining} onClick={() => onFocus(focused && !explaining ? null : {id: node.id, explain: false})}>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg></button>
+    </div>;
+}
+
+interface Callout {key: string; title: string; text: ReactNode; side: 'left' | 'right'; tx: number; ty: number}
+
+const CALLOUT_WIDTH = 340;
+const CALLOUT_GAP = 14;
+
+/** Callouts in two columns beside the node, stacked in the order of what they point at so no arrows cross. */
+function placeCallouts(callouts: Callout[], heights: Map<string, number>, node: DOMRect, canvas: {w: number; h: number}) {
+    const placed: {callout: Callout; x: number; y: number; h: number}[] = [];
+    for (const side of ['left', 'right'] as const) {
+        const column = callouts.filter(item => item.side === side).sort((a, b) => a.ty - b.ty);
+        const x = side === 'left' ? Math.max(12, node.left - 64 - CALLOUT_WIDTH) : Math.min(canvas.w - 12 - CALLOUT_WIDTH, node.right + 64);
+        let floor = 12;
+        const items = column.map(callout => {
+            const h = heights.get(callout.key) ?? 96;
+            const y = Math.max(callout.ty - h / 2, floor);
+            floor = y + h + CALLOUT_GAP;
+            return {callout, x, y, h};
+        });
+        const overflow = items.length ? items[items.length - 1].y + items[items.length - 1].h - (canvas.h - 12) : 0;
+        if (overflow > 0) {
+            items.forEach(item => item.y -= overflow);
+            items.forEach((item, i) => item.y = Math.max(item.y, i ? items[i - 1].y + items[i - 1].h + CALLOUT_GAP : 12));
         }
-    }, [settings, preview, run]);
-    const graph = 'graph' in built ? built.graph : null;
-    const layout = 'layout' in built ? built.layout : null;
+        placed.push(...items);
+    }
+    return placed;
+}
+
+function Explain({entries, nodeElement, canvasElement, size, onClose}: {
+    entries: ExplainEntry[]; nodeElement: HTMLElement; canvasElement: HTMLElement; size: {w: number; h: number}; onClose: () => void;
+}) {
+    const [heights, setHeights] = useState(new Map<string, number>());
+    const origin = canvasElement.getBoundingClientRect();
+    const nodeRect = nodeElement.getBoundingClientRect();
+    const node = new DOMRect(nodeRect.left - origin.left, nodeRect.top - origin.top, nodeRect.width, nodeRect.height);
+    const targets = entries.filter(entry => nodeElement.contains(entry.element)).map(entry => ({entry, rect: entry.element.getBoundingClientRect()}));
+    const callout = (entry: ExplainEntry, rect: DOMRect, side: 'left' | 'right'): Callout => ({key: entry.key, title: entry.title, text: entry.text, side,
+        tx: side === 'left' ? rect.left - origin.left - (entry.key.startsWith('in:') ? 0 : 2) : rect.right - origin.left + (entry.key.startsWith('out:') ? 0 : 2),
+        ty: rect.top - origin.top + Math.min(rect.height, 40) / 2});
+    const fixed = targets.filter(({entry}) => !entry.key.startsWith('setting:')).map(({entry, rect}) => callout(entry, rect, entry.side));
+    const settings = targets.filter(({entry}) => entry.key.startsWith('setting:')).sort((a, b) => a.rect.top - b.rect.top);
+    // Settings fill the right column from the top and the left column below that, split where the two columns come out closest in height.
+    const height = (key: string): number => (heights.get(key) ?? 96) + CALLOUT_GAP;
+    const columnHeight = (side: 'left' | 'right', items: Callout[]): number => items.filter(item => item.side === side).reduce((sum, item) => sum + height(item.key), 0);
+    let best: Callout[] = [];
+    let bestHeight = Infinity;
+    for (let split = 0; split <= settings.length; split++) {
+        const items = [...fixed, ...settings.map(({entry, rect}, index) => callout(entry, rect, index < split ? 'right' : 'left'))];
+        const tallest = Math.max(columnHeight('left', items), columnHeight('right', items));
+        if (tallest < bestHeight) {
+            best = items;
+            bestHeight = tallest;
+        }
+    }
+    const callouts = best;
+    const placed = placeCallouts(callouts, heights, node, size);
+    const measure = useCallback((key: string) => (element: HTMLDivElement | null) => {
+        if (!element) return;
+        const h = element.offsetHeight;
+        setHeights(previous => previous.get(key) === h ? previous : new Map(previous).set(key, h));
+    }, []);
+    return <div className="pg-explain" onPointerDown={event => {if (event.target === event.currentTarget) onClose();}}>
+        <svg className="pg-leaders" width={size.w} height={size.h} aria-hidden="true">
+            <defs><marker id="pg-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z"/></marker></defs>
+            {placed.map(({callout, x, y, h}) => {
+                const edge = callout.side === 'left' ? x + CALLOUT_WIDTH : x;
+                const mid = y + h / 2;
+                const dx = callout.tx - edge;
+                const dy = callout.ty - mid;
+                const length = Math.hypot(dx, dy) || 1;
+                return <path key={callout.key} d={`M${edge},${mid} L${callout.tx - dx / length * 16},${callout.ty - dy / length * 16}`} markerEnd="url(#pg-arrow)"/>;
+            })}
+        </svg>
+        {placed.map(({callout, x, y}) => <div key={callout.key} ref={measure(callout.key)} className="pg-callout" style={{left: x, top: y, width: CALLOUT_WIDTH}}>
+            <b><i>i</i>{callout.title}</b>
+            <div className="pg-callout-text">{callout.text}</div>
+        </div>)}
+    </div>;
+}
+
+export default function ProcessingGraphView({graph, sections, notice, locked, focus, onFocus}: ProcessingGraphViewProps) {
+    const [heights, setHeights] = useState<Partial<Record<NodeId, number>>>({});
+    const onMeasure = useCallback((id: NodeId, height: number) => setHeights(previous => previous[id] === height ? previous : {...previous, [id]: height}), []);
+    const entryGetters = useRef(new Map<NodeId, () => ExplainEntry[]>());
+    const onEntries = useCallback((id: NodeId, entries: () => ExplainEntry[]) => {entryGetters.current.set(id, entries);}, []);
+    const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, heights), [graph, heights]);
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({w: 0, h: 0});
@@ -154,90 +222,90 @@ export default function ProcessingGraphView({planState, run, settings, onNewDraf
         return () => observer.disconnect();
     }, []);
     const [camera, setCamera] = useState<Camera | null>(null);
-    const [selected, setSelected] = useState<SectionId | 'stages' | null>(null);
+    const [animate, setAnimate] = useState(false);
     const [dragging, setDragging] = useState(false);
     const drag = useRef<{x: number; y: number; camera: Camera} | null>(null);
-    const fit = (): Camera => {
-        if (!layout || !size.w) return {x: 0, y: 0, z: 1};
-        const z = Math.min(1, Math.max(MIN_ZOOM, Math.min((size.w - 2 * SIDE) / layout.width, (size.h - 2 * SIDE) / layout.height)));
-        return {z, x: (layout.width - size.w / z) / 2, y: (layout.height - size.h / z) / 2};
+    /** The camera that centres a box in the canvas, scaled to fill `share` of its width, never above `maxZoom`. */
+    const fitBox = (box: {x: number; y: number; w: number; h: number}, share: number, maxZoom: number): Camera => {
+        const z = Math.min(maxZoom, Math.max(MIN_ZOOM, Math.min((size.w * share - 2 * FIT_MARGIN) / box.w, (size.h - 2 * FIT_MARGIN) / box.h)));
+        return {z, x: box.x + box.w / 2 - size.w / 2 / z, y: box.y + box.h / 2 - size.h / 2 / z};
     };
-    useEffect(() => setCamera(null), [layout?.width, layout?.height]);
-    const cam = camera ?? fit();
+    const target: Camera = !layout || !size.w ? {x: 0, y: 0, z: 1}
+        : focus ? fitBox(layout.boxes.get(focus.id)!, focus.explain ? 0.42 : 1, MAX_ZOOM)
+            : fitBox({x: 0, y: 0, w: layout.width, h: layout.height}, 1, 1);
+    // A focus change hands the camera back to the target and animates there; the reader's own panning and zooming is immediate.
+    useEffect(() => {
+        setCamera(null);
+        setAnimate(true);
+        const timer = setTimeout(() => setAnimate(false), 360);
+        return () => clearTimeout(timer);
+    }, [focus?.id, focus?.explain]);
+    const cam = camera ?? target;
     const zoomAbout = (z: number, px: number, py: number): void => {
         const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
         setCamera({z: next, x: cam.x + px / cam.z - px / next, y: cam.y + py / cam.z - py / next});
     };
     const onWheel = (event: WheelEvent<HTMLDivElement>): void => {
+        if (focus?.explain) return;
         const rect = event.currentTarget.getBoundingClientRect();
         zoomAbout(cam.z * Math.exp(-event.deltaY * 0.0015), event.clientX - rect.left, event.clientY - rect.top);
     };
     const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
-        if ((event.target as Element).closest('.pg-card')) return;
+        if ((event.target as Element).closest('.pg-node, .pg-zoom') || focus?.explain) return;
         event.currentTarget.setPointerCapture(event.pointerId);
         drag.current = {x: event.clientX, y: event.clientY, camera: cam};
-        setDragging(true);
+        setDragging(false);
     };
     const onPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
         const start = drag.current;
-        if (start) setCamera({z: start.camera.z, x: start.camera.x - (event.clientX - start.x) / start.camera.z, y: start.camera.y - (event.clientY - start.y) / start.camera.z});
+        if (!start) return;
+        if (!dragging && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 4) return;
+        setDragging(true);
+        setCamera({z: start.camera.z, x: start.camera.x - (event.clientX - start.x) / start.camera.z, y: start.camera.y - (event.clientY - start.y) / start.camera.z});
     };
     const onPointerUp = (): void => {
+        // A click on empty canvas, not a drag, leaves the zoomed node.
+        if (drag.current && !dragging && focus) onFocus(null);
         drag.current = null;
         setDragging(false);
     };
 
-    const notice: ReactNode = 'error' in built ? <p role="alert" className="pg-notice warn">{built.error}</p>
-        : failure ? <p role="alert" className="pg-notice warn">Could not build the processing plan: {failure}</p>
-            : preview && preview.errors.length ? <p role="alert" className="pg-notice warn">Process cannot run with these settings: {preview.errors.join(' · ')}</p>
-                : !run && loading && !preview ? <p role="status" className="pg-notice">Building the processing plan…</p> : null;
-    const done = graph ? graph.nodes.filter(node => node.state === 'complete').length : 0;
-    const active = graph ? graph.nodes.filter(node => !quiet(node.state)).length : 0;
-    const selectedNode = graph && selected && selected !== 'stages' ? graph.nodes.find(node => node.id === selected)! : null;
+    const nodeElements = useRef(new Map<NodeId, HTMLElement>());
+    const [explainReady, setExplainReady] = useState(false);
+    useEffect(() => {
+        setExplainReady(false);
+        if (!focus?.explain) return;
+        const timer = setTimeout(() => setExplainReady(true), 380);
+        return () => clearTimeout(timer);
+    }, [focus?.id, focus?.explain]);
 
-    return <div className="pg-shell" onKeyDown={event => {
-        if (event.key === 'Escape' && selected) setSelected(null);
-    }}>
-        <div className="pg-toolbar" role="toolbar" aria-label="Graph view">
-            <span className={`pg-status ${run ? run.status : 'draft'}`}><i/>{run ? `${RUN_STATUS[run.status]} · ${done} of ${active} done` : loading ? 'Draft · updating plan' : 'Draft'}</span>
-            {run && <button type="button" className="pg-btn" onClick={onNewDraft}>New draft</button>}
-            <RunSource onOpen={() => setSelected('stages')}/>
-            <span className="pg-zoom">
-                <button type="button" className="pg-btn icon" aria-label="Zoom out" onClick={() => zoomAbout(cam.z / 1.2, size.w / 2, size.h / 2)}>−</button>
-                <span className="pg-zoom-level">{Math.round(cam.z * 100)}%</span>
-                <button type="button" className="pg-btn icon" aria-label="Zoom in" onClick={() => zoomAbout(cam.z * 1.2, size.w / 2, size.h / 2)}>+</button>
-                <button type="button" className="pg-btn" onClick={() => setCamera(null)}>Fit all</button>
-            </span>
-        </div>
-        <StageStrip locked={run !== null}/>
-        <div className="pg-body">
-            <div ref={canvasRef} className={`pg-canvas${dragging ? ' dragging' : ''}`} onWheel={onWheel} onPointerDown={onPointerDown}
-                onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Graph canvas. Drag to pan.">
-                {graph && layout && size.w > 0 && <div className="pg-world"
-                    style={{width: layout.width, height: layout.height, transform: `scale(${cam.z}) translate(${-cam.x}px, ${-cam.y}px)`}}>
-                    <svg className="pg-wires" width={layout.width} height={layout.height} aria-hidden="true">
-                        {graph.wires.map(wire => <path key={wire.id} d={layout.wires.find(item => item.id === wire.id)!.d}
-                            className={`pg-wire${wire.active ? '' : ' quiet'}${graph.nodes.find(node => node.id === wire.target)!.state === 'running' ? ' flow' : ''}`}
-                            style={{stroke: colour(wire.data)}}/>)}
-                    </svg>
-                    {graph.nodes.map(node => <Card key={node.id} node={node} box={layout.boxes.get(node.id)!} selected={selected === node.id}
-                        onPick={() => setSelected(node.id)}/>)}
-                </div>}
-                {notice}
-            </div>
-            {selectedNode && <Details node={selectedNode} live={run !== null} sectionContent={sectionContent} onClose={() => setSelected(null)}/>}
-            {selected === 'stages' && <aside className="pg-details" aria-label="Processing stages settings">
-                <div className="pg-details-head"><h2>Processing stages</h2>
-                    <button type="button" className="pg-btn icon" aria-label="Close details" onClick={() => setSelected(null)}>×</button></div>
-                <div className="settings-layout">{sectionContent('Processing stages')}</div>
-            </aside>}
+    const byId = new Map(sections.map(section => [section.id, section]));
+    return <div ref={canvasRef} className={`pg-canvas${dragging ? ' dragging' : ''}${focus?.explain ? ' explaining' : ''}`} onWheel={onWheel}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
+        onKeyDown={event => {if (event.key === 'Escape' && focus) onFocus(null);}} aria-label="Processing graph. Drag to pan, scroll to zoom.">
+        {'error' in graph && <p role="alert" className="pg-notice warn">{graph.error}</p>}
+        {notice}
+        {layout && 'nodes' in graph && size.w > 0 && <div className={`pg-world${animate ? ' animate' : ''}`}
+            style={{width: layout.width, height: layout.height, transform: `scale(${cam.z}) translate(${-cam.x}px, ${-cam.y}px)`}}>
+            <svg className="pg-wires" width={layout.width} height={layout.height} aria-hidden="true">
+                {graph.wires.map(wire => <path key={wire.id} d={layout.wires.find(item => item.id === wire.id)!.d}
+                    className={`pg-wire${wire.active ? '' : ' quiet'}${graph.nodes.find(node => node.id === wire.target)!.state === 'running' ? ' flow' : ''}`}
+                    style={{stroke: colour(wire.data)}}/>)}
+            </svg>
+            {focus?.explain && <div className="pg-explain-cover"/>}
+            {graph.nodes.map(node => <div key={node.id} ref={element => {if (element) nodeElements.current.set(node.id, element.firstElementChild as HTMLElement);}}>
+                <Node node={node} section={byId.get(node.id)!} box={layout.boxes.get(node.id)!} focused={focus?.id === node.id}
+                    explaining={focus?.id === node.id && focus.explain} locked={locked} onMeasure={onMeasure} onFocus={onFocus} onEntries={onEntries}/>
+            </div>)}
+        </div>}
+        {focus?.explain && explainReady && canvasRef.current && nodeElements.current.get(focus.id) &&
+            <Explain entries={entryGetters.current.get(focus.id)?.() ?? []} nodeElement={nodeElements.current.get(focus.id)!}
+                canvasElement={canvasRef.current} size={size} onClose={() => onFocus(null)}/>}
+        <div className="pg-zoom" role="toolbar" aria-label="Zoom">
+            <button type="button" aria-label="Zoom out" onClick={() => zoomAbout(cam.z / 1.2, size.w / 2, size.h / 2)}>−</button>
+            <span>{Math.round(cam.z * 100)}%</span>
+            <button type="button" aria-label="Zoom in" onClick={() => zoomAbout(cam.z * 1.2, size.w / 2, size.h / 2)}>+</button>
+            <button type="button" onClick={() => {onFocus(null); setCamera(null);}}>Fit all</button>
         </div>
     </div>;
-}
-
-/** A message in place of the graph. */
-export function GraphNotice({children, warn}: {children: ReactNode; warn: boolean}) {
-    return <div className="pg-shell"><div className="pg-body"><div className="pg-canvas">
-        <p role={warn ? 'alert' : 'status'} className={warn ? 'pg-notice warn' : 'pg-notice'}>{children}</p>
-    </div></div></div>;
 }

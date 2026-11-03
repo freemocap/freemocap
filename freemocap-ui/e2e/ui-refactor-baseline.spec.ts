@@ -65,8 +65,9 @@ test('Mocap modal visual sections and complete processing request', async ({page
     const modal=page.getByRole('dialog',{name:'Mocap processing',exact:true});
     await expect(modal).toBeVisible();
     const contrast: unknown[] = [];
-    for (const section of ['Recording directory','Processing stages','Detectors','Camera geometry','Triangulation','Post-processing','Exports','Blender']) {
-        await page.getByRole('navigation',{name:'Mocap setup sections'}).getByRole('button',{name:section,exact:true}).click();
+    await page.getByRole('group',{name:'View',exact:true}).getByRole('button',{name:'List',exact:true}).click();
+    for (const section of ['Recording','2D tracking','Triangulation','Gap filling and filtering','Person scale fitting','Skeleton reconstruction','Blender','Exports']) {
+        await page.getByRole('navigation',{name:'Mocap processing sections'}).getByRole('button',{name:section,exact:true}).click();
         const result=await new AxeBuilder({page}).include('[aria-label="Mocap processing"]').withRules(['color-contrast']).analyze();
         contrast.push({section,violations:result.violations,incomplete:result.incomplete});
         await expect.soft(modal).toHaveScreenshot(`mocap-${section.toLowerCase().replaceAll(' ','-')}.png`,{animations:'disabled'});

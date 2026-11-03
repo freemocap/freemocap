@@ -4,7 +4,7 @@ import path from 'node:path';
 
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 
-test('graph controls use settings styling and board dialog escapes the scrolling modal', async ({page}) => {
+test('list view settings use settings styling and board dialog escapes the scrolling modal', async ({page}) => {
     page.on('pageerror', error => {throw error;});
     await page.setViewportSize({width:1280,height:720});
     await page.route('http://localhost:53117/', route => route.fulfill({contentType:'text/html',body:'<main id="root"></main>'}));
@@ -45,7 +45,8 @@ test('graph controls use settings styling and board dialog escapes the scrolling
         if (file.path.endsWith('.css')) await page.addStyleTag({content:file.text});
         else await page.addScriptTag({content:file.text,type:'module'});
     }
-    await page.getByRole('navigation',{name:'Mocap setup sections'}).getByRole('button',{name:'Processing stages',exact:true}).click();
+    await page.getByRole('group',{name:'View',exact:true}).getByRole('button',{name:'List',exact:true}).click();
+    await page.getByRole('navigation',{name:'Mocap processing sections'}).getByRole('button',{name:'2D tracking',exact:true}).click();
     const pipeline = page.getByRole('group', {name: 'Processing pipeline', exact: true});
     await pipeline.getByRole('button', {name: 'Typed data flow graph V1'}).click();
     await expect(pipeline.getByRole('option', {name: 'Typed data flow graph V1'})).toHaveAttribute('aria-selected', 'true');

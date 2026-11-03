@@ -1,0 +1,354 @@
+/* The Mocap processing window: title bar, run controls, outline, and the list or graph (design canvas boards 13-17). */
+
+.mocap-processing {
+  z-index: 1000;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1760px, calc(100vw - 32px));
+  height: min(1000px, calc(100dvh - 32px));
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-hairline-strong);
+  background: var(--color-surface-ground);
+  box-shadow: var(--shadow-raised-high);
+  color: var(--color-text-primary);
+}
+
+.mp-title {
+  flex: 0 0 46px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--color-border-hairline-strong);
+}
+
+.mp-title h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.mp-recording {
+  font: 12px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-help);
+}
+
+.mp-close {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--color-bg-tertiary);
+  background: var(--color-surface-control);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.mp-close:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.mp-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.mp-head {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  min-height: 62px;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.mp-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--color-bg-tertiary);
+  background: var(--color-surface-raised);
+}
+
+.mp-seg button {
+  height: 30px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: 600 12.5px inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mp-seg button.on {
+  background: var(--color-info-idle);
+  color: var(--color-info-text);
+}
+
+.mp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-bg-tertiary);
+  background: var(--color-surface-control);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mp-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-help);
+}
+
+.mp-status.running i,
+.mp-status.queued i {
+  background: var(--graph-run);
+  box-shadow: 0 0 0 3px var(--graph-run-tint);
+}
+
+.mp-status.complete i {
+  background: var(--graph-ok);
+}
+
+.mp-status.failed i {
+  background: var(--graph-bad);
+}
+
+.mp-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.mp-field .setting-select-input {
+  min-width: 170px;
+}
+
+.mp-inventory {
+  font-size: 12px;
+  color: var(--color-text-help);
+}
+
+.mp-inventory.error {
+  color: var(--color-danger-text);
+}
+
+.mp-small-button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface-control);
+  color: var(--color-text-primary);
+  font: 500 12px inherit;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mp-small-button:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.mp-head .button-sm-group:has(.mp-process),
+.mp-head .mp-process {
+  margin-left: auto;
+}
+
+.mp-head .mp-process {
+  height: 42px;
+  padding: 0 22px;
+  border-radius: 8px;
+  border: 2px solid var(--color-info-text);
+  box-shadow: 0 0 0 4px var(--color-info-surface);
+}
+
+.mp-head .mp-process > p {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mp-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* ---------- outline ---------- */
+.mp-outline {
+  flex: 0 0 280px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 14px 10px;
+  border-right: 1px solid var(--color-border-hairline-strong);
+}
+
+.mp-outline ul {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.mp-outline-heading {
+  display: block;
+  padding: 0 10px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--color-text-help);
+}
+
+.mp-outline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 6px;
+}
+
+.mp-outline-row.active {
+  background: var(--color-bg-tertiary);
+}
+
+.mp-outline-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: 13px inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-outline-number {
+  flex: none;
+  width: 14px;
+  font: 600 11px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-help);
+}
+
+.mp-outline-state {
+  flex: none;
+  font-size: 11px;
+  color: var(--color-text-help);
+  white-space: nowrap;
+}
+
+.mp-outline-state.complete {
+  color: var(--graph-ok);
+}
+
+.mp-outline-state.running {
+  color: var(--graph-run);
+}
+
+.mp-outline-state.failed {
+  color: var(--graph-bad);
+}
+
+.mp-stage-toggle {
+  flex: none;
+  margin: 0;
+  accent-color: var(--color-info-strong);
+}
+
+/* ---------- main area ---------- */
+.mp-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.mp-list {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 18px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mp-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mp-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mp-section-title:disabled {
+  cursor: default;
+}
+
+.mp-blender-missing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--warning-900);
+  background: var(--color-surface-control);
+  font-size: 12.5px;
+  color: var(--color-warning-text);
+}
+
+.mp-blender-missing a {
+  color: var(--color-info-text);
+}
+
+.mp-section-title[aria-expanded="true"] .settings-section-chevron {
+  transform: rotate(45deg);
+}
+
+.mp-section-header {
+  cursor: default;
+}

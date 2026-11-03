@@ -59,7 +59,8 @@ function buildPosthocConfig(state: RootState) {
             cutoff: config.posthoc_filter.cutoff,
             order: config.posthoc_filter.order,
         },
-        exportToBlender: blender.exportToBlenderEnabled,
+        // Blender export is skipped, not failed, when no Blender executable was found.
+        exportToBlender: blender.exportToBlenderEnabled && Boolean(blender.blenderExePath ?? blender.detectedBlenderExePath),
         blenderImportRoute: blender.importRoute,
         blenderPackage: blender.packageName,
         blenderDevelopmentBuildHash: blender.developmentBuildHash,

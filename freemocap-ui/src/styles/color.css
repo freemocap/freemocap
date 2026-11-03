@@ -198,6 +198,13 @@
   --graph-node-fill: var(--color-bg-secondary);
   --graph-node-annotation-fill: #2b2a22;
   --graph-canvas-dot: #2a3434;
+  /* The explain view's callouts: warm, so they never read as part of the working surface. */
+  --explain-fill: #33291a;
+  --explain-line: #c9982f;
+  --explain-arrow: #d9a93a;
+  --explain-title: #f6e7bf;
+  --explain-text: #dccb9c;
+  --explain-cover: rgba(9, 14, 14, 0.86);
   /* Operation states in a launched run. */
   --graph-run: var(--blue-300);
   --graph-run-line: var(--blue-600);

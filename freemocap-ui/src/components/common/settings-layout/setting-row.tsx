@@ -1,5 +1,6 @@
-import type {ReactNode} from 'react';
+import {type ReactNode, useId} from 'react';
 import AnchoredInfo from '@/components/ui-components/AnchoredInfo';
+import {useExplainTarget} from './explain-registry';
 import './settings-layout.css';
 
 interface SettingRowProps {
@@ -23,7 +24,8 @@ export default function SettingRow({label, info, control, promoted = false, inac
     const classes = ['setting-row'];
     if (promoted) classes.push('setting-row-promoted');
     if (inactive) classes.push('setting-row-inactive');
-    return <div className={classes.join(' ')}>
+    const explain = useExplainTarget(`setting:${useId()}`, info.title, info.text, 'right');
+    return <div ref={explain} className={classes.join(' ')}>
         <span className="setting-row-label">
             {label}
             <AnchoredInfo title={info.title} text={info.text}/>

@@ -1,21 +1,24 @@
-// Layered layout ported from experiments/executable_graph_lab/production_view/layout.js (left to right).
+// Layered layout and node geometry ported from the Graph Lab viewer
+// (experiments/executable_graph_lab/synthetic/viewer.html) as used on the approved design canvas.
 // Geometry never depends on zoom: the view scales the whole drawing.
 import type {DisplayEdge, DisplayGraph, DisplayNode} from './graph-model';
 
-export const NODE_WIDTH = 248;
-export const NODE_HEADER = 46;
-export const SLOT_ROW = 24;
-export const NODE_FOOT = 8;
-export const TERMINAL_WIDTH = 184;
-export const TERMINAL_HEIGHT = 44;
+export type GraphDirection = 'right' | 'down';
 
 export interface Point {x: number; y: number}
 
 export interface NodeGeometry {
+    /** Full footprint including the disk card. */
     w: number;
     h: number;
-    /** Slot positions relative to the node's top-left, keyed 'in:<slot>' or 'out:<slot>'. */
+    /** The node card itself. */
+    bw: number;
+    bh: number;
     ports: Map<string, Point>;
+    headTop: number;
+    footTop: number;
+    split: number;
+    sourceY: number;
 }
 
 export interface NodeBox extends NodeGeometry {x: number; y: number}
@@ -27,17 +30,35 @@ export interface GraphLayout {
     height: number;
 }
 
-export function nodeGeometry(node: DisplayNode): NodeGeometry {
+export const LR_WIDTH = 264;
+const LR_TOP = 56;
+const LR_ROW = 26;
+const TD_HEIGHT = 130;
+
+/** A load card lists the files the plan reads; a save card has one line until the run reports what it wrote. */
+export const diskFileRows = (node: DisplayNode): number => node.io === 'read' ? Math.max(node.files.length, 1) : 1;
+
+export function nodeGeometry(node: DisplayNode, direction: GraphDirection): NodeGeometry {
+    const ins = node.inputs;
+    const outs = node.outputs;
     const ports = new Map<string, Point>();
-    if (node.role !== 'operation') {
-        node.inputs.forEach(slot => ports.set(`in:${slot.name}`, {x: 0, y: TERMINAL_HEIGHT / 2}));
-        node.outputs.forEach(slot => ports.set(`out:${slot.name}`, {x: TERMINAL_WIDTH, y: TERMINAL_HEIGHT / 2}));
-        return {w: TERMINAL_WIDTH, h: TERMINAL_HEIGHT, ports};
+    const io = node.io !== null;
+    if (direction === 'right') {
+        const inRows = Math.max(ins.length, 1);
+        const rowY = (row: number): number => LR_TOP + row * LR_ROW + LR_ROW / 2;
+        ins.forEach((slot, row) => ports.set(`in:${slot.name}`, {x: 0, y: rowY(row)}));
+        outs.forEach((slot, row) => ports.set(`out:${slot.name}`, {x: LR_WIDTH, y: rowY(inRows + row)}));
+        const h = LR_TOP + (inRows + outs.length) * LR_ROW + 6 + 28;
+        const diskRows = diskFileRows(node);
+        return {w: LR_WIDTH, h: h + (io ? 34 + Math.max(40, 30 + diskRows * 16) + 12 : 0), bw: LR_WIDTH, bh: h, ports,
+            headTop: 0, footTop: h - 28, split: LR_TOP + inRows * LR_ROW, sourceY: rowY(0)};
     }
-    const rowY = (row: number): number => NODE_HEADER + row * SLOT_ROW + SLOT_ROW / 2;
-    node.inputs.forEach((slot, row) => ports.set(`in:${slot.name}`, {x: 0, y: rowY(row)}));
-    node.outputs.forEach((slot, row) => ports.set(`out:${slot.name}`, {x: NODE_WIDTH, y: rowY(node.inputs.length + row)}));
-    return {w: NODE_WIDTH, h: NODE_HEADER + (node.inputs.length + node.outputs.length) * SLOT_ROW + NODE_FOOT, ports};
+    const w = Math.max(240, Math.max(ins.length, outs.length) * 128);
+    ins.forEach((slot, i) => ports.set(`in:${slot.name}`, {x: w * (i + 0.5) / ins.length, y: 0}));
+    outs.forEach((slot, j) => ports.set(`out:${slot.name}`, {x: w * (j + 0.5) / outs.length, y: TD_HEIGHT}));
+    const diskRows = diskFileRows(node);
+    return {w: w + (io ? 34 + 26 + 66 + 8 : 0), h: Math.max(TD_HEIGHT, io ? 96 + diskRows * 16 : 0), bw: w, bh: TD_HEIGHT, ports,
+        headTop: 26, footTop: 76, split: 0, sourceY: 0};
 }
 
 interface LayoutItem {id: string; rank: number; dummy: boolean; main: number; cross: number; order: number}
@@ -46,20 +67,21 @@ interface Neighbour {o: string; self: number; other: number}
 
 const DUMMY = 8;
 const MARGIN = 48;
-const MAIN_GAP = 112;
-const CROSS_GAP = 28;
 const round = (value: number): number => Math.round(value * 10) / 10;
 
-export function computeLayout(graph: DisplayGraph): GraphLayout {
+export function computeLayout(graph: DisplayGraph, direction: GraphDirection): GraphLayout {
     const {nodes, edges} = graph;
+    const side = direction === 'right';
+    const mainGap = side ? 128 : 100;
+    const crossGap = side ? 28 : 40;
     const byId = new Map(nodes.map(node => [node.id, node]));
-    const geometry = new Map(nodes.map(node => [node.id, nodeGeometry(node)]));
+    const geometry = new Map(nodes.map(node => [node.id, nodeGeometry(node, direction)]));
     const parents = new Map<string, string[]>(nodes.map(node => [node.id, []]));
     const children = new Map<string, string[]>(nodes.map(node => [node.id, []]));
     for (const edge of edges) {
         if (!byId.has(edge.source) || !byId.has(edge.target)) throw new Error(`Edge ${edge.id} references an unknown node`);
-        children.get(edge.source)!.push(edge.target);
         parents.get(edge.target)!.push(edge.source);
+        children.get(edge.source)!.push(edge.target);
     }
     const rank = new Map<string, number>();
     const visit = (id: string, stack: Set<string>): number => {
@@ -81,12 +103,13 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
     const portCross = (id: string, key: string): number => {
         const port = geometry.get(id)!.ports.get(key);
         if (!port) throw new Error(`Missing declared slot ${key} on ${id}`);
-        return port.y;
+        return side ? port.y : port.x;
     };
     const items = new Map<string, LayoutItem>();
     nodes.forEach((node, index) => {
         const g = geometry.get(node.id)!;
-        items.set(node.id, {id: node.id, rank: rank.get(node.id)!, dummy: false, main: g.w, cross: g.h, order: index});
+        items.set(node.id, {id: node.id, rank: rank.get(node.id)!, dummy: false, main: side ? g.w : g.h, cross: side ? g.h : g.w,
+            order: (node.camera ?? -1) * 1000 + index});
     });
     const chains: {edge: DisplayEdge; chain: string[]}[] = [];
     const links: Link[] = [];
@@ -94,7 +117,8 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
         const chain = [edge.source];
         for (let r = rank.get(edge.source)! + 1; r < rank.get(edge.target)!; r++) {
             const id = `~${edge.id}~${r}`;
-            items.set(id, {id, rank: r, dummy: true, main: 0, cross: DUMMY, order: nodes.length + edgeIndex});
+            items.set(id, {id, rank: r, dummy: true, main: 0, cross: DUMMY,
+                order: (byId.get(edge.target)!.camera ?? -1) * 1000 + nodes.length + edgeIndex});
             chain.push(id);
         }
         chain.push(edge.target);
@@ -161,7 +185,7 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
     const cross = new Map<string, number>();
     const size = (id: string): number => items.get(id)!.cross;
     const gap = (a: string, b: string): number => items.get(a)!.dummy && items.get(b)!.dummy ? 10
-        : items.get(a)!.dummy || items.get(b)!.dummy ? 18 : CROSS_GAP;
+        : items.get(a)!.dummy || items.get(b)!.dummy ? 18 : crossGap;
     layers.forEach(layer => {
         let y = 0;
         const offsets = layer.map((id, i) => {
@@ -205,9 +229,9 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
     let main = MARGIN;
     layerSize.forEach((s, r) => {
         layerPos[r] = main;
-        main += s + MAIN_GAP;
+        main += s + mainGap;
     });
-    const totalMain = main - MAIN_GAP + MARGIN;
+    const totalMain = main - mainGap + MARGIN;
     let lo = Infinity;
     let hi = -Infinity;
     for (const [id, c] of cross) {
@@ -215,13 +239,12 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
         hi = Math.max(hi, c + size(id));
     }
     const shift = MARGIN - lo;
+    const totalCross = hi - lo + 2 * MARGIN;
+    const pt = (a: number, c: number): Point => side ? {x: a, y: c} : {x: c, y: a};
     const boxes = new Map<string, NodeBox>();
     for (const node of nodes) {
         const item = items.get(node.id)!;
-        const g = geometry.get(node.id)!;
-        // Terminals sit against the operation they serve rather than at the far edge of their layer.
-        const x = node.role === 'source' ? layerPos[item.rank] + layerSize[item.rank] - g.w : layerPos[item.rank];
-        boxes.set(node.id, {...g, x, y: cross.get(node.id)! + shift});
+        boxes.set(node.id, {...geometry.get(node.id)!, ...pt(layerPos[item.rank], cross.get(node.id)! + shift)});
     }
     const portAbs = (id: string, key: string): Point => {
         const box = boxes.get(id)!;
@@ -230,8 +253,12 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
         return {x: box.x + port.x, y: box.y + port.y};
     };
     const curve = (p: Point, q: Point): string => {
-        const k = Math.max(28, (q.x - p.x) * 0.5);
-        return ` C${round(p.x + k)},${round(p.y)} ${round(q.x - k)},${round(q.y)} ${round(q.x)},${round(q.y)}`;
+        if (side) {
+            const k = Math.max(28, (q.x - p.x) * 0.5);
+            return ` C${round(p.x + k)},${round(p.y)} ${round(q.x - k)},${round(q.y)} ${round(q.x)},${round(q.y)}`;
+        }
+        const k = Math.max(28, (q.y - p.y) * 0.5);
+        return ` C${round(p.x)},${round(p.y + k)} ${round(q.x)},${round(q.y - k)} ${round(q.x)},${round(q.y)}`;
     };
     const paths = chains.map(({edge, chain}) => {
         let current = portAbs(edge.source, `out:${edge.sourceSlot}`);
@@ -239,8 +266,8 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
         for (const id of chain.slice(1, -1)) {
             const r = items.get(id)!.rank;
             const c = cross.get(id)! + shift + DUMMY / 2;
-            const entry = {x: layerPos[r], y: c};
-            const exit = {x: layerPos[r] + layerSize[r], y: c};
+            const entry = pt(layerPos[r], c);
+            const exit = pt(layerPos[r] + layerSize[r], c);
             d += curve(current, entry);
             if (layerSize[r]) d += ` L${round(exit.x)},${round(exit.y)}`;
             current = exit;
@@ -248,5 +275,5 @@ export function computeLayout(graph: DisplayGraph): GraphLayout {
         d += curve(current, portAbs(edge.target, `in:${edge.targetSlot}`));
         return {edge, d};
     });
-    return {boxes, paths, width: totalMain, height: hi - lo + 2 * MARGIN};
+    return {boxes, paths, width: side ? totalMain : totalCross, height: side ? totalCross : totalMain};
 }

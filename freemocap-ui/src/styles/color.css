@@ -187,6 +187,35 @@
   --color-record-fill-dim: #933a33;
 
   /* ========================================
+     PROCESSING GRAPH SEMANTICS
+     ======================================== */
+
+  /* Disk reads and writes in the processing graph. */
+  --graph-read: #7ec8ff;
+  --graph-read-tint: #16273a;
+  --graph-write: #d6a6f5;
+  --graph-write-tint: #28203a;
+  --graph-node-fill: var(--color-bg-secondary);
+  --graph-node-annotation-fill: #2b2a22;
+  --graph-canvas-dot: #2a3434;
+
+  /* One colour per data type, assigned in order of first appearance in a plan. */
+  --graph-type-1: #8ab6ff;
+  --graph-type-2: #f2a65a;
+  --graph-type-3: #6fd3a8;
+  --graph-type-4: #e892d4;
+  --graph-type-5: #e6d36c;
+  --graph-type-6: #a394ff;
+  --graph-type-7: #62cde3;
+  --graph-type-8: #f28b8b;
+  --graph-type-9: #b9dc6f;
+  --graph-type-10: #d9a77e;
+  --graph-type-11: #9fc2d6;
+  --graph-type-12: #cfa2f2;
+  --graph-type-13: #ffd0a1;
+  --graph-type-14: #7fe0d0;
+
+  /* ========================================
      CHART SEMANTICS
      ======================================== */
 

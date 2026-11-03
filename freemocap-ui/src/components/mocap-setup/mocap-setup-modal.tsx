@@ -24,7 +24,9 @@ import {selectSourceRunId, selectStageSelection} from '@/store/slices/processing
 import {useSavedStageInventory} from '@/hooks/useSavedStageInventory';
 import {useProcessingPlan} from '@/hooks/useProcessingPlan';
 import ProcessingGraphView, {GraphNotice} from '@/components/processing-graph/ProcessingGraphView';
-import type {LaunchedRun, SettingsSectionName} from '@/components/processing-graph/graph-model';
+import type {LaunchedRun} from '@/components/processing-graph/graph-model';
+import type {PanelSection} from '@/components/processing-graph/section-graph';
+import {useSectionSettings} from '@/components/processing-graph/useSectionSettings';
 import {selectBlender} from '@/store/slices/blender';
 import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
@@ -76,6 +78,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                 .sort((a, b) => a.cameraId!.localeCompare(b.cameraId!, undefined, {numeric: true}))
                 .map(pipeline => ({cameraId: pipeline.cameraId!, fraction: pipeline.progress === null ? null : pipeline.progress / 100, detail: pipeline.detail}))}
         : null, [launched, pipelines]);
+    const sectionSettings = useSectionSettings();
     const planState = useProcessingPlan(graphView && !launchedTaskId ? mocapRecordingPath : null, processSelection);
     const launchProcessing = async (selection: NonNullable<typeof processSelection>): Promise<void> => {
         setLaunching(true);
@@ -223,8 +226,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                     {launching ? <GraphNotice warn={false}>Starting the run…</GraphNotice>
                         : launchedTaskId && !launched ? <GraphNotice warn={false}>Waiting for the server to report run {launchedTaskId}…</GraphNotice>
                         : launchedTaskId && !run ? <GraphNotice warn>The server reported run {launchedTaskId} without its processing plan.</GraphNotice>
-                        : <ProcessingGraphView planState={planState} run={run} onNewDraft={() => setLaunchedTaskId(null)}
-                            sectionContent={(name: SettingsSectionName) =>
+                        : <ProcessingGraphView planState={planState} run={run} settings={sectionSettings} onNewDraft={() => setLaunchedTaskId(null)}
+                            sectionContent={(name: PanelSection) =>
                                 <div className="settings-layout">{sections.find(section => section.name === name)?.content}</div>}/>}
                 </div>}
                 <div ref={scrollContainerRef} style={graphView ? {display: 'none'} : undefined} className="mocap-settings-content settings-layout flex-1 overflow-y-auto">

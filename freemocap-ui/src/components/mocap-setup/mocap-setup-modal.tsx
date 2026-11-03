@@ -19,7 +19,8 @@ import {useMocap} from "@/hooks/useMocap";
 import {useAppSelector} from "@/store/hooks";
 import {RTMPOSE_MODELS} from "@/store/slices/mocap";
 import MocapStageSelection from './mocap-stage-selection';
-import {PROCESSING_STAGES, type StageSelection} from '@/services/recording/posthoc-processing';
+import {PROCESSING_STAGES} from '@/services/recording/posthoc-processing';
+import {selectSourceRunId, selectStageSelection} from '@/store/slices/processing-stages';
 import {selectBlender} from '@/store/slices/blender';
 import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
@@ -54,8 +55,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
 
     const config = useAppSelector(state => state.mocap.config);
     const blender = useAppSelector(selectBlender);
-    const [sourceRunId, setSourceRunId] = useState(0);
-    const [stageSelection, setStageSelection] = useState<StageSelection | null>(null);
+    const sourceRunId = useAppSelector(selectSourceRunId);
+    const stageSelection = useAppSelector(selectStageSelection);
 
 
     useEffect(() => {
@@ -106,7 +107,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                 <SettingRow label="Processing pipeline" info={{title: 'Processing pipeline',
                     text: 'Typed data flow graph V1 is the default. Select the stages to run. Start from videos, saved 2D tracking, saved 3D points, or saved skeleton fits.'}}
                     control={<ProcessingPipelineSelect/>}/>
-                <MocapStageSelection path={mocapRecordingPath} onChange={setStageSelection} onSourceRunChange={setSourceRunId}/>
+                <MocapStageSelection path={mocapRecordingPath}/>
 
             </>,
         },

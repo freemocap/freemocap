@@ -19,6 +19,7 @@ import playbackDataReducer from "@/store/slices/playback-data/playback-data-slic
 import { modelSlice } from "@/store/slices/model";
 import { conventionSlice } from "@/store/slices/convention";
 import { cameraLayoutSlice } from "@/store/slices/camera-layout";
+import {processingStagesSlice} from "@/store/slices/processing-stages";
 
 export const store = configureStore({
     middleware: (getDefaultMiddleware) =>
@@ -44,5 +45,6 @@ export const store = configureStore({
         model: modelSlice.reducer,
         convention: conventionSlice.reducer,
         cameraLayout: cameraLayoutSlice.reducer,
+        processingStages: processingStagesSlice.reducer,
     },
 });

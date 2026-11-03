@@ -5,10 +5,9 @@ import {StartupStatusCapability, StartupStatusUnavailableError} from '@/services
 import {boundedPreparationRequest, preparationWorking, PreparationPipelineAvailability, PreparationPipelineUnavailableError, type PreparationAction} from '@/services/server/onnx-preparation';
 import type {OnnxPreparation} from '@/types/onnx-preparation';
 
-export function useOnnxPreparation(pipelineId: string | null) {
+export function useOnnxPreparation(pipelineId: string | null, open: boolean) {
     const connected = useAppSelector(state => state.connection.isConnected);
     const pid = useAppSelector(state => state.connection.serverPid);
-    const live = useAppSelector(state => state.realtime.isConnected);
     const identity = `${serverUrls.getHttpUrl()}|${pid ?? 'unknown'}`;
     const capability = useRef(new StartupStatusCapability());
     const pipelineAvailability = useRef(new PreparationPipelineAvailability());
@@ -23,6 +22,7 @@ export function useOnnxPreparation(pipelineId: string | null) {
         const current = ++generation.current;
         setSnapshot(null); setError(null); setBusy(false);
         if (!connected) {capability.current.reset(); pipelineAvailability.current.reset(); setUnavailable(false); return;}
+        if (!open) return;
         if (!pipelineId) return;
         if (!capability.current.allows(identity)) {setUnavailable(true); return;}
         setUnavailable(false);
@@ -32,12 +32,12 @@ export function useOnnxPreparation(pipelineId: string | null) {
         let timer: ReturnType<typeof setTimeout> | undefined;
         async function poll() {
             if (!capability.current.allows(identity) || pipelineAvailability.current.reason(identity, pipelineId!)) return;
-            let again = live;
+            let again = false;
             try {
                 const next = await boundedPreparationRequest(pipelineId!, 'status', controller.signal);
                 if (controller.signal.aborted || generation.current !== current) return;
                 setSnapshot(next); setError(null);
-                again = next.status !== 'activated' && (live || preparationWorking(next));
+                again = preparationWorking(next);
             } catch (failure) {
                 if (controller.signal.aborted || generation.current !== current) return;
                 if (failure instanceof StartupStatusUnavailableError) {
@@ -45,16 +45,16 @@ export function useOnnxPreparation(pipelineId: string | null) {
                 } else if (failure instanceof PreparationPipelineUnavailableError) {
                     pipelineAvailability.current.markUnavailable(identity, pipelineId!, failure.message);
                     setSnapshot(null); setError(failure.message); again = false;
-                } else {setError(failure instanceof Error ? failure.message : String(failure)); again = true;}
+                } else {setError(failure instanceof Error ? failure.message : String(failure));}
             }
             if (again && !controller.signal.aborted) timer = setTimeout(() => {void poll();}, 500);
         }
         void poll();
         return () => {generation.current++; controller.abort(); if (timer !== undefined) clearTimeout(timer);};
-    }, [pipelineId, connected, identity, live, refresh]);
+    }, [pipelineId, connected, identity, open, refresh]);
 
     const command = useCallback(async (action: PreparationAction) => {
-        if (!pipelineId || !connected || !capability.current.allows(identity) || pipelineAvailability.current.reason(identity, pipelineId)) return;
+        if (!open || !pipelineId || !connected || !capability.current.allows(identity) || pipelineAvailability.current.reason(identity, pipelineId)) return;
         const current = generation.current;
         setBusy(true); setError(null);
         try {
@@ -66,7 +66,7 @@ export function useOnnxPreparation(pipelineId: string | null) {
             if (failure instanceof StartupStatusUnavailableError) {capability.current.markUnavailable(identity); setUnavailable(true);}
             else setError(`${action === 'stop' ? 'Stop' : 'Preparation'} request was not confirmed: ${failure instanceof Error ? failure.message : String(failure)}`);
         } finally {if (generation.current === current) setBusy(false);}
-    }, [pipelineId, connected, identity]);
+    }, [pipelineId, connected, identity, open]);
 
     return {snapshot: pipelineId ? snapshot : null, error: pipelineId ? error : null,
         unavailable: Boolean(pipelineId) && unavailable, busy,

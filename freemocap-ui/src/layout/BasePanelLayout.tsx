@@ -11,7 +11,6 @@ import { useMenuActions } from "@/hooks/useMenuActions";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { RecordingCompleteDialog } from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 import { OperationErrorBanner } from "@/components/common/OperationErrorBanner";
-import {RealtimeStartupBanner} from '@/components/common/RealtimeStartupBanner';
 import { MainNavTabs } from "@/components/ui-components/MainNavTabs";
 
 export const BasePanelLayout = ({
@@ -96,7 +95,6 @@ export const BasePanelLayout = ({
                 <MainNavTabs />
                 <div className="flex-1 min-h-0 mt-45 flex flex-col">
                   <OperationErrorBanner />
-                  <RealtimeStartupBanner />
                   <div className="flex-1 min-h-0">{children}</div>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import {useTemporalFiltering} from '@/hooks/useTemporalFiltering';
 import {StreamingOutputsControl} from '@/components/control-panels/streaming-outputs/StreamingOutputsControl';
+import {RealtimeStartupBanner} from '@/components/common/RealtimeStartupBanner';
 import React, { useState } from "react";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { useTranslation } from "react-i18next";
@@ -232,6 +233,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               disabled={isPipelineLoading}
               className={`icon-size-25 ${isConnected ? "active" : "connection-idle-outline"}`}
             />
+            <RealtimeStartupBanner/>
             <StreamingOutputsControl/>
           </div>
 

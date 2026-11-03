@@ -59,7 +59,10 @@ export function useRealtimeStartup() {
                     setSnapshot(null);
                     setStatusError(null);
                     keepPolling = false;
-                } else setStatusError(error instanceof Error ? error.message : String(error));
+                } else {
+                    setStatusError(error instanceof Error ? error.message : String(error));
+                    keepPolling = realtime.applyPending || (snapshot !== null && startupStillPending(snapshot));
+                }
             }
             if (!controller.signal.aborted && keepPolling) timer = setTimeout(() => {void poll();}, 500);
         }

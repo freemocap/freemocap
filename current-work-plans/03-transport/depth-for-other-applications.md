@@ -12,8 +12,8 @@ what would help the next application that streams depth or RGB-D.
 | Message | Rate | Contents |
 | --- | --- | --- |
 | `frame`, cameras `zed_left` and `zed_right` | 30/s | Both raw eyes (672×376 each) as one image payload |
-| `frame`, cameras `zed_rectified` and `zed_depth` | up to 10/s | The rectified left eye, and depth drawn in colour, for video panels |
-| `depth_frame` (application kind, version 0) | the same depth frames | uint16 millimetre depth (zlib), the rectified left JPEG, pinhole intrinsics, camera axes and the camera's pose in the robot's head frame |
+| `depth_frame` (application kind, version 0) | up to 10/s | uint16 millimetre depth (zlib), the rectified left JPEG, pinhole intrinsics, camera axes and the camera's pose in the robot's head frame |
+| `frame`, cameras `zed_rectified` and `zed_depth` | the same depth frames, only when asked for | The rectified left eye, and depth drawn in colour, for viewers that draw only frames; off by default since 2026-11-03, because `depth_frame` carries both |
 
 UltraSkelly's [depth message page](https://github.com/freemocap/ultraskelly/blob/9fd36ce/docs/depth-stream.md)
 specifies `depth_frame` field by field, with a browser decoding example; its

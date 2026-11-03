@@ -60,7 +60,21 @@ runner log and all ordinary runner artifacts. The JSON schema records:
   provider log summaries, fresh calibration, output profile and saved validation.
 - Existing worker-lifecycle seconds, synchronized frames/second and aggregate camera
   images/second. These include calibration/setup/reconstruction/validation and **are
-  not live inference FPS**. Detailed stage timings remain in the ordinary report.
+  not live inference FPS**.
+- Structured stage measurements in `cases[].timing_reports`: scope, outcome, frame/image
+  counts, call counts, total seconds, mean/first/after-first/maximum milliseconds.
+  The Markdown report automatically prints every stage, including amortized
+  milliseconds per synchronized frame and per camera image. `compare` includes
+  stage totals, means and normalized costs alongside overall worker measurements.
+- Workflow phase timing for automatic Blender preparation, inference service start,
+  fresh calibration, mocap, numerical validation, Blender validation, output
+  acceptance and shutdown. The ordinary dataset runner saves `timings.json` beside
+  each attempt's `performance.json`, including failed attempts, and retains the
+  reports in successful `ready.json` results. These are available without the wrapper.
+  The processing logger emits the same measurements as versioned full-precision
+  JSON events as well as its human-readable table. Historical logs can be rendered
+  from either older table format; their source is labeled `log_table_rounded`.
+  A SHA-256 of the source processing log accompanies benchmark stage evidence.
 - Each executed camera case, inventory, settings/application evidence, recorded and
   streamed FPS, p99 frame intervals, missing frames, failures and server errors.
   The extended suite currently exercises 720p30 and the existing 480p resolution
@@ -105,3 +119,23 @@ the stable machine label links these to the independently captured inventory.
 
 See the [cross-platform audit](COMPATIBILITY-AUDIT-2026-11-03.md) for fixed
 Windows assumptions and remaining compatibility work.
+
+## Reading the timing tables
+
+A synchronized frame contains one image from each camera: these reference datasets
+have three camera images per frame. An inference batch call processes those three
+images. Per-call mean is a measured aggregate over calls; per-image cost divides
+total work by total camera images and is **not** single-image latency.
+
+Rows overlap: inference sits inside load/track, which sits inside mocap, which sits
+inside the dataset worker. Annotation workers also overlap tracking. Do not add the
+rows or interpret their sums as a wall-time budget. Workflow timings omit unmeasured
+Python imports and bookkeeping; the outer worker includes process startup and exit.
+The first-call and after-first means expose initialization effects, but after-first
+does not guarantee steady state. The bounded collector does not retain latency
+distributions, so p50/p95/p99 stage latency is unavailable, not zero. Camera p99
+intervals are separately measured by the existing hardware suite.
+
+Historical records remain unchanged. Detailed new runs are separate observations,
+with their own code provenance and cache/load conditions, not replacements for
+previous measurements.

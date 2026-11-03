@@ -20,6 +20,7 @@ import time
 import psutil
 
 from freemocap.tools.hardware_validation.provenance import capture_provenance
+from freemocap.tools.datasets.reporting import cell, normalized_stages, parse_performance
 
 SCHEMA_VERSION = 1
 
@@ -121,12 +122,17 @@ def collect_dataset(output: Path, dataset: str, profile: str, preset: str) -> di
             frames = workload['videos'][0]['decoded_frames']
             metrics['synchronized_frames_per_worker_second'] = frames / performance['elapsed_s']
             metrics['camera_images_per_worker_second'] = frames * len(workload['videos']) / performance['elapsed_s']
+            metrics['worker_amortized_ms_per_frame'] = 1000 * performance['elapsed_s'] / frames
+            metrics['worker_amortized_ms_per_image'] = 1000 * performance['elapsed_s'] / (frames * len(workload['videos']))
     log_path = attempt / 'processing.log' if attempt else None
     log_lines = log_path.read_text(encoding='utf-8', errors='replace').splitlines() if log_path and log_path.exists() else []
+    timings = result.get('timing_reports') or parse_performance(log_lines)
     summaries = [line for line in log_lines if line.startswith(('Posthoc performance [', 'Completed detection:', 'Detection throughput:'))
                  or 'applied_providers=' in line or 'active providers:' in line]
     return dict(workload=workload, status='passed' if ready else 'failed', metrics=metrics, processing_summaries=summaries,
-                worker=performance, executed_settings=result.get('mocap_config'),
+                worker=performance, timing_reports=timings,
+                timing_log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest() if log_path and log_path.exists() else None,
+                executed_settings=result.get('mocap_config'),
                 validation=result.get('validation'), calibration=result.get('calibration'))
 
 
@@ -169,6 +175,21 @@ def render(record):
         for metric, value in (case['metrics'] or {'measurements': 'unavailable'}).items():
             display = f'{value:.6g}' if isinstance(value, float) else str(value)
             lines.append(f"| {label} | {case['status']} | {metric} | {display} |")
+    for case in record['cases']:
+        for report in case.get('timing_reports', []):
+            lines += ['', f"## {case['workload'].get('dataset', 'Dataset')} — {report['scope']}", '',
+                      f"Outcome: {report.get('outcome')}; wall: {cell(report.get('elapsed_s'))} s; "
+                      f"{cell(report.get('frames'))} synchronized frames / {cell(report.get('images'))} camera images. "
+                      f"Evidence: {report['source']}.", '',
+                      '| Stage | Calls | Total s | Mean ms/call | First ms | After first ms | Max ms | Amortized ms/frame | Amortized ms/image |',
+                      '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+            for name, stage in normalized_stages(report):
+                values = [name, *[stage[key] for key in ('count', 'total_s', 'mean_ms', 'first_ms',
+                          'mean_after_first_ms', 'max_ms', 'amortized_ms_per_frame', 'amortized_ms_per_image')]]
+                lines.append('| ' + ' | '.join(cell(value) for value in values) + ' |')
+    lines += ['', 'Stage spans overlap and must not be summed. Per-frame/image costs are amortized over the recording, '
+              'not latency percentiles. After first excludes exactly the first call; it does not assert steady state. '
+              'Latency p50/p95/p99 were not recorded. Missing measurements are not zero.']
     errors = [f"- {case['workload'].get('backend', case['workload'].get('dataset', 'run'))} / "
               f"{case['workload'].get('case', '')}: {case.get('error') or case.get('evidence', {}).get('error')}"
               for case in record['cases'] if case.get('error') or case.get('evidence', {}).get('error')]
@@ -196,7 +217,11 @@ def compare(records: list[dict]) -> dict:
         for case in record['cases']:
             key = digest(case['workload'])
             group = groups.setdefault(key, dict(workload=case['workload'], measurements=[]))
-            metrics = case['metrics']
+            metrics = dict(case['metrics'])
+            for report in case.get('timing_reports', []):
+                for name, stage in normalized_stages(report):
+                    for key in ('total_s', 'mean_ms', 'mean_after_first_ms', 'amortized_ms_per_frame', 'amortized_ms_per_image'):
+                        metrics[f"{report['scope']}.{name}.{key}"] = stage[key]
             for index, identity in enumerate(case.get('evidence', {}).get('case', {}).get('camera_ids', [])):
                 metrics = {name.replace(f'.{identity}.', f'.camera[{index}].'): value for name, value in metrics.items()}
             group['measurements'].append(dict(machine=record['machine']['label'], status=case['status'],

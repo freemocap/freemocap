@@ -181,6 +181,23 @@ numerical log tables, detailed operation timing rows, calibration and saved
 validation fields. Timing rows overlap and are not additive. Missing evidence is
 shown as unavailable. Existing live Rich tables remain unchanged.
 
+Each attempt also saves `timings.json` (version 1, `reports` list), including
+measurements logged before failure. Successful results retain the same data in
+`result.timing_reports`. Each report identifies its scope, outcome, frame/image
+counts and stages. The ordinary report prints call count, total seconds, mean,
+first-call, after-first mean, maximum, and amortized milliseconds per synchronized
+frame and camera image. Full-precision structured events take precedence over
+rounded display tables; both historical table formats remain readable.
+
+Workflow phases include automatic Blender preparation, service startup,
+calibration, mocap, numerical validation, Blender scene validation, output
+acceptance and shutdown. Posthoc stages are nested inside mocap; inference and
+annotation overlap load/track. Do not sum these spans. A synchronized frame
+contains one image per camera; amortized per-image cost is not individual-image
+latency. Percentiles are not available from the bounded aggregate collector.
+A killed worker may not emit its final report; partial evidence is retained
+without inventing the missing phase totals.
+
 Read an existing result without processing or changing acceptance markers:
 
 ```powershell

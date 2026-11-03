@@ -147,3 +147,37 @@ def test_comparison_expands_globs_for_windows_shells_and_deduplicates(tmp_path):
     assert read_records([tmp_path / '*.json', path, tmp_path]) == [{'example': 1}]
     with pytest.raises(ValueError, match='No benchmark'):
         read_records([tmp_path / 'missing-*.json'])
+
+
+def test_failed_run_keeps_stage_evidence_and_comparison_excludes_it(tmp_path):
+    from freemocap.tools.machine_benchmarks import render
+    attempt = tmp_path / 'prepared/freemocap_test_data/attempts/one'
+    attempt.mkdir(parents=True)
+    (attempt / 'performance.json').write_text(json.dumps(dict(status='failed', elapsed_s=2)))
+    report = dict(version=1, pipeline_id='one', scope='dataset_worker', outcome='failed',
+                  elapsed_s=1.25, frames=0, images=0, counts={},
+                  stages={'workflow.blender_preparation': dict(count=1, total_s=1.23456789,
+                      mean_ms=1234.56789, first_ms=1234.56789, mean_after_first_ms=None, max_ms=1234.56789)})
+    (attempt / 'processing.log').write_text('INFO Processing performance: ' + json.dumps(report))
+    case = collect_dataset(tmp_path, 'test_data', 'standard', 'rtmpose')
+    assert case['timing_reports'][0]['stages'] == report['stages']
+    assert len(case['timing_log_sha256']) == 64
+    envelope = dict(schema_version=1, machine=dict(label='mac', cpu='CPU', memory_bytes=24*2**30),
+                    conditions='fixture', started_utc='fixture', status='failed', provenance={}, cases=[case])
+    text = render(envelope)
+    assert 'workflow.blender_preparation' in text
+    assert 'Amortized ms/frame' in text
+    assert 'not recorded' in text
+    assert compare([envelope])['groups'][0]['successful_run_statistics'] == {}
+
+
+def test_stage_comparison_keeps_per_call_and_per_frame_distinct():
+    source = record('mac', dict(kind='dataset', dataset='test_data'), 10)
+    source['cases'][0]['timing_reports'] = [dict(scope='posthoc', frames=2, images=6, stages={
+        'inference': dict(count=1, total_s=3, mean_ms=3000, mean_after_first_ms=None,
+                          first_ms=3000, max_ms=3000)})]
+    metrics = compare([source])['groups'][0]['successful_run_statistics']['mac']
+    assert metrics['posthoc.inference.mean_ms']['median'] == 3000
+    assert metrics['posthoc.inference.amortized_ms_per_frame']['median'] == 1500
+    assert metrics['posthoc.inference.amortized_ms_per_image']['median'] == 500
+    assert 'posthoc.inference.mean_after_first_ms' not in metrics

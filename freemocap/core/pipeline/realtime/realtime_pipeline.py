@@ -349,14 +349,11 @@ class RealtimePipeline:
 
             self.aggregation_node.start()
 
-            # Start the centralized GPU inference node before camera nodes so its
-            # session (including any TRT engine compilation) is ready by the time
-            # the first frame request lands. First-run TRT compile can take 1–3
-            # minutes; subsequent runs are cache-hits.
+            # Start the request consumer before camera nodes. Native sessions
+            # are loaded lazily when the first inference request arrives.
             if self.skeleton_inference_node is not None:
                 logger.info(
-                    f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
-                    f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
+                    f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}]"
                 )
                 self.skeleton_inference_node.start()
 

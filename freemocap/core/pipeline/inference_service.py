@@ -65,7 +65,6 @@ class InferenceClient:
     failure: Exception | None = None
     provider_status: tuple = ()
     _cuda_first: bool = False
-    _preparation_checked: bool = False
     _preparation_job: object | None = None
     _preparation_finished: bool = False
     preparation_status: str | None = None
@@ -218,6 +217,8 @@ class InferenceService:
                             statuses = inspect_tracker_providers(client._lease.tracker, client.registration.sessions)
                             with self._condition:
                                 client.provider_status = statuses
+                                if client._cuda_first:
+                                    client.preparation_status = "Using CUDA; automatic TensorRT preparation is disabled"
                     if client._preparation_job is not None and not client._preparation_finished:
                         from skellytracker.core.sessions.onnx_preparation import PreparationPhase
                         job = client._preparation_job
@@ -255,21 +256,6 @@ class InferenceService:
                             pending.result.set_exception(CancelledError("Pipeline stopped during inference"))
                         else:
                             pending.result.set_result(observations)
-                    if client._cuda_first and not client._preparation_checked and not client._closed:
-                        client._preparation_checked = True
-                        try:
-                            from freemocap.core.tracking.execution_providers import advertised_providers
-                            if "trt" not in advertised_providers():
-                                client.preparation_status = "TensorRT is unavailable; using CUDA"
-                            else:
-                                job = pool.prepare_onnx(lease=client._lease)
-                                client._preparation_job = job
-                                if job is not None:
-                                    self._preparation.submit(job)
-                                else:
-                                    client.preparation_status = "This recipe remains on CUDA"
-                        except Exception as error:
-                            client.preparation_status = f"Preparation unavailable; using CUDA: {error}"
         finally:
             with self._condition:
                 self._closed = True

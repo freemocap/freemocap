@@ -2,7 +2,6 @@
 
 import multiprocessing
 from threading import Event
-from time import monotonic
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -21,80 +20,51 @@ from freemocap.core.pipeline.inference_service import (
 from freemocap.core.tracking.execution_providers import ModelProviderStatus
 
 
-@pytest.mark.parametrize("failure", [False, True])
-def test_first_cuda_result_and_later_frames_do_not_wait_for_preparation(failure):
-    entered, release = Event(), Event()
+@pytest.mark.parametrize("trt_available", [False, True])
+@pytest.mark.parametrize("camera_count", [1, 4])
+def test_auto_stays_on_cuda_without_creating_preparation(trt_available, camera_count):
     current = OnnxSession(execution_provider="cuda")
-    candidate = OnnxSession(execution_provider="trt")
-    retired = Mock(spec=OnnxSession)
     created = []
-    jobs = []
 
     def create(config):
-        created.append(config.execution_provider)
+        created.append((config.execution_provider, config.batch_size))
         return current
-
-    def prepare(ticket):
-        def build():
-            entered.set()
-            assert release.wait(5)
-            if failure:
-                raise RuntimeError("native build failed")
-            return candidate
-        job = OnnxPreparationJob(ticket=ticket, build=build, validate=lambda _: None)
-        jobs.append(job)
-        return job
-
-    def adopt(candidate):
-        current.execution_provider = candidate.execution_provider
-        return retired
 
     registry = WorkerRegistry(global_kill_flag=multiprocessing.Value("b", False), worker_mode=WorkerMode.THREAD)
     with patch.object(OnnxSession, "create", side_effect=create), patch.object(
-        OnnxSession, "preparation_job", side_effect=prepare,
-    ), patch.object(OnnxSession, "adopt_prepared_backend", side_effect=adopt), patch(
-        "freemocap.core.tracking.execution_providers.advertised_providers", return_value=["cuda", "trt"],
+        OnnxSession, "preparation_job", side_effect=AssertionError("Auto must not prepare TensorRT"),
+    ) as prepare, patch(
+        "freemocap.core.tracking.execution_providers.advertised_providers",
+        return_value=["cuda", "trt"] if trt_available else ["cuda"],
     ), patch("freemocap.core.tracking.execution_providers.inspect_tracker_providers",
-             side_effect=lambda *_: (ModelProviderStatus("pose", None, (current.execution_provider,)),)):
+             return_value=(ModelProviderStatus("pose", None, ("CUDAExecutionProvider",)),)):
         service = InferenceService(worker_registry=registry)
         service.start()
         try:
             client = service.register(InferenceRegistration(
                 pipeline_id="live", mode=InferenceMode.REALTIME, tracker_config=TrackerConfig(stages=[]),
-                sessions=(SessionRequest(session_type=OnnxSession, config=OnnxSessionConfig(batch_size=1)),),
+                sessions=(SessionRequest(session_type=OnnxSession, config=OnnxSessionConfig(batch_size=camera_count)),),
                 shutdown_flag=multiprocessing.Value("b", False),
             ))
-            def submit(frame):
-                return client.submit(InferenceRequest(frame_number=frame, images={"camera": np.zeros((8, 8, 3), dtype=np.uint8)})).result(timeout=2)
-            assert submit(0)["camera"].frame_number == 0
-            assert entered.wait(2)
-            tracker = client._lease.tracker
-            assert created == ["cuda"]
-            assert submit(1)["camera"].frame_number == 1
-            assert current.execution_provider == "cuda"
-            release.set()
-            deadline = monotonic() + 3
-            while jobs[0].snapshot().phase not in (PreparationPhase.READY, PreparationPhase.FAILED):
-                assert monotonic() < deadline
-                Event().wait(0.005)
-            previous_states = client._states
-            with patch.object(tracker, "process_batch", wraps=tracker.process_batch) as process:
-                assert submit(2)["camera"].frame_number == 2
-                assert process.call_args.kwargs["states"] is previous_states
-            assert client._lease.tracker is tracker
-            assert current.execution_provider == ("cuda" if failure else "trt")
-            status = service.provider_status()[0]
-            assert status["preparation"]["phase"] == "failed" if failure else status["preparation"] == "activated"
+            with patch.object(service._preparation, "submit", side_effect=AssertionError("Auto queued native work")) as submit_job:
+                for frame in range(3):
+                    result = client.submit(InferenceRequest(frame_number=frame, images={
+                        str(camera): np.zeros((8, 8, 3), dtype=np.uint8) for camera in range(camera_count)
+                    })).result(timeout=2)
+                    assert all(item.frame_number == frame for item in result.values())
+                assert created == [("cuda", camera_count)]
+                prepare.assert_not_called()
+                submit_job.assert_not_called()
+                assert client._preparation_job is None
+                assert service.provider_status()[0]["preparation"] == "Using CUDA; automatic TensorRT preparation is disabled"
         finally:
-            release.set()
             service.close()
-    if not failure:
-        retired.close.assert_called_once()
 
 
-def test_explicit_cuda_never_schedules_preparation():
+@pytest.mark.parametrize("provider", ["cuda", "trt"])
+def test_explicit_provider_is_preserved_without_automatic_preparation(provider):
     registry = WorkerRegistry(global_kill_flag=multiprocessing.Value("b", False), worker_mode=WorkerMode.THREAD)
-    with patch.object(OnnxSession, "create", return_value=OnnxSession(execution_provider="cuda")), patch.object(
+    with patch.object(OnnxSession, "create", return_value=OnnxSession(execution_provider=provider)) as create, patch.object(
         OnnxSession, "preparation_job",
     ) as prepare, patch("freemocap.core.tracking.execution_providers.inspect_tracker_providers", return_value=()):
         service = InferenceService(worker_registry=registry)
@@ -102,12 +72,13 @@ def test_explicit_cuda_never_schedules_preparation():
         try:
             client = service.register(InferenceRegistration(
                 pipeline_id="pinned", mode=InferenceMode.REALTIME, tracker_config=TrackerConfig(stages=[]),
-                sessions=(SessionRequest(session_type=OnnxSession, config=OnnxSessionConfig(batch_size=1, execution_provider="cuda")),),
+                sessions=(SessionRequest(session_type=OnnxSession, config=OnnxSessionConfig(batch_size=1, execution_provider=provider)),),
                 shutdown_flag=multiprocessing.Value("b", False),
             ))
             for frame in range(2):
                 client.submit(InferenceRequest(frame_number=frame, images={"camera": np.zeros((8, 8, 3), dtype=np.uint8)})).result(timeout=2)
             prepare.assert_not_called()
+            assert create.call_args.args[0].execution_provider == provider
         finally:
             service.close()
 

@@ -16,7 +16,7 @@ async function mount(page:Page) {
  createRoot(document.getElementById('root')).render(<React.StrictMode><Provider store={store}><StreamingOutputsPanel/></Provider></React.StrictMode>);
  `,resolveDir:path.resolve('.'),loader:'tsx'},bundle:true,write:false,format:'esm',alias:{'@':path.resolve('src')}});
  await page.addScriptTag({content:bundle.outputFiles[0].text,type:'module'});
- await page.getByText('Advanced output settings',{exact:true}).click();
+ await page.getByText('VMC settings',{exact:true}).click();
 }
 test('HTTP controls create idle output, observe emission and stop without a viewer socket',async({page})=>{
  let states:typeof output[]=[];let submitted:unknown;
@@ -31,38 +31,38 @@ test('HTTP controls create idle output, observe emission and stop without a view
  await expect(page.getByLabel('Host',{exact:true})).toHaveValue('127.0.0.1');
  await page.getByLabel('Host',{exact:true}).fill('192.0.2.20');
  await page.getByLabel('Port',{exact:true}).fill('39540');
- await page.getByLabel('Source pipeline ID').fill('source-a');
- await page.getByRole('button',{name:'Start output'}).click();
- await expect(page.getByTestId('output-state')).toHaveText('idle');
+ await page.getByLabel('VMC source pipeline ID').fill('source-a');
+ await page.getByRole('button',{name:'Start VMC'}).click();
+ await expect(page.getByTestId('output-state')).toHaveText('Waiting for source data');
  expect(submitted).toEqual({protocol:'vmc',pipeline_id:'source-a',queue_capacity:8,config:{host:'192.0.2.20',port:39540,model_id:'standard_human'}});
  states=[{...output,status:'running',frames_emitted:17}];
  await page.getByRole('button',{name:'Refresh',exact:true}).click();
- await expect(page.getByTestId('output-state')).toHaveText('running');
+ await expect(page.getByTestId('output-state')).toHaveText('Sending');
  await expect(page.getByText(/Status checked/)).toBeVisible();
  await page.getByRole('button',{name:'Stop VMC'}).click();
- await expect(page.getByTestId('output-state')).toHaveText('stopped');
- await page.getByLabel('Protocol',{exact:true}).selectOption('lsl');
+ await expect(page.getByTestId('output-state')).toHaveCount(0);
  await expect(page.getByText('LSL runtime missing')).toBeVisible();
- await expect(page.getByRole('button',{name:'Start output'})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Start LSL'})).toBeDisabled();
 });
 test('unreachable status stays uncertain; changing server discards previous outputs',async({page})=>{
  let broken=false;
  await page.route('http://localhost:53117/freemocap/streaming/**',route=>broken?route.abort():route.fulfill({json:route.request().url().endsWith('/protocols')?capabilities:[{...output,status:'running'}]}));
  await page.route('http://localhost:53118/freemocap/streaming/**',route=>route.fulfill({json:route.request().url().endsWith('/protocols')?capabilities:[]}));
  await mount(page);
- await expect(page.getByTestId('output-state')).toHaveText('running');broken=true;
+ await expect(page.getByTestId('output-state')).toHaveText('Sending');broken=true;
  await page.getByRole('button',{name:'Refresh',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('Outputs may still be running');
- await expect(page.getByTestId('output-state')).toHaveText('running');
+ await expect(page.getByTestId('output-state')).toHaveText('Sending');
  await expect(page.getByRole('button',{name:'Stop VMC'})).toBeDisabled();
- await page.getByLabel('Source pipeline ID').fill('old-server-source');
+ await page.getByLabel('VMC source pipeline ID').fill('old-server-source');
  await page.evaluate(()=>(window as unknown as {changeServer:()=>void}).changeServer());
  await expect(page.getByTestId('output-state')).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Start output'})).toBeEnabled();
- await expect(page.getByLabel('Source pipeline ID')).toHaveValue('');
+ await expect(page.getByRole('button',{name:'Start VMC'})).toBeEnabled();
+ await expect(page.getByLabel('VMC source pipeline ID')).toHaveValue('');
 });
 
 test('late polling cannot overwrite stop and server errors retain their explanation',async({page})=>{
+ let drain!:()=>void; const drained=new Promise<void>(resolve=>{drain=resolve;});
  let polls=0;let release:(()=>void)|undefined;let stopped=false;let holdNext=false;
  await page.route('http://localhost:53117/freemocap/streaming/**',async route=>{
   const request=route.request();
@@ -70,18 +70,21 @@ test('late polling cannot overwrite stop and server errors retain their explanat
   if(request.method()==='DELETE'){stopped=true;return route.fulfill({json:{...output,status:'stopped'}});}
   if(request.method()==='POST')return route.fulfill({status:409,json:{detail:'Select pipeline_id when multiple sources are active'}});
   polls++;
-  if(holdNext && !release){await new Promise<void>(resolve=>{release=resolve;});await route.fulfill({json:[{...output,status:'running'}]}).catch(()=>{});return;}
+  if(holdNext && !release){await new Promise<void>(resolve=>{release=resolve;});await route.fulfill({json:[{...output,status:'running'}]}).catch(()=>{});drain();return;}
   return route.fulfill({json:[{...output,status:stopped?'stopped':'running'}]});
  });
  await mount(page);
- await expect(page.getByTestId('output-state')).toHaveText('running');
+ await expect(page.getByTestId('output-state')).toHaveText('Sending');
  holdNext=true;
  await page.getByRole('button',{name:'Refresh',exact:true}).click();
  await expect.poll(()=>Boolean(release)).toBe(true);
  await page.getByRole('button',{name:'Stop VMC'}).click();
- await expect(page.getByTestId('output-state')).toHaveText('stopped');const heldPoll= polls;release!();
- await expect.poll(()=>polls).toBeGreaterThan(heldPoll);
- await expect(page.getByTestId('output-state')).toHaveText('stopped');
- await page.getByRole('button',{name:'Start output'}).click();
+ await expect(page.getByTestId('output-state')).toHaveCount(0);
+ const heldPoll=polls;
+ release!(); await drained;
+ await page.waitForLoadState('networkidle');
+ expect(polls).toBe(heldPoll); // Status refreshes are explicit; there is no timer polling.
+ await expect(page.getByTestId('output-state')).toHaveCount(0);
+ await page.getByRole('button',{name:'Start VMC'}).click();
  await expect(page.getByRole('alert')).toContainText('Select pipeline_id when multiple sources are active');
 });

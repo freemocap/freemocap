@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from skellycam.core.types.type_overloads import CameraIdString
+from freemocap.core.pipeline.dataflow.processing_plan import ProcessingPlan
 
 
 class RunTimingSnapshot(BaseModel):
@@ -21,6 +22,12 @@ class OperationProgressSnapshot(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", allow_inf_nan=False)
     operation_id: str = Field(min_length=1)
     label: str = Field(min_length=1)
+    stage: str | None = None
+    effects: tuple[Literal["read_record", "read_live", "write_disk", "display"], ...] = ()
+    dependencies: tuple[str, ...] = ()
+    waiting_for: tuple[str, ...] = ()
+    files_read: tuple[str, ...] = ()
+    files_written: tuple[str, ...] = ()
     status: Literal["waiting", "running", "complete", "failed", "cancelled"]
     progress_fraction: float | None = Field(default=None, ge=0, le=1)
     detail: str = ""
@@ -43,6 +50,7 @@ class PipelineProgressMessage:
     # None means this producer has no operation update, not "erase prior work".
     operations: tuple[OperationProgressSnapshot, ...] | None = None
     timing: RunTimingSnapshot | None = None
+    plan: ProcessingPlan | None = None
 
 
 @dataclass

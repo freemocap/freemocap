@@ -60,6 +60,8 @@ class PosthocPipelineManager(PipelineManagerABC):
             raise
         self.registry.register(task_id=pipeline.id, task_type=str(pipeline.pipeline_type), recording=recording)
         self.pipelines[pipeline.id] = pipeline
+        if isinstance(pipeline, MocapPipeline):
+            self.registry.update(task_id=pipeline.id, messages=pipeline.get_progress_messages())
 
     def _start_ready(self, *, pipeline: MocapPipeline | CalibrationPipeline) -> None:
         if not self.access.ready(task_id=pipeline.id):
@@ -159,11 +161,11 @@ class PosthocPipelineManager(PipelineManagerABC):
         with self.access.read(path=structure.full_path, cancel=lambda: None):
             if structure.data_parquet_path.exists():
                 read_metadata(path=structure.data_parquet_path)
-        pipeline = MocapPipeline.create(
-            pipeline_id=str(uuid.uuid4()), recording_info=recording_info,
-            config=mocap_config, worker_registry=self.worker_registry,
-            global_kill_flag=self.global_kill_flag,
-        )
+            pipeline = MocapPipeline.create(
+                pipeline_id=str(uuid.uuid4()), recording_info=recording_info,
+                config=mocap_config, worker_registry=self.worker_registry,
+                global_kill_flag=self.global_kill_flag,
+            )
         with self.lock:
             self._evict_dead()
             self._register(pipeline=pipeline)

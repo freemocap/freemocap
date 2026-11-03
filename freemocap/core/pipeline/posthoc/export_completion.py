@@ -47,6 +47,11 @@ def complete_recording_exports(request, *, worker_count=2):
             request.report_export(task_id, label, 'failed', detail)
             return None, detail, False
 
+    def record_files(node, paths):
+        reporter = getattr(request, 'operation_progress', None)
+        if reporter is not None:
+            reporter.artifacts(request, node, reads=(structure.data_parquet_path,), writes=paths)
+
     def channel_export():
         from freemocap.core.recording.exports.requests import ExportRequest
         from freemocap.core.recording.exports.wide_csv import export_recording
@@ -55,12 +60,14 @@ def complete_recording_exports(request, *, worker_count=2):
                 run_id=config.base_run_id, expected_revision=revision), cancelled=cancelled,
             progress=lambda done, total, message: request.report_export('channel_exports',
                 labels['channel_exports'], 'running', message, done, total))
+        record_files('channel_exports', (*result.files, result.manifest_path))
         return f'Files saved and validated in {result.manifest_path.parent}'
 
     def tall_export():
         from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv
         result = export_tall_csv(structure=structure,
             request=TallCsvRequest(run_id=config.base_run_id, expected_revision=revision), cancelled=cancelled)
+        record_files('tall_csv', (*result.files, result.manifest_path))
         return f'Tall CSV files saved in {result.manifest_path.parent}'
 
     def blender_export():
@@ -72,6 +79,7 @@ def complete_recording_exports(request, *, worker_count=2):
             run_id=config.base_run_id, blender_export_config=config.blender_export.model_dump(),
             cancelled=cancelled, progress=lambda message: request.report_export(
                 'blender', labels['blender'], 'running', message))
+        record_files('blender', (output,))
         return f'Blender scene saved to {output}'
 
     def file_exports():

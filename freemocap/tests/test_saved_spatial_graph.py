@@ -132,7 +132,8 @@ class SavedSpatialGraphTests(unittest.TestCase):
         from unittest.mock import Mock
         from freemocap.core.pipeline.dataflow.application_pipeline import run_application_graph
         self.prepare('filtering')
-        request = SimpleNamespace(
+        from freemocap.core.pipeline.posthoc.operation_progress import OperationProgressReporter
+        request = SimpleNamespace(operation_progress=OperationProgressReporter(),
             config=PosthocMocapPipelineConfig(start_stage='scale_fit', stop_stage='scale_fit', calibration_toml_path=None),
             recording=SimpleNamespace(full_recording_path=self.root),
             ipc=SimpleNamespace(should_continue=True), report=Mock(), report_operation=Mock(), performance=Mock())

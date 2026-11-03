@@ -4,6 +4,7 @@ Configured inputs are required. Contracts describe semantics, not Python memory
 layout; adapters remain responsible for validating actual payloads.
 """
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,6 +46,8 @@ class GraphNode(GraphDefinitionModel):
     id: str = Field(min_length=1)
     operation: str = Field(min_length=1)
     execution_resource: str = "compute"
+    stage: str | None = None
+    effects: tuple[Literal["read_record", "read_live", "write_disk", "display"], ...] = ()
     inputs: tuple[GraphPort, ...] = ()
     outputs: tuple[GraphPort, ...] = ()
 

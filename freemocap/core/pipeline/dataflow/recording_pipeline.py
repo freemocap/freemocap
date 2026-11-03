@@ -14,10 +14,8 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellyforge.core.biomechanics.alignment_definition import AlignmentDefinition
 
-from freemocap.core.pipeline.dataflow.definition import (
-    CompiledGraph, DataContract, DataGranularity, GraphConnection, GraphDefinition,
-    GraphNode, GraphPort, InputBindingRule, PortReference, compile_graph,
-)
+from freemocap.core.pipeline.dataflow.definition import CompiledGraph
+from freemocap.core.pipeline.dataflow.recording_definition import recording_definition
 from freemocap.core.pipeline.dataflow.recording_executor import RecordingExecutionResult, execute_recording_graph
 from freemocap.core.pipeline.dataflow.annotation_workers import CameraAnnotationJob, RecordingAnnotationWorkers, write_camera_annotation
 from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection, triangulate_completed_observations, camera_assignment_metadata
@@ -56,38 +54,13 @@ from freemocap.core.types.channel_kind import ChannelKind
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 
-RECORDING_INPUT_CONTRACTS = {
-    "load_and_track": {},
-    "load_saved_observations": {},
-    "observation_request": {"observations": "camera_observations"},
-    "save_observations": {"request": "observation_recording_request"},
-    "match_and_triangulate": {"observations": "camera_observations"},
-    "filter_trajectories": {"science": "raw_recording_geometry"},
-    "align_reference": {"science": "raw_recording_geometry", "filtered": "filtered_trajectories"},
-    "reconstruction_input": {"aligned": "aligned_recording", "filtered": "filtered_trajectories"},
-    "fit_model_dimensions": {"request": "reconstruction_input"},
-    "reconstruct_skeletons": {"request": "reconstruction_input", "fits": "recording_model_fits"},
-    "spatial_request": {"request": "observation_recording_request", "science": "raw_recording_geometry",
-                        "filtered": "filtered_trajectories", "aligned": "aligned_recording"},
-    "save_spatial": {"request": "spatial_recording_request", "saved_observations": "saved_observations"},
-    "save_recording": {"request": "spatial_recording_request", "aligned": "aligned_recording",
-                       "reconstructions": "reconstructed_models", "saved_spatial": "saved_spatial"},
-    "export_recording": {"saved": "saved_recording"},
-    "export_tall_csv": {"saved": "saved_recording"},
-    "annotate_camera": {"observations": "camera_observations"},
-    "stage_result_request": {"request": "spatial_recording_request"},
-    "filtered_request": {"request": "spatial_recording_request", "filtered": "filtered_trajectories"},
-    "save_stage_result": {"request": "spatial_recording_request", "saved_observations": "saved_observations"},
-    "save_model_fits": {"saved": "saved_spatial", "fits": "recording_model_fits"},
-}
-
-
 def build_recording_pipeline(*, sources: RecordingVideoSources, recording: RecordingInfo,
     config: PosthocMocapPipelineConfig, run_session: RunSaveSession | None = None, execution_provider: str = "cpu", annotate: bool = False,
     shutdown_flag=None, performance: PerformanceReport | None = None,
     observation_loader: Callable[[], ObservationCollection] | None = None,
     annotation_service: RecordingAnnotationWorkers | None = None,
     progress: Callable[[str, str, float], None] | None = None,
+    artifacts: Callable | None = None,
 ) -> tuple[CompiledGraph, dict[str, Callable[[dict[str, object]], dict[str, object]]]]:
     """Build the same definition that execution consumes; callers may serialize it.
 
@@ -139,25 +112,14 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     timing = RecordingGroupTiming(cameras={source.camera_id: source.camera_timing for source in sources.camera_sources},
                                   synchronized=sources.group_timing)
     videos = {source.camera_id: source.video_metadata for source in sources.camera_sources}
-    nodes, edges, handlers = [], [], {}
+    handlers = {}
     execution_id = str(uuid4())
 
     def check_cancelled():
         if shutdown_flag.value:
             raise CancelledError("Recording graph cancelled")
 
-    def operation(name, kind, dependencies, function, resource="compute"):
-        def port(port_name, contract_kind):
-            return GraphPort(name=port_name, contract=DataContract(kind=contract_kind, data_granularity=DataGranularity.RECORDING))
-        required = RECORDING_INPUT_CONTRACTS["annotate_camera" if name.startswith("annotate_camera_") else name]
-        if set(required) != set(dependencies):
-            raise ValueError(f"Operation input bindings differ from its contract: {name}")
-        nodes.append(GraphNode(id=name, operation=name, execution_resource=resource,
-            inputs=tuple(port(input_name, required[input_name]) for input_name in dependencies),
-            outputs=(port("result", kind),)))
-        edges.extend(GraphConnection(source=PortReference(node=parent, port="result"),
-            target=PortReference(node=name, port=input_name), binding=InputBindingRule.SAME_KEY)
-            for input_name, parent in dependencies.items())
+    def operation(name, function):
         def invoke(inputs):
             check_cancelled()
             if progress is not None:
@@ -172,6 +134,16 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 if progress is not None:
                     progress(name, "failed", 0.0)
                 raise
+            if artifacts is not None:
+                writes = ()
+                if name in ('save_observations', 'save_spatial', 'save_recording', 'save_stage_result', 'save_model_fits'):
+                    if name != 'save_observations' or config.start_stage == 'observations':
+                        writes = (structure.data_parquet_path,)
+                elif isinstance(result, Path):
+                    writes = (result,)
+                elif hasattr(result, 'files') and hasattr(result, 'manifest_path'):
+                    writes = (*result.files, result.manifest_path)
+                artifacts(name, writes)
             if progress is not None:
                 progress(name, "finished", 1.0)
             return {"result": result}
@@ -204,7 +176,7 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
         return collection
 
     observation_node = 'load_and_track' if config.start_stage == 'observations' else 'load_saved_observations'
-    operation(observation_node, "camera_observations", {}, load_and_track)
+    operation(observation_node, load_and_track)
 
     def triangulate(inputs):
         collection = inputs["observations"]
@@ -212,8 +184,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             calibration_cameras=tuple(calibration.cameras), matching_config=config.camera_matching,
             triangulation_config=config.triangulation_config, cancelled=lambda: bool(shutdown_flag.value))
 
-    operation("match_and_triangulate", "raw_recording_geometry", {"observations": observation_node}, triangulate)
-    operation("filter_trajectories", "filtered_trajectories", {"science": "match_and_triangulate"}, lambda inputs:
+    operation("match_and_triangulate", triangulate)
+    operation("filter_trajectories", lambda inputs:
         prepare_recording_points(points=inputs["science"].triangulation.reconstruction.points_3d,
             timestamps_s=np.asarray(timing.synchronized.timestamps_s), config=config.filter_config))
 
@@ -227,16 +199,14 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             preserve_reference_frame=config.body_alignment.preserve_reference_frame(calibration_aligned=calibration.aligned),
             config=config.body_alignment))
 
-    operation("align_reference", "aligned_recording", {"science": "match_and_triangulate", "filtered": "filter_trajectories"}, align)
-    operation("reconstruction_input", "reconstruction_input", {"aligned": "align_reference", "filtered": "filter_trajectories"}, lambda inputs:
+    operation("align_reference", align)
+    operation("reconstruction_input", lambda inputs:
         RecordingReconstructionInput(bundles=bundles,
             keypoint_names=inputs["aligned"].triangulation.keypoint_names, keypoints_3d=inputs["aligned"].filtered_points,
             measured_support=inputs["filtered"].report.gap_filling.measured_support(inputs["aligned"].filtered_points),
             compute_center_of_mass=True, timing=PosthocTimingReport()))
-    operation("fit_model_dimensions", "recording_model_fits", {"request": "reconstruction_input"},
-              lambda inputs: fit_skeletons_for_recording(inputs["request"]))
-    operation("reconstruct_skeletons", "reconstructed_models", {"request": "reconstruction_input", "fits": "fit_model_dimensions"},
-              lambda inputs: reconstruct_skeletons_with_fits(request=inputs["request"], fits=inputs["fits"]))
+    operation("fit_model_dimensions", lambda inputs: fit_skeletons_for_recording(inputs["request"]))
+    operation("reconstruct_skeletons", lambda inputs: reconstruct_skeletons_with_fits(request=inputs["request"], fits=inputs["fits"]))
 
     def observation_request(inputs):
         collection = inputs["observations"]
@@ -260,15 +230,14 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             resolved_timing=timing, reuse_observations=config.start_stage != 'observations',
             provenance_context=ProvenanceContext.create(), provenance_defaults=PosthocMocapPipelineConfig().model_dump(mode="json"))
 
-    operation("observation_request", "observation_recording_request", {"observations": observation_node}, observation_request)
+    operation("observation_request", observation_request)
     def save_observations(inputs):
         if config.start_stage == 'observations':
             return publish_posthoc_observations(inputs['request'])
         from freemocap.core.recording.parquet_storage.parquet_reader import read_metadata
         structure = RecordingStructure(base_directory=sources.recording_path.parent, recording_name=sources.recording_path.name)
         return read_metadata(path=structure.data_parquet_path)
-    operation("save_observations", "saved_observations", {"request": "observation_request"},
-              save_observations, resource="recording_io")
+    operation("save_observations", save_observations)
 
     def spatial_request(inputs):
         request, science, filtered, aligned = (inputs[name] for name in ("request", "science", "filtered", "aligned"))
@@ -288,10 +257,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 point_names=aligned.triangulation.diagnostic_point_names, values=aligned.triangulation.reconstruction.diagnostics),
         )
 
-    operation("spatial_request", "spatial_recording_request", {"request": "observation_request",
-        "science": "match_and_triangulate", "filtered": "filter_trajectories", "aligned": "align_reference"}, spatial_request)
-    operation("save_spatial", "saved_spatial", {"request": "spatial_request", "saved_observations": "save_observations"},
-              lambda inputs: publish_posthoc_observations(inputs["request"]), resource="recording_io")
+    operation("spatial_request", spatial_request)
+    operation("save_spatial", lambda inputs: publish_posthoc_observations(inputs["request"]))
 
     def save_recording(inputs):
         request, aligned, reconstructions = (inputs[name] for name in ("request", "aligned", "reconstructions"))
@@ -304,13 +271,14 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
         check_cancelled()
         saved = publish_posthoc_observations(publication)
         from freemocap.core.tasks.calibration.shared.calibration_exports import save_aligned_calibration
-        save_aligned_calibration(source_path=calibration_path, source=calibration,
+        aligned_file = save_aligned_calibration(source_path=calibration_path, source=calibration,
             recording_path=sources.recording_path, transformations=aligned.transformations,
             recording_id=recording.recording_name, run_id=run_session.target_run_id)
+        if artifacts is not None and aligned_file is not None:
+            artifacts("save_recording", (aligned_file,))
         return saved
 
-    operation("save_recording", "saved_recording", {"request": "spatial_request", "saved_spatial": "save_spatial",
-        "aligned": "align_reference", "reconstructions": "reconstruct_skeletons"}, save_recording, resource="recording_io")
+    operation("save_recording", save_recording)
 
     if config.export_options.formats:
         def export_science(_):
@@ -319,13 +287,13 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
             return export_recording(structure=RecordingStructure(base_directory=Path(recording.recording_directory), recording_name=recording.recording_name),
                 request=ExportRequest(**config.export_options.model_dump(), run_id=run_session.target_run_id),
                 cancelled=lambda: bool(shutdown_flag.value))
-        operation("export_recording", "export_manifest", {"saved": "save_recording"}, export_science)
+        operation("export_recording", export_science)
     if config.export_tall_csv:
         def export_tall(_):
             from freemocap.core.recording.exports.tall_csv import TallCsvRequest, export_tall_csv
             return export_tall_csv(structure=RecordingStructure(base_directory=Path(recording.recording_directory), recording_name=recording.recording_name),
                 request=TallCsvRequest(run_id=run_session.target_run_id), cancelled=lambda: bool(shutdown_flag.value))
-        operation("export_tall_csv", "tall_csv_manifest", {"saved": "save_recording"}, export_tall)
+        operation("export_tall_csv", export_tall)
 
     if annotate:
         for index, source in enumerate(sources.camera_sources):
@@ -340,10 +308,10 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 if annotation_service is not None:
                     return annotation_service.run_job(job, cancelled=lambda: bool(shutdown_flag.value))
                 return write_camera_annotation(job, cancelled=lambda: bool(shutdown_flag.value), performance=performance)
-            operation(f"annotate_camera_{index}", "annotated_video", {"observations": observation_node}, annotate_camera, resource="annotation")
+            operation(f"annotate_camera_{index}", annotate_camera)
     if config.stop_stage in ('observations', 'triangulation', 'filtering', 'scale_fit'):
         if config.stop_stage == 'observations':
-            terminal = 'save_observations'
+            pass
         elif config.stop_stage == 'scale_fit':
             def save_model_fits(inputs):
                 from freemocap.core.pipeline.dataflow.saved_spatial_source import load_saved_spatial_source
@@ -354,9 +322,8 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                     raise ValueError('Recording changed after saving spatial results')
                 return save_numerical_checkpoint(source=source, config=save_config, numerical=source.numerical,
                     filtering=source.filtering, fits=inputs['fits'], results={}, run_session=run_session, cancelled=lambda: bool(shutdown_flag.value))
-            operation('save_model_fits', 'saved_recording', {'saved': 'save_spatial', 'fits': 'fit_model_dimensions'},
-                      save_model_fits, resource='recording_io')
-            terminal = 'save_model_fits'
+            operation('save_model_fits', save_model_fits)
+
         else:
             def stage_result_request(inputs):
                 request = inputs['request']
@@ -367,26 +334,12 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                         series for series in request.spatial_series
                         if series.definition.kind == ChannelKind.RAW_KEYPOINTS_3D))
                 return request
-            operation('stage_result_request', 'spatial_recording_request',
-                {'request': 'spatial_request'}, stage_result_request)
-            operation('save_stage_result', 'saved_recording',
-                {'request': 'stage_result_request', 'saved_observations': 'save_observations'},
-                lambda inputs: publish_posthoc_observations(inputs['request']), resource='recording_io')
-            terminal = 'save_stage_result'
-        # Compile the selected sinks and their dependencies, not a full graph with
-        # handlers that run and discard unchecked work. Annotation stays independent.
-        selected = {terminal, *(node.id for node in nodes if node.id.startswith('annotate_camera_'))}
-        pending = list(selected)
-        while pending:
-            target = pending.pop()
-            for edge in edges:
-                if edge.target.node == target and edge.source.node not in selected:
-                    selected.add(edge.source.node)
-                    pending.append(edge.source.node)
-        nodes = [node for node in nodes if node.id in selected]
-        edges = [edge for edge in edges if edge.source.node in selected and edge.target.node in selected]
-        handlers = {name: handler for name, handler in handlers.items() if name in selected}
-    return compile_graph(GraphDefinition(nodes=tuple(nodes), edges=tuple(edges))), handlers
+            operation('stage_result_request', stage_result_request)
+            operation('save_stage_result', lambda inputs: publish_posthoc_observations(inputs['request']))
+
+    graph = recording_definition(config=config, camera_count=len(sources.camera_sources), annotate=annotate)
+    return graph, {node.id: handlers[node.id] for node in graph.definition.nodes}
+
 
 
 def run_recording_pipeline(**kwargs) -> RecordingExecutionResult:
@@ -403,6 +356,9 @@ def _execute_recording_pipeline(**kwargs) -> RecordingExecutionResult:
     with RecordingAnnotationWorkers() if kwargs.get("annotate") and kwargs.get("annotation_service") is None else nullcontext(None) as service:
         if service is not None:
             kwargs["annotation_service"] = service
+        graph_ready = kwargs.pop("graph_ready", None)
         graph, handlers = build_recording_pipeline(**kwargs)
+        if graph_ready is not None:
+            graph_ready(graph)
         flag = kwargs.get("shutdown_flag")
         return execute_recording_graph(graph=graph, handlers=handlers, cancelled=lambda: bool(flag.value) if flag is not None else False)

@@ -3421,6 +3421,74 @@
           }
         }
       }
+    },
+    "/freemocap/recordings/{recording_id}/processing/plan": {
+      "post": {
+        "tags": [
+          "Recording processing"
+        ],
+        "summary": "Preview Mocap Plan",
+        "operationId": "preview_mocap_plan_freemocap_recordings__recording_id__processing_plan_post",
+        "parameters": [
+          {
+            "name": "recording_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Recording Id"
+            }
+          },
+          {
+            "name": "recording_parent_directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recording Parent Directory"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MocapProcessingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3704,6 +3772,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/RunTimingSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingPlan"
               },
               {
                 "type": "null"
@@ -6971,6 +7049,63 @@
             "minLength": 1,
             "title": "Label"
           },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "effects": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "read_record",
+                "read_live",
+                "write_disk",
+                "display"
+              ]
+            },
+            "type": "array",
+            "title": "Effects",
+            "default": []
+          },
+          "dependencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dependencies",
+            "default": []
+          },
+          "waiting_for": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Waiting For",
+            "default": []
+          },
+          "files_read": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files Read",
+            "default": []
+          },
+          "files_written": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files Written",
+            "default": []
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -9874,6 +10009,16 @@
               }
             ]
           },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -10221,6 +10366,302 @@
           "thread"
         ],
         "title": "WorkerMode"
+      },
+      "ProcessingPlan": {
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "title": "Plan Id"
+          },
+          "recording_path": {
+            "type": "string",
+            "title": "Recording Path"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/GraphDefinition"
+          },
+          "topological_order": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topological Order"
+          },
+          "configuration": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Configuration"
+          },
+          "read_paths": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Read Paths"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plan_id",
+          "recording_path",
+          "graph",
+          "topological_order",
+          "configuration"
+        ],
+        "title": "ProcessingPlan"
+      },
+      "GraphDefinition": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphConnection"
+            },
+            "type": "array",
+            "title": "Edges"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "GraphDefinition"
+      },
+      "GraphConnection": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/PortReference"
+          },
+          "target": {
+            "$ref": "#/components/schemas/PortReference"
+          },
+          "binding": {
+            "$ref": "#/components/schemas/InputBindingRule"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "binding"
+        ],
+        "title": "GraphConnection"
+      },
+      "InputBindingRule": {
+        "type": "string",
+        "enum": [
+          "same_key",
+          "broadcast",
+          "all_cameras",
+          "collect"
+        ],
+        "title": "InputBindingRule"
+      },
+      "PortReference": {
+        "properties": {
+          "node": {
+            "type": "string",
+            "title": "Node"
+          },
+          "port": {
+            "type": "string",
+            "title": "Port"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "node",
+          "port"
+        ],
+        "title": "PortReference"
+      },
+      "GraphNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Operation"
+          },
+          "execution_resource": {
+            "type": "string",
+            "title": "Execution Resource",
+            "default": "compute"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "effects": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "read_record",
+                "read_live",
+                "write_disk",
+                "display"
+              ]
+            },
+            "type": "array",
+            "title": "Effects",
+            "default": []
+          },
+          "inputs": {
+            "items": {
+              "$ref": "#/components/schemas/GraphPort"
+            },
+            "type": "array",
+            "title": "Inputs",
+            "default": []
+          },
+          "outputs": {
+            "items": {
+              "$ref": "#/components/schemas/GraphPort"
+            },
+            "type": "array",
+            "title": "Outputs",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "operation"
+        ],
+        "title": "GraphNode"
+      },
+      "GraphPort": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "contract": {
+            "$ref": "#/components/schemas/DataContract"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "contract"
+        ],
+        "title": "GraphPort"
+      },
+      "DataContract": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Kind"
+          },
+          "data_granularity": {
+            "$ref": "#/components/schemas/DataGranularity"
+          },
+          "namespace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Namespace"
+          },
+          "reference_frame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Frame"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "data_granularity"
+        ],
+        "title": "DataContract"
+      },
+      "DataGranularity": {
+        "type": "string",
+        "enum": [
+          "recording",
+          "camera_frame",
+          "group_frame"
+        ],
+        "title": "DataGranularity"
+      },
+      "PlanPreview": {
+        "properties": {
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PlanPreview"
       }
     }
   },

@@ -8,7 +8,11 @@ import numpy as np
 
 
 def main() -> None:
-    folder = Path(__file__).parent
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", type=Path, default=Path(__file__).parents[3] / ".test-artifacts" / "decoder-fixtures")
+    folder = parser.parse_args().output_dir
+    folder.mkdir(parents=True, exist_ok=True)
     path = folder / "numbered-bframes.mp4"
     with av.open(str(path), mode="w") as output:
         stream = output.add_stream("libx264", rate=30)

@@ -934,6 +934,18 @@
         "missing converter and unsupported model errors remain explicit",
         "CPU contract tests cover inspection and import job state"
       ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/recordings/{recording_id}/processing/plan",
+      "operation_id": "preview_mocap_plan_freemocap_recordings__recording_id__processing_plan_post",
+      "handler": "preview_mocap_plan",
+      "source": "freemocap/api/http/recordings/processing_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "Read-only graph preview does not allocate runs, load models or start workers",
+        "Plan nodes and ports are the same declarations used by execution"
+      ]
     }
   ],
   "nonpublic_registered": [

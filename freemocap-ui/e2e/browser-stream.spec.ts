@@ -12,7 +12,7 @@ test('PyAV fragments play and restart in Electron without converted files', asyn
     const directory = process.env.PLAYBACK_VIDEO_DIRECTORY;
     const videos = directory
         ? (await readdir(directory)).filter(name => name.endsWith('.mp4')).map(name => join(directory, name))
-        : [resolve('e2e/fixtures/numbered-bframes.mp4')];
+        : [resolve('../.test-artifacts/decoder-fixtures/numbered-bframes.mp4')];
     expect(videos.length).toBeGreaterThan(0);
     const skellycam = resolve('..');
     const backend = spawn(process.env.FREEMOCAP_TEST_PYTHON ?? join(skellycam, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python'),

@@ -12,7 +12,7 @@ for (const compatibility of [false, true]) test(`app playback plays, seeks, swit
     for (const annotated of [false, true]) {
         const folder = join(temporary, 'test', annotated ? 'annotated_videos' : 'synchronized_videos');
         await mkdir(folder, {recursive: true});
-        for (let index = 0; index < 2; index++) await copyFile('e2e/fixtures/numbered-bframes.mp4', join(folder, `camera${index}${annotated ? '_annotated' : ''}.mp4`));
+        for (let index = 0; index < 2; index++) await copyFile('../.test-artifacts/decoder-fixtures/numbered-bframes.mp4', join(folder, `camera${index}${annotated ? '_annotated' : ''}.mp4`));
     }
     const portFile = join(temporary, 'port.txt');
     const backend = spawn(process.env.FREEMOCAP_TEST_PYTHON ?? resolve(process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python'),

@@ -93,11 +93,15 @@ class MocapPipeline(PipelineABC):
         cls, *, pipeline_id: str, recording_info: RecordingInfo, config: PosthocMocapPipelineConfig,
         worker_registry: WorkerRegistry, global_kill_flag: Synchronized,
     ) -> "MocapPipeline":
+        from pathlib import Path
+        from freemocap.core.pipeline.dataflow.processing_plan import build_processing_plan
+        plan = build_processing_plan(recording_path=Path(recording_info.full_recording_path), config=config)
         ipc = PipelineIPC.create(global_kill_flag=global_kill_flag,
             heartbeat_timestamp=worker_registry.heartbeat_timestamp, pipeline_id=pipeline_id)
         progress_queue: Queue[PipelineProgressMessage] = Queue()
         request = MocapWorkerRequest(pipeline_id=pipeline_id, recording=recording_info,
             config=config, ipc=ipc, progress_queue=progress_queue)
+        request.operation_progress.initialize(request, plan)
         try:
             worker = worker_registry.create_worker(
                 shutdown_flag=ipc.pipeline_shutdown_flag, worker_mode=WorkerMode.THREAD,
@@ -112,6 +116,7 @@ class MocapPipeline(PipelineABC):
         pipeline._latest[pipeline_id] = AggregatorNodeProgressMessage(
             pipeline_id=pipeline_id, pipeline_type=str(PosthocPipelineType.MOCAP),
             phase=AggregatorPhase.SETTING_UP, detail="Mocap pipeline queued",
+            plan=plan, operations=tuple(request.operation_progress.operations.values()),
             recording_name=recording_info.recording_name,
             recording_path=str(recording_info.full_recording_path),
         )
@@ -148,6 +153,7 @@ class MocapPipeline(PipelineABC):
                 recording_path=str(self.recording_info.full_recording_path),
                 operations=self._latest[self.id].operations if self.id in self._latest else None,
                 timing=self._latest[self.id].timing if self.id in self._latest else None,
+                plan=self._latest[self.id].plan if self.id in self._latest else None,
             )
             self.ipc.shutdown_pipeline()
         return list(self._latest.values())

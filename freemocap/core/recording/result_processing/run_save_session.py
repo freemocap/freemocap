@@ -22,11 +22,7 @@ class RunSaveSession:
     def resolve(cls, *, structure, source_run_id: int, mode: Literal['overwrite', 'new_run']):
         if mode not in ('overwrite', 'new_run'):
             raise ValueError('Choose overwrite or new_run')
-        metadata = read_metadata(path=structure.data_parquet_path) if structure.data_parquet_path.exists() else None
-        if metadata is not None and source_run_id not in metadata.runs:
-            raise ValueError(f'Saved run {source_run_id} does not exist')
-        if metadata is None and source_run_id != 0:
-            raise ValueError('A recording without saved results starts at Run 0')
+        metadata = cls.inspect_source(structure=structure, source_run_id=source_run_id)
         target = max(metadata.runs) + 1 if metadata is not None and mode == 'new_run' else source_run_id
         if metadata is not None and mode == 'new_run':
             # Atomic directory creation reserves the ID even if annotation succeeds
@@ -43,6 +39,16 @@ class RunSaveSession:
                 except FileExistsError:
                     target += 1
         return cls(source_run_id, target, metadata)
+
+    @staticmethod
+    def inspect_source(*, structure, source_run_id: int) -> RecordingMetadata | None:
+        """Validate the selected source without reserving an output directory."""
+        metadata = read_metadata(path=structure.data_parquet_path) if structure.data_parquet_path.exists() else None
+        if metadata is not None and source_run_id not in metadata.runs:
+            raise ValueError(f'Saved run {source_run_id} does not exist')
+        if metadata is None and source_run_id != 0:
+            raise ValueError('A recording without saved results starts at Run 0')
+        return metadata
 
     @property
     def base_run_id(self) -> int:

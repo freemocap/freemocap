@@ -91,4 +91,15 @@ def run_stages(recording_id: str, run_id: int, recording_parent_directory: str |
     raise HTTPException(404, f'Unknown recording run: {run_id}')
 
 
+
+
+from freemocap.core.pipeline.dataflow.processing_plan import PlanPreview, preview_processing_plan
+
+
+@stage_reads.post('/{recording_id}/processing/plan', tags=['Recording processing'])
+def preview_mocap_plan(recording_id: str, request: MocapProcessingRequest,
+                       recording_parent_directory: str | None = None) -> PlanPreview:
+    structure = recording_location(recording_id, recording_parent_directory)
+    return preview_processing_plan(recording_path=structure.full_path, config=request.config)
+
 processing_router.include_router(stage_reads)

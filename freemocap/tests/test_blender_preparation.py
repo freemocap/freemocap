@@ -69,7 +69,8 @@ def test_catalog_refuses_wrong_download_before_install(tmp_path, monkeypatch):
         package_catalog.resolve_package(report(), 'c'*64)
 
 
-def test_export_and_open_share_managed_profile(tmp_path, monkeypatch):
+@pytest.mark.parametrize('inventory', ['legacy', 'complete', 'missing'])
+def test_export_and_open_share_managed_profile(tmp_path, monkeypatch, inventory):
     import importlib
     module = importlib.import_module('freemocap.core.blender.export_to_blender')
     blender = tmp_path/'blender.exe'; blender.touch()
@@ -80,11 +81,29 @@ def test_export_and_open_share_managed_profile(tmp_path, monkeypatch):
         assert profile == tmp_path/'managed'
         assert request['package'] == 'managed.package'
         Path(request['output']).write_bytes(b'blend')
-        return dict(output=request['output'])
+        if inventory == 'legacy':
+            return dict(output=request['output'])
+        files = [request['output']]
+        for name in ('scene.fbx', 'scene.bvh', 'scene.bvh.metadata.json'):
+            file = tmp_path/name
+            if inventory != 'missing': file.write_bytes(b'export')
+            files.append(str(file))
+        return dict(output=request['output'], files=files)
     monkeypatch.setattr(module, 'run_blender', export)
     launch = Mock()
     monkeypatch.setattr(module.subprocess, 'Popen', launch)
-    export_to_blender(tmp_path, blender_exe_path=blender, run_id=0)
+    reported = Mock()
+    if inventory == 'missing':
+        with pytest.raises(RuntimeError, match='unconfirmed artifact inventory'):
+            export_to_blender(tmp_path, blender_exe_path=blender, run_id=0, artifact_report=reported)
+        reported.assert_not_called()
+        launch.assert_not_called()
+        return
+    output = export_to_blender(tmp_path, blender_exe_path=blender, run_id=0, artifact_report=reported)
+    files, = reported.call_args.args
+    assert output in files
+    assert len(files) == (1 if inventory == 'legacy' else 4)
+    assert all(Path(file).is_file() for file in files)
     assert launch.call_args.kwargs['env']['BLENDER_USER_CONFIG'] == str(profile/'config')
 
 

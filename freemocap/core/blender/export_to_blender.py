@@ -13,7 +13,7 @@ ROUTES = ('auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints')
 
 def export_to_blender(recording_folder_path, detector=None, blend_file_path=None,
                       blender_exe_path=None, open_file_on_completion=True, *, route='auto',
-                      package=None, trajectory_channel='LANDMARKS_3D', run_id=None, sensor_group=None, blender_export_config=None, development_build_hash=None, progress=None, cancelled=None):
+                      package=None, trajectory_channel='LANDMARKS_3D', run_id=None, sensor_group=None, blender_export_config=None, development_build_hash=None, progress=None, cancelled=None, artifact_report=None):
     def check_cancelled():
         if cancelled is not None and cancelled():
             raise CancelledError('Blender export cancelled')
@@ -62,6 +62,14 @@ def export_to_blender(recording_folder_path, detector=None, blend_file_path=None
         raise RuntimeError('Parquet changed during Blender export; retry the saved result')
     if result.get('output') != str(output) or not output.is_file() or output.stat().st_size == 0:
         raise RuntimeError('Blender did not confirm a nonempty output: ' + str(output))
+    files = result.get('files', [str(output)])
+    if not isinstance(files, list) or not all(isinstance(file, str) for file in files):
+        raise RuntimeError('Blender returned an invalid artifact inventory')
+    paths = tuple(dict.fromkeys(str(Path(file).resolve()) for file in files))
+    if str(output) not in paths or any(not Path(file).is_file() or not Path(file).stat().st_size for file in paths):
+        raise RuntimeError('Blender returned an unconfirmed artifact inventory')
+    if artifact_report is not None:
+        artifact_report(paths)
     check_cancelled()
     if open_file_on_completion:
         if progress:

@@ -131,15 +131,19 @@ def execute(request):
         result = module.validate(request, package)
         return dict(result, package=package, addon_identity=detail['identity'])
     api = importlib.import_module(package + '.export_api')
-    output = api.export_recording(recording_path=request['recording'], blend_file_path=request['output'],
-                                  route=request['route'], config=request.get('config'), trajectory_channel=request['trajectory_channel'],
-                                  run_id=request.get('run_id'), sensor_group=request.get('sensor_group'))
+    export = getattr(api, 'export_recording_result', api.export_recording)
+    result = export(recording_path=request['recording'], blend_file_path=request['output'],
+                    route=request['route'], config=request.get('config'), trajectory_channel=request['trajectory_channel'],
+                    run_id=request.get('run_id'), sensor_group=request.get('sensor_group'))
+    # Older installed packages retain their string API; only their .blend is confirmed.
+    output = result['output'] if isinstance(result, dict) else result
+    files = result['files'] if isinstance(result, dict) else [output]
     if request.get('source_sha256'):
         bpy.context.scene['freemocap_source_sha256'] = request['source_sha256']
         # Preserve the source identity in the saved artifact, including after
         # the recording directory is moved by dataset publication.
         bpy.ops.wm.save_as_mainfile(filepath=output)
-    return dict(output=output, package=package)
+    return dict(output=output, files=files, package=package)
 
 
 if __name__ == '__main__':

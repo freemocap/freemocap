@@ -148,10 +148,17 @@ Run focused checks from the harness root with Core's configured Python:
 `npm test` in `packages/freemocap-client` also checks decoding a complete plan in
 a fresh connection, generated bindings, and compatibility examples.
 
-The Blender add-on currently returns only its `.blend` path; optional FBX/BVH
-files and sidecars cannot yet be inventoried from producer results. Extending
-that independent repository is pending owner direction. This limitation is not
-reported as complete artifact coverage. DLC behavior is unchanged.
+The approved Blender add-on extension adds `export_recording_result`, preserving
+`export_recording`'s string return. Successful exports report producer-confirmed
+FBX/BVH files, segment BVH metadata and the verified `.blend`. Core forwards and
+validates those paths; old installed packages retain `.blend`-only coverage.
+Cancelled saves cannot report stale `.blend` files. The inventory is a successful
+export result: files surviving a later export failure are not inventoried yet.
+DLC behavior is unchanged. Add-on offline suite: 37 tests pass, including actual
+Parquet BVH/sidecar collection with isolated Blender operators. Core integration:
+28 tests pass (`test_blender_preparation.py`, `test_blender_export.py`,
+`test_export_completion.py`). Real Blender export remains unverified on this Mac
+because the existing Blender/Python/platform packaging prerequisite is unmet.
 
 Both RTMPose thresholds completed both reference recordings on CPU. At 0.4,
 finite RAW_KEYPOINTS_3D/LANDMARKS_3D values were 98,367/96,333 (test) and

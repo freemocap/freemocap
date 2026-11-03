@@ -77,6 +77,7 @@ def complete_recording_exports(request, *, worker_count=2):
             route=config.blender_import_route, package=config.blender_package,
             development_build_hash=config.blender_development_build_hash, sensor_group=config.sensor_group,
             run_id=config.base_run_id, blender_export_config=config.blender_export.model_dump(),
+            artifact_report=lambda files: record_files('blender', files),
             cancelled=cancelled, progress=lambda message: request.report_export(
                 'blender', labels['blender'], 'running', message))
         record_files('blender', (output,))

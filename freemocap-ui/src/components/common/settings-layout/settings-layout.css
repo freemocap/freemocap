@@ -490,7 +490,46 @@
 }
 
 .settings-note-error {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+/* A collapsed group inside a section, opened with the same chevron as a section */
+.settings-disclosure {
+  border-top: 1px solid var(--color-border-hairline);
+  margin-top: 6px;
+}
+
+.settings-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 30px;
+  list-style: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.settings-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-disclosure > summary::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-left: 1px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.5;
+  transform: rotate(-45deg);
+  transition: transform 0.16s ease;
+}
+
+.settings-disclosure[open] > summary::before {
+  transform: rotate(45deg);
 }
 
 .settings-note-dismissable {

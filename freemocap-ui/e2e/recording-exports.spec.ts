@@ -6,11 +6,12 @@ import {resolve} from 'node:path';
 test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 for (const settings of ['new', 'historical', 'conflicting']) test(`recording exports select channels, retry and cancel (${settings} settings)`, async ({page}) => {
     const bundle = await build({bundle:true, write:false, outfile:'entry.js', format:'esm', platform:'browser',
-        alias:{'@':resolve('src')}, loader:{'.yaml':'text', '.svg':'dataurl'}, define:{'import.meta.env.DEV':'false'},
+        alias:{'@':resolve('src')}, loader:{'.yaml':'text', '.svg':'dataurl'}, external:['*.webp', '/images/*', '*.woff2', '*.woff', '*.ttf'], define:{'import.meta.env.DEV':'false'},
         stdin:{resolveDir:process.cwd(), loader:'tsx', contents:`
             import React from 'react'; import {createRoot} from 'react-dom/client';
             import {Provider, useSelector} from 'react-redux'; import {store} from './src/store/store';
             import Settings from './src/components/mocap-setup/mocap-export-settings';
+            import './src/index.css';
             import {serverUrls} from './src/constants/server-urls';
             serverUrls.setHost(location.hostname); serverUrls.setPort(Number(location.port));
             function Panel(){const c=useSelector(s=>s.mocap.config); const [run, setRun]=React.useState(3); return <>
@@ -66,20 +67,20 @@ for (const settings of ['new', 'historical', 'conflicting']) test(`recording exp
             await page.getByRole('button', {name:'Reset export settings'}).click();
         }
         const save = page.getByRole('button',{name:'Export saved result',exact:true});
-        const npy = page.getByRole('checkbox', {name:'NumPy NPY arrays (optional)', exact:true});
-        const npz = page.getByRole('checkbox', {name:'NumPy NPZ archive', exact:true});
+        const npy = page.getByRole('switch', {name:'NumPy NPY arrays (optional)', exact:true});
+        const npz = page.getByRole('switch', {name:'NumPy NPZ archive', exact:true});
         await expect(npy).not.toBeChecked();
         if (settings === 'historical') {await expect(npz).toBeChecked(); await npz.uncheck();}
         await expect(npz).not.toBeChecked();
         if (settings === 'historical') {
-            await expect(page.getByLabel('Export selected formats after processing')).toBeChecked();
-            await page.getByLabel('Export selected formats after processing').uncheck();
+            await expect(page.getByRole('switch', {name:'Export selected formats after processing', exact:true})).toBeChecked();
+            await page.getByRole('switch', {name:'Export selected formats after processing', exact:true}).uncheck();
         }
-        await expect(page.getByLabel('Export selected formats after processing')).not.toBeChecked();
+        await expect(page.getByRole('switch', {name:'Export selected formats after processing', exact:true})).not.toBeChecked();
         await expect(page.getByText('NPZ packages the dataset in one archive.', {exact:false})).toBeVisible();
         await expect(page.getByText('multiple array files and dataset.json in npy/', {exact:false})).toBeVisible();
         await expect(page.getByText('one shared .frames', {exact:false})).toHaveCount(0);
-        await expect(page.getByRole('checkbox', {name:'2D keypoints - camera observations', exact:true})).toBeVisible();
+        await expect(page.getByRole('switch', {name:'2D keypoints - camera observations', exact:true})).toBeVisible();
         await expect(page.getByText('No saved result yet.', {exact:false}).first()).toBeVisible();
         await expect(page.getByRole('alert')).toHaveCount(0);
         await expect(save).toBeDisabled();
@@ -94,18 +95,18 @@ for (const settings of ['new', 'historical', 'conflicting']) test(`recording exp
         await expect(page.getByLabel('Processing source run')).toHaveValue('3');
         await expect(page.getByRole('alert')).toHaveCount(0);
         await page.getByText('Tall CSV diagnostic export', {exact:true}).click();
-        await expect(page.getByLabel('Wide CSV',{exact:true})).not.toBeChecked();
-        await page.getByLabel('Wide CSV',{exact:true}).check();
+        await expect(page.getByRole('switch', {name:'Wide CSV', exact:true})).not.toBeChecked();
+        await page.getByRole('switch', {name:'Wide CSV', exact:true}).check();
         await expect(save).toBeEnabled();
         await npy.check();
         await expect(page.getByTestId('preferences')).toContainText('"formats":["wide_csv","npy"]');
         await expect(page.getByText('At least', {exact:false})).toHaveCount(0);
         await npy.uncheck();
-        const raw=page.getByRole('checkbox',{name:'3D keypoints - raw triangulated',exact:true});
-        const landmarks=page.getByRole('checkbox',{name:'3D landmarks',exact:true});
+        const raw=page.getByRole('switch',{name:'3D keypoints - raw triangulated',exact:true});
+        const landmarks=page.getByRole('switch',{name:'3D landmarks',exact:true});
         await expect(raw).not.toBeChecked();
         await expect(landmarks).toBeChecked();
-        await expect(page.getByRole('checkbox',{name:/Rigid-body segments/})).not.toBeChecked();
+        await expect(page.getByRole('switch',{name:/Rigid-body segments/})).not.toBeChecked();
         await landmarks.uncheck();
         await expect(save).toBeDisabled();
         await landmarks.check();
@@ -113,7 +114,7 @@ for (const settings of ['new', 'historical', 'conflicting']) test(`recording exp
         await expect(page.getByRole('alert')).toContainText('unavailable');
         await expect(save).toBeDisabled();
         await page.getByLabel('Processing source run').selectOption('3');
-        await page.getByLabel('Export selected formats after processing').check();
+        await page.getByRole('switch', {name:'Export selected formats after processing', exact:true}).check();
         await save.click();
         await expect(page.getByRole('alert')).toContainText('Disk full');
         expect(submitted).toEqual({kind:'channels',run_id:3,expected_revision:'snapshot',formats:['wide_csv'],data:['LANDMARKS_3D'],keep:false});

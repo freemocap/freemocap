@@ -215,7 +215,7 @@ export function BlenderPackageSettings() {
 
         <SettingsGroupHeading text="FreeMoCap add-on" info={ADDON_GROUP_INFO}/>
         <p className="settings-note">Add-on setup is automatic. FreeMoCap reuses a verified installation or prepares its own Blender profile.</p>
-        <details><summary>Advanced package diagnostics and development</summary>
+        <details className="settings-disclosure"><summary>Advanced package diagnostics and development</summary>
         <SettingRow label="Add-on package" info={PACKAGE_INFO}
             control={<SettingSelectInput label="Add-on package" value={state.packageName ?? AUTOMATIC_PACKAGE}
                 options={packageOptions} disabled={locked}

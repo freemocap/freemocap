@@ -7,6 +7,30 @@ in this checkout (ignored by git).
 
 Pushes: commits land locally first; the owner or the local test agent pushes.
 
+## Requests for the local agent (open)
+
+Owner decisions, 2026-11-03: the Mocap processing window becomes an outline plus List or Graph
+(design canvas boards 13-17). The HTTP processing request and the progress it reports stay the
+contract; the UI builds the request only through `mocapProcessingConfig`.
+
+1. **Progress wish list.** Propose, in your report and before building, the smallest change to task
+   snapshots that gives the UI:
+   - per-video progress for 2D tracking (`load_and_track`) and annotation: label, completed, total, unit;
+   - counts for stages 2-5 wherever they can be measured (motion frames);
+   - `files_written` for every operation that saves to disk, including exports and Blender;
+   - a "skipped" outcome with a reason (for example Blender skipped because it was not found),
+     instead of failing the run.
+   Backend changes are approved; keep the current progress system intact where possible.
+2. **Real progress data.** Run one full processing of `freemocap_sample_data` and save every task
+   snapshot the UI receives to `.test-artifacts/progress/<timestamp>/` as JSON, one file per snapshot.
+3. **Blank strip on the right of the app window.** Compare the window bounds with the page's
+   `window.innerWidth`/`innerHeight` and the root element's size; report the cause.
+4. **After each UI commit:** merge, test, push, then open FreeMoCap on Mocap processing > Graph with
+   `freemocap_sample_data` loaded and leave it open for the owner. Do not process, close it, or run
+   further tests until the owner says so.
+
+Report on each item in `.test-artifacts/reports/<sha>.md` under "Requests".
+
 ## Pushing
 
 The local agent pushes `sfn26-ui-refactor` to origin: after picking up new commits on this branch,

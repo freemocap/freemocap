@@ -97,16 +97,16 @@ button.quaternary:hover,
   outline-offset: 2px;
 }
 
-/* Primary action: teal fill with a dark label and icon */
+/* Primary action: teal fill with a dark label and icon; the child combinator keeps the tooltip inside the button light */
 .accent {
   background-color: var(--color-primary-fill);
 }
 
-.accent p {
+.accent > p {
   color: var(--color-on-primary);
 }
 
-.accent .icon {
+.accent > .icon {
   background-color: var(--color-on-primary);
 }
 

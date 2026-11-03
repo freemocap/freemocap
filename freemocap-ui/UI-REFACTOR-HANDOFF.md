@@ -185,6 +185,27 @@ display, must say so explicitly; the UI must never infer it from a node name.
    0.4 (`mocap_task_config.py`). Check which value works on the reference recordings and report it;
    the UI will use that value.
 
+## Graph view rebuilt as the panel's sections (design canvas board 12)
+
+- The Graph view is now five cards wired by the data they produce: Recording → SkellyTracker → SkellyForge →
+  Blender add-on and Exports. Cards show their panel section's settings (same labels and values as the list view),
+  progress bars, and a disk line (what is read or saved). Clicking a card opens the real settings sections beside the
+  graph; "Start from Run N · Save results" opens Processing stages. The stage checkboxes sit in one row above the graph.
+- Plan nodes are assigned to cards by the server's plan: `blender` → Blender, `channel_exports`/`tall_csv` → Exports,
+  stage `observations` → SkellyTracker, later stages → SkellyForge. A card with no plan nodes is "not run" (stages)
+  or "off" (Blender, Exports). An unknown stage fails loudly on the canvas.
+- Bars: SkellyTracker shows one bar per video when the task reports per-camera progress, otherwise Detect poses;
+  then Annotate videos and Save 2D tracking. SkellyForge shows one bar per processing stage. Counts appear only when
+  exactly one operation in a bar reports them; otherwise the state name.
+- Fixed layout with no crossing wires (`section-layout.ts`); `section-graph.test.ts` checks for crossings.
+- Removed the plan-node graph (`graph-layout.ts`, the per-plan-node cards and their tests).
+- Fixed: the primary button's dark label colour also hit the tooltip inside it (black text on dark); now `.accent > p`.
+
+Run: unit suites, full E2E. Then **open FreeMoCap, load `freemocap_sample_data` in Playback, open Mocap processing,
+switch to Graph, and leave the app open on that screen for the owner to evaluate. Do not process, close the app,
+or run further tests until the owner says so.** Report: whether the card values match the list view; whether a real
+run fills the bars (and whether per-camera progress arrives for SkellyTracker); any plan node that fails to place.
+
 ## Screenshot request for plan step 3 (local agent)
 
 The design side cannot run the backend (the camera library build downloads from a GitHub repo it

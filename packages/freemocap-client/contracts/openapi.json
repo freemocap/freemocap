@@ -3489,6 +3489,50 @@
           }
         }
       }
+    },
+    "/freemocap/realtime/startup": {
+      "get": {
+        "tags": [
+          "Realtime processing"
+        ],
+        "summary": "Realtime Startup Status",
+        "description": "Observe startup without waiting for camera or native inference operations.",
+        "operationId": "realtime_startup_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeStartupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/realtime/startup/stop": {
+      "post": {
+        "tags": [
+          "Realtime processing"
+        ],
+        "summary": "Stop Realtime Startup",
+        "description": "Request a safe stop; native work remains owned until its boundary/cleanup.",
+        "operationId": "stop_realtime_startup",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeStartupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3672,7 +3716,8 @@
             "type": "string",
             "enum": [
               "export",
-              "sync"
+              "sync",
+              "realtime_startup"
             ],
             "title": "Task Type"
           },
@@ -4826,6 +4871,17 @@
             ],
             "title": "Dlc Model Path"
           },
+          "dlc_geometry_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlc Geometry Path"
+          },
           "dlc_confidence_threshold": {
             "type": "number",
             "maximum": 1.0,
@@ -4949,6 +5005,17 @@
               }
             ],
             "title": "Dlc Model Path"
+          },
+          "dlc_geometry_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlc Geometry Path"
           },
           "dlc_confidence_threshold": {
             "type": "number",
@@ -5081,7 +5148,8 @@
               "mocap",
               "calibration",
               "export",
-              "sync"
+              "sync",
+              "realtime_startup"
             ],
             "title": "Kind"
           }
@@ -5831,51 +5899,78 @@
         "description": "Declarative description of a DetectionStage and its subtree."
       },
       "DlcConversionRequest": {
+        "additionalProperties": false,
         "properties": {
           "pose_config_path": {
-            "type": "string",
-            "format": "path",
-            "title": "Pose Config Path"
-          },
-          "checkpoint_path": {
-            "type": "string",
-            "format": "path",
-            "title": "Checkpoint Path"
-          },
-          "project_config_path": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "path"
+                "format": "path",
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "default": null,
+            "title": "Pose Config Path"
+          },
+          "checkpoint_path": {
+            "anyOf": [
+              {
+                "format": "path",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Checkpoint Path"
+          },
+          "project_config_path": {
+            "anyOf": [
+              {
+                "format": "path",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "title": "Project Config Path"
           },
           "image_height": {
-            "type": "integer",
-            "maximum": 8192.0,
-            "minimum": 32.0,
-            "title": "Image Height",
-            "default": 480
+            "anyOf": [
+              {
+                "maximum": 8192,
+                "minimum": 32,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Image Height"
           },
           "image_width": {
-            "type": "integer",
-            "maximum": 8192.0,
-            "minimum": 32.0,
-            "title": "Image Width",
-            "default": 640
+            "anyOf": [
+              {
+                "maximum": 8192,
+                "minimum": 32,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Image Width"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "pose_config_path",
-          "checkpoint_path"
-        ],
-        "title": "DlcConversionRequest"
+        "title": "DlcConversionRequest",
+        "type": "object"
       },
       "DlcInspectRequest": {
         "properties": {
@@ -7795,6 +7890,17 @@
               }
             ],
             "title": "Dlcmodelpath"
+          },
+          "dlcGeometryPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dlcgeometrypath"
           },
           "dlcConfidenceThreshold": {
             "type": "number",
@@ -10662,6 +10768,85 @@
         "additionalProperties": false,
         "type": "object",
         "title": "PlanPreview"
+      },
+      "RealtimeStartupResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "running",
+              "stopping",
+              "ready",
+              "failed",
+              "stopped"
+            ],
+            "title": "Status"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "elapsed_seconds": {
+            "type": "number",
+            "title": "Elapsed Seconds"
+          },
+          "phase_elapsed_seconds": {
+            "type": "number",
+            "title": "Phase Elapsed Seconds"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "delayed": {
+            "type": "boolean",
+            "title": "Delayed",
+            "default": false
+          },
+          "preview_ready": {
+            "type": "boolean",
+            "title": "Preview Ready",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "phase",
+          "elapsed_seconds",
+          "phase_elapsed_seconds"
+        ],
+        "title": "RealtimeStartupResponse"
       }
     }
   },

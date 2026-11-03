@@ -1,5 +1,17 @@
 let clientId: string | undefined;
 
+/** A random version 4 UUID. `crypto.randomUUID` exists only in secure contexts (HTTPS or
+ *  localhost); a page served over plain HTTP from another computer still has getRandomValues.
+ *  [@mdnCryptoRandomUUID; @mdnCryptoGetRandomValues; @rfc9562] */
+export function randomId(): string {
+    if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export interface WebSocketConfig {
     url: string;
     reconnectDelay?: number;
@@ -71,8 +83,8 @@ export class WebSocketConnection {
 
         try {
             const url = new URL(this.config.url);
-            url.searchParams.set('client_id', clientId ??= crypto.randomUUID());
-            url.searchParams.set('connection_id', crypto.randomUUID());
+            url.searchParams.set('client_id', clientId ??= randomId());
+            url.searchParams.set('connection_id', randomId());
             const socket = this.config.socketFactory ? this.config.socketFactory(url) : new WebSocket(url);
             this.ws = socket;
             socket.binaryType = 'arraybuffer';
@@ -80,7 +92,9 @@ export class WebSocketConnection {
             socket.onclose = (event) => { if (this.ws === socket) this.handleClose(event); };
             socket.onerror = (event) => { if (this.ws === socket) this.handleError(event); };
             socket.onmessage = (event) => { if (this.ws === socket) this.handleMessage(event); };
-        } catch {
+        } catch (error) {
+            // Report why no socket could be made (a bad URL, say) instead of retrying silently.
+            this.emit('error', error);
             this.scheduleReconnect();
         }
     }
@@ -165,7 +179,7 @@ export class WebSocketConnection {
 
     /** Retry quietly until the caller explicitly disconnects, even after server errors. */
     private scheduleReconnect(): void {
-        if (this.reconnectTimer) return;
+        if (this.disconnectRequested || this.reconnectTimer) return;
 
         this.setState(ConnectionState.RECONNECTING);
         this.reconnectTimer = (typeof window === "undefined" ? globalThis : window).setTimeout(() => {

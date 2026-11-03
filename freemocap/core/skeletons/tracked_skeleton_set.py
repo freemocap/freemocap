@@ -37,6 +37,11 @@ def build_tracked_skeletons(
         camera_node_config: what the camera nodes are configured to detect.
     """
     bundles: list[TrackedSkeletonBundle] = []
+    if (camera_node_config.skeleton_tracking_enabled and camera_node_config.detector_type == "dlc"
+            and camera_node_config.dlc_geometry_path):
+        from freemocap.core.skeletons.dlc_object_skeleton import build_dlc_object_bundle
+        bundles.append(build_dlc_object_bundle(sidecar_path=camera_node_config.dlc_model_path,
+                                              geometry_path=camera_node_config.dlc_geometry_path))
     if camera_node_config.skeleton_tracking_enabled and camera_node_config.detector_type != "dlc":
         bundles.append(
             build_standard_human_bundle(

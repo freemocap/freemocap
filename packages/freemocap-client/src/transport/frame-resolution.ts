@@ -256,6 +256,7 @@ export class FrameResolver {
                         connectionGroups: tracker.model_id === null ? (tracker.connection_groups ?? []) : tracker.connection_groups?.length ? tracker.connection_groups : undefined,
                         cameraId: c.camera_id,
                         layer: OverlayLayer.DETECTIONS,
+                        trackerId: tracker.tracker_id,
                         frameNumber: frame.frame_number,
                         names: c.names,
                         columns: c.columns,
@@ -269,6 +270,7 @@ export class FrameResolver {
                     overlays.push({
                         cameraId: c.camera_id,
                         layer: OverlayLayer.BOXES,
+                        trackerId: tracker.tracker_id,
                         frameNumber: frame.frame_number,
                         names: c.names,
                         columns: c.columns,
@@ -290,6 +292,7 @@ export class FrameResolver {
                     overlays.push({
                         cameraId: c.camera_id,
                         layer: OverlayLayer.REPROJECTIONS,
+                        instanceId: instance.instance_id,
                         modelId: model.model_id,
                         frameNumber: frame.frame_number,
                         names: segmentNames,

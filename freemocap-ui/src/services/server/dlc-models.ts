@@ -13,17 +13,23 @@ export interface DlcModelMetadata {
 }
 export interface DlcReadiness {available: boolean; supported_model: string; missing_packages: string[]; detail: string}
 export interface DlcImportRequest {
-    pose_config_path: string;
-    checkpoint_path: string;
+    pose_config_path?: string | null;
+    checkpoint_path?: string | null;
     project_config_path?: string | null;
-    image_height: number;
-    image_width: number;
+    image_height?: number | null;
+    image_width?: number | null;
 }
 export interface DlcImportJob {
     job_id: string;
     status: 'queued' | 'running' | 'complete' | 'failed';
     detail: string;
     result: DlcModelMetadata | null;
+    stage?: string;
+    elapsed_seconds?: number;
+    estimated_remaining_seconds?: number | null;
+    cache_hit?: boolean;
+    required_fields?: string[];
+    resolved_checkpoint_path?: string;
 }
 async function request<T>(pending: Promise<Response>): Promise<T> {
     const response = await pending;

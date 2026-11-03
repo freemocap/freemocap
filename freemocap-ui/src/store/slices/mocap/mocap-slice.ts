@@ -81,8 +81,10 @@ export interface MocapConfig {
     posthoc_filter: PosthocFilterConfig;
     detectorType: DetectorType;
     dlcModelPath: string | null;
+    dlcGeometryPath: string | null;
     dlcConfidenceThreshold: number;
     dlcExecutionProvider: "cpu" | "cuda";
+    dlcTriangulationEnabled: boolean;
     rtmPoseModelName: RTMPoseModelName;
     rtmPoseConfidenceThreshold: number;
     executionProvider: ExecutionProviderName | null;
@@ -200,8 +202,10 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     charucoTrackingEnabled: true,
     detectorType: "rtmpose",
     dlcModelPath: null,
+    dlcGeometryPath: null,
     dlcConfidenceThreshold: 0.4,
     dlcExecutionProvider: "cpu",
+    dlcTriangulationEnabled: false,
     rtmPoseModelName: "rtmw-x-l_256x192",
     rtmPoseConfidenceThreshold: 0.004,
     executionProvider: null,
@@ -308,7 +312,7 @@ export const mocapSlice = createSlice({
         mocapCharucoTrackingChanged: (state, action: PayloadAction<boolean>) => {
             state.config.charucoTrackingEnabled = action.payload;
         },
-        mocapDlcSettingsChanged: (state, action: PayloadAction<Partial<Pick<MocapConfig, 'dlcModelPath' | 'dlcConfidenceThreshold' | 'dlcExecutionProvider'>>>) => {
+        mocapDlcSettingsChanged: (state, action: PayloadAction<Partial<Pick<MocapConfig, 'dlcModelPath' | 'dlcGeometryPath' | 'dlcConfidenceThreshold' | 'dlcExecutionProvider' | 'dlcTriangulationEnabled'>>>) => {
             Object.assign(state.config, action.payload);
         },
         /** Switch between rtmpose and mediapipe detector backends. */

@@ -83,7 +83,9 @@ def _build_charuco_tracker_from_config(node_config: CameraNodeConfig):
 
 def _build_skeleton_tracker_from_config(node_config: CameraNodeConfig, execution_provider=None):
     """Create Tracker's selected preset with application-owned resource lifetime."""
+    from freemocap.core.tracking.execution_providers import application_provider
     from freemocap.core.tracking.tracker_factory import build_configured_tracker, tracker_config_for_settings
+    execution_provider = application_provider(execution_provider)
     tracker = build_configured_tracker(config=tracker_config_for_settings(node_config),
                                        batch_size=1, execution_provider=execution_provider)
     return tracker, tracker.sessions.get("onnx", tracker.sessions.get("mediapipe"))

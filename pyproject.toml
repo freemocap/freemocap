@@ -84,7 +84,7 @@ freemocap = ["tests/streaming_fixtures/*.bin", "tests/fixtures/*.md", "tests/con
       "sys_platform == 'win32' and platform_machine == 'AMD64'",
   ]
   # Plain `uv sync` always installs a working skellytracker via the "tracker-default"
-  # group below, which platform-switches between TensorRT/CUDA (Windows/Linux) and CPU
+  # group below, which platform-switches between CUDA (Windows/Linux) and CPU
   # (macOS) automatically. To force a specific variant regardless of platform —
   # e.g. the CI build matrix building a CPU installer on a Windows/Linux runner —
   # bypass the default and pick a group explicitly:
@@ -165,9 +165,9 @@ cuda = ["skellytracker[all-cuda]"]
 trt = ["skellytracker[all-trt]"]
 cpu = ["skellytracker[all-cpu]"]
 # Platform-switched default used by plain `uv sync` (via [tool.uv] default-groups):
-# TensorRT with CUDA fallback on Windows/Linux, CPU on macOS.
+# CUDA on Windows/Linux, CPU on macOS.
 tracker-default = [
-    "skellytracker[all-trt]; sys_platform != 'darwin'",
+    "skellytracker[all-cuda]; sys_platform != 'darwin'",
     "skellytracker[all-cpu]; sys_platform == 'darwin'",
 ]
 dev = [

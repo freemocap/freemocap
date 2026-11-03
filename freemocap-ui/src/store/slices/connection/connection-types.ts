@@ -32,6 +32,7 @@ export interface AppStateMessage {
 
 /** Connectedness + server identity, all derived from the websocket. */
 export interface ConnectionState {
+    streamError: string | null;
     isConnected: boolean;
     serverPid: number | null;
     cameraGroups: CameraGroupSnapshot[];

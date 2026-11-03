@@ -705,7 +705,7 @@ dev = [
 tracker-default = [
     { name = "skellytracker" },
     { name = "skellytracker", extra = ["all-cpu"], marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "skellytracker", extra = ["all-trt"], marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "skellytracker", extra = ["all-cuda"], marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 trt = [
     { name = "skellytracker", extra = ["all-trt"] },
@@ -761,7 +761,7 @@ dev = [
 ]
 tracker-default = [
     { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", editable = "../skellytracker" },
-    { name = "skellytracker", extras = ["all-trt"], marker = "sys_platform != 'darwin'", editable = "../skellytracker" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", editable = "../skellytracker" },
 ]
 trt = [{ name = "skellytracker", extras = ["all-trt"], editable = "../skellytracker" }]
 

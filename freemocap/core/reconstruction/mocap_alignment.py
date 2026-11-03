@@ -27,8 +27,8 @@ class MocapAlignmentRequest:
     filtered_points: NDArray[np.float64]
     """Completed trajectory filtering, in the triangulation's reference frame."""
     camera_geometry: dict[str, CameraModel]
-    bundle: TrackedSkeletonBundle
-    definition: AlignmentDefinition
+    bundle: TrackedSkeletonBundle | None
+    definition: AlignmentDefinition | None
     timestamps_seconds: NDArray[np.float64]
     preserve_reference_frame: bool
     config: MocapAlignmentConfig
@@ -58,6 +58,8 @@ def align_mocap_recording(*, request: MocapAlignmentRequest) -> AlignedMocapReco
     body_tracks = ()
     foot_contacts = ()
     if request.config.enabled and not request.preserve_reference_frame and len(request.triangulation.sources) > 1:
+        if request.bundle is None or request.definition is None:
+            raise ValueError("Body alignment requires a declared model and alignment definition")
         # Pixel reprojection errors come from the pixel-input recording triangulator.
         # Missing observations have NaN errors. This is geometric support, not detector probability.
         errors = request.triangulation.reconstruction.reprojection_error

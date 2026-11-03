@@ -11,6 +11,16 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 from freemocap.core.tracking.tracker_factory import build_configured_tracker
 
 
+@pytest.mark.parametrize('saved_provider', [None, 'trt'])
+def test_application_requests_replace_auto_and_saved_trt_with_cuda(saved_provider):
+    from freemocap.core.tracking.tracker_factory import tracker_session_requests, skeleton_tracker_config
+    config = skeleton_tracker_config(model_name='rtmw-x-l_256x192', confidence_threshold=.4,
+                                     video_fps=30., keypoint_bbox_expansion=.05)
+    with patch('freemocap.core.tracking.execution_providers.advertised_providers', return_value=['trt', 'cuda', 'cpu']):
+        requests = tracker_session_requests(config=config, batch_size=4, execution_provider=saved_provider)
+    assert [request.config.execution_provider for request in requests if request.config.backend == 'onnx'] == ['cuda']
+
+
 def test_wrist_crops_request_both_cpu_and_mediapipe_backends() -> None:
     from freemocap.core.tracking.tracker_factory import (
         build_mediapipe_tracker_config, tracker_session_requests,
@@ -55,8 +65,8 @@ def test_direct_onnx_creation_is_serialized_across_factory_paths() -> None:
         if configured:
             config = skeleton_tracker_config(model_name="rtmw-x-l_256x192", confidence_threshold=0.4,
                                              video_fps=30.0, keypoint_bbox_expansion=0.05)
-            return build_configured_tracker(config=config, batch_size=1)
-        return build_skeleton_onnx_session(batch_size=1)
+            return build_configured_tracker(config=config, batch_size=1, execution_provider='cpu')
+        return build_skeleton_onnx_session(batch_size=1, execution_provider='cpu')
 
     with patch("freemocap.core.tracking.tracker_factory.OnnxSession.create", side_effect=create_session), \
          patch("freemocap.core.tracking.tracker_factory.Tracker.create", return_value=Tracker(stages=[])), \

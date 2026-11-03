@@ -70,6 +70,7 @@ test('child auto-connect survives provider initialization and delivers calibrati
                 export const serverStateReceived = (payload: object) => ({type: 'state', payload});
                 export const wsConnectionChanged = (payload: object) => ({type: 'connection', payload});
                 export const serverDisconnected = () => ({type: 'disconnected'});
+                export const streamErrorReceived = (payload: string) => ({type: 'stream-error', payload}), streamErrorCleared = () => ({type: 'stream-error-cleared'});
                 export const modelsReceived = () => ({}), conventionReceived = () => ({}), camerasReceived = () => ({});
                 export const loadCalibrationForRecording = () => ({type: 'load-calibration'}), fetchPlaybackBundle = () => ({type: 'load-playback'});
                 export const splitParentAndName = () => null;

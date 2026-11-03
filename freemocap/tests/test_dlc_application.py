@@ -71,13 +71,14 @@ def test_dlc_missing_selection_and_anatomical_processing_are_errors(dlc_sidecar)
     with pytest.raises(ValidationError, match="Select or import"):
         CameraNodeConfig(detector_type="dlc")
     camera = CameraNodeConfig(detector_type="dlc", dlc_model_path=str(dlc_sidecar))
-    with pytest.raises(ValidationError, match="disable triangulation"):
-        RealtimePipelineConfig(camera_node_config=camera, skeleton_inference_node_config={"execution_provider": "cpu"})
+    with pytest.raises(ValidationError, match="geometry association"):
+        RealtimePipelineConfig(camera_node_config=camera, skeleton_inference_node_config={"execution_provider": "cpu"},
+                               aggregator_config={"skeleton_fitting_enabled": True})
     config = RealtimePipelineConfig(camera_node_config=camera,
         skeleton_inference_node_config={"execution_provider": "cpu"},
-        aggregator_config={"triangulation_enabled": False, "skeleton_fitting_enabled": False})
+        aggregator_config={"triangulation_enabled": True, "skeleton_fitting_enabled": False})
     assert config.camera_node_config.detector_type == "dlc"
-    with pytest.raises(ValidationError, match="observation-only"):
+    with pytest.raises(ValidationError, match="geometry association"):
         PosthocMocapPipelineConfig(detectorType="dlc", dlcModelPath=str(dlc_sidecar))
 
 
@@ -101,16 +102,16 @@ def test_inspect_exposes_arbitrary_names_and_errors(api, dlc_sidecar):
 
 def test_import_job_reports_completion_and_failure(api, dlc_sidecar, monkeypatch):
     monkeypatch.setattr(routes, 'dlc_conversion_readiness', lambda: {"available": True, "detail": "Ready"})
-    monkeypatch.setattr(routes, 'convert_dlc_model', lambda request, output: dlc_sidecar)
+    monkeypatch.setattr(routes, 'prepare_dlc_model', lambda request, output, **kwargs: dlc_sidecar)
     body = {"pose_config_path": "pose.yaml", "checkpoint_path": "snapshot.pt"}
     response = api.post('/freemocap/dlc/import', json=body)
     assert response.status_code == 202
     job = api.get('/freemocap/dlc/import/' + response.json()['job_id']).json()
     assert job['status'] == 'complete'
     assert job['result']['keypoint_names'] == ['feature_z', 'feature_a']
-    def fail(*args):
+    def fail(*args, **kwargs):
         raise ValueError("Unsupported model backbone")
-    monkeypatch.setattr(routes, 'convert_dlc_model', fail)
+    monkeypatch.setattr(routes, 'prepare_dlc_model', fail)
     response = api.post('/freemocap/dlc/import', json=body)
     job = api.get('/freemocap/dlc/import/' + response.json()['job_id']).json()
     assert job['status'] == 'failed'
@@ -118,13 +119,72 @@ def test_import_job_reports_completion_and_failure(api, dlc_sidecar, monkeypatch
     assert api.get('/freemocap/dlc/import/unknown').status_code == 404
 
 
-def test_missing_converter_is_reported_before_job_creation(api, monkeypatch):
-    monkeypatch.setattr(routes, 'dlc_conversion_readiness', lambda: {"available": False, "detail": "Missing Torch/timm converter environment"})
+def test_cached_model_can_load_without_converter_environment(api, dlc_sidecar, monkeypatch):
+    monkeypatch.setattr(routes, 'dlc_conversion_readiness', lambda: {"available": False, "detail": "Missing converter environment"})
+    def cached(request, output, *, on_progress):
+        on_progress({"stage": "cached", "detail": "Using saved conversion", "cache_hit": True})
+        return dlc_sidecar
+    monkeypatch.setattr(routes, 'prepare_dlc_model', cached)
     assert api.get('/freemocap/dlc/readiness').json()['available'] is False
     response = api.post('/freemocap/dlc/import', json={"pose_config_path": "pose.yaml", "checkpoint_path": "snapshot.pt"})
-    assert response.status_code == 503
-    assert 'converter environment' in response.json()['detail']
-    assert routes._jobs == {}
+    assert response.status_code == 202
+    job = api.get('/freemocap/dlc/import/' + response.json()['job_id']).json()
+    assert job['status'] == 'complete'
+    assert job['cache_hit'] is True
+    assert job['elapsed_seconds'] >= 0
+    assert not any(key.startswith('_') for key in job)
+
+
+def test_cached_import_completion_without_http(monkeypatch, dlc_sidecar):
+    from fastapi import BackgroundTasks
+    monkeypatch.setattr(routes, '_jobs', {})
+    monkeypatch.setattr(routes, 'dlc_conversion_readiness', lambda: {"available": False})
+    def cached(request, output, *, on_progress):
+        on_progress({'stage': 'checking', 'resolved_checkpoint_path': 'project/train/snapshot-029.pt'})
+        on_progress({'stage': 'ready', 'detail': 'Using existing conversion', 'cache_hit': True})
+        return dlc_sidecar
+    monkeypatch.setattr(routes, 'prepare_dlc_model', cached)
+    request = routes.DlcConversionRequest(pose_config_path='pose.yaml', checkpoint_path='snapshot.pt')
+    job = routes.import_model(request, BackgroundTasks())
+    routes._run_import(job['job_id'], request)
+    complete = routes.import_status(job['job_id'])
+    assert complete['status'] == 'complete'
+    assert complete['cache_hit'] is True
+    assert complete['resolved_checkpoint_path'] == 'project/train/snapshot-029.pt'
+    assert tuple(complete['result']['keypoint_names']) == ('feature_z', 'feature_a')
+    assert complete['estimated_remaining_seconds'] == 0
+    assert complete['elapsed_seconds'] >= 0
+
+
+def test_import_progress_and_missing_input_without_http(monkeypatch):
+    from fastapi import BackgroundTasks
+    monkeypatch.setattr(routes, '_jobs', {})
+    now = [100.0]
+    monkeypatch.setattr(routes, 'monotonic', lambda: now[0])
+    observed = []
+    def prepare(request, output, *, on_progress):
+        now[0] = 103.0
+        on_progress({'stage': 'resolving', 'detail': 'Checking project files', 'estimated_remaining_seconds': 12.0})
+        now[0] = 105.0
+        observed.append(routes.import_status(job['job_id']))
+        on_progress({'stage': 'needs_input', 'detail': 'Choose the training configuration', 'required_fields': ['pose_config_path']})
+        raise ValueError('Choose the training configuration')
+    monkeypatch.setattr(routes, 'prepare_dlc_model', prepare)
+    request = routes.DlcConversionRequest(pose_config_path='pose.yaml', checkpoint_path='snapshot.pt')
+    job = routes.import_model(request, BackgroundTasks())
+    assert job['elapsed_seconds'] == 0
+    routes._run_import(job['job_id'], request)
+    assert observed[0]['elapsed_seconds'] == 5
+    assert observed[0]['stage'] == 'resolving'
+    assert observed[0]['estimated_remaining_seconds'] == 10
+    now[0] = 200.0
+    failed = routes.import_status(job['job_id'])
+    assert failed['elapsed_seconds'] == 5
+    assert failed['stage'] == 'needs_input'
+    assert failed['required_fields'] == ['pose_config_path']
+    assert failed['status'] == 'failed'
+    assert not any(key.startswith('_') for key in failed)
+
 
 
 def test_observation_graph_preserves_dlc_provenance_without_model(dlc_sidecar):
@@ -169,5 +229,49 @@ def test_observation_graph_preserves_dlc_provenance_without_model(dlc_sidecar):
         metadata = read_metadata(path=structure.data_parquet_path)
         assert 'keypoint_model:dlc:' in metadata.model_dump_json()
         assert 'standard_human' not in metadata.model_dump_json()
+    finally:
+        fixture.doCleanups()
+
+
+@pytest.mark.parametrize('stop_stage', ['triangulation', 'filtering'])
+def test_dlc_spatial_recording_uses_calibration_without_human_alignment(dlc_sidecar, stop_stage):
+    from freemocap.tests.test_recording_pipeline import RecordingPipelineTests
+    from freemocap.core.pipeline.dataflow.recording_processing import ObservationCollection
+    from freemocap.core.pipeline.dataflow.recording_pipeline import build_recording_pipeline
+    from freemocap.core.pipeline.dataflow.recording_executor import execute_recording_graph
+    from skellycam.core.recorders.videos.recording_info import RecordingInfo
+    from skellytracker.core.data_primitives.observation import Observation, StageObservation
+    from skellytracker.core.data_primitives.keypoints import Keypoints
+    fixture = RecordingPipelineTests()
+    fixture.setUp()
+    source = fixture.fixture
+    try:
+        collection = ObservationCollection(sources=source.sources, execution_id='run')
+        for event in source.events:
+            original = event.observation.to_keypoints()
+            observation = Observation(event.observation.frame_number, event.observation.image_size,
+                {'dlc_keypoints': StageObservation('dlc_keypoints', keypoints=Keypoints(
+                    ('feature_z', 'feature_a'), original.xyz[:2], original.visibility[:2]))})
+            collection.accept(replace(event, observation=observation))
+        for event in source.outcomes:
+            collection.accept(event)
+        config = PosthocMocapPipelineConfig(detectorType='dlc', dlcModelPath=str(dlc_sidecar),
+            stopStage=stop_stage, graphExecutionProvider='cpu', charuco_tracking_enabled=False,
+            export_to_blender=False, calibration_toml_path=str(fixture.calibration))
+        with patch('freemocap.core.pipeline.dataflow.recording_pipeline.build_standard_human_bundle',
+                   side_effect=AssertionError('DLC must not construct a human')):
+            graph, handlers = build_recording_pipeline(sources=source.sources,
+                recording=RecordingInfo(recording_name=source.root.name, recording_directory=str(source.root.parent)),
+                config=config, observation_loader=lambda: collection, execution_provider='cpu')
+        result = execute_recording_graph(graph=graph, handlers=handlers)
+        assert result.complete, result.failures
+        assert 'reconstruct_skeletons' not in handlers
+        raw = result.outputs['match_and_triangulate']['result'].triangulation
+        aligned = result.outputs['align_reference']['result']
+        assert raw.keypoint_names == ('feature_z', 'feature_a')
+        assert raw.reconstruction.points_3d.shape == (12, 2, 3)
+        assert np.isfinite(raw.reconstruction.points_3d).any()
+        np.testing.assert_array_equal(aligned.triangulation.reconstruction.points_3d, raw.reconstruction.points_3d)
+        assert not aligned.transformations
     finally:
         fixture.doCleanups()

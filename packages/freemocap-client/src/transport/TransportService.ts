@@ -10,6 +10,7 @@ import {snapshotEqual} from './snapshot-equality.js';
 //   framerate → FramerateStore via framerate subscribers
 //   app_state → connection slice via app-state subscribers
 //   progress  → pipeline slices via progress subscribers
+//   kinds registered by the application (options.kinds) → their own subscribers
 //
 // Plain TS class — no React, no Redux. The ServerContextProvider subscribes to
 // these and owns the Redux dispatch + frame/image rendering. The inbound
@@ -20,8 +21,15 @@ import {
     ConnectionState,
     WebSocketConnection,
 } from "./websocket-connection.js";
-import { MessageDecoder } from "./cbor-codec.js";
+import { decode } from "cbor-x";
+import { MessageDecoder, ownByteStrings } from "./cbor-codec.js";
 import { FrameResolver } from "./frame-resolution.js";
+import {
+    parseApplicationMessage,
+    validateApplicationKinds,
+    type ApplicationKinds,
+    type ApplicationMessage,
+} from "./application-kinds.js";
 import type {
     AppStateMessage,
     CalibratedCamera,
@@ -54,9 +62,12 @@ export type FramerateCallback = (message: FramerateMessage) => void;
 export type AppStateCallback = (message: AppStateMessage) => void;
 export type ProgressCallback = (message: ProgressMessage) => void;
 
-export interface TransportServiceOptions {
+export interface TransportServiceOptions<Kinds extends ApplicationKinds = {}> {
     url: string;
     socketFactory?: (url: URL) => WebSocket;
+    /** Message kinds defined by the application, keyed by kind. FreeMoCap's own
+     *  kinds cannot be redefined. */
+    kinds?: Kinds;
 }
 
 /** Call every callback in a set, isolating faults: one throwing subscriber must
@@ -75,8 +86,10 @@ function fanOut<T>(subscribers: Set<(value: T) => void>, value: T): void {
 export interface DiagnosticsFrame {frameNumber: number; values: FrameMessage['diagnostics']}
 export type DiagnosticsCallback = (frame: DiagnosticsFrame | null) => void;
 
-export class TransportService {
+export class TransportService<Kinds extends ApplicationKinds = {}> {
     private readonly decoder = new MessageDecoder();
+    private readonly applicationKinds: Kinds;
+    private readonly applicationSubscribers = new Map<string, Set<(message: unknown) => void>>();
     private readonly frameResolver = new FrameResolver();
     private diagnosticsLatest: DiagnosticsFrame | null = null;
     private diagnosticsSubscribers = new Set<DiagnosticsCallback>();
@@ -123,7 +136,15 @@ export class TransportService {
     private readonly appStateSubscribers = new Set<AppStateCallback>();
     private readonly progressSubscribers = new Set<ProgressCallback>();
 
-    constructor(options: TransportServiceOptions) {
+    constructor(options: TransportServiceOptions<Kinds>) {
+        const kinds = options.kinds ?? ({} as Kinds);
+        validateApplicationKinds(kinds);
+        // Snapshot registrations so later caller mutations cannot redefine a
+        // reserved kind or change version policy on a connected stream.
+        this.applicationKinds = Object.freeze(Object.fromEntries(Object.entries(kinds)
+            .map(([name, definition]) => [name, Object.freeze({
+                version: definition.version ?? 0, parse: definition.parse.bind(definition),
+            })]))) as Kinds;
         this.connection = new WebSocketConnection({ url: options.url, socketFactory: options.socketFactory });
 
         this.connection.on("message", (event: MessageEvent) => {
@@ -148,7 +169,13 @@ export class TransportService {
     }
 
     private dispatchBytes(buf: ArrayBuffer): void {
-        const message = this.decoder.decode(new Uint8Array(buf));
+        const raw = decode(new Uint8Array(buf));
+        const kind = raw?.kind;
+        if (typeof kind === "string" && Object.hasOwn(this.applicationKinds, kind)) {
+            this.dispatchApplicationMessage(kind, raw);
+            return;
+        }
+        const message = this.decoder.decodeValue(raw);
         if (message === null) {
             // Unknown kind / unsupported version — fail soft (inbound data).
             console.warn("[TransportService] skipped an unknown or unsupported message");
@@ -172,6 +199,16 @@ export class TransportService {
                 fanOut(this.progressSubscribers, message);
                 break;
         }
+    }
+
+    private dispatchApplicationMessage(kind: string, raw: unknown): void {
+        const message = parseApplicationMessage(this.applicationKinds[kind], ownByteStrings(raw));
+        if (message === null) {
+            console.warn(`[TransportService] skipped an unsupported "${kind}" message version`);
+            return;
+        }
+        const subscribers = this.applicationSubscribers.get(kind);
+        if (subscribers) fanOut(subscribers, message);
     }
 
     private handleFrame(frame: FrameMessage): void {
@@ -317,6 +354,22 @@ export class TransportService {
     subscribeToProgress(cb: ProgressCallback): () => void {
         this.progressSubscribers.add(cb);
         return () => this.progressSubscribers.delete(cb);
+    }
+
+    /** Messages of one kind registered through `options.kinds`, validated by its parser.
+     *  They are not delivered to `subscribeToMessages`, which carries FreeMoCap's kinds. */
+    subscribeToKind<Kind extends keyof Kinds & string>(
+        kind: Kind,
+        cb: (message: ApplicationMessage<Kinds[Kind]>) => void,
+    ): () => void {
+        if (!Object.hasOwn(this.applicationKinds, kind)) {
+            throw new Error(`Message kind "${kind}" is not registered with this TransportService`);
+        }
+        let subscribers = this.applicationSubscribers.get(kind);
+        if (!subscribers) this.applicationSubscribers.set(kind, subscribers = new Set());
+        const callback = cb as (message: unknown) => void;
+        subscribers.add(callback);
+        return () => subscribers.delete(callback);
     }
 
     // ── accessors ────────────────────────────────────────────────────────

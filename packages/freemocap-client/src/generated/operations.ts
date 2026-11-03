@@ -349,5 +349,15 @@ export const operationDefinitions = {
     "method": "POST",
     "path": "/freemocap/recordings/{recording_id}/processing/plan",
     "asset": false
+  },
+  "realtime_startup_status": {
+    "method": "GET",
+    "path": "/freemocap/realtime/startup",
+    "asset": false
+  },
+  "stop_realtime_startup": {
+    "method": "POST",
+    "path": "/freemocap/realtime/startup/stop",
+    "asset": false
   }
 } as const;

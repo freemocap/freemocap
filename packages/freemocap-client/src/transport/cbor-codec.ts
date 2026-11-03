@@ -19,14 +19,16 @@ function toOwnedBytes(value: unknown): Uint8Array | null {
   return null;
 }
 
-function normalizeValue(value: unknown): unknown {
+/** Copy a decoded value, giving every byte string its own Uint8Array (never a view
+ *  over the encoded packet). */
+export function ownByteStrings(value: unknown): unknown {
   const bytes = toOwnedBytes(value);
   if (bytes !== null) return bytes;
-  if (Array.isArray(value)) return value.map(normalizeValue);
+  if (Array.isArray(value)) return value.map(ownByteStrings);
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
-      out[key] = normalizeValue(v);
+      out[key] = ownByteStrings(v);
     }
     return out;
   }
@@ -59,8 +61,13 @@ export class MessageDecoder {
   reset(): void {this.metadata.clear(); this.numericalBytes.length = 0;}
 
   decode(bytes: Uint8Array): Message | null {
-    const raw = decode(bytes);
-    if (raw?.kind !== 'frame' || raw?.version !== CURRENT_VERSION) return parseMessage(normalizeValue(raw));
+    return this.decodeValue(decode(bytes));
+  }
+
+  /** Interpret one message already decoded from CBOR. The value is consumed: its
+   *  byte strings are replaced by owned copies. */
+  decodeValue(raw: any): Message | null {
+    if (raw?.kind !== 'frame' || raw?.version !== CURRENT_VERSION) return parseMessage(ownByteStrings(raw));
     // Metadata is compared before repeated validation/cloning; changed contents are
     // always validated, even when the sender leaves model_sequence unchanged.
     const retained: Partial<Record<StaticField, unknown>> = {};

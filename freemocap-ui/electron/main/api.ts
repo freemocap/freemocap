@@ -160,6 +160,25 @@ export const api = t.router({
 
     // File System Operations
     fileSystem: t.router({
+        selectFile: t.procedure
+            .input(z.object({
+                title: z.string().optional(),
+                defaultPath: z.string().optional(),
+                filters: z.array(z.object({
+                    name: z.string().min(1),
+                    extensions: z.array(z.string().min(1)).min(1),
+                })).optional(),
+            }).optional())
+            .mutation(async ({input}) => {
+                const result = await dialog.showOpenDialog({
+                    properties: ['openFile'],
+                    ...(input?.title ? {title: input.title} : {}),
+                    ...(input?.defaultPath ? {defaultPath: input.defaultPath} : {}),
+                    ...(input?.filters ? {filters: input.filters} : {}),
+                });
+                return result.canceled ? null : result.filePaths[0] ?? null;
+            }),
+
         selectDirectory: t.procedure
             .input(z.object({ defaultPath: z.string().optional() }).optional())
             .mutation(async ({ input }) => {

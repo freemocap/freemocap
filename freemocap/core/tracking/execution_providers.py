@@ -20,6 +20,17 @@ def advertised_providers() -> list[str]:
             if native in installed and (name != 'coreml' or sys.platform == 'darwin')]
 
 
+def application_provider(requested: str | None) -> str:
+    """Use CUDA for Auto and obsolete TensorRT settings, with platform fallback."""
+    if requested not in (None, 'trt'):
+        return requested
+    available = advertised_providers()
+    for provider in ('cuda', 'coreml', 'directml', 'cpu'):
+        if provider in available:
+            return provider
+    raise ValueError('No supported inference provider is available')
+
+
 @dataclass(frozen=True)
 class ModelProviderStatus:
     model_name: str

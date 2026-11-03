@@ -33,6 +33,8 @@ from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 from freemocap.core.streaming.producers.overlay_producer import OverlayProducer
 from freemocap.core.streaming.rest_geometry import ModelConnectionGroup
+from freemocap.core.streaming.channel_helpers import assemble_channel_bytes, temporal_status_bytes, TEMPORAL_STATUS_LABELS
+from freemocap.core.streaming.message_model import ChannelBlock
 
 _TRACKER_KINDS = frozenset(
     (ChannelKind.KEYPOINTS_3D, ChannelKind.OVERLAY_2D, ChannelKind.BOXES_2D)
@@ -105,9 +107,25 @@ class MessageComposition:
             for metadata, connections in zip(
                 self.context.independent_trackers, self.independent_connections, strict=True,
             ):
+                if any(skeleton.detector_type == "dlc" for skeleton in self.context.skeletons):
+                    continue
+                channels = list(_OVERLAY_PRODUCER.fill_tracker(fill_ctx, metadata))
+                # Model-only detector outputs need no anatomical definition. Publish
+                # metric points only when multicamera calibration actually applies.
+                if (aggregation is not None and aggregation.calibration_applicable
+                        and len(aggregation.camera_node_outputs) > 1
+                        and aggregation.keypoints_arrays is not None):
+                    names = metadata.keypoint_names
+                    channels.append(ChannelBlock(
+                        kind=ChannelKind.KEYPOINTS_3D, names=names, columns=("x", "y", "z"),
+                        data=assemble_channel_bytes(names=names, positions=aggregation.keypoints_arrays,
+                                                    columns=("x", "y", "z")),
+                        sample_status=temporal_status_bytes(names=names, status=aggregation.keypoint_status),
+                        status_labels=TEMPORAL_STATUS_LABELS if aggregation.keypoint_status is not None else None,
+                    ))
                 trackers.append(TrackerObservation(
                     tracker_id=metadata.model_sha256, detector_type="dlc", model_id=None,
-                    channels=tuple(_OVERLAY_PRODUCER.fill_tracker(fill_ctx, metadata)),
+                    channels=tuple(channels),
                     connection_groups=connections,
                 ))
         diagnostics = frame_diagnostics(
@@ -156,6 +174,7 @@ def compose_messages(ctx: StreamContext) -> MessageComposition:
                 palette=palette,
                 scale_reference_name=skeleton.scale_reference_name,
                 tracker_connections=skeleton.tracker_connections,
+                object_geometry=skeleton.object_geometry,
             )
             for skeleton in ctx.skeletons
         ),

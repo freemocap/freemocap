@@ -1,5 +1,6 @@
 import {useTemporalFiltering} from '@/hooks/useTemporalFiltering';
 import {StreamingOutputsControl} from '@/components/control-panels/streaming-outputs/StreamingOutputsControl';
+import {RealtimeProcessingButton} from '@/components/control-panels/realtime-panel/RealtimeProcessingButton';
 import React, { useState } from "react";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { useTranslation } from "react-i18next";
@@ -160,6 +161,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                 onClick={() => toggleActive("trackingSettings")}
                 tooltip
                 tooltipText="Skeleton Setup"
+                ariaLabel="Skeleton Setup"
                 tooltipPosition="pos-bottom"
                 disabled={false}
                 className={`is-menu icon-size-25 ${active.trackingSettings ? "active" : ""}`}
@@ -167,7 +169,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               {/* RTP MediaPipe Settings Modal */}
               <RTPMediaPipeDetectorSettings
                 open={active.trackingSettings}
-                onClose={() => toggleActive("trackingSettings")}
+                onClose={() => setActive(previous => ({...previous, trackingSettings: false}))}
               />
             </div>
           </div>
@@ -214,23 +216,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           </div>
 
           {/* GROUP 3 */}
-          <div className="p-1 br-2 bg-gray live-action-buttons-group-3 flex flex-row items-center gap-1">
+          <div className="p-1 live-action-buttons-group-3 flex flex-row items-center gap-3">
 
-            <IconButton
-              icon={isConnected ? "live-active-icon" : "live-icon"}
-              onClick={handleLiveStreamClick}
-              tooltip
-              tooltipText={
-                isPipelineLoading
-                  ? (isConnected ? "Disconnecting pipeline…" : "Connecting pipeline…")
-                  : isConnected
-                    ? "Disconnect pipeline"
-                    : "Connect pipeline"
-              }
-              tooltipPosition="pos-bottom-right"
-              disabled={isPipelineLoading}
-              className={`icon-size-25 ${isConnected ? "active" : "connection-idle-outline"}`}
-            />
+            <RealtimeProcessingButton connected={isConnected} loading={isPipelineLoading} onToggle={handleLiveStreamClick}/>
             <StreamingOutputsControl/>
           </div>
 

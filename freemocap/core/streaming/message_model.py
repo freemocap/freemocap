@@ -22,6 +22,7 @@ from typing import Any, ClassVar, Protocol, runtime_checkable
 
 import cbor2
 from pydantic import BaseModel
+from freemocap.core.skeletons.rigid_object_geometry import RigidObjectGeometry
 from freemocap.core.pipeline.posthoc.task_snapshot import TaskRegistrySnapshot
 from freemocap.core.diagnostics.pipeline_diagnostics import PipelineDiagnostics
 from freemocap.core.types.channel_kind import ChannelKind
@@ -324,6 +325,7 @@ class ModelDefinition:
     scale_reference_name: str = "body_height"
     presentation: ModelPresentation | None = None
     tracker_connections: tuple[tuple[str, str], ...] = ()
+    object_geometry: RigidObjectGeometry | None = None
 
     @classmethod
     def from_skeleton(
@@ -335,6 +337,7 @@ class ModelDefinition:
         palette: ColorPalette,
         scale_reference_name: str,
         tracker_connections: tuple[tuple[str, str], ...] = (),
+        object_geometry: RigidObjectGeometry | None = None,
     ) -> "ModelDefinition":
         """Project any skeleton onto the wire.
 
@@ -346,6 +349,7 @@ class ModelDefinition:
             model_id=model_id,
             scale_reference_name=scale_reference_name,
             tracker_connections=tracker_connections,
+            object_geometry=object_geometry,
             presentation=ModelPresentation(
                 attached_lines=tuple(ModelAttachedLines.from_attached_lines(item) for item in skeleton.presentation_lines),
                 excluded_origin_edges=skeleton.presentation.excluded_origin_edges,
@@ -407,6 +411,7 @@ class ModelDefinition:
             "model_id": self.model_id,
             **({'presentation': self.presentation.to_cbor_message()} if self.presentation is not None else {}),
             **({'tracker_connections': [list(edge) for edge in self.tracker_connections]} if self.tracker_connections else {}),
+            **({'object_geometry': self.object_geometry.model_dump(mode="json")} if self.object_geometry is not None else {}),
             "scale_reference_name": self.scale_reference_name,
             "segments": [s.to_cbor_message() for s in self.segments],
             "landmarks": [l.to_cbor_message() for l in self.landmarks],

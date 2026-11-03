@@ -946,6 +946,34 @@
         "Read-only graph preview does not allocate runs, load models or start workers",
         "Plan nodes and ports are the same declarations used by execution"
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/realtime/startup",
+      "operation_id": "realtime_startup_status",
+      "handler": "realtime_startup_status",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "CPU startup/preparation state and cleanup tests; GPU verification requires a coordinated hardware slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/realtime/startup/stop",
+      "operation_id": "stop_realtime_startup",
+      "handler": "stop_realtime_startup",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "CPU startup/preparation state and cleanup tests; GPU verification requires a coordinated hardware slot"
+      ]
     }
   ],
   "nonpublic_registered": [
@@ -1509,7 +1537,7 @@
     }
   ],
   "source_hashes": {
-    "openapi.json": "4d7890537c0d641341fda2e8dd14c8d26d4977c3c9c2514c907b20c990882028"
+    "openapi.json": "7fbe6599c160a4d72581612b3fcb5ff78162d966409ecacbdb1aa271ad02fb67"
   },
   "output_control_delta": {
     "date": "2026-11-01",

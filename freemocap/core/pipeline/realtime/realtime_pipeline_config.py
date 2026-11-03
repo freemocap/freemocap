@@ -29,6 +29,6 @@ class RealtimePipelineConfig(BaseModel):
         if self.camera_node_config.detector_type == "dlc":
             if self.skeleton_inference_node_config.execution_provider not in ("cpu", "cuda"):
                 raise ValueError("DLC requires an explicit CPU or CUDA execution provider (FP32)")
-            if self.aggregator_config.triangulation_enabled or self.aggregator_config.skeleton_fitting_enabled:
-                raise ValueError("DLC currently provides image detections without an anatomical model; disable triangulation and skeleton fitting")
+            if self.aggregator_config.skeleton_fitting_enabled and not self.camera_node_config.dlc_geometry_path:
+                raise ValueError("DLC skeleton fitting requires an explicit object geometry association; disable skeleton fitting for model-only keypoints")
         return self

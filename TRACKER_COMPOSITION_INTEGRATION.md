@@ -230,15 +230,16 @@ recording benchmarks do not establish that judgment.
 
 ## Custom-model boundary
 
-The sidecar/session path can load a supported local ONNX artifact. It does not
-provide a DLC importer, generic detector, heatmap decoder or coordinate decoder.
+The original sidecar/session integration was limited to supported local ONNX
+artifacts. The DLC integration below now adds a bounded importer and generic
+coordinate-keypoint detector; it does not imply arbitrary architecture support.
 Session warm-up currently assumes float32, three-channel NCHW input. Tracker's
 contract tests explicitly exercise these unsupported cases. Model-specific
 preprocessing, output metadata, decoding and keypoint schemas belong in Tracker;
 Core must not add them to work around missing Tracker support.
 
 
-### Hand crop publication completed — 2026-11-01
+### Hand crop publication completed â€” 2026-11-01
 
 Correction 3 is implemented and tested. Tracker fixes the image-coordinate error,
 retains executed hand crop rectangles after dense keypoint assembly, and exposes
@@ -258,3 +259,80 @@ Tracker's 38 focused tests and four real-model reference tests also passed, cove
 both recordings, both inference paths and 144 camera observations. Live visual
 acceptance and further hand-quality investigation remain correction 4; ONNX hand
 inference remains correction 5. The application was not restarted by these tests.
+
+## DLC application integration: model-only calibrated keypoints
+
+Tracker owns DLC model inspection, single-subject ResNet50 GroupNorm checkpoint
+conversion, preprocessing, decoding and named keypoint recipes. Core connects the
+existing conversion jobs, CPU/CUDA FP32 inference, calibrated triangulation,
+recording and self-describing stream. Training and synthetic data generation are
+separate workflows; an already validated checkpoint can be used immediately.
+
+In the live camera view, open **Skeleton Setup**, choose **DLC**, then click
+**Choose DLC project** and select the project's `config.yaml`. Tracker selects the
+latest saved epoch from its matching training run and infers the companion
+configuration and input size. Preparation starts automatically: reuse a validated
+conversion when available, otherwise convert on CPU and validate the result.
+The UI shows the checkpoint, elapsed time and estimates from measured conversions.
+An optional checkpoint picker overrides the latest-epoch default. Ambiguous
+training runs or missing dimensions request only the unresolved information.
+
+**Model ready and selected** means the resulting model was successfully applied
+to the running pipeline or saved for the next run. Conversion completion alone
+does not establish selection success. A failed application preserves the previous
+selection and offers **Retry selection** without converting again. After success,
+optionally choose object geometry, click **Done**, connect the cameras, and click
+the lightning bolt to start tracking. A running pipeline applies selection live.
+The separate **Load a different converted model (optional)** section accepts an
+existing sidecar; it is not another required step.
+
+Conversion uses Tracker's configured optional Python environment, including its
+persistent `~/.config/skellytracker/dlc-converter.json` or the explicit
+`SKELLYTRACKER_DLC_CONVERTER_PYTHON` override. The normal app environment need not
+contain PyTorch or DeepLabCut. Preserve the sidecar beside its ONNX artifact.
+Unsupported model architectures fail explicitly.
+
+Choose **CPU FP32** or **CUDA FP32** and enable 2D Tracking. The DLC settings
+checkbox **Reconstruct 3D from calibrated cameras** uses the existing
+live triangulation setting. Calibrated multicamera points use the ordinary
+keypoint channel and viewport; they require neither an anatomical skeleton nor
+an STL. Without applicable multicamera calibration, the DLC stream retains its
+2D overlays and does not publish pixel-plane values as metric 3D points.
+Disable the checkbox for model-only 2D use. The live calibration and reference
+transform controls retain their existing meaning.
+
+For posthoc processing, select the recording and its calibration, choose DLC and
+its sidecar, then enable the same checkbox for triangulation and filtering.
+Leaving it off saves only observations. DLC spatial processing preserves the
+calibration reference frame and does not infer a human ground plane, pelvis or
+body alignment. Names and source identities remain declared in saved channels.
+The current model-only path stops before skeleton fitting and Blender export.
+
+Optional rigid-object/STL reconstruction is a separate geometry association.
+A detector's points do not define a mesh origin, axes, physical units or landmark
+correspondences. That association must preserve the authored mesh frame and use
+Forge reconstruction rather than a human model or a new solver in Core. This
+geometry association is selected in **Rigid object geometry (Optional)**.
+Click **Choose geometry** and select the feature-definition JSON. It is saved
+automatically; **Remove geometry** returns to keypoints only.
+With triangulation enabled, live fitting and posthoc reconstruction use the existing
+Forge rigid-body solver. Leave the geometry field blank for model-only keypoints.
+The feature names and order must exactly match the selected detector sidecar;
+an STL alone cannot supply those correspondences.
+
+The definition includes millimeter feature positions, an explicit nominal reference
+unit, and the original source-mesh frame. The runtime publishes fitted scale and
+segment pose through existing channels. Optional `object_geometry` metadata carries
+row-major homogeneous transforms from object millimeters and original source mesh
+units to dimensionless segment reference coordinates, plus the inverse mesh transform.
+It is retained in saved model snapshots and every self-describing model definition.
+Use the measured fitted scale when placing the original mesh; do not substitute the
+nominal reference size or assume the segment origin is the STL origin. Forge owns
+the composition through `StlRigidBodyDefinition.source_mesh_to_world_matrix`.
+The current app draws points and rigid reconstruction, not a loaded STL surface.
+Blender export remains disabled for DLC in this integration.
+
+CPU verification covers observation-only and calibrated spatial recording,
+calibration-frame preservation, self-contained named 3D transport and the actual
+SDK decoder/resolver-to-viewport buffer path. Live cameras, GPU performance and
+visual acceptance remain distinct checks; software tests do not establish them.

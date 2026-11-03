@@ -58,7 +58,7 @@ class OverlayProducer(ChannelProducer):
             # Each skeleton overlays ITS detector's detections, so a charuco board's
             # corners and a pose detector's joints land in separate blocks.
             detections = camera_2d_detections(
-                message, camera_id, detector_type=skeleton.detector_type
+                message, camera_id, detector_type=skeleton.detector_type, stage_path=skeleton.tracker_stage_path
             )
             blocks.append(
                 ChannelBlock(

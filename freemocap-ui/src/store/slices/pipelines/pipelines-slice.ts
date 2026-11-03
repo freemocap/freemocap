@@ -6,7 +6,7 @@ import {loadFromStorage} from '@/store/persistence';
 import {serverDisconnected} from '@/store/slices/connection/connection-slice';
 
 export function isRealtimeTask(task: TaskRegistrySnapshot['tasks'][number]): boolean {
-    return task.task_type === 'realtime_startup' || task.task_type === 'onnx_preparation';
+    return task.task_type === 'realtime_startup';
 }
 
 export function phaseForTask(phase: string): PipelinePhase {
@@ -163,7 +163,7 @@ export const pipelinesSlice = createSlice({
             }
             state.activePipelines = {};
             for (const task of snapshot.tasks) {
-                if (task.task_type === 'realtime_startup' || task.task_type === 'onnx_preparation') continue;
+                if (task.task_type === 'realtime_startup') continue;
                 const common = {pipelineType: task.task_type, recordingName: task.recording?.recording_name ?? '',
                     recordingPath: task.recording?.full_path ?? '', basePipelineId: task.task_id};
                 const phase = phaseForTask(task.progress.phase);

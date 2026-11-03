@@ -18,7 +18,7 @@ class BackgroundTaskState:
     tasks: dict[str, BackgroundTaskSnapshot] = field(default_factory=dict)
     lock: RLockType = field(default_factory=RLock)
 
-    def register(self, task_id: str, kind: Literal['export', 'sync', 'realtime_startup', 'onnx_preparation'], *,
+    def register(self, task_id: str, kind: Literal['export', 'sync', 'realtime_startup'], *,
                  recording: RecordingStructure | None = None,
                  source_run_id: int | None = None, source_revision: str | None = None) -> None:
         with self.lock:

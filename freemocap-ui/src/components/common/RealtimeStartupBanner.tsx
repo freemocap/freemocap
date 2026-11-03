@@ -1,7 +1,5 @@
 import {useRealtimeStartup} from '@/hooks/useRealtimeStartup';
 import {RealtimeStartupStatusView} from '@/components/control-panels/realtime-panel/RealtimeStartupStatusView';
-import {OnnxPreparationView} from '@/components/control-panels/realtime-panel/OnnxPreparationView';
-import {useOnnxPreparation} from '@/hooks/useOnnxPreparation';
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import './realtime-processing-control.css';
@@ -9,7 +7,6 @@ import './realtime-processing-control.css';
 export function RealtimeStartupBanner() {
     const startup = useRealtimeStartup();
     const [open, setOpen] = useState(false);
-    const preparation = useOnnxPreparation(startup.statusUnavailable ? null : startup.snapshot?.pipeline_id ?? null, open);
     const [position, setPosition] = useState({top: 0, left: 0});
     const trigger = useRef<HTMLButtonElement>(null);
     const panel = useRef<HTMLDivElement>(null);
@@ -36,24 +33,22 @@ export function RealtimeStartupBanner() {
         return () => {window.removeEventListener('keydown', escape); document.removeEventListener('mousedown', outside);};
     }, [open]);
     const starting = startup.pending || startup.snapshot?.status === 'running' || startup.snapshot?.status === 'stopping';
-    const preparing = ['queued', 'running', 'stopping', 'ready'].includes(preparation.snapshot?.status ?? '');
-    const failed = startup.snapshot?.status === 'failed' || preparation.snapshot?.status === 'failed' || Boolean(startup.statusError || preparation.error);
-    const label = starting ? 'Starting…' : preparing ? 'Preparing TRT…' : failed ? 'Needs attention' : 'Processing';
+    const failed = startup.snapshot?.status === 'failed' || Boolean(startup.statusError);
+    const label = starting ? 'Starting…' : failed ? 'Needs attention' : 'Processing';
     return <>
-        <button ref={trigger} type="button" aria-label="Processing and acceleration" aria-haspopup="dialog" aria-expanded={open}
+        <button ref={trigger} type="button" aria-label="Processing status" aria-haspopup="dialog" aria-expanded={open}
             className={`button sm quaternary br-1 realtime-processing-trigger${failed ? ' has-error' : ''}`}
-            title="Processing status and TensorRT preparation" onClick={() => setOpen(value => !value)}>
+            title="Processing status" onClick={() => setOpen(value => !value)}>
             <span>{label}</span><span aria-hidden>▾</span>
         </button>
-        {open && createPortal(<div ref={panel} role="dialog" aria-label="Processing and acceleration" tabIndex={-1}
+        {open && createPortal(<div ref={panel} role="dialog" aria-label="Processing status" tabIndex={-1}
             className="realtime-processing-popover" style={{...position, maxHeight: `calc(100vh - ${position.top + 12}px)`}}>
-            <div className="realtime-processing-heading"><strong>Processing &amp; acceleration</strong>
+            <div className="realtime-processing-heading"><strong>Processing status</strong>
                 <button type="button" aria-label="Close processing details" onClick={close}>×</button></div>
             {!startup.snapshot && !startup.pending && !startup.statusUnavailable && !startup.statusError &&
                 <p>Connect processing with the lightning button. Camera preview can run independently.</p>}
             <RealtimeStartupStatusView snapshot={startup.snapshot} statusError={startup.statusError}
         pending={startup.pending} statusUnavailable={startup.statusUnavailable} onStop={startup.stop} onRetry={startup.retry}/>
-            <OnnxPreparationView {...preparation}/>
         </div>, document.body)}
     </>;
 }

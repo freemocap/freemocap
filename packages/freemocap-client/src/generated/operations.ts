@@ -354,20 +354,5 @@ export const operationDefinitions = {
     "method": "POST",
     "path": "/freemocap/realtime/startup/stop",
     "asset": false
-  },
-  "onnx_preparation_status": {
-    "method": "GET",
-    "path": "/freemocap/onnx/preparation/{pipeline_id}",
-    "asset": false
-  },
-  "prepare_onnx": {
-    "method": "POST",
-    "path": "/freemocap/onnx/preparation/{pipeline_id}",
-    "asset": false
-  },
-  "stop_onnx_preparation": {
-    "method": "POST",
-    "path": "/freemocap/onnx/preparation/{pipeline_id}/stop",
-    "asset": false
   }
 } as const;

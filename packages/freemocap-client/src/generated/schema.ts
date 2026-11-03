@@ -1257,50 +1257,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/freemocap/onnx/preparation/{pipeline_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Preparation Status
-         * @description Observe cached preparation state without creating or querying native sessions.
-         */
-        get: operations["onnx_preparation_status"];
-        put?: never;
-        /**
-         * Prepare Onnx
-         * @description Request isolated preparation explicitly, retaining current processing until ready.
-         */
-        post: operations["prepare_onnx"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/freemocap/onnx/preparation/{pipeline_id}/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Stop Onnx Preparation
-         * @description Request preparation cancellation; report stopped only after worker cleanup.
-         */
-        post: operations["stop_onnx_preparation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1420,7 +1376,7 @@ export interface components {
              * Task Type
              * @enum {string}
              */
-            task_type: "export" | "sync" | "realtime_startup" | "onnx_preparation";
+            task_type: "export" | "sync" | "realtime_startup";
             recording?: components["schemas"]["RecordingStructure"] | null;
             /** Source Run Id */
             source_run_id?: number | null;
@@ -2163,7 +2119,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "mocap" | "calibration" | "export" | "sync" | "realtime_startup" | "onnx_preparation";
+            kind: "mocap" | "calibration" | "export" | "sync" | "realtime_startup";
         };
         /** CaptureStopped */
         CaptureStopped: {
@@ -4652,34 +4608,6 @@ export interface components {
              */
             preview_ready?: boolean;
         };
-        /** PreparationStatusResponse */
-        PreparationStatusResponse: {
-            /** Pipeline Id */
-            pipeline_id: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "unavailable" | "idle" | "queued" | "running" | "stopping" | "ready" | "activated" | "failed" | "cancelled";
-            /** Phase */
-            phase: string;
-            /** Elapsed Seconds */
-            elapsed_seconds: number;
-            /** Model Name */
-            model_name?: string | null;
-            /** Message */
-            message?: string | null;
-            /** Error */
-            error?: string | null;
-            /** Can Prepare */
-            can_prepare: boolean;
-            /** Can Cancel */
-            can_cancel: boolean;
-            /** Requested Provider */
-            requested_provider?: string | null;
-            /** Active Provider */
-            active_provider?: string | null;
-        };
     };
     responses: never;
     parameters: never;
@@ -7122,99 +7050,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RealtimeStartupResponse"];
-                };
-            };
-        };
-    };
-    onnx_preparation_status: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                pipeline_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PreparationStatusResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    prepare_onnx: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                pipeline_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PreparationStatusResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    stop_onnx_preparation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                pipeline_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PreparationStatusResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

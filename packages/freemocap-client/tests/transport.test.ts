@@ -81,11 +81,9 @@ test('non-frame kinds decode without a frame or metadata handshake',()=>{
  assert.equal(decodeMessage(encode({...envelope,kind:'log',record}))?.kind,'log');
 });
 
-test('startup and preparation use complete retained progress records after reconnect',()=>{
+test('startup uses complete retained progress records after reconnect',()=>{
  const snapshots = [
   {task_type:'realtime_startup', result:{status:'ready',phase:'ready',pipeline_id:'live',preview_ready:true}},
-  {task_type:'onnx_preparation', result:{status:'cancelled',phase:'cancelled',pipeline_id:'live',
-   requested_provider:null,active_provider:'CUDAExecutionProvider',can_prepare:true,can_cancel:false}},
  ];
  const packet=encode({kind:'progress',version:0,timestamp:0,sequence:0,snapshot:{
   server_instance_id:'00000000-0000-4000-8000-000000000001',revision:9,recording_owners:[],

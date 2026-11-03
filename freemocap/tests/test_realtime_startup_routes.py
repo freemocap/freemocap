@@ -41,7 +41,7 @@ def test_apply_distinguishes_intentional_stop_from_startup_failure(monkeypatch, 
 
 
 def test_unsupported_startup_configuration_returns_actionable_conflict(monkeypatch):
-    error = RealtimeStartupConfigurationError("TensorRT preparation requires centralized realtime inference")
+    error = RealtimeStartupConfigurationError("Invalid tracker configuration")
     service = SimpleNamespace(create_or_update_realtime_pipeline=AsyncMock(side_effect=error))
     config = CameraConfig(camera_id="camera", camera_index=0)
     with TestClient(http_app(monkeypatch, service)) as client:

@@ -9,7 +9,7 @@ import pytest
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
 from freemocap.app.freemocap_application import (
-    FreemocapApplication, RealtimeStartupConfigurationError, RealtimeStartupStopped,
+    FreemocapApplication, RealtimeStartupStopped,
 )
 from freemocap.core.pipeline.inference_service import InferenceService
 from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
@@ -48,16 +48,19 @@ async def apply(app):
     return await app.create_or_update_realtime_pipeline(camera_configs={}, pipeline_config=RealtimePipelineConfig())
 
 
-async def test_legacy_tensorrt_rejected_before_cameras_or_pipeline_mutation():
+async def test_saved_legacy_tensorrt_settings_reach_safe_provider_factory():
     app = application()
+    existing = pipeline()
+    app.realtime_pipeline_manager.pipelines = {existing.id: existing}
     config = RealtimePipelineConfig(use_centralized_inference=False)
     config.skeleton_inference_node_config.execution_provider = 'trt'
-    with pytest.raises(RealtimeStartupConfigurationError, match='requires centralized realtime inference'):
-        await app.create_or_update_realtime_pipeline(camera_configs={}, pipeline_config=config)
+    result = await app.create_or_update_realtime_pipeline(camera_configs={}, pipeline_config=config)
+    assert result is existing
     app.camera_group_manager.create_or_update_camera_group.assert_not_awaited()
     app.realtime_pipeline_manager.create_pipeline.assert_not_called()
-    app.realtime_pipeline_manager.update_pipeline_config.assert_not_called()
-    assert app.startup_status.snapshot()['status'] == 'failed'
+    app.realtime_pipeline_manager.update_pipeline_config.assert_called_once_with(
+        pipeline_id=existing.id, new_config=config,
+    )
 
 
 async def test_new_pipeline_start_is_off_loop_and_waits_for_frames():

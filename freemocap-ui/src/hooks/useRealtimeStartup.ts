@@ -15,7 +15,7 @@ export function useRealtimeStartup() {
     const connected = useAppSelector(state => state.connection.isConnected);
     const pid = useAppSelector(state => state.connection.serverPid);
     const tasks = useAppSelector(selectRealtimeTasks);
-    const task = useMemo(() => latestRealtimeTask(tasks, 'realtime_startup'), [tasks]);
+    const task = useMemo(() => latestRealtimeTask(tasks), [tasks]);
     const pushed = useMemo(() => task ? RealtimeStartupStatusSchema.safeParse(task.result) : null, [task]);
     const taskVersion = task ? `${task.task_id}:${task.revision}` : null;
     const taskRef = useRef(taskVersion); taskRef.current = taskVersion;

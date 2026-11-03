@@ -234,10 +234,6 @@ class FreemocapApplication:
         self, *, camera_configs: CameraConfigs, pipeline_config: RealtimePipelineConfig,
         realtime_camera_ids: list[CameraIdString] | None,
     ) -> RealtimePipeline:
-        if (not pipeline_config.use_centralized_inference
-                and pipeline_config.camera_node_config.skeleton_tracking_enabled
-                and pipeline_config.skeleton_inference_node_config.execution_provider == "trt"):
-            raise RealtimeStartupConfigurationError("TensorRT preparation requires centralized realtime inference")
         for pipeline in list(self.realtime_pipeline_manager.pipelines.values()):
             self._check_startup_stop()
             if not pipeline.alive:

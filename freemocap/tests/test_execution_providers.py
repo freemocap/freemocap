@@ -127,7 +127,7 @@ def test_per_camera_factory_receives_selected_provider(provider):
 
 @pytest.mark.parametrize('available,expected', [
     (['trt', 'cuda', 'cpu'], 'cuda'), (['coreml', 'cpu'], 'coreml'),
-    (['trt', 'cpu'], 'cpu'), ([], 'cpu'),
+    (['trt', 'cpu'], 'cpu'), (['directml', 'cpu'], 'directml'),
 ])
 def test_per_camera_auto_never_builds_tensorrt(available, expected):
     from freemocap.core.pipeline.realtime.camera_node import _build_skeleton_tracker_from_config
@@ -138,13 +138,13 @@ def test_per_camera_auto_never_builds_tensorrt(available, expected):
     assert create.call_args.kwargs['execution_provider'] == expected
 
 
-def test_per_camera_tensorrt_is_rejected_before_native_creation():
+def test_per_camera_saved_tensorrt_uses_cuda():
     from freemocap.core.pipeline.realtime.camera_node import _build_skeleton_tracker_from_config
     from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
-    with patch('freemocap.core.tracking.tracker_factory.build_configured_tracker') as create:
-        with pytest.raises(ValueError, match='TensorRT preparation requires centralized realtime inference'):
-            _build_skeleton_tracker_from_config(CameraNodeConfig(), 'trt')
-    create.assert_not_called()
+    with patch('freemocap.core.tracking.execution_providers.advertised_providers', return_value=['trt', 'cuda', 'cpu']), \
+         patch('freemocap.core.tracking.tracker_factory.build_configured_tracker') as create:
+        _build_skeleton_tracker_from_config(CameraNodeConfig(), 'trt')
+    assert create.call_args.kwargs['execution_provider'] == 'cuda'
 
 
 def test_failed_explicit_direct_session_is_closed():

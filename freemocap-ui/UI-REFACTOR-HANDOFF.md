@@ -13,8 +13,8 @@ Pushes: commits land locally first; the owner or the local test agent pushes.
 - [x] **2.** Write `freemocap-ui/UI-REFACTOR-HANDOFF.md`, saying what each commit changed and what the local agent should run against it, and commit it.
 - [ ] **3.** Inventory the current `freemocap-ui` screens against the FreeMoCap UI design system and publish the mismatch list as a board on the design canvas.
 - [ ] **4.** Redesign the Mocap processing modal's list view on the canvas from that inventory and implement the approved version in `mocap-setup-modal.tsx` and its settings sections.
-- [ ] **5.** Move the stage range, starting run, save mode, pipeline and tracking device from modal-local state into the shared mocap store so both views build the same request.
-- [ ] **6.** Add a backend plan-preview route that returns the real graph definition for a given processing request.
+- [ ] **5.** Move the "Processing stages" choices (start stage, stop stage, saved run to start from, overwrite or keep that run) from `MocapStageSelection` component state into the shared mocap Redux store, so the list view and the graph view read and edit the same values.
+- [ ] **6.** Backend work in "Backend asks" below, built by the local agent; this branch reviews it and consumes it.
 - [ ] **7.** Implement the Graph view in the playback Mocap processing modal by porting the Graph Lab renderer and inspector to React/TypeScript.
 - [ ] **8.** Connect live operation progress from task snapshots to the Graph view nodes by operation id.
 - [ ] **9.** Merge the latest `sfn26` into `sfn26-ui-refactor`, resolve conflicts, and hand the branch off for the merge back.
@@ -55,16 +55,31 @@ Undefined tokens still in use elsewhere: `--color-bg-darker`
 (calibration-module.css), `--color-text-tertiary` (log-terminal.css),
 `--color-border` (tutorial.css).
 
-## Graph-view plan checked against current code
+## Backend asks (local agent builds; UI branch reviews and consumes)
 
-`experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0 lists what the
-graph-view design must use from the current pipeline, routes and progress feed.
+Current-code facts the UI relies on: `experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0.
+DLC is out of scope for this work; keep its current behaviour intact and do not plan around it.
 
-Please confirm at runtime (found by reading, not run):
+The graph is a data flow from sources to sinks. A source is where data enters: a live source
+(camera) or a record (video files, a saved calibration, saved results). A sink is where data ends:
+written to disk, or sent for display. Every node that reads from or writes to disk, or sends for
+display, must say so explicitly; the UI must never infer it from a node name.
 
-1. DLC processing with default export settings: `buildPosthocConfig` sends `exportOptions`
-   (data `['LANDMARKS_3D']`) and `dlcPosthocExecutionSettings` adds
-   `scientificExports {formats: [], data: []}`. Expect `migrate_export_settings` to reject the request
-   with "Conflicting export options". Run a DLC posthoc request from the UI or with the same payload.
-2. `rtmPoseConfidenceThreshold` default is 0.004 in `mocap-slice.ts` and 0.4 in
-   `mocap_task_config.py`. Report which value a UI-launched run actually uses.
+1. **Planned graph before launch.** A route that takes a recording and a `PosthocMocapPipelineConfig`
+   and returns the graph the backend would run: nodes, typed ports, edges, each node's stage, and
+   validation errors. It must not start work, load models or reserve a run. Today the builders in
+   `recording_pipeline.py` and `saved_spatial_pipeline.py` load the calibration and construct the
+   workers while building, so the topology needs to be buildable on its own.
+2. **Every operation known at launch.** When a mocap task starts, its snapshot lists every node of
+   the graph as an operation with status `waiting`, in graph order, so the progress panel and the
+   graph can lay out all progress bars before any work runs. A waiting node also reports which
+   upstream nodes it is waiting for.
+3. **Sources and sinks on each node.** Each node declares whether it is a source (live or record)
+   or a sink (disk or display), and disk nodes report the files they read or wrote, in the
+   snapshot when finished.
+4. **Plan identity on snapshots.** The snapshot carries an identity for the plan it is running and
+   each node's stage, so a running task is drawn from its own plan, not from the settings being edited.
+5. **Operation id equals node id.** True in code today; state it as the contract in the code that builds operations.
+6. **RTMPose confidence default.** The UI default is 0.004 (`mocap-slice.ts`), the backend default is
+   0.4 (`mocap_task_config.py`). Check which value works on the reference recordings and report it;
+   the UI will use that value.

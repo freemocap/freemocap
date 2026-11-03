@@ -1,0 +1,659 @@
+{
+ "plan": {
+  "plan_id": "fixture-to-triangulation",
+  "recording_path": "/recordings/freemocap_sample_data",
+  "graph": {
+   "nodes": [
+    {
+     "id": "load_and_track",
+     "operation": "load_and_track",
+     "execution_resource": "compute",
+     "stage": "observations",
+     "effects": [
+      "read_record"
+     ],
+     "inputs": [],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "camera_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "match_and_triangulate",
+     "operation": "match_and_triangulate",
+     "execution_resource": "compute",
+     "stage": "triangulation",
+     "effects": [
+      "read_record"
+     ],
+     "inputs": [
+      {
+       "name": "observations",
+       "contract": {
+        "kind": "camera_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "raw_recording_geometry",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "filter_trajectories",
+     "operation": "filter_trajectories",
+     "execution_resource": "compute",
+     "stage": "filtering",
+     "effects": [],
+     "inputs": [
+      {
+       "name": "science",
+       "contract": {
+        "kind": "raw_recording_geometry",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "filtered_trajectories",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "align_reference",
+     "operation": "align_reference",
+     "execution_resource": "compute",
+     "stage": "triangulation",
+     "effects": [],
+     "inputs": [
+      {
+       "name": "science",
+       "contract": {
+        "kind": "raw_recording_geometry",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      },
+      {
+       "name": "filtered",
+       "contract": {
+        "kind": "filtered_trajectories",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "aligned_recording",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "observation_request",
+     "operation": "observation_request",
+     "execution_resource": "compute",
+     "stage": "observations",
+     "effects": [],
+     "inputs": [
+      {
+       "name": "observations",
+       "contract": {
+        "kind": "camera_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "observation_recording_request",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "save_observations",
+     "operation": "save_observations",
+     "execution_resource": "recording_io",
+     "stage": "observations",
+     "effects": [
+      "read_record",
+      "write_disk"
+     ],
+     "inputs": [
+      {
+       "name": "request",
+       "contract": {
+        "kind": "observation_recording_request",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "saved_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "spatial_request",
+     "operation": "spatial_request",
+     "execution_resource": "compute",
+     "stage": "triangulation",
+     "effects": [],
+     "inputs": [
+      {
+       "name": "request",
+       "contract": {
+        "kind": "observation_recording_request",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      },
+      {
+       "name": "science",
+       "contract": {
+        "kind": "raw_recording_geometry",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      },
+      {
+       "name": "filtered",
+       "contract": {
+        "kind": "filtered_trajectories",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      },
+      {
+       "name": "aligned",
+       "contract": {
+        "kind": "aligned_recording",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "spatial_recording_request",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "annotate_camera_0",
+     "operation": "annotate_camera_0",
+     "execution_resource": "annotation",
+     "stage": "observations",
+     "effects": [
+      "read_record",
+      "write_disk"
+     ],
+     "inputs": [
+      {
+       "name": "observations",
+       "contract": {
+        "kind": "camera_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "annotated_video",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "annotate_camera_1",
+     "operation": "annotate_camera_1",
+     "execution_resource": "annotation",
+     "stage": "observations",
+     "effects": [
+      "read_record",
+      "write_disk"
+     ],
+     "inputs": [
+      {
+       "name": "observations",
+       "contract": {
+        "kind": "camera_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "annotated_video",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "annotate_camera_2",
+     "operation": "annotate_camera_2",
+     "execution_resource": "annotation",
+     "stage": "observations",
+     "effects": [
+      "read_record",
+      "write_disk"
+     ],
+     "inputs": [
+      {
+       "name": "observations",
+       "contract": {
+        "kind": "camera_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "annotated_video",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "stage_result_request",
+     "operation": "stage_result_request",
+     "execution_resource": "compute",
+     "stage": "triangulation",
+     "effects": [],
+     "inputs": [
+      {
+       "name": "request",
+       "contract": {
+        "kind": "spatial_recording_request",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "spatial_recording_request",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    },
+    {
+     "id": "save_stage_result",
+     "operation": "save_stage_result",
+     "execution_resource": "recording_io",
+     "stage": "triangulation",
+     "effects": [
+      "read_record",
+      "write_disk"
+     ],
+     "inputs": [
+      {
+       "name": "request",
+       "contract": {
+        "kind": "spatial_recording_request",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      },
+      {
+       "name": "saved_observations",
+       "contract": {
+        "kind": "saved_observations",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ],
+     "outputs": [
+      {
+       "name": "result",
+       "contract": {
+        "kind": "saved_recording",
+        "data_granularity": "recording",
+        "namespace": null,
+        "reference_frame": null,
+        "units": null
+       }
+      }
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "source": {
+      "node": "load_and_track",
+      "port": "result"
+     },
+     "target": {
+      "node": "match_and_triangulate",
+      "port": "observations"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "match_and_triangulate",
+      "port": "result"
+     },
+     "target": {
+      "node": "filter_trajectories",
+      "port": "science"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "match_and_triangulate",
+      "port": "result"
+     },
+     "target": {
+      "node": "align_reference",
+      "port": "science"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "filter_trajectories",
+      "port": "result"
+     },
+     "target": {
+      "node": "align_reference",
+      "port": "filtered"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "load_and_track",
+      "port": "result"
+     },
+     "target": {
+      "node": "observation_request",
+      "port": "observations"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "observation_request",
+      "port": "result"
+     },
+     "target": {
+      "node": "save_observations",
+      "port": "request"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "observation_request",
+      "port": "result"
+     },
+     "target": {
+      "node": "spatial_request",
+      "port": "request"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "match_and_triangulate",
+      "port": "result"
+     },
+     "target": {
+      "node": "spatial_request",
+      "port": "science"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "filter_trajectories",
+      "port": "result"
+     },
+     "target": {
+      "node": "spatial_request",
+      "port": "filtered"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "align_reference",
+      "port": "result"
+     },
+     "target": {
+      "node": "spatial_request",
+      "port": "aligned"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "load_and_track",
+      "port": "result"
+     },
+     "target": {
+      "node": "annotate_camera_0",
+      "port": "observations"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "load_and_track",
+      "port": "result"
+     },
+     "target": {
+      "node": "annotate_camera_1",
+      "port": "observations"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "load_and_track",
+      "port": "result"
+     },
+     "target": {
+      "node": "annotate_camera_2",
+      "port": "observations"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "spatial_request",
+      "port": "result"
+     },
+     "target": {
+      "node": "stage_result_request",
+      "port": "request"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "stage_result_request",
+      "port": "result"
+     },
+     "target": {
+      "node": "save_stage_result",
+      "port": "request"
+     },
+     "binding": "same_key"
+    },
+    {
+     "source": {
+      "node": "save_observations",
+      "port": "result"
+     },
+     "target": {
+      "node": "save_stage_result",
+      "port": "saved_observations"
+     },
+     "binding": "same_key"
+    }
+   ]
+  },
+  "topological_order": [
+   "load_and_track",
+   "annotate_camera_0",
+   "annotate_camera_1",
+   "annotate_camera_2",
+   "match_and_triangulate",
+   "observation_request",
+   "filter_trajectories",
+   "save_observations",
+   "align_reference",
+   "spatial_request",
+   "stage_result_request",
+   "save_stage_result"
+  ],
+  "configuration": {},
+  "read_paths": {
+   "load_and_track": [
+    "/recordings/freemocap_sample_data/synchronized_videos/sesh_2022-09-19_16_16_50_in_class_jsm_synced_Cam1.mp4",
+    "/recordings/freemocap_sample_data/synchronized_videos/sesh_2022-09-19_16_16_50_in_class_jsm_synced_Cam2.mp4",
+    "/recordings/freemocap_sample_data/synchronized_videos/sesh_2022-09-19_16_16_50_in_class_jsm_synced_Cam3.mp4"
+   ],
+   "match_and_triangulate": [
+    "/recordings/freemocap_sample_data/freemocap_sample_data_camera_calibration.toml"
+   ],
+   "save_observations": [
+    "/recordings/freemocap_sample_data/freemocap_sample_data_data.parquet"
+   ],
+   "annotate_camera_0": [
+    "/recordings/freemocap_sample_data/synchronized_videos/sesh_2022-09-19_16_16_50_in_class_jsm_synced_Cam1.mp4"
+   ],
+   "annotate_camera_1": [
+    "/recordings/freemocap_sample_data/synchronized_videos/sesh_2022-09-19_16_16_50_in_class_jsm_synced_Cam2.mp4"
+   ],
+   "annotate_camera_2": [
+    "/recordings/freemocap_sample_data/synchronized_videos/sesh_2022-09-19_16_16_50_in_class_jsm_synced_Cam3.mp4"
+   ],
+   "save_stage_result": [
+    "/recordings/freemocap_sample_data/freemocap_sample_data_data.parquet"
+   ]
+  }
+ },
+ "errors": []
+}

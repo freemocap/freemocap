@@ -21,6 +21,10 @@ import {RTMPOSE_MODELS} from "@/store/slices/mocap";
 import MocapStageSelection from './mocap-stage-selection';
 import {PROCESSING_STAGES} from '@/services/recording/posthoc-processing';
 import {selectSourceRunId, selectStageSelection} from '@/store/slices/processing-stages';
+import {useSavedStageInventory} from '@/hooks/useSavedStageInventory';
+import {useProcessingPlan} from '@/hooks/useProcessingPlan';
+import ProcessingGraphView from '@/components/processing-graph/ProcessingGraphView';
+import type {SettingsSectionName} from '@/components/processing-graph/graph-model';
 import {selectBlender} from '@/store/slices/blender';
 import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
@@ -57,6 +61,11 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     const blender = useAppSelector(selectBlender);
     const sourceRunId = useAppSelector(selectSourceRunId);
     const stageSelection = useAppSelector(selectStageSelection);
+    const processSelection = useMemo(() => stageSelection ? {...stageSelection, pipelineImplementation: 'typed_dataflow' as const} : null, [stageSelection]);
+    const [view, setView] = useState<'list' | 'graph'>('list');
+    const graphView = mode === 'playback' && view === 'graph';
+    useSavedStageInventory(mode === 'playback' ? mocapRecordingPath : null);
+    const planState = useProcessingPlan(graphView ? mocapRecordingPath : null, processSelection);
 
 
     useEffect(() => {
@@ -174,8 +183,13 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             <ModalWindowControls title="Mocap processing"/>
             <div className="mocap-settings-layout flex flex-row flex-1">
                 <nav aria-label="Mocap setup sections" className="mocap-settings-navigation flex flex-col">
-                    <SubactionHeader text="Mocap setup" className="text-gray"/>
-                    {sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <ButtonSm key={section.name} text={section.name}
+                    {mode === 'playback' && <div role="group" aria-label="View" className="mocap-view-switch">
+                        {(['list', 'graph'] as const).map(option => <button key={option} type="button" aria-pressed={view === option}
+                            className={`mocap-view-switch-option${view === option ? ' selected' : ''}`} onClick={() => setView(option)}>
+                            {option === 'list' ? 'List' : 'Graph'}</button>)}
+                    </div>}
+                    {!graphView && <SubactionHeader text="Mocap setup" className="text-gray"/>}
+                    {!graphView && sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <ButtonSm key={section.name} text={section.name}
                         buttonType={activeSection === section.name ? 'activated' : 'idle'}
                         className="full-width quaternary" textClass="mocap-section-link"
                         onClick={() => {
@@ -183,7 +197,11 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                             setActiveSection(section.name);
                         }}/>)}
                 </nav>
-                <div ref={scrollContainerRef} className="mocap-settings-content settings-layout flex-1 overflow-y-auto">
+                {graphView && <div className="mocap-settings-content flex-1">
+                    <ProcessingGraphView planState={planState} sectionContent={(name: SettingsSectionName) =>
+                        <div className="settings-layout">{sections.find(section => section.name === name)?.content}</div>}/>
+                </div>}
+                <div ref={scrollContainerRef} style={graphView ? {display: 'none'} : undefined} className="mocap-settings-content settings-layout flex-1 overflow-y-auto">
                     {sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <div key={section.name}
                         ref={element => {
                             if (element) panels.current[section.name] = element;
@@ -201,7 +219,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                     {mode === "playback" ? (
                         <ButtonSm text="Process Mocap" textColor="text-white" iconClass="processmocap-icon"
                             buttonType="" className="primary accent"
-                            onClick={() => {if (stageSelection) {dispatchProcessMocapRecording({...stageSelection, pipelineImplementation: 'typed_dataflow'}); onClose?.();}}}
+                            onClick={() => {if (processSelection) {dispatchProcessMocapRecording(processSelection); onClose?.();}}}
                             disabled={!canProcessMocapRecording || !stageSelection} tooltip tooltipPosition="pos-top"
                             tooltipText={processBlockedReason ?? (stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
                     ) : (

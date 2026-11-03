@@ -82,7 +82,7 @@
   box-sizing: border-box;
   border-radius: 10px;
   background: var(--graph-node-fill);
-  border: 1.5px solid #3c4747;
+  border: 1.5px solid var(--graph-node-line);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   cursor: default;
 }
@@ -130,15 +130,15 @@
 }
 
 .pg-node-head.source {
-  background: #1d3a52;
+  background: var(--graph-head-source);
 }
 
 .pg-node-head.stage {
-  background: #1f4446;
+  background: var(--graph-head-stage);
 }
 
 .pg-node-head.sink {
-  background: #3a2a4e;
+  background: var(--graph-head-sink);
 }
 
 .pg-node-head .mp-stage-toggle {
@@ -215,7 +215,7 @@
 .pg-head-button:hover,
 .pg-head-button.on {
   background: rgba(0, 0, 0, 0.35);
-  color: #fff;
+  color: var(--color-text-primary);
 }
 
 .pg-head-button svg {
@@ -464,7 +464,7 @@
   height: 18px;
   border-radius: 50%;
   background: var(--explain-arrow);
-  color: #2b1f05;
+  color: var(--explain-badge-text);
   font: 700 11px/18px Inter, system-ui, sans-serif;
   font-style: normal;
   text-align: center;

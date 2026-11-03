@@ -198,7 +198,13 @@
   --graph-node-fill: var(--color-bg-secondary);
   --graph-node-annotation-fill: #2b2a22;
   --graph-canvas-dot: #2a3434;
+  /* Processing graph nodes: outline and header fills for the recording, the stages and the outputs. */
+  --graph-node-line: #3c4747;
+  --graph-head-source: #1d3a52;
+  --graph-head-stage: #1f4446;
+  --graph-head-sink: #3a2a4e;
   /* The explain view's callouts: warm, so they never read as part of the working surface. */
+  --explain-badge-text: #2b1f05;
   --explain-fill: #33291a;
   --explain-line: #c9982f;
   --explain-arrow: #d9a93a;

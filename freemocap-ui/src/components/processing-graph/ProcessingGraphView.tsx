@@ -30,7 +30,7 @@ interface Camera {x: number; y: number; z: number}
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 2.2;
 const FIT_MARGIN = 24;
-const colour = (data: DataKey): string => `var(--graph-type-${DATA[data].colour})`;
+const colour = (data: DataKey): string => DATA[data].colour;
 const stateClass = (state: NodeState): string => state.replace(' ', '-');
 const quiet = (state: NodeState): boolean => state === 'not run' || state === 'off';
 

@@ -12,18 +12,18 @@ export type DataKey = 'calibration' | 'videos' | 'keypoints2d' | 'annotated' | '
     | 'segments' | 'landmarks' | 'blend' | 'files';
 
 /** Data on the wires, named as the Exports section's "Data to export" names it where it is exportable. */
-export const DATA: Record<DataKey, {name: string; detail: string; colour: number}> = {
-    calibration: {name: 'Camera calibration', detail: '.toml', colour: 5},
-    videos: {name: 'Synchronized videos', detail: 'mp4', colour: 1},
-    keypoints2d: {name: '2D keypoints', detail: '', colour: 3},
-    annotated: {name: 'Annotated videos', detail: 'mp4', colour: 2},
-    raw3d: {name: '3D keypoints', detail: 'raw', colour: 4},
-    filtered3d: {name: '3D keypoints', detail: 'filtered', colour: 6},
-    dimensions: {name: 'Body dimensions', detail: '', colour: 13},
-    segments: {name: 'Rigid-body segments', detail: '', colour: 8},
-    landmarks: {name: '3D landmarks', detail: '', colour: 7},
-    blend: {name: 'Blender scene', detail: '.blend', colour: 9},
-    files: {name: 'Export files', detail: '', colour: 10},
+export const DATA: Record<DataKey, {name: string; detail: string; colour: string}> = {
+    calibration: {name: 'Camera calibration', detail: '.toml', colour: 'var(--graph-type-5)'},
+    videos: {name: 'Synchronized videos', detail: 'mp4', colour: 'var(--graph-type-1)'},
+    keypoints2d: {name: '2D keypoints', detail: '', colour: 'var(--graph-type-3)'},
+    annotated: {name: 'Annotated videos', detail: 'mp4', colour: 'var(--graph-type-2)'},
+    raw3d: {name: '3D keypoints', detail: 'raw', colour: 'var(--graph-type-4)'},
+    filtered3d: {name: '3D keypoints', detail: 'filtered', colour: 'var(--graph-type-6)'},
+    dimensions: {name: 'Body dimensions', detail: '', colour: 'var(--graph-type-13)'},
+    segments: {name: 'Rigid-body segments', detail: '', colour: 'var(--graph-type-8)'},
+    landmarks: {name: '3D landmarks', detail: '', colour: 'var(--graph-type-7)'},
+    blend: {name: 'Blender scene', detail: '.blend', colour: 'var(--graph-type-9)'},
+    files: {name: 'Export files', detail: '', colour: 'var(--graph-type-10)'},
 };
 
 const CHANNEL_DATA: Record<ExportChannelKind, DataKey> = {

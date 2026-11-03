@@ -144,8 +144,7 @@ Governing documents already in the repo, read these first:
   Cancel (`ButtonSm quaternary`) and "Process Mocap" (`ButtonSm primary accent` with
   `processmocap-icon`). Mode `playback` shows Stages and Process; mode `recording` hides Stages and
   shows Save.
-- Modal-local React state, not Redux: `pipelineImplementation` ('typed_dataflow'
-  legacy), `graphExecutionProvider` ('auto' | 'cpu' | 'cuda'), `sourceRunId`, `stageSelection`.
+- Modal-local React state, not Redux: `sourceRunId`, `stageSelection`, `activeSection`.
 - `mocap-stage-selection.tsx`: fetches `GET /freemocap/mocap/recording/process/stages?recording_path=`
   for the saved-stage inventory (runs, sensor groups, which stages are saved). Controls: Starting data
   (run + sensor group), Save results ('overwrite' | 'new_run'), and a five-item checklist where
@@ -171,8 +170,7 @@ Governing documents already in the repo, read these first:
   spreads the `StageSelection` over it and POSTs `{mocapRecordingDirectory, mocapTaskConfig}` to
   `POST /freemocap/mocap/recording/process` (`freemocap/api/http/mocap/mocap_router.py`).
 - The backend validates it as `PosthocMocapPipelineConfig`
-  (`freemocap/core/tasks/mocap/mocap_task_config.py`): aliases `pipelineImplementation`,
-  `graphExecutionProvider`, `graphAnnotate` (default true), `startStage`, `stopStage`, `baseRunId`,
+  (`freemocap/core/tasks/mocap/mocap_task_config.py`): aliases `executionProvider`, `graphAnnotate` (default true), `startStage`, `stopStage`, `baseRunId`,
   `runSaveMode`, `sensorGroup`, `cameraMatching`, `bodyAlignment`, `filterConfig`,
   `charucoTrackingEnabled`, `boardMode`, `charucoBoard`, `detectorType`, `rtmPoseModelName`,
   `rtmPoseConfidenceThreshold`, `mediapipe*`, `calibrationTomlPath`, `triangulationConfig`,
@@ -191,7 +189,7 @@ Governing documents already in the repo, read these first:
   `task_id`, `revision`, `task_type` ('calibration' | 'mocap'), `recording {base_directory,
   recording_name, full_path}`, `status` ('running' | 'complete' | 'failed' | 'cancelled'),
   `progress {phase, progress_fraction | null, detail}`, `operations[]`, `timing | null`, `cameras[]`
-  (legacy per-camera video nodes), `created_at`, `updated_at`.
+  (filled by calibration only), `created_at`, `updated_at`.
 - Operation (`OperationProgressSnapshot` / `TaskOperation`): `operation_id`, `label`, `status`
   ('waiting' | 'running' | 'complete' | 'failed' | 'cancelled'), `progress_fraction | null`,
   `detail`, `completed | null`, `total | null`, `unit | null`, `elapsed_seconds | null`,
@@ -316,9 +314,8 @@ SCALE_FIT; BIOMECHANICS ← RECONSTRUCTION, SCALE_FIT, TIMING; REPROJECTION ← 
   handlers, so it cannot be called on every settings edit.
 - Snapshots carry operations but no topology, plan identity, node-to-stage membership, configuration
   bindings, artifact paths or dependency-wait reasons.
-- Tracking reports one counter for all cameras; no per-camera lanes in V1 (the legacy pipeline's
-  `cameras[]` snapshots are per camera, but that is the other implementation).
-- Stage, run and execution choices are modal-local UI state.
+- Tracking reports one counter for all cameras; no per-camera lanes in V1.
+- Stage range, source run and save mode are modal-local UI state; execution provider is in Redux.
 
 ## 4. The accepted Graph Lab reference (what to carry, what to drop)
 
@@ -419,7 +416,7 @@ Skull theme, layer 1 (only these change per tint; semantic names stay):
 - A List | Graph segmented control (existing `SegmentedControl`) in the modal's title row; the choice
   is remembered. List view is unchanged.
 - A run-wide chip bar above the graph: Recording, Starting data (run + sensor group), Save results,
-  Stage range, Pipeline implementation, Tracking device, as `SettingsSummaryChip`s. Clicking a chip
+  Stage range, Execution provider, as `SettingsSummaryChip`s. Clicking a chip
   opens that section in the inspector. These are never nodes.
 - Graph view opens the modal at a larger default size and fits the whole graph on first open; the
   existing window controls still move, resize and maximize.
@@ -429,7 +426,7 @@ Skull theme, layer 1 (only these change per tint; semantic names stay):
 - Process keeps the modal open and flips it to Launched. Closing the modal never affects processing.
   The snackbar remains the compact summary; its run card gains "Show graph", which reopens the modal
   on that run.
-- Frontend-only prerequisite: stage range, source run, save mode, pipeline implementation and device
+- Frontend-only prerequisite: stage range, source run and save mode
   move from modal-local state into the shared mocap draft so both views build byte-identical requests.
 
 ### 6.2 Graph content

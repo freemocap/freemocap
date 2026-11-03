@@ -64,6 +64,53 @@ Run against it:
 
 Known here: `streaming-outputs.spec.ts` "late polling" is flaky without this commit too.
 
+## 91a37080 Landing: sfn26 merged in; then merge back into sfn26 (owner decisions 2026-11-03 13:21)
+
+Commits: 91ee7d6e (your branch, fast-forward), cf530094, 91a37080 (merge of origin/sfn26 132a87ad).
+
+Owner decisions:
+- Export defaults: NPZ + wide CSV + notebook, export after processing on; Blender on with automatic opening.
+- Blender in **user runs**: when the server's Blender detection finds no executable, Blender is skipped
+  gracefully. The UI sends `exportToBlender: false` and the Blender node says "Blender not found" with
+  blender.org/download and "Detect again". This is not a failure.
+- Blender in **test and development runs**: Blender is required. A standard test run that cannot find
+  Blender is an error. Enforce this in the harness and test setup (fail before processing), not in the app.
+- Per-video progress: approved as you proposed in a2c2f899.md "Requests" item 1. You implement it.
+
+What changed:
+- cf530094: restores the user-run Blender skip (`mocap-thunks.ts`, `stage-graph.ts` + test). The request
+  fixture now holds the real default request: formats npz/wide_csv/notebook; `exportToBlender: false`
+  because the mocked server has no Blender.
+- 91a37080: merge. `packages/freemocap-client/contracts/openapi.json` and `operations.json` were merged as JSON
+  (union of both route sets, no key changed on both sides); `schema.ts`, `operations.ts`, `coverage.md`
+  regenerated with the package scripts; source hash recomputed. Client `npm test`: 122 pass.
+  Also: `buildPosthocConfig`'s calibration wait had a comma-operator bug from sfn26 (never waited);
+  fixed. `realtime-processing-control.spec.ts` compared against the old theme's literal colours; it
+  now reads `--color-success` and `--color-border-control`. `progress-connection.spec.ts` store stub
+  gained the new stream-error exports.
+- Known, not fixed (DLC out of scope): the characterized DLC defect in `mocap-backend-contract.spec.ts`
+  (`exportOptions` vs `scientificExports` conflict) now affects every DLC run because exports default on.
+  Report it; do not change DLC behaviour.
+
+Cloud evidence at 91a37080: tsc 0; stage-graph 7 pass; operation-progress 9 pass; client 122 pass;
+calibration-selection, progress-connection, realtime-processing-control pass; full e2e otherwise the
+known environment set (Electron, Python backend, addStyleTag).
+
+Requests:
+1. Regenerate `contracts/openapi.json` from the merged running backend and confirm it matches the
+   committed file; commit any difference with regenerated bindings.
+2. Run the full suites with a real backend and a standard sample run (Blender present).
+3. If everything passes: push `sfn26-ui-refactor`, then merge `sfn26-ui-refactor` into `sfn26` and push
+   `sfn26` (owner approved merging back). Bring `sfn26-ui-harness` up to date with `sfn26`.
+   If anything fails, stop and report; do not merge into `sfn26`.
+4. Implement per-video progress (item 1 of a2c2f899.md "Requests"): per-video records on tracking and
+   annotation, measured counts for stages 2-5, `files_written` for every saving operation, and a skipped
+   outcome with a reason (Blender not found in a user run). The graph and the progress panel will
+   consume these; note the field names in your report.
+5. Then open FreeMoCap on Mocap processing > Graph with `freemocap_sample_data` loaded and leave it open.
+
+The progress panel (the floating stack of bars) is being redesigned on the design canvas; no code yet.
+
 ## Pushing
 
 The local agent pushes `sfn26-ui-refactor` to origin: after picking up new commits on this branch,

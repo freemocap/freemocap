@@ -753,3 +753,33 @@
   year = {2019},
   note = {Header and abstract read in the plain-text edition: IETF Request for Comments 8610, Standards Track, June 2019. Proposed as a candidate machine-readable stream specification; no CDDL tooling was evaluated.}
 }
+
+@misc{pythonZlibModule,
+  author = {{Python Software Foundation}},
+  title = {zlib --- Compression compatible with gzip},
+  url = {https://docs.python.org/3/library/zlib.html},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {zlib.compress uses wbits = MAX_WBITS by default, and wbits from +9 to +15 produce output with a zlib-specific header and trailer.},
+  note = {The compress() entry and the wbits parameter description read in the Python 3 documentation. Used to establish that UltraSkelly's depth bytes are in the zlib format.}
+}
+
+@misc{mdnDecompressionStream,
+  author = {{MDN contributors}},
+  title = {DecompressionStream: DecompressionStream() constructor},
+  url = {https://developer.mozilla.org/en-US/docs/Web/API/DecompressionStream/DecompressionStream},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {new DecompressionStream("deflate") decompresses DEFLATE data in the ZLIB Compressed Data Format, header and trailing checksum included.},
+  note = {Constructor parameters read in the page source, mdn/content files/en-us/web/api/decompressionstream/decompressionstream/index.md (main branch). The browser compatibility data was not reviewed.}
+}
+
+@misc{whatwgCompressionStreams,
+  author = {{WHATWG}},
+  title = {Compression Standard},
+  url = {https://compression.spec.whatwg.org/},
+  urldate = {2026-11-02},
+  review = {excerpt},
+  claim = {CompressionStream and DecompressionStream support "deflate", "deflate-raw" and "gzip"; "deflate" is the ZLIB Compressed Data Format of RFC 1950.},
+  note = {Living Standard, last updated 19 October 2026; the introduction and the table of supported formats read. Source repository whatwg/compression at 94b42518d2c2f97e64bd5a483d6deb8c8f14c365.}
+}

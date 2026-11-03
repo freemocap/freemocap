@@ -65,6 +65,8 @@ and compositing the canvas.
 
 The integration review, [sdk-external-review.md](sdk-external-review.md), ranks these
 findings and expands them into a wish list for the multi-language and plugin work.
+Streaming stereo and depth raised further needs, in
+[depth-for-other-applications.md](depth-for-other-applications.md).
 
 1. **Merge the branch's changes into `sfn26` after review.** They are additive:
    FreeMoCap kinds, decoding and UI behavior are unchanged, except that the image

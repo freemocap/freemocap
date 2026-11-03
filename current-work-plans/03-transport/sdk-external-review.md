@@ -54,11 +54,11 @@ plugin work.
 | 3 | Image payload decoding lived in the FreeMoCap UI, not the SDK | High | Fixed (`5e5e27af`) |
 | 4 | No producer kit outside Core | High | Added `freemocap-stream` (`b1ac25be`, `1cf8e895`, `fc8364c4`) |
 | 5 | No distribution for pages without a bundler | Medium | Fixed (`e56605be`) |
-| 6 | How a producer pairs detections with their image is undocumented | Medium | Open |
-| 7 | Overlay frames drop the tracker's identity | Medium | Open |
+| 6 | How a producer pairs detections with their image is undocumented | Medium | Documented in the [handoff](ultraskelly-consumer-handoff.md) (`f729e8ae`) |
+| 7 | Overlay frames drop the tracker's identity | Medium | Fixed (`f729e8ae`); consumer-verified in the [report](ultraskelly-consumer-report.md) |
 | 8 | Image decoding and drawing dominate client cost | Medium | Open |
 | 9 | Each wire encoding has more than one implementation | Medium | Open, guarded by conformance tests |
-| 10 | Channels of unrecognized kinds pass validation but no resolved view exposes them | Medium | Open |
+| 10 | Channels of unrecognized kinds pass validation but no resolved view exposes them | Medium | Fixed (`f729e8ae`); consumer-verified in the [report](ultraskelly-consumer-report.md) |
 | 11 | The validator is 82% of the browser bundle | Low | Open |
 | 12 | `image_size` uses two orders under one name inside Core | Low | Open |
 | 13 | The coverage check failed on Windows checkouts | Low | Fixed (`4fc2e8a2`) |

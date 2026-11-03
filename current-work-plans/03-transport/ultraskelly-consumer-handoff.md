@@ -86,6 +86,7 @@ channel and inspect its descriptor and values. Disconnect during a connection
 failure and confirm retries stop. Reconnect mid-stream and verify a frame renders
 without earlier metadata. Report the branch commit, browser/runtime versions,
 observed failures, and image-path timings separately from protocol timings.
+UltraSkelly's results are in the [consumer report](ultraskelly-consumer-report.md).
 
 The strict image reader rejects the entire malformed payload rather than
 rendering a valid prefix. JPEG byte views share the input payload buffer;

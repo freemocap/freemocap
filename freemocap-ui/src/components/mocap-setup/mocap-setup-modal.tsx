@@ -67,10 +67,15 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     useSavedStageInventory(mode === 'playback' ? mocapRecordingPath : null);
     const [launchedTaskId, setLaunchedTaskId] = useState<string | null>(null);
     const [launching, setLaunching] = useState(false);
-    const launched = useAppSelector(state => launchedTaskId ? state.pipelines.activePipelines[launchedTaskId] ?? null : null);
+    const pipelines = useAppSelector(state => state.pipelines.activePipelines);
+    const launched = launchedTaskId ? pipelines[launchedTaskId] ?? null : null;
     const run = useMemo((): LaunchedRun | null => launched?.plan && launched.taskStatus
-        ? {taskId: launched.basePipelineId, status: launched.taskStatus, plan: launched.plan, operations: launched.operations ?? []}
-        : null, [launched]);
+        ? {taskId: launched.basePipelineId, status: launched.taskStatus, plan: launched.plan, operations: launched.operations ?? [],
+            cameras: Object.values(pipelines)
+                .filter(pipeline => pipeline.basePipelineId === launched.basePipelineId && pipeline.cameraId !== null)
+                .sort((a, b) => a.cameraId!.localeCompare(b.cameraId!, undefined, {numeric: true}))
+                .map(pipeline => ({cameraId: pipeline.cameraId!, fraction: pipeline.progress === null ? null : pipeline.progress / 100, detail: pipeline.detail}))}
+        : null, [launched, pipelines]);
     const planState = useProcessingPlan(graphView && !launchedTaskId ? mocapRecordingPath : null, processSelection);
     const launchProcessing = async (selection: NonNullable<typeof processSelection>): Promise<void> => {
         setLaunching(true);
@@ -196,7 +201,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     return <>
         <div className="pos-fixed inset-0 bg-surface-overlay z-10" onClick={onClose}/>
         <div role="dialog" aria-label="Mocap processing" aria-modal="true"
-            className="mocap-settings-modal pos-fixed flex flex-col br-2">
+            className={`mocap-settings-modal pos-fixed flex flex-col br-2${graphView ? ' graph-view' : ''}`}>
             <ModalWindowControls title="Mocap processing"/>
             <div className="mocap-settings-layout flex flex-row flex-1">
                 <nav aria-label="Mocap setup sections" className="mocap-settings-navigation flex flex-col">

@@ -5,8 +5,8 @@ import {type PointerEvent, type ReactNode, type WheelEvent, useEffect, useLayout
 import type {ProcessingPlanState} from '@/hooks/useProcessingPlan';
 import type {TaskOperation} from '@/services/server/transport/message-contract';
 import {basename, displayGraph, type DiskFile, type DisplayGraph, type DisplayNode, type LaunchedRun, operationCount,
-    type OperationState, runOperations, type SettingsSectionName} from './graph-model';
-import {computeLayout, diskFileRows, type GraphDirection, type GraphLayout, type NodeBox} from './graph-layout';
+    type NodeRun, nodeRun, type OperationState, runOperations, type SettingsSectionName} from './graph-model';
+import {computeLayout, diskFileRows, type GraphDirection, type GraphLayout, LANE_ROW, type NodeBox} from './graph-layout';
 import './processing-graph.css';
 
 interface ProcessingGraphViewProps {
@@ -25,10 +25,9 @@ interface Camera {x: number; y: number; z: number}
 
 const TYPE_COLOURS = 14;
 const BAND = {top: 64, bottom: 56, side: 24};
-const READABLE_ZOOM = 0.75;
 const MIN_ZOOM = 0.06;
 const MAX_ZOOM = 2.5;
-const LOW_DETAIL_ZOOM = 0.55;
+const LOW_DETAIL_ZOOM = 0.45;
 
 const typeColour = (graph: DisplayGraph, kind: string): string => `var(--graph-type-${(graph.kinds.indexOf(kind) % TYPE_COLOURS) + 1})`;
 const round = (value: number): number => Math.round(value * 10) / 10;
@@ -122,17 +121,20 @@ function DiskCard({node, box, side, operation}: {node: DisplayNode; box: NodeBox
     </g>;
 }
 
-function NodeCard({node, box, graph, side, classes, operation, onPick, onHover}: {
-    node: DisplayNode; box: NodeBox; graph: DisplayGraph; side: boolean; classes: string; operation: TaskOperation | null;
+function NodeCard({node, box, graph, side, classes, run, onPick, onHover}: {
+    node: DisplayNode; box: NodeBox; graph: DisplayGraph; side: boolean; classes: string; run: NodeRun | null;
     onPick: () => void; onHover: (on: boolean) => void;
 }) {
+    const operation = run?.summary ?? null;
     const W = box.bw;
     const H = box.bh;
     const ht = box.headTop;
     const io = node.io !== null;
     const titleChars = Math.floor((W - 28 - (io ? 66 : 26)) / 7.2);
     const title = node.title.length > titleChars ? `${node.title.slice(0, titleChars - 1)}…` : node.title;
-    const meta = `${node.resource} · stage ${node.stageNumber}${node.camera !== null ? ` · camera ${node.camera + 1}` : ''}`;
+    const meta = `${node.resource} · stage ${node.stageNumber}${node.lanes.length ? ` · ${node.lanes.length} videos` : ''}`;
+    const laneTrack = W - 178;
+    const laneTop = side ? box.footTop + 38 : box.footTop + 46;
     return <g className={classes} transform={`translate(${round(box.x)},${round(box.y)})`} role="button" tabIndex={0}
         aria-label={`Inspect ${node.title}`} onClick={onPick} onMouseEnter={() => onHover(true)} onMouseLeave={() => onHover(false)}
         onKeyDown={event => {
@@ -154,6 +156,16 @@ function NodeCard({node, box, graph, side, classes, operation, onPick, onHover}:
         <g className="pg-st" transform={`translate(${W - 20},${ht + 18})`}><StateIcon state={operation?.status ?? null}/></g>
         {io && <text className="pg-io-tag" x={W - 34} y={ht + 22} textAnchor="end">{node.io === 'write' ? 'SAVE' : 'LOAD'}</text>}
         <path className="pg-divider" d={side ? `M0 50H${W}M0 ${box.footTop}H${W}` : `M0 26H${W}M0 ${H - 26}H${W}`}/>
+        {node.lanes.map((lane, i) => {
+            const y = laneTop + i * LANE_ROW;
+            const state = run?.lanes[i];
+            return <g key={lane.label} className={`pg-lane ${state?.state ?? ''}`}>
+                <text className="pg-meta" x={14} y={y}>{lane.label}</text>
+                <rect className="pg-track" x={68} y={y - 7} width={laneTrack} height={5} rx={2}/>
+                {state && <rect className="pg-bar" x={68} y={y - 7} height={5} rx={2} width={laneTrack * (state.fraction ?? 0)}/>}
+                <text className="pg-count" x={W - 14} y={y} textAnchor="end">{state?.text ?? ''}</text>
+            </g>;
+        })}
         {side && node.inputs.length > 0 && <path className="pg-divider soft" d={`M14 ${box.split}H${W - 14}`}/>}
         {node.inputs.length === 0 && <text className="pg-port-none" x={side ? 14 : W / 2} y={side ? box.sourceY + 4 : 17}
             textAnchor={side ? 'start' : 'middle'}>source · no inputs</text>}
@@ -174,7 +186,7 @@ function NodeCard({node, box, graph, side, classes, operation, onPick, onHover}:
             return <g key={`out:${slot.name}`}>
                 <circle className="pg-socket" cx={p.x} cy={p.y} r={5} style={{fill: colour, stroke: colour}}/>
                 <text className="pg-slot-text" x={side ? W - 14 : p.x} y={side ? p.y + 4 : H - 9} textAnchor={side ? 'end' : 'middle'}>
-                    <tspan className="pg-port-name">{`${slot.name} `}</tspan>
+                    {slot.kind !== slot.name && <tspan className="pg-port-name">{`${slot.name} `}</tspan>}
                     <tspan className="pg-port-type" style={{fill: colour}}>{slot.kind}</tspan>
                 </text>
             </g>;
@@ -202,22 +214,37 @@ function ProgressBlock({operation}: {operation: TaskOperation}) {
     </div>;
 }
 
-function Inspector({node, graph, operation, live, sectionContent}: {
-    node: DisplayNode | null; graph: DisplayGraph | null; operation: TaskOperation | null; live: boolean;
-    sectionContent: ProcessingGraphViewProps['sectionContent'];
+function Inspector({node, graph, run, live, sectionContent, onClose}: {
+    node: DisplayNode; graph: DisplayGraph; run: NodeRun | null; live: boolean;
+    sectionContent: ProcessingGraphViewProps['sectionContent']; onClose: () => void;
 }) {
-    if (!node || !graph) return <aside className="pg-inspector" aria-label="Node inspector"><div className="pg-empty">Select a node in the graph.</div></aside>;
+    const operation = run?.summary ?? null;
     const titleOf = (id: string): string => graph.nodes.find(item => item.id === id)?.title ?? id;
     const consumers = graph.edges.filter(edge => edge.source === node.id).map(edge => `${titleOf(edge.target)}.${edge.targetSlot}`);
     const output = node.outputs[0];
     return <aside className="pg-inspector" aria-label="Node inspector">
+        <button type="button" className="pg-btn icon pg-inspector-close" aria-label="Close node details" onClick={onClose}>×</button>
         <div className="pg-eyebrow">
             {node.io && <><b className={`pg-eyebrow-io io-${node.io}`}>{node.io === 'write' ? 'SAVE TO DISK' : 'LOAD FROM DISK'}</b> · </>}
-            stage {node.stageNumber} · {node.stageLabel}{node.camera !== null ? ` · camera ${node.camera + 1}` : ''}
+            stage {node.stageNumber} · {node.stageLabel}
         </div>
         <div className="pg-insp-head"><h2>{node.title}</h2>
             <span className={`pg-state-pill${operation ? ` ${operation.status}` : ''}`}>{operation ? STATE_LABEL[operation.status] : live ? 'waiting' : 'will run'}</span></div>
         {operation && <ProgressBlock operation={operation}/>}
+        {run && run.lanes.length > 0 && <>
+            <h3>Videos <span>{run.lanes.length}</span></h3>
+            {run.lanes.map(lane => <div key={lane.label} className="pg-step">
+                <div className="pg-step-head"><span>{lane.label}</span><b>{lane.text || STATE_LABEL[lane.state]}</b></div>
+                <div className={`pg-pbar ${lane.state}`}><i style={{width: `${100 * (lane.fraction ?? 0)}%`}}/></div>
+            </div>)}
+        </>}
+        {run && run.steps.length > 1 && !node.annotation && <>
+            <h3>Steps <span>{run.steps.length}</span></h3>
+            {run.steps.map(step => <div key={step.operation_id} className="pg-step">
+                <div className="pg-step-head"><span>{step.label}</span><b>{operationCount(step) || STATE_LABEL[step.status]}</b></div>
+                <div className={`pg-pbar ${step.status}`}><i style={{width: `${100 * (step.status === 'complete' ? 1 : step.progress_fraction ?? 0)}%`}}/></div>
+            </div>)}
+        </>}
         {operation?.status === 'waiting' && (operation.waiting_for ?? []).length > 0 && <>
             <h3>Waiting for <span>{operation.waiting_for!.length}</span></h3>
             <div className="pg-reads">{operation.waiting_for!.map(id => <code key={id}>{titleOf(id)}</code>)}</div>
@@ -255,10 +282,11 @@ function Inspector({node, graph, operation, live, sectionContent}: {
         <dl className="pg-kv">
             {operation && <><dt>Operation</dt><dd>{operation.label}</dd></>}
             <dt>Resource</dt><dd>{node.resource}</dd>
-            <dt>Effects</dt><dd>{node.definition.effects.join(', ') || 'none'}</dd>
-            <dt>Identity</dt><dd>{node.id}</dd>
+            <dt>Effects</dt><dd>{[...new Set(node.members.flatMap(member => member.effects))].join(', ') || 'none'}</dd>
+            <dt>Plan nodes</dt><dd>{node.members.map(member => member.id).join(', ')}</dd>
         </dl>
-        <details><summary className="pg-help">Graph definition (GraphNode)</summary><pre>{JSON.stringify(node.definition, null, 2)}</pre></details>
+        <details><summary className="pg-help">Graph definition ({node.members.length === 1 ? 'GraphNode' : `${node.members.length} GraphNodes`})</summary>
+            <pre>{JSON.stringify(node.members.length === 1 ? node.members[0] : node.members, null, 2)}</pre></details>
     </aside>;
 }
 
@@ -284,9 +312,22 @@ export default function ProcessingGraphView({planState, run, onNewDraft, section
             return {error: reason instanceof Error ? reason.message : String(reason)};
         }
     }, [run]);
-    const operationOf = (id: string): TaskOperation | null => operations instanceof Map ? operations.get(id) ?? null : null;
     const graph = built && 'graph' in built ? built.graph : null;
     const layout = built && 'layout' in built ? built.layout : null;
+    const nodeRuns = useMemo((): Map<string, NodeRun> | {error: string} => {
+        if (!run || !graph || !(operations instanceof Map)) return new Map();
+        try {
+            const runs = new Map<string, NodeRun>();
+            for (const node of graph.nodes) {
+                const value = nodeRun(node, graph, operations, run.cameras);
+                if (value) runs.set(node.id, value);
+            }
+            return runs;
+        } catch (reason) {
+            return {error: reason instanceof Error ? reason.message : String(reason)};
+        }
+    }, [run, graph, operations]);
+    const runOf = (id: string): NodeRun | null => nodeRuns instanceof Map ? nodeRuns.get(id) ?? null : null;
     const side = direction === 'right';
 
     const canvasRef = useRef<HTMLDivElement>(null);
@@ -314,19 +355,13 @@ export default function ProcessingGraphView({planState, run, onNewDraft, section
         const yc = (BAND.top + vh - BAND.bottom) / 2;
         return {z, x: (layout!.width - vw / z) / 2, y: layout!.height / 2 - yc / z};
     };
-    const initialCamera = (): Camera => {
-        if (fitZoom >= READABLE_ZOOM) return fitCamera();
-        const z = READABLE_ZOOM;
-        const yc = (BAND.top + vh - BAND.bottom) / 2;
-        return side ? {z, x: -BAND.side / z, y: layout!.height / 2 - yc / z} : {z, x: (layout!.width - vw / z) / 2, y: -BAND.top / z};
-    };
     // A new plan or orientation keeps the reader's place only while the drawing is unchanged in size.
     useEffect(() => setCamera(null), [direction, layout?.width, layout?.height]);
     useEffect(() => {
         if (graph && selected && !graph.nodes.some(node => node.id === selected)) setSelected(null);
     }, [graph, selected]);
 
-    const cam = camera ?? (layout && vw ? initialCamera() : {x: 0, y: 0, z: 1});
+    const cam = camera ?? (layout && vw ? fitCamera() : {x: 0, y: 0, z: 1});
     const zoomAbout = (z: number, px: number, py: number): void => {
         const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
         setCamera({z: next, x: cam.x + px / cam.z - px / next, y: cam.y + py / cam.z - py / next});
@@ -358,11 +393,12 @@ export default function ProcessingGraphView({planState, run, onNewDraft, section
             lit.add(edge.source);
             lit.add(edge.target);
         }
-        return {edge, d, on, flow: operationOf(edge.target)?.status === 'running'};
+        return {edge, d, on, flow: runOf(edge.target)?.summary.status === 'running'};
     }) : [];
 
     let canvasBody: ReactNode = null;
     if (!(operations instanceof Map)) canvasBody = <p role="alert" className="pg-notice warn">{operations.error}</p>;
+    else if (!(nodeRuns instanceof Map)) canvasBody = <p role="alert" className="pg-notice warn">{nodeRuns.error}</p>;
     else if (failure) canvasBody = <p role="alert" className="pg-notice warn">Could not build the processing plan: {failure}</p>;
     else if (preview && preview.errors.length) canvasBody = <div role="alert" className="pg-notice warn">Process cannot run with these settings: {preview.errors.join(' · ')}</div>;
     else if (built && 'error' in built) canvasBody = <p role="alert" className="pg-notice warn">{built.error}</p>;
@@ -370,9 +406,11 @@ export default function ProcessingGraphView({planState, run, onNewDraft, section
 
     const selectedNode = graph?.nodes.find(node => node.id === selected) ?? null;
     const nodeCount = graph?.nodes.length ?? 0;
-    const completeCount = run ? run.operations.filter(operation => operation.status === 'complete').length : 0;
+    const completeCount = graph ? graph.nodes.filter(node => runOf(node.id)?.summary.status === 'complete').length : 0;
 
-    return <div className="pg-shell">
+    return <div className="pg-shell" onKeyDown={event => {
+        if (event.key === 'Escape' && selected) setSelected(null);
+    }}>
         <section className="pg-canvas">
             <div ref={canvasRef} className={`pg-scroll${dragging ? ' dragging' : ''}`} onWheel={onWheel} onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Graph canvas. Drag to pan.">
@@ -381,8 +419,8 @@ export default function ProcessingGraphView({planState, run, onNewDraft, section
                     <g>{edgeViews.map(({edge, d, on, flow}) => <path key={edge.id} d={d} style={{stroke: typeColour(graph, edge.kind)}}
                         className={`pg-edge${edge.annotation ? ' annotation' : ''}${on ? ' lit' : ''}${flow ? ' flow' : ''}`}/>)}</g>
                     <g>{graph.nodes.map(node => <NodeCard key={node.id} node={node} box={layout.boxes.get(node.id)!} graph={graph} side={side}
-                        operation={operationOf(node.id)}
-                        classes={`pg-node${node.annotation ? ' annotation' : ''}${node.io ? ` io io-${node.io}` : ''}${operationOf(node.id) ? ` ${operationOf(node.id)!.status}` : ''}${selected === node.id ? ' selected' : ''}${lit.has(node.id) ? ' near' : ''}`}
+                        run={runOf(node.id)}
+                        classes={`pg-node${node.annotation ? ' annotation' : ''}${node.io ? ` io io-${node.io}` : ''}${runOf(node.id) ? ` ${runOf(node.id)!.summary.status}` : ''}${selected === node.id ? ' selected' : ''}${lit.has(node.id) ? ' near' : ''}`}
                         onPick={() => setSelected(node.id)} onHover={on => setHovered(on ? node.id : null)}/>)}</g>
                 </svg>}
                 {canvasBody}
@@ -410,8 +448,8 @@ export default function ProcessingGraphView({planState, run, onNewDraft, section
                     }}>Focus node</button>
                 </div>
                 <span className="pg-graph-meta">{run
-                    ? `${completeCount}/${nodeCount} operations complete`
-                    : `${loading ? 'Updating plan… · ' : ''}${nodeCount} operations · ${graph?.edges.length ?? 0} bindings`}</span>
+                    ? `${completeCount}/${nodeCount} steps complete`
+                    : `${loading ? 'Updating plan… · ' : ''}${nodeCount} steps`}</span>
             </div>
 
             {graph && <div className="pg-overlay pg-legend">
@@ -433,8 +471,8 @@ export default function ProcessingGraphView({planState, run, onNewDraft, section
                 </div>}
             </div>}
         </section>
-        <Inspector node={selectedNode} graph={graph} operation={selectedNode ? operationOf(selectedNode.id) : null} live={run !== null}
-            sectionContent={sectionContent}/>
+        {selectedNode && graph && <Inspector node={selectedNode} graph={graph} run={runOf(selectedNode.id)} live={run !== null}
+            sectionContent={sectionContent} onClose={() => setSelected(null)}/>}
     </div>;
 }
 

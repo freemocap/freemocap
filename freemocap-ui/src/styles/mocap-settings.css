@@ -18,6 +18,21 @@
   transform: translate(-50%, -50%);
 }
 
+/* Graph view fills the window: the graph needs the room. !important wins over the
+   position and size the window controls set inline for the list view. */
+.mocap-settings-modal.graph-view {
+  left: 8px !important;
+  top: 8px !important;
+  width: calc(100vw - 16px) !important;
+  height: calc(100dvh - 16px) !important;
+  max-width: none;
+  max-height: none;
+}
+
+.mocap-settings-modal.graph-view .mocap-settings-navigation {
+  width: auto;
+}
+
 .mocap-settings-layout,
 .mocap-settings-content {
   min-width: 0;

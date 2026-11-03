@@ -31,16 +31,25 @@ class RecordingPipelineTests(unittest.TestCase):
             reprojection_error_px=0., initial_cost=0., final_cost=0., n_iterations=1,
             time_seconds=0., n_observations_used=360, n_observations_rejected=0).save_toml(self.calibration)
 
-    def graph(self, *, observation_override=None, stop_stage='reconstruction', alignment=None, run_save_mode='overwrite', base_run_id=0, start_stage='observations', **options):
+    def graph(self, *, observation_override=None, stop_stage='reconstruction', alignment=None, run_save_mode='overwrite', base_run_id=0, start_stage='observations', charuco_tracking_enabled=False, **options):
         source = self.fixture
         observations = ObservationCollection(sources=source.sources, execution_id="run")
         for event in source.events + source.outcomes:
             observations.accept(event)
-        config = PosthocMocapPipelineConfig(charuco_tracking_enabled=False, export_to_blender=False, stop_stage=stop_stage, start_stage=start_stage, run_save_mode=run_save_mode, base_run_id=base_run_id,
+        config = PosthocMocapPipelineConfig(charuco_tracking_enabled=charuco_tracking_enabled, export_to_blender=False, stop_stage=stop_stage, start_stage=start_stage, run_save_mode=run_save_mode, base_run_id=base_run_id,
             calibration_toml_path=str(self.calibration), body_alignment=alignment or MocapAlignmentConfig(mode="calibration"))
         return build_recording_pipeline(sources=source.sources,
             recording=RecordingInfo(recording_name=source.root.name, recording_directory=str(source.root.parent)),
             config=config, observation_loader=lambda: observation_override or observations, **options)
+
+    def test_unresolved_auto_board_does_not_block_body_processing(self):
+        graph, handlers = self.graph(charuco_tracking_enabled=True)
+        result = execute_recording_graph(graph=graph, handlers=handlers)
+        self.assertTrue(result.complete, result.failures)
+        request = result.outputs['observation_request']['result']
+        self.assertTrue(request.tracker.configuration['charuco_tracking_enabled'])
+        self.assertEqual(request.tracker.configuration['board_mode'], 'auto')
+        self.assertEqual(len(request.models), 1)
 
     def test_early_spatial_finishes_include_alignment_before_saving(self):
         from freemocap.core.reconstruction.reference_transform import ReferenceTransform

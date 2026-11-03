@@ -104,8 +104,6 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
         raise ValueError("Recording graph requires observations or triangulation start and Blender export disabled")
     if config.start_stage == 'triangulation' and observation_loader is None:
         raise ValueError('Triangulation restart requires validated saved observations')
-    if config.charuco_tracking_enabled and config.board_mode != CharucoBoardMode.EXPLICIT:
-        raise ValueError("Recording graph requires an explicit board definition")
     needs_geometry = config.stop_stage != 'observations'
     if needs_geometry and (len(sources.camera_sources) < 2 or not config.calibration_toml_path):
         raise ValueError("Recording graph requires multicamera calibration")
@@ -126,7 +124,10 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     if config.detector_type == "dlc" and config.dlc_geometry_path:
         from freemocap.core.skeletons.dlc_object_skeleton import build_dlc_object_bundle
         bundles = (build_dlc_object_bundle(sidecar_path=config.dlc_model_path, geometry_path=config.dlc_geometry_path),)
-    if config.charuco_tracking_enabled:
+    # AUTO remains unresolved when the application's recording-wide search found
+    # no board. Keep that result in provenance without fabricating a board model
+    # from the configuration's default layout or blocking body processing.
+    if config.charuco_tracking_enabled and config.board_mode == CharucoBoardMode.EXPLICIT:
         from skellytracker.core.tracker.tracker_presets import with_charuco_tracker
         tracker_config = with_charuco_tracker(tracker_config, config.charuco_board)
         bundles += (build_charuco_board_bundle(board=config.charuco_board),)

@@ -116,10 +116,9 @@ def set_charuco_board_as_groundplane(
             camera_centers=camera_centers,
         )
     except (CharucoStabilityError, CharucoVisibilityError, CharucoGeometryError) as e:
-        logger.warning(
+        logger.info(
             "Ground-plane alignment skipped — reverting to original calibration: %s",
             e,
-            exc_info=True,
         )
         return cameras, GroundPlaneSuccess(success=False, error=str(e)), None
 

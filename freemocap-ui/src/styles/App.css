@@ -957,7 +957,7 @@ body,
    ========================= */
 
 .form-control {
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 2rem;
   font-weight: bold;
   line-height: 1.1;
@@ -1007,7 +1007,7 @@ body,
    ========================= */
 
 .font-mono {
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 /* =========================

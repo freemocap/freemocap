@@ -311,7 +311,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                             </p>
                             {effectiveCalibrationTomlPath && (
                                 <p className="text sm block" style={{
-                                    fontFamily: "monospace",
+                                    fontFamily: 'var(--font-mono)',
                                     color: 'var(--color-success)',
                                     wordBreak: "break-all",
                                 }}>

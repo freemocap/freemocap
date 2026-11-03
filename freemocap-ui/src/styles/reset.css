@@ -15,7 +15,7 @@ body,
     letter-spacing: -0px;
     font-weight: 500;
     color: var(--color-text-muted);
-    font-family: Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: var(--color-text-primary);

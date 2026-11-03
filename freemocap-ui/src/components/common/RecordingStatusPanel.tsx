@@ -126,7 +126,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                         <div className="toast-notification">
                             <p className="text md text-warning">Recording folder does not exist yet. It will be created when you start recording.</p>
                             {recordingFolderPath && (
-                                <p className="text md text-gray mt-1" style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                <p className="text md text-gray mt-1" style={{ fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>
                                     {recordingFolderPath}
                                 </p>
                             )}
@@ -136,7 +136,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                     {activeCalibrationTomlPath && (
                         <div>
                             <p className="text md text-gray">Active calibration TOML:</p>
-                            <p className="text md" style={{ fontFamily: 'monospace', color: 'var(--color-success)', wordBreak: 'break-all' }}>
+                            <p className="text md" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-success)', wordBreak: 'break-all' }}>
                                 {activeCalibrationTomlPath}
                             </p>
                         </div>
@@ -164,7 +164,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                                                 <div
                                                     key={f.path ?? f.name}
                                                     className="flex flex-row flex-wrap items-center gap-1"
-                                                    style={{ fontFamily: 'monospace' }}
+                                                    style={{ fontFamily: 'var(--font-mono)' }}
                                                 >
                                                    <div className="flex flex-row gap-1">
                                                         <span className={`icon icon-size-12 ${f.exists ? 'upToDate-icon' : 'close-icon'}`} />

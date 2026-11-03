@@ -214,7 +214,7 @@ export const MocapPanel: React.FC = () => {
                             <div className="flex flex-row gap-1 items-center">
                                 <p className="text sm text-gray">Recording ID</p>
                             </div>
-                            <p className="text md text-white" style={{fontFamily: "monospace", fontWeight: 600}}>
+                            <p className="text md text-white" style={{fontFamily: 'var(--font-mono)', fontWeight: 600}}>
                                 {recordingId}
                             </p>
                         </div>

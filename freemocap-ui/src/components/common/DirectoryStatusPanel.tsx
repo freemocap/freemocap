@@ -73,7 +73,7 @@ export const DirectoryStatusPanel: React.FC<DirectoryStatusPanelProps> = ({
             {directoryInfo.tomlPath && (
                 <div>
                     <p className="text sm text-gray">Found calibration file:</p>
-                    <p className="text sm" style={{ fontFamily: 'monospace', color: 'var(--color-success)', wordBreak: 'break-all' }}>
+                    <p className="text sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-success)', wordBreak: 'break-all' }}>
                         {directoryInfo.tomlPath}
                     </p>
                 </div>

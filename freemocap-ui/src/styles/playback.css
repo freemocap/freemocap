@@ -177,7 +177,7 @@ linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--progress-percent), #212121 v
 
   white-space: nowrap;
 
-  font-family: "Courier New", monospace;
+  font-family: var(--font-mono);
 
   font-weight: 600;
 

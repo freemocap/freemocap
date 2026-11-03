@@ -92,7 +92,7 @@ export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraI
                     color: '#fff',
                     padding: '4px 8px',
                     fontSize: '12px',
-                    fontFamily: 'monospace',
+                    fontFamily: 'var(--font-mono)',
                     lineHeight: 1.4,
                 }}
             >

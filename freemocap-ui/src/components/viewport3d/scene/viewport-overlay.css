@@ -10,7 +10,7 @@
   --vp-inspect-width: 340px;
   --vp-bottom-bar: 56px;
   --vp-panel-bg: rgba(14, 14, 14, 0.88);
-  --vp-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  --vp-mono: var(--font-mono);
   container-type: size;
   container-name: viewport;
 }
@@ -466,7 +466,7 @@
 }
 
 .vp-hover-name {
-  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
 }
 

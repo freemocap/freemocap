@@ -461,7 +461,7 @@
 
   border-radius: 4px;
 
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--color-text-muted);
   transition: border-color var(--speed-1), color var(--speed-1);
@@ -792,7 +792,7 @@
 
 }
 
-@media screen (min-width : 1920px) {
+@media screen and (min-width: 1920px) {
 
   ds\:video-tile.size-25 {
     flex: 1 0 calc(25%);

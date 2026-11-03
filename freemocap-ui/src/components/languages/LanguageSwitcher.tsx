@@ -80,7 +80,7 @@ export const LanguageSwitcher: React.FC = () => {
                                     {label !== englishName && (
                                         <p className="text-darkgray text sm text-nowrap">{englishName}</p>
                                     )}
-                                    <p className="text-darkgray text sm" style={{ fontFamily: "monospace" }}>{code}</p>
+                                    <p className="text-darkgray text sm" style={{ fontFamily: 'var(--font-mono)' }}>{code}</p>
                                 </button>
                             ))}
                         </div>

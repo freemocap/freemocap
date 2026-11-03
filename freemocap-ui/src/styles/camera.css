@@ -372,7 +372,7 @@
 }
 
 .record-button-duration {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   color: var(--color-text-primary);
   letter-spacing: 0.5px;
@@ -418,7 +418,7 @@
    ============================================================ */
 
 .recording-path-preview {
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   color: var(--color-text-muted);
   overflow: hidden;
@@ -530,7 +530,7 @@
 }
 
 .playback-timecode {
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
   color: var(--color-success);
@@ -545,7 +545,7 @@
 }
 
 .playback-frame-badge {
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
   color: var(--color-success);
@@ -557,7 +557,7 @@
 }
 
 .playback-fps-badge {
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-warning-soft);
   background-color: var(--color-warning-alpha-08);

@@ -26,7 +26,7 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
@@ -45,7 +45,7 @@
 }
 
 .reference-transform-identity {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 11.5px;
   color: var(--color-text-help);
 }

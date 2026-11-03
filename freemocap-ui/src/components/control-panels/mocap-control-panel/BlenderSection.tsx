@@ -171,7 +171,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                 </button>
 
                 {lastBlendFilePath && (
-                    <p className="text sm text-gray" style={{fontFamily: 'monospace'}}>
+                    <p className="text sm text-gray" style={{fontFamily: 'var(--font-mono)'}}>
                         Last export: {lastBlendFilePath}
                     </p>
                 )}

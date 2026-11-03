@@ -70,7 +70,7 @@
   text-align: center;
   font-weight: bold;
   cursor: help;
-  font-family: monospace;
+  font-family: var(--font-mono);
   position: relative;
 }
 
@@ -82,7 +82,7 @@
   padding: 2px 4px;
   text-align: center;
   border-bottom: none;
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 /* Source column header */
@@ -103,7 +103,7 @@
 /* Metric cell values */
 .stats-cell-primary {
   /* font-weight: bold;
-  font-family: monospace; */
+  font-family: var(--font-mono); */
   /* font-size: 0.7rem; */
   white-space: nowrap;
 }
@@ -179,7 +179,7 @@
   line-height: 1.4;
   color: var(--color-text-muted);
   margin: 0;
-  font-family: monospace;
+  font-family: var(--font-mono);
   pointer-events: none;
 }
 

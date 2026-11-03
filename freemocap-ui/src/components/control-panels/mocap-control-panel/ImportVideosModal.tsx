@@ -256,7 +256,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                             <div className="flex flex-col gap-1">
                                 {videoPaths.map((path) => (
                                     <p key={path} className="text sm text-white"
-                                       style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                       style={{fontFamily: 'var(--font-mono)', wordBreak: 'break-all'}}>
                                         {path.replace(/\\/g, '/').split('/').pop()}
                                     </p>
                                 ))}
@@ -313,7 +313,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                                 <div className="flex flex-col gap-1">
                                     {syncCheck.videos.map((video) => (
                                         <p key={video.filename} className="text sm"
-                                           style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                           style={{fontFamily: 'var(--font-mono)', wordBreak: 'break-all'}}>
                                             {video.filename}: {video.frameCount} frames ({video.fps.toFixed(2)} fps, {video.durationSeconds.toFixed(2)}s)
                                         </p>
                                     ))}

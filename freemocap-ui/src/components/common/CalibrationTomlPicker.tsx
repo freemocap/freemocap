@@ -27,7 +27,7 @@ export const CalibrationTomlPicker: React.FC<CalibrationTomlPickerProps> = ({
                         <span
                             className="text sm"
                             title={tomlPath}
-                            style={{ fontFamily: 'monospace', color: 'var(--color-success)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-success)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                         >
                             {tomlPath}
                         </span>

@@ -159,7 +159,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
                             Where FreeMoCap stores recordings, calibrations, and logs.
                         </p>
                         <p className="text sm text-white"
-                           style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                           style={{fontFamily: 'var(--font-mono)', wordBreak: 'break-all'}}>
                             {loaded ? (baseFolder || '—') : 'Loading…'}
                         </p>
                         <div className="flex flex-row gap-2 flex-wrap">

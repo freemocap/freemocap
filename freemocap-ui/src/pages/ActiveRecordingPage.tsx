@@ -19,7 +19,7 @@ import {RecordingPathPanel} from '@/components/control-panels/recording-info-pan
 import {RecordingControlPanel} from '@/components/control-panels/recording-info-panel/RecordingControlPanel';
 import {MocapPanel} from '@/components/control-panels/mocap-control-panel/MocapPanel';
 
-const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
+const MONO_FONT = 'var(--font-mono)';
 
 const ORIGIN_LABEL: Record<string, string> = {
     'pending-capture': 'Pending capture',

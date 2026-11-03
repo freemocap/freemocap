@@ -75,7 +75,7 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                         backgroundColor: 'rgba(0, 0, 0, 0.75)',
                         color: '#ccc', padding: '2px 8px', borderRadius: '3px',
                         fontSize: '11px',
-                        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                        fontFamily: 'var(--font-mono)',
                         userSelect: 'none',
                     }}>
                         {filename}

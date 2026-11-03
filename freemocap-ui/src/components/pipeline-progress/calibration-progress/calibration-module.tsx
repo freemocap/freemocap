@@ -438,7 +438,7 @@ const CalibrationModule = ({
                       <p
                         className="text-white text md"
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: 'var(--font-mono)',
                           whiteSpace: "normal",
                           wordBreak: "break-all",
                         }}

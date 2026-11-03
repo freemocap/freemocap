@@ -131,7 +131,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
 }
 
@@ -456,7 +456,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   direction: rtl;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 10.5px;
   cursor: pointer;
 }
@@ -472,7 +472,7 @@
 
 .setting-path-placeholder {
   direction: ltr;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-sans);
   color: var(--color-text-help);
 }
 

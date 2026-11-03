@@ -132,6 +132,15 @@ Governing documents already in the repo, read these first:
   language) and the backend-ask list are outlined but not yet presented.
 - Scope for now: the post hoc mocap pipeline only. Broader application of the design system to the
   rest of the app is a later task.
+- Sources and sinks (2026-11-02): the graph shows data flowing from sources to sinks. Sources are live
+  (cameras) or records (video files, saved calibration, saved results). Sinks are disk writes or
+  display. Every disk read, disk write and display is drawn explicitly from what the node declares.
+- Progress layout (2026-11-02): every progress bar is known when a run starts, so the progress panel
+  and the graph lay them out in a fixed, meaningful order from the start. The existing progress panel
+  keeps working; its disordered bars get reorganised the same way.
+- DLC is out of scope; do not plan around it.
+- Backend changes go to the local agent (`freemocap-ui/UI-REFACTOR-HANDOFF.md`, "Backend asks"); this
+  work covers UX/UI.
 
 ## 3. What exists today (verified in code)
 

@@ -64,6 +64,27 @@ Run against it:
 
 Known here: `streaming-outputs.spec.ts` "late polling" is flaky without this commit too.
 
+## Landing addendum (owner, 2026-11-03 13:53): finish, then merge back
+
+Test the branch head together with 79d268d8's requests; this adds one commit, "Name the processing graph's
+colours as theme tokens", answering 6f8404ae.md's style findings: the six new literals in
+`processing-graph.css` are tokens in `color.css`, and data colours are full `var(--graph-type-N)` names
+(the `--graph-type-` finding was a template string, not a missing variable).
+
+- **Visual baselines:** the processing window changed on purpose and the owner accepts the pipeline view.
+  Regenerate the frozen screenshots for the Mocap processing window and its request fixture from this
+  branch, after reviewing the diffs for anything unintended, and record that in the report.
+- **Contrast findings in 6f8404ae.md** (recording browser/path labels, microphone error text, black text on
+  two secondary buttons) are outside the processing window and predate this work: list them in the report
+  for the next design phase; they do not block this landing.
+- **Blender skip vs export failures:** the owner's rule in 79d268d8 stands. A user run with no Blender found
+  is not a requested export failing: the request says `exportToBlender: false` and the Blender node says
+  why. A requested export that fails still fails visibly.
+- **DLC:** leave as is; nothing to report about it for this landing.
+- **Merge back:** when green, push `sfn26-ui-refactor`, merge it into the current `origin/sfn26`
+  (1fec74ce or later) and push; then update `sfn26-ui-harness`. Report the resulting `sfn26` commit.
+  The owner coordinates with the other agents on `sfn26`: if `sfn26` moves while you merge, stop and report.
+
 ## 91a37080 Landing: sfn26 merged in; then merge back into sfn26 (owner decisions 2026-11-03 13:21)
 
 Commits: 91ee7d6e (your branch, fast-forward), cf530094, 91a37080 (merge of origin/sfn26 132a87ad).

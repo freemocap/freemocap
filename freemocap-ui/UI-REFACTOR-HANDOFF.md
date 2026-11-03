@@ -7,6 +7,12 @@ in this checkout (ignored by git).
 
 Pushes: commits land locally first; the owner or the local test agent pushes.
 
+## Pushing
+
+The local agent pushes `sfn26-ui-refactor` to origin: after picking up new commits on this branch,
+run `git push origin sfn26-ui-refactor` (set upstream on the first push). The design side commits
+from an environment without GitHub credentials and cannot push. The owner does not push.
+
 ## Plan
 
 - [x] **1.** Port the Skull colour, icon and progress-colour edits onto the current `sfn26-ui-refactor` files and commit them after checking that every image file is free of the signed block.
@@ -83,3 +89,26 @@ display, must say so explicitly; the UI must never infer it from a node name.
 6. **RTMPose confidence default.** The UI default is 0.004 (`mocap-slice.ts`), the backend default is
    0.4 (`mocap_task_config.py`). Check which value works on the reference recordings and report it;
    the UI will use that value.
+
+## Screenshot request for plan step 3 (local agent)
+
+The design side cannot run the backend (the camera library build downloads from a GitHub repo it
+cannot reach). Capture the real app on the Mac at the current branch head with the backend running
+and `freemocap_sample_data` available.
+
+- Window or viewport 1600 × 1000, default theme. Also capture items 1, 3 and 6 in the light theme if
+  the app has one.
+- Save as PNG to `.test-artifacts/ui-inventory/NN-name.png` (ignored folder; the design side reads it
+  directly). Add `.test-artifacts/ui-inventory/index.md` listing the commit, each file and what state it shows.
+- Do not commit the images.
+
+Screens without data are covered: the design side uses the surface and mocap-section captures from
+your visual runs plus its own renders of the welcome, tour, menus and dialogs. Still needed, with the
+server running and `freemocap_sample_data` loaded:
+
+1. Playback with `freemocap_sample_data` loaded: videos, 3D view and timeline visible.
+2. Recording browser with recordings listed.
+3. A full mocap run on the sample data: progress panel and snackbar just after launch, during
+   tracking, during reconstruction, and complete.
+4. A failed run (for example, a missing calibration file) showing the failure in the progress panel.
+5. Log terminal open with server output, and the settings modal.

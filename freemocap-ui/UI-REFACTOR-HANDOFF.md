@@ -61,6 +61,32 @@ Undefined tokens still in use elsewhere: `--color-bg-darker`
 (calibration-module.css), `--color-text-tertiary` (log-terminal.css),
 `--color-border` (tutorial.css).
 
+## 086f7a70 Give primary, secondary and record buttons their own colour roles
+
+- `styles/color.css`: new tokens `--color-primary-fill` (teal `--color-info-strong`), `--color-primary-fill-hover`,
+  `--color-on-primary` (dark label, 6.2:1), `--color-record-dot` (`--red-400`), `--color-record-fill` (#a8473f, light
+  label 4.55:1) and `--color-record-fill-dim` for the recording pulse.
+- `styles/button-sm.css`: `.accent` is the primary role (teal fill, dark label and icon); `.secondary` and
+  `.button.accent-outline` use the surface-control fill with the control border.
+- `styles/camera.css` and `StartStopRecordingButton.tsx`: the idle record button is a secondary button with a red
+  dot; only an active recording fills with the record colour.
+
+Run: typecheck, unit and E2E suites, visual and contrast checks. Look at: welcome and tour buttons, Open Mocap
+Processing, Process Mocap and Save in the mocap modal, Calibrate from active recording, Connect Cameras, Set up
+calibration, Start Recording idle and while recording (the recording state needs the server), Stop Mocap
+Recording in the mocap task panel. Contrast checks should now pass for these buttons.
+
+## Processing stages colours and custom pipeline label
+
+- Processing stages keeps its checkboxes and selection rules. Ticks use `--color-info-strong`; a running stage's
+  rail is teal; "Run" and "Rerun" use the new `active` summary-chip tone (`--color-info-text`, `--blue-300`);
+  "Removed after save" uses the new `caution` tone (`--color-warning-text`). Green stays for live/OK only.
+- The pipeline dropdown's disabled entry reads "Select custom pipeline…" with the "Coming soon" tooltip.
+  `processing-pipeline-select.spec.ts` and `mocap-graph-settings.spec.ts` follow the new name.
+
+Run: E2E suite (both specs above and `staged-processing.spec.ts`), visual and contrast checks. Look at: Processing
+stages with all stages running, with a saved run and a later start, and with an early finish over saved stages.
+
 ## Backend asks (local agent builds; UI branch reviews and consumes)
 
 Current-code facts the UI relies on: `experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0.

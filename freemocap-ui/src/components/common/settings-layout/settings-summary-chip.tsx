@@ -1,12 +1,14 @@
 import type {ReactNode} from 'react';
 import './settings-layout.css';
 
-type SummaryChipTone = 'neutral' | 'quiet' | 'positive' | 'path';
+type SummaryChipTone = 'neutral' | 'quiet' | 'positive' | 'active' | 'caution' | 'path';
 
 const toneClass: Record<SummaryChipTone, string> = {
     neutral: '',
     quiet: 'settings-summary-chip-quiet',
     positive: 'settings-summary-chip-positive',
+    active: 'settings-summary-chip-active',
+    caution: 'settings-summary-chip-caution',
     path: 'settings-summary-chip-path',
 };
 

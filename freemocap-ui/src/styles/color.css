@@ -160,6 +160,8 @@
   /* Words in the warning colour. --color-warning is a fill; as small text it
      fails AA on the dark grounds. */
   --color-warning-text: var(--warning-300);
+  /* Words in the info colour: work that an action will do. */
+  --color-info-text: var(--blue-300);
 
   /* Error / Danger */
   --color-danger: var(--red-500);
@@ -170,6 +172,19 @@
   /* Words in the danger colour. --color-danger is a fill; as small text it
      fails AA on the dark grounds. */
   --color-danger-text: var(--red-300);
+
+  /* Primary action: the one action that completes a dialog or flow.
+     Dark label on the teal fill (6.2:1). */
+  --color-primary-fill: var(--color-info-strong);
+  --color-primary-fill-hover: var(--color-info);
+  --color-on-primary: var(--color-surface-ground);
+
+  /* Record. The idle button is a secondary button with a red dot; only an
+     active recording fills. The fill is a desaturated brick so a recording
+     does not read as an error (light label 4.55:1). */
+  --color-record-dot: var(--red-400);
+  --color-record-fill: #a8473f;
+  --color-record-fill-dim: #933a33;
 
   /* ========================================
      CHART SEMANTICS

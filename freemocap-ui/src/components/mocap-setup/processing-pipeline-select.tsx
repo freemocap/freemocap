@@ -7,7 +7,7 @@ export default function ProcessingPipelineSelect() {
             dropdownItems={<div role="listbox" aria-label="Processing pipeline options">
                 <div role="option" aria-selected="true">Typed data flow graph V1</div>
                 <div role="option" aria-disabled="true" aria-selected="false">
-                    <ButtonSm text="Add custom pipeline…" disabled tooltip tooltipText="Coming soon" />
+                    <ButtonSm text="Select custom pipeline…" disabled tooltip tooltipText="Coming soon" />
                 </div>
             </div>} />
     </div>;

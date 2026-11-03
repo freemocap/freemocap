@@ -118,6 +118,14 @@
   color: var(--color-success);
 }
 
+.settings-summary-chip-active {
+  color: var(--color-info-text);
+}
+
+.settings-summary-chip-caution {
+  color: var(--color-warning-text);
+}
+
 .settings-summary-chip-path {
   flex: 0 1 auto;
   min-width: 0;

@@ -24,9 +24,10 @@
   justify-content: center;
 }
 
-/* Primary fullwidth button */
+/* Secondary: any other working action in a row or panel */
 .secondary {
-  background-color: var(--color-bg-idle);
+  background-color: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
 }
 
 .secondary>p {
@@ -34,7 +35,7 @@
 }
 
 .secondary:hover {
-  background-color: var(--color-bg-elevated);
+  background-color: var(--color-surface-hover);
 }
 
 .tertiary>p {
@@ -81,23 +82,32 @@ button.quaternary:hover,
 }
 
 
-/* accent button */
+/* Outlined action: drawn as a secondary button */
 .button.accent-outline {
-  background-color: transparent;
-  border: 1px solid var(--color-danger);
+  background-color: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
 }
 
 .button.accent-outline:hover {
-  background-color: var(--color-danger-idle);
+  background-color: var(--color-surface-hover);
 }
 
 .button.accent-outline:focus-visible {
-  outline: 2px solid var(--color-danger);
+  outline: 2px solid var(--color-info-strong);
   outline-offset: 2px;
 }
 
+/* Primary action: teal fill with a dark label and icon */
 .accent {
-  background-color: var(--color-danger);
+  background-color: var(--color-primary-fill);
+}
+
+.accent p {
+  color: var(--color-on-primary);
+}
+
+.accent .icon {
+  background-color: var(--color-on-primary);
 }
 
 .btn-danger {
@@ -113,12 +123,8 @@ button.quaternary:hover,
   color: var(--color-text-primary);
 }
 
-.accent>p {
-  color: var(--color-text-primary);
-}
-
 .accent:hover {
-  background-color: var(--color-danger-strong);
+  background-color: var(--color-primary-fill-hover);
 }
 
 /* card button */

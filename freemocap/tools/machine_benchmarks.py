@@ -181,11 +181,12 @@ def render(record):
                       f"Outcome: {report.get('outcome')}; wall: {cell(report.get('elapsed_s'))} s; "
                       f"{cell(report.get('frames'))} synchronized frames / {cell(report.get('images'))} camera images. "
                       f"Evidence: {report['source']}.", '',
-                      '| Stage | Calls | Total s | Mean ms/call | First ms | After first ms | Max ms | Amortized ms/frame | Amortized ms/image |',
-                      '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+                      '| Stage | Calls | Total s | Mean ms/call | First ms | After first ms | Max ms | Amortized ms/frame | Frames/s | Amortized ms/image | Images/s |',
+                      '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
             for name, stage in normalized_stages(report):
                 values = [name, *[stage[key] for key in ('count', 'total_s', 'mean_ms', 'first_ms',
-                          'mean_after_first_ms', 'max_ms', 'amortized_ms_per_frame', 'amortized_ms_per_image')]]
+                          'mean_after_first_ms', 'max_ms', 'amortized_ms_per_frame', 'synchronized_frames_per_second',
+                          'amortized_ms_per_image', 'camera_images_per_second')]]
                 lines.append('| ' + ' | '.join(cell(value) for value in values) + ' |')
     lines += ['', 'Stage spans overlap and must not be summed. Per-frame/image costs are amortized over the recording, '
               'not latency percentiles. After first excludes exactly the first call; it does not assert steady state. '
@@ -220,7 +221,8 @@ def compare(records: list[dict]) -> dict:
             metrics = dict(case['metrics'])
             for report in case.get('timing_reports', []):
                 for name, stage in normalized_stages(report):
-                    for key in ('total_s', 'mean_ms', 'mean_after_first_ms', 'amortized_ms_per_frame', 'amortized_ms_per_image'):
+                    for key in ('total_s', 'mean_ms', 'mean_after_first_ms', 'amortized_ms_per_frame', 'amortized_ms_per_image',
+                                'synchronized_frames_per_second', 'camera_images_per_second'):
                         metrics[f"{report['scope']}.{name}.{key}"] = stage[key]
             for index, identity in enumerate(case.get('evidence', {}).get('case', {}).get('camera_ids', [])):
                 metrics = {name.replace(f'.{identity}.', f'.camera[{index}].'): value for name, value in metrics.items()}

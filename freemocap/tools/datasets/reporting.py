@@ -94,7 +94,11 @@ def normalized_stages(report):
     for name, stage in report['stages'].items():
         yield name, dict(stage,
             amortized_ms_per_frame=1000 * stage['total_s'] / report['frames'] if report.get('frames') else None,
-            amortized_ms_per_image=1000 * stage['total_s'] / report['images'] if report.get('images') else None)
+            amortized_ms_per_image=1000 * stage['total_s'] / report['images'] if report.get('images') else None,
+            synchronized_frames_per_second=report['frames'] / stage['total_s']
+                if report.get('frames') and stage['total_s'] else None,
+            camera_images_per_second=report['images'] / stage['total_s']
+                if report.get('images') and stage['total_s'] else None)
 
 
 def performance_tables(reports) -> str:
@@ -102,9 +106,9 @@ def performance_tables(reports) -> str:
     for report in reports:
         sections += [f"{report['scope']} / {report['pipeline_id']} / {report.get('outcome')} / source={report['source']}",
                      f"Wall: {cell(report.get('elapsed_s'))} s; synchronized frames: {cell(report.get('frames'))}; camera images: {cell(report.get('images'))}",
-                     table(['Operation', 'Calls', 'Total s', 'Mean ms/call', 'First ms', 'After first ms', 'Max ms', 'Amortized ms/frame', 'Amortized ms/image'],
+                     table(['Operation', 'Calls', 'Total s', 'Mean ms/call', 'First ms', 'After first ms', 'Max ms', 'Amortized ms/frame', 'Frames/s', 'Amortized ms/image', 'Images/s'],
                            [[name, stage['count'], stage['total_s'], stage['mean_ms'], stage['first_ms'], stage['mean_after_first_ms'], stage['max_ms'],
-                             stage['amortized_ms_per_frame'], stage['amortized_ms_per_image']] for name, stage in normalized_stages(report)])]
+                             stage['amortized_ms_per_frame'], stage['synchronized_frames_per_second'], stage['amortized_ms_per_image'], stage['camera_images_per_second']] for name, stage in normalized_stages(report)])]
     return '\n\n'.join(sections) if sections else 'Detailed operation timing: not recorded.'
 
 

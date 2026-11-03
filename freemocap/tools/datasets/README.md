@@ -186,7 +186,7 @@ measurements logged before failure. Successful results retain the same data in
 `result.timing_reports`. Each report identifies its scope, outcome, frame/image
 counts and stages. The ordinary report prints call count, total seconds, mean,
 first-call, after-first mean, maximum, and amortized milliseconds per synchronized
-frame and camera image. Full-precision structured events take precedence over
+frame and camera image, always paired with frames/s and images/s. Full-precision structured events take precedence over
 rounded display tables; both historical table formats remain readable.
 
 Workflow phases include automatic Blender preparation, service startup,

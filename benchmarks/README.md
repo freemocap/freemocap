@@ -64,8 +64,8 @@ runner log and all ordinary runner artifacts. The JSON schema records:
 - Structured stage measurements in `cases[].timing_reports`: scope, outcome, frame/image
   counts, call counts, total seconds, mean/first/after-first/maximum milliseconds.
   The Markdown report automatically prints every stage, including amortized
-  milliseconds per synchronized frame and per camera image. `compare` includes
-  stage totals, means and normalized costs alongside overall worker measurements.
+  milliseconds per synchronized frame and per camera image, paired with frames/s and images/s. `compare` includes
+  stage totals, means, normalized costs and their reciprocal rates alongside overall worker measurements.
 - Workflow phase timing for automatic Blender preparation, inference service start,
   fresh calibration, mocap, numerical validation, Blender validation, output
   acceptance and shutdown. The ordinary dataset runner saves `timings.json` beside

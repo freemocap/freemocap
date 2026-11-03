@@ -1,5 +1,7 @@
 # Detailed full-workflow benchmarks — 2026-11-03
 
+[CoreML correction and paired ms/frame–FPS measurements](COREML-RESULTS-2026-11-03.md) supersede the CPU-only hardware-performance interpretation below. Historical measurements are retained.
+
 Apple M4 Pro (12 CPU cores), 24 GiB RAM; macOS 26.6.2; CPUExecutionProvider for RTMW and YOLOX. Three 720×1280 videos per dataset. Existing standard dataset workflow, fresh calibration, full Blender export and reopened-scene validation. Cached models and managed Blender package; other desktop apps and agents active. One new observation per dataset, not a median.
 
 The summary below is derived from the archived JSON records. Full tables retain all stages and precision: [test report](results/2026-11-03-mac-mini-m4-pro-24gb-standard-stats-test-01.md), [sample report](results/2026-11-03-mac-mini-m4-pro-24gb-standard-stats-sample-01.md).

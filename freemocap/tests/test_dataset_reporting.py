@@ -85,3 +85,16 @@ def test_worker_failure_retains_measured_phase(tmp_path, monkeypatch, caplog):
     assert report['scope'] == 'dataset_worker'
     assert report['stages']['workflow.blender_preparation']['count'] == 1
     assert report['stages']['workflow.blender_preparation']['mean_after_first_ms'] is None
+
+
+def test_frame_rates_and_costs_are_reciprocal_and_zero_span_has_no_rate():
+    import pytest
+    from freemocap.tools.datasets.reporting import normalized_stages
+    report = dict(frames=2, images=6, stages={'work': dict(total_s=.25), 'empty': dict(total_s=0)})
+    rows = dict(normalized_stages(report))
+    assert rows['work']['amortized_ms_per_frame'] == 125
+    assert rows['work']['synchronized_frames_per_second'] == 8
+    assert rows['work']['amortized_ms_per_image'] == pytest.approx(1000 / 24)
+    assert rows['work']['camera_images_per_second'] == 24
+    assert rows['empty']['synchronized_frames_per_second'] is None
+    assert rows['empty']['camera_images_per_second'] is None

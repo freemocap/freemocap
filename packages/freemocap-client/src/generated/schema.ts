@@ -1420,7 +1420,7 @@ export interface components {
              * Task Type
              * @enum {string}
              */
-            task_type: "export" | "sync";
+            task_type: "export" | "sync" | "realtime_startup" | "onnx_preparation";
             recording?: components["schemas"]["RecordingStructure"] | null;
             /** Source Run Id */
             source_run_id?: number | null;
@@ -2163,7 +2163,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "mocap" | "calibration" | "export" | "sync";
+            kind: "mocap" | "calibration" | "export" | "sync" | "realtime_startup" | "onnx_preparation";
         };
         /** CaptureStopped */
         CaptureStopped: {

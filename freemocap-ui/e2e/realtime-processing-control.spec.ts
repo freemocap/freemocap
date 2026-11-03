@@ -62,51 +62,125 @@ test('processing details use real toolbar and production CSS without displacing 
     await page.mouse.click(10,700); await expect(panel).toHaveCount(0);
 });
 
-test('preparation hook makes no recurring closed, idle or terminal requests and cleans up polling', async ({page}) => {
+
+test('existing websocket progress drives actual processing controls with no recurring HTTP checks', async ({page}) => {
     test.setTimeout(60000);
-    let status='idle', gets=0, posts=0, holdNext=false;
-    let releaseHeld: (()=>Promise<void>) | null=null;
+    let startupGets=0, prepGets=0, prepPosts=0, stopPosts=0, startupStops=0;
+    let rejectStop: (()=>Promise<void>) | null=null;
+    const startup=(status='running')=>({status,phase:status==='running'?'loading_models':'running',elapsed_seconds:4,phase_elapsed_seconds:2,pipeline_id:'p',message:null,error:null,delayed:false,preview_ready:true});
+    const preparation=(status='idle')=>({pipeline_id:'p',status,phase:status,elapsed_seconds:3,model_name:null,message:null,error:null,can_prepare:status==='idle'||status==='cancelled',can_cancel:status==='running'||status==='queued',requested_provider:'trt',active_provider:'cuda'});
     await page.route('**/*', route => {
-        if (!route.request().url().includes('/freemocap/onnx/preparation/')) return route.fulfill({contentType:'text/html',body:'<div id="root"></div>'});
-        if(route.request().method()==='POST'){posts++;status='running';}else gets++;
-        const response={contentType:'application/json',body:JSON.stringify({pipeline_id:'p',status,phase:status,elapsed_seconds:0,model_name:null,message:null,error:null,can_prepare:status==='idle',can_cancel:status==='running',requested_provider:'trt',active_provider:'cuda'})};
-        if(holdNext){holdNext=false;releaseHeld=async()=>{await route.fulfill(response).catch(()=>{});};return;}
-        return route.fulfill(response);
+        const url=route.request().url(), post=route.request().method()==='POST';
+        let body: unknown;
+        if(url.includes('/freemocap/realtime/startup')) {if(post){startupStops++;body=startup('stopping');}else{startupGets++;body=startup();}}
+        else if(url.includes('/freemocap/onnx/preparation/')) {
+            if(post && url.endsWith('/stop')){
+                stopPosts++;
+                if(stopPosts===1){rejectStop=()=>route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({detail:'Worker stop failed'})});return;}
+                body=preparation('stopping');
+            }
+            else if(post){prepPosts++;body=preparation('queued');}
+            else {prepGets++;body=preparation(prepGets===1?'unavailable':'idle');}
+        } else return route.fulfill({contentType:'text/html',body:'<div id="root"></div>'});
+        return route.fulfill({contentType:'application/json',body:JSON.stringify(body)});
     });
-    await page.goto('https://preparation-hook.test/');
+    await page.goto('https://progress-hook.test/');
     const bundle=await build({stdin:{contents:`
         import React from 'react'; import {createRoot} from 'react-dom/client'; import {Provider} from 'react-redux'; import {configureStore} from '@reduxjs/toolkit';
+        import './src/store';
+        import {pipelinesSlice} from './src/store/slices/pipelines/pipelines-slice';
+        import {connectionSlice,serverDisconnected,wsConnectionChanged,serverStateReceived} from './src/store/slices/connection/connection-slice';
+        import {realtimeSlice} from './src/store/slices/realtime/realtime-slice';
+        import {applyTaskSnapshot} from './src/services/server/task-progress';
+        import {TransportService} from './src/services/server/transport/TransportService';
+        import {CURRENT_VERSION} from './src/services/server/transport/message-contract';
+        import {encode} from 'cbor-x';
+        import {RealtimeStartupBanner} from './src/components/common/RealtimeStartupBanner';
+        const store=configureStore({reducer:{connection:connectionSlice.reducer,pipelines:pipelinesSlice.reducer,realtime:realtimeSlice.reducer},preloadedState:{connection:{...connectionSlice.getInitialState(),isConnected:true,serverPid:1},realtime:{...realtimeSlice.getInitialState(),isConnected:true}}});
+        let receive;const socket={readyState:0,binaryType:'',set onmessage(callback){receive=callback},close(){},send(){}};
+        const transport=new TransportService({url:'ws://fake.invalid',socketFactory:()=>socket});
+        transport.subscribeToProgress(message=>applyTaskSnapshot(message.snapshot,store.getState().pipelines,store.dispatch));
+        transport.subscribeToProtocolErrors(error=>{throw error;});transport.connect();
+        window.pushProgress=snapshot=>{const bytes=encode({kind:'progress',version:CURRENT_VERSION,timestamp:1,sequence:snapshot.revision,snapshot});receive({data:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)});};
+        window.disconnect=()=>store.dispatch(serverDisconnected()); window.reconnect=()=>{store.dispatch(wsConnectionChanged(true));store.dispatch(serverStateReceived({server_pid:1,state:{camera_groups:{},realtime_pipelines:[{id:'p',alive:true,camera_group_id:'g',camera_ids:[]}]}}));};
+        createRoot(document.getElementById('root')).render(<Provider store={store}><RealtimeStartupBanner/></Provider>);
+    `,loader:'tsx',resolveDir:resolve('.')},bundle:true,write:false,outdir:'progress-browser',format:'esm',alias:{'@':resolve('src')},loader:{'.yaml':'text'},logLevel:'silent'});
+    for(const output of bundle.outputFiles.filter(output=>output.path.endsWith('.css'))) await page.addStyleTag({content:output.text});
+    for(const output of bundle.outputFiles.filter(output=>output.path.endsWith('.js'))) await page.addScriptTag({content:output.text,type:'module'});
+    const trigger=page.getByRole('button',{name:'Processing and acceleration',exact:true});
+    await expect(trigger).toBeVisible(); await expect.poll(()=>startupGets).toBe(1);
+    await page.waitForTimeout(1100); expect(startupGets).toBe(1); expect(prepGets).toBe(0);
+    await trigger.click(); await expect.poll(()=>prepGets).toBe(1);
+    await page.waitForTimeout(1100); expect(prepGets).toBe(1);
+    let revision=1;
+    const tasks: any[]=[];
+    const task=(id:string,type:string,result:any,created='2026-11-02T10:00:00Z')=>({task_id:id,revision:1,task_type:type,recording:null,status:'running',progress:{phase:result.phase,detail:'progress',progress_fraction:null},result,cameras:[],operations:[],timing:null,created_at:created,updated_at:created});
+    const push=async()=>page.evaluate(snapshot=>(window as any).pushProgress(snapshot),{server_instance_id:'00000000-0000-4000-8000-000000000001',revision:revision++,recording_owners:[],tasks});
+    tasks.push(task('startup:1','realtime_startup',startup('ready')));await push();
+    await expect(page.getByRole('button',{name:'Prepare TensorRT',exact:true})).toBeVisible();
+    expect(prepGets).toBe(2); // One capability refresh on the semantic ready event.
+    await page.getByRole('button',{name:'Prepare TensorRT',exact:true}).click();expect(prepPosts).toBe(1);
+    tasks.push(task('prep:1','onnx_preparation',preparation('running'),'2026-11-02T10:01:00Z'));await push();
+    await expect(page.getByText('Preparing TensorRT',{exact:true})).toBeVisible();
+    await page.waitForTimeout(1100);expect(prepGets).toBe(2);expect(startupGets).toBe(1);
+    await page.getByRole('button',{name:'Stop preparation; keep CUDA',exact:true}).click();expect(stopPosts).toBe(1);
+    tasks[1]={...tasks[1],revision:2};await push();
+    await rejectStop!();await expect(page.getByText(/Stop request was not confirmed/)).toBeVisible();
+    await page.getByRole('button',{name:'Stop preparation; keep CUDA',exact:true}).click();expect(stopPosts).toBe(2);
+    await expect(page.getByText('Stopping TensorRT preparation',{exact:true})).toBeVisible();
+    await push(); // Unrelated registry revision must not overwrite command response.
+    await expect(page.getByText('Stopping TensorRT preparation',{exact:true})).toBeVisible();
+    tasks[1]={...tasks[1],revision:2,result:preparation('stopping')};await push();
+    await page.waitForTimeout(1100);expect(prepGets).toBe(2);
+    await page.keyboard.press('Escape');
+    tasks[1]={...tasks[1],revision:3,status:'cancelled',result:preparation('cancelled')};await push();
+    await page.waitForTimeout(1100);expect(prepGets).toBe(2);
+    await trigger.click();await expect(page.getByRole('button',{name:'Retry TensorRT preparation',exact:true})).toBeVisible();
+    await page.waitForTimeout(1100);expect(prepGets).toBe(2);await page.keyboard.press('Escape');
+    await page.evaluate(()=>(window as any).disconnect());await page.evaluate(()=>(window as any).reconnect());
+    await expect.poll(()=>startupGets).toBe(2);await push();
+    await trigger.click();await expect(page.getByRole('button',{name:'Retry TensorRT preparation',exact:true})).toBeVisible();
+    await page.waitForTimeout(1100);expect(prepGets).toBe(2);expect(startupGets).toBe(2);
+    tasks.push(task('startup:2','realtime_startup',startup(),'2026-11-02T10:02:00Z'));await push();
+    await page.getByRole('button',{name:'Stop startup',exact:true}).click();expect(startupStops).toBe(1);
+    await expect(page.getByText('Stopping realtime startup',{exact:true})).toBeVisible();
+    await page.waitForTimeout(1100);expect(startupGets).toBe(2);expect(prepGets).toBe(2);
+    console.log(JSON.stringify({startupGets,prepGets,prepPosts,stopPosts,startupStops,transport:'real CBOR TransportService -> applyTaskSnapshot -> store -> controls'}));
+});
+
+test('late initial snapshots cannot replace pushed progress or survive close, server change and unmount', async ({page}) => {
+    test.setTimeout(60000);
+    const held: {release:(status:string)=>Promise<void>}[]=[];
+    let reads=0;
+    await page.route('**/*', route=>{
+        if(!route.request().url().includes('/freemocap/onnx/preparation/')) return route.fulfill({contentType:'text/html',body:'<div id="root"></div>'});
+        reads++;
+        const pipeline_id=route.request().url().split('/').at(-1);
+        held.push({release:async status=>{await route.fulfill({contentType:'application/json',body:JSON.stringify({pipeline_id,status,phase:status,elapsed_seconds:1,model_name:null,message:null,error:null,can_prepare:true,can_cancel:false,requested_provider:'trt',active_provider:'cuda'})}).catch(()=>{});}});
+    });
+    await page.goto('https://late-progress.test/');
+    const bundle=await build({stdin:{contents:`
+        import React from 'react';import {createRoot} from 'react-dom/client';import {Provider} from 'react-redux';import {configureStore} from '@reduxjs/toolkit';
+        import './src/store';import {pipelinesSlice,taskSnapshotReceived} from './src/store/slices/pipelines/pipelines-slice';
         import {useOnnxPreparation} from './src/hooks/useOnnxPreparation';
-        const store=configureStore({reducer:(state={connection:{isConnected:true,serverPid:1}},action)=>action.type==='server' ? {...state,connection:{...state.connection,serverPid:state.connection.serverPid+1}}:state});
-        function Details({open}){const state=useOnnxPreparation('p',open);return <><output>{state.snapshot?.status??'none'}</output><button onClick={state.onPrepare}>Prepare</button></>}
-        function App(){const[open,setOpen]=React.useState(false);const[mounted,setMounted]=React.useState(true);return <Provider store={store}><button onClick={()=>setOpen(!open)}>Toggle details</button><button onClick={()=>store.dispatch({type:'server'})}>Change server</button><button onClick={()=>setMounted(false)}>Unmount</button>{mounted&&<Details open={open}/>}</Provider>}
+        const store=configureStore({reducer:{pipelines:pipelinesSlice.reducer,connection:(state={isConnected:true,serverPid:1},action)=>action.type==='server'?{...state,serverPid:state.serverPid+1}:state}});
+        window.pushTask=()=>store.dispatch(taskSnapshotReceived({server_instance_id:'00000000-0000-4000-8000-000000000001',revision:1,recording_owners:[],tasks:[{task_id:'prep:1',revision:1,task_type:'onnx_preparation',status:'running',recording:null,progress:{phase:'running',detail:'',progress_fraction:null},result:{pipeline_id:'p1',status:'running',phase:'running',elapsed_seconds:2,model_name:null,message:null,error:null,can_prepare:false,can_cancel:true,requested_provider:'trt',active_provider:'cuda'},cameras:[],operations:[],timing:null,created_at:'2026-11-02T10:00:00Z',updated_at:'2026-11-02T10:00:00Z'}]}));
+        function Details({pipeline,open}){const state=useOnnxPreparation('p'+pipeline,open);return <output>{state.snapshot?.status??'none'}</output>}
+        function App(){const[pipeline,setPipeline]=React.useState(1),[open,setOpen]=React.useState(true),[mounted,setMounted]=React.useState(true);return <Provider store={store}><button onClick={()=>setPipeline(value=>value+1)}>Next pipeline</button><button onClick={()=>setOpen(!open)}>Toggle details</button><button onClick={()=>store.dispatch({type:'server'})}>Change server</button><button onClick={()=>setMounted(false)}>Unmount</button>{mounted&&<Details pipeline={pipeline} open={open}/>}</Provider>}
         createRoot(document.getElementById('root')).render(<App/>);
     `,loader:'tsx',resolveDir:resolve('.')},bundle:true,write:false,format:'esm',alias:{'@':resolve('src')},loader:{'.yaml':'text'},logLevel:'silent'});
     await page.addScriptTag({content:bundle.outputFiles[0].text,type:'module'});
-    await page.waitForTimeout(1100); expect(gets).toBe(0);
-    await page.getByText('Toggle details',{exact:true}).click(); await expect(page.locator('output')).toHaveText('idle');
-    await page.waitForTimeout(1100); expect(gets).toBe(1); expect(posts).toBe(0);
-    await page.getByText('Prepare',{exact:true}).click(); await expect(page.locator('output')).toHaveText('running');
-    await expect.poll(()=>gets).toBeGreaterThan(2); expect(posts).toBe(1);
-    await page.getByText('Toggle details',{exact:true}).click(); const closedGets=gets;
-    await page.waitForTimeout(1100); expect(gets).toBe(closedGets);
-    status='activated'; await page.getByText('Toggle details',{exact:true}).click(); await expect(page.locator('output')).toHaveText('activated');
-    const terminalGets=gets; await page.waitForTimeout(1100); expect(gets).toBe(terminalGets);
-    await page.getByText('Change server',{exact:true}).click(); await expect.poll(()=>gets).toBe(terminalGets+1);
-    await page.waitForTimeout(1100); expect(gets).toBe(terminalGets+1);
-    status='running'; holdNext=true; await page.getByText('Toggle details',{exact:true}).click(); await page.getByText('Toggle details',{exact:true}).click();
-    await expect.poll(()=>releaseHeld!==null).toBe(true);
-    await page.getByText('Toggle details',{exact:true}).click(); await releaseHeld!(); releaseHeld=null;
-    const lateClosedGets=gets; await page.waitForTimeout(1100); expect(gets).toBe(lateClosedGets); await expect(page.locator('output')).toHaveText('none');
-    status='activated'; await page.getByText('Toggle details',{exact:true}).click(); await expect(page.locator('output')).toHaveText('activated');
-    status='running'; holdNext=true; await page.getByText('Toggle details',{exact:true}).click(); await page.getByText('Toggle details',{exact:true}).click();
-    await expect.poll(()=>releaseHeld!==null).toBe(true);
-    status='activated'; await page.getByText('Change server',{exact:true}).click(); await expect(page.locator('output')).toHaveText('activated');
-    await releaseHeld!(); releaseHeld=null; const changedGets=gets;
-    await page.waitForTimeout(1100); expect(gets).toBe(changedGets); await expect(page.locator('output')).toHaveText('activated');
-    status='running'; holdNext=true; await page.getByText('Toggle details',{exact:true}).click(); await page.getByText('Toggle details',{exact:true}).click();
-    await expect.poll(()=>releaseHeld!==null).toBe(true);
-    await page.getByText('Unmount',{exact:true}).click(); const unmountedGets=gets;
-    await releaseHeld!();
-    await page.waitForTimeout(1100); expect(gets).toBe(unmountedGets);
+    await expect.poll(()=>reads).toBe(1);await page.evaluate(()=>(window as any).pushTask());
+    await expect(page.locator('output')).toHaveText('running');await held[0].release('idle');
+    await page.waitForTimeout(650);await expect(page.locator('output')).toHaveText('running');expect(reads).toBe(1);
+    await page.getByText('Next pipeline',{exact:true}).click();await expect.poll(()=>reads).toBe(2);
+    await page.getByText('Toggle details',{exact:true}).click();await held[1].release('idle');
+    await page.waitForTimeout(650);expect(reads).toBe(2);await expect(page.locator('output')).toHaveText('none');
+    await page.getByText('Next pipeline',{exact:true}).click();await page.getByText('Toggle details',{exact:true}).click();await expect.poll(()=>reads).toBe(3);
+    await page.getByText('Change server',{exact:true}).click();await expect.poll(()=>reads).toBe(4);
+    await held[3].release('idle');await expect(page.locator('output')).toHaveText('idle');await held[2].release('running');
+    await page.waitForTimeout(650);await expect(page.locator('output')).toHaveText('idle');expect(reads).toBe(4);
+    await page.getByText('Next pipeline',{exact:true}).click();await expect.poll(()=>reads).toBe(5);
+    await page.getByText('Unmount',{exact:true}).click();await held[4].release('running');
+    await page.waitForTimeout(650);expect(reads).toBe(5);await expect(page.locator('output')).toHaveCount(0);
 });

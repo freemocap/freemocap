@@ -80,3 +80,24 @@ test('non-frame kinds decode without a frame or metadata handshake',()=>{
  delta_t:'0',message:'hello',asctime:'fixture',formatted_message:'hello',type:'log'};
  assert.equal(decodeMessage(encode({...envelope,kind:'log',record}))?.kind,'log');
 });
+
+test('startup and preparation use complete retained progress records after reconnect',()=>{
+ const snapshots = [
+  {task_type:'realtime_startup', result:{status:'ready',phase:'ready',pipeline_id:'live',preview_ready:true}},
+  {task_type:'onnx_preparation', result:{status:'cancelled',phase:'cancelled',pipeline_id:'live',
+   requested_provider:null,active_provider:'CUDAExecutionProvider',can_prepare:true,can_cancel:false}},
+ ];
+ const packet=encode({kind:'progress',version:0,timestamp:0,sequence:0,snapshot:{
+  server_instance_id:'00000000-0000-4000-8000-000000000001',revision:9,recording_owners:[],
+  tasks:snapshots.map((entry,index)=>({...entry,task_id:`${entry.task_type}:generation`,revision:3,
+   recording:null,status:index===0?'complete':'cancelled',progress:{phase:entry.result.phase,
+   progress_fraction:null,detail:'Retained status'},cameras:[],
+   created_at:'2026-11-02T20:00:00Z',updated_at:'2026-11-02T20:01:00Z'})),
+ }});
+ for(const decoder of [new MessageDecoder(),new MessageDecoder()]) {
+  const message=decoder.decode(packet);assert.equal(message?.kind,'progress');
+  if(message?.kind!=='progress')throw new Error('Expected progress');
+  assert.deepEqual(message.snapshot.tasks.map(task=>task.result),snapshots.map(task=>task.result));
+  assert.equal(message.snapshot.revision,9);
+ }
+});

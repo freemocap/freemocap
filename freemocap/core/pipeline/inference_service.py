@@ -10,6 +10,10 @@ from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from multiprocessing.sharedctypes import Synchronized
 from threading import Condition
+from uuid import uuid4
+
+from freemocap.core.tasks.background_task_state import BackgroundTaskState
+from freemocap.core.pipeline.posthoc.task_snapshot import TaskProgress
 
 import numpy as np
 from numpy.typing import NDArray
@@ -76,6 +80,7 @@ class InferenceClient:
     _requested_provider: str | None = None
     _active_provider: str | None = None
     _trt_available: bool = False
+    _preparation_task_id: str | None = None
 
     def submit(self, request: InferenceRequest) -> Future[dict[str, Observation]]:
         return self._service.submit(client=self, request=request)
@@ -103,6 +108,8 @@ class InferenceService:
         self._realtime_streak = 0
         self._startup_records: dict[str, dict] = {}
         self._retirements: dict[int, object] = {}
+        self.preparation_task_state = BackgroundTaskState()
+        self._preparation_task_clients: dict[str, InferenceClient] = {}
         self.worker = worker_registry.create_worker(
             shutdown_flag=self._shutdown, worker_mode=WorkerMode.THREAD,
             target=self._run, name="SharedInference", log_queue=None,
@@ -171,68 +178,76 @@ class InferenceService:
 
     def preparation_status(self, pipeline_id: str) -> dict:
         """Read only cached diagnostics and isolated-worker lifecycle metadata."""
-        from skellytracker.core.sessions.onnx_preparation import PreparationPhase
         with self._condition:
             client = self._preparation_client(pipeline_id)
-            job = client._preparation_job
-            state = "idle" if client._preparation_supported and client._startup_ready else "unavailable"
-            phase, elapsed, model = state, 0.0, None
-            error = client._preparation_error
-            pending_cleanup = False
-            native_alive = False
-            if job is not None:
-                snapshot = job.snapshot()
-                phase, elapsed = snapshot.phase.value, snapshot.elapsed_seconds
-                state = {
-                    PreparationPhase.QUEUED: "queued", PreparationPhase.BUILDING: "running",
-                    PreparationPhase.VALIDATING: "running", PreparationPhase.READY: "ready",
-                    PreparationPhase.STOPPING: "stopping", PreparationPhase.DISPOSING: "stopping",
-                    PreparationPhase.FAILED: "failed", PreparationPhase.CANCELLED: "cancelled",
-                    PreparationPhase.TRANSFERRED: "activated",
-                }[snapshot.phase]
-                error = error or snapshot.reason
-                runtime = getattr(job, "runtime", None)
-                if runtime is not None:
-                    native = runtime.status()
-                    native_alive = native.alive
-                    if state == "running":
-                        phase, model = native.phase, native.model_name
-                    pending_cleanup = native.alive and state in ("failed", "cancelled", "stopping")
-            state = client._preparation_state or state
-            if client._preparation_state is not None:
-                phase = client._preparation_state
-            pending_cleanup = pending_cleanup or (native_alive and state in ("failed", "cancelled", "stopping"))
-            if client._preparation_intent is not None:
-                state = "queued" if client._preparation_intent == "prepare" else "stopping"
-                phase = state
-            if client._active_provider == "trt":
-                state = phase = "activated"
-            can_prepare = (client._preparation_supported and client._startup_ready
-                           and client._active_provider == "cuda" and not pending_cleanup
-                           and state in ("idle", "failed", "cancelled"))
-            message = client.preparation_status
-            if state == "failed" and client._preparation_state is None:
-                message = "TensorRT preparation failed; CUDA remains active"
-            elif state == "cancelled":
-                message = "TensorRT preparation cancelled; CUDA remains active"
-            return {
-                "pipeline_id": pipeline_id, "status": state, "phase": phase,
-                "elapsed_seconds": elapsed, "model_name": model,
-                "message": message, "error": error,
-                "can_prepare": can_prepare,
-                "can_cancel": state in ("queued", "running", "ready", "stopping"),
-                "requested_provider": client._requested_provider, "active_provider": client._active_provider,
-            }
+            return self._preparation_status_locked(client)
+
+    def _preparation_status_locked(self, client: InferenceClient) -> dict:
+        from skellytracker.core.sessions.onnx_preparation import PreparationPhase
+        job = client._preparation_job
+        state = "idle" if client._preparation_supported and client._startup_ready else "unavailable"
+        phase, elapsed, model = state, 0.0, None
+        error = client._preparation_error
+        pending_cleanup = False
+        native_alive = False
+        if job is not None:
+            snapshot = job.snapshot()
+            phase, elapsed = snapshot.phase.value, snapshot.elapsed_seconds
+            state = {
+                PreparationPhase.QUEUED: "queued", PreparationPhase.BUILDING: "running",
+                PreparationPhase.VALIDATING: "running", PreparationPhase.READY: "ready",
+                PreparationPhase.STOPPING: "stopping", PreparationPhase.DISPOSING: "stopping",
+                PreparationPhase.FAILED: "failed", PreparationPhase.CANCELLED: "cancelled",
+                PreparationPhase.TRANSFERRED: "activated",
+            }[snapshot.phase]
+            error = error or snapshot.reason
+            runtime = getattr(job, "runtime", None)
+            if runtime is not None:
+                native = runtime.status()
+                native_alive = native.alive
+                if state == "running":
+                    phase, model = native.phase, native.model_name
+                pending_cleanup = native.alive and state in ("failed", "cancelled", "stopping")
+        state = (client._preparation_state or state) if not client._closed else state
+        if client._preparation_state is not None and not client._closed:
+            phase = client._preparation_state
+        pending_cleanup = pending_cleanup or (native_alive and state in ("failed", "cancelled", "stopping"))
+        if client._preparation_intent is not None and not client._closed:
+            state = "queued" if client._preparation_intent == "prepare" else "stopping"
+            phase = state
+        if client._active_provider == "trt":
+            state = phase = "activated"
+        can_prepare = (not client._closed and client._preparation_supported and client._startup_ready
+                       and client._active_provider == "cuda" and not pending_cleanup
+                       and state in ("idle", "failed", "cancelled"))
+        message = client.preparation_status
+        if state == "failed" and client._preparation_state is None:
+            message = "TensorRT preparation failed; CUDA remains active"
+        elif state == "cancelled":
+            message = "TensorRT preparation cancelled; CUDA remains active"
+        return {
+            "pipeline_id": client.registration.pipeline_id, "status": state, "phase": phase,
+            "elapsed_seconds": elapsed, "model_name": model,
+            "message": message, "error": error,
+            "can_prepare": can_prepare,
+            "can_cancel": not client._closed and state in ("queued", "running", "ready", "stopping"),
+            "requested_provider": client._requested_provider, "active_provider": client._active_provider,
+        }
 
     def request_preparation(self, pipeline_id: str) -> dict:
         with self._condition:
             client = self._preparation_client(pipeline_id)
             if not self.preparation_status(pipeline_id)["can_prepare"]:
                 raise ValueError("TensorRT preparation is unavailable or its previous worker has not stopped")
+            self._publish_preparation_tasks_locked()
+            client._preparation_task_id = f"onnx_preparation:{uuid4().hex}"
+            self.preparation_task_state.register(client._preparation_task_id, "onnx_preparation")
+            self._preparation_task_clients[client._preparation_task_id] = client
             client._preparation_intent = "prepare"
             client._preparation_state = None
             client._preparation_error = None
             client.preparation_status = "Preparing TensorRT in an isolated worker; CUDA remains active"
+            self._publish_preparation_tasks_locked()
             self._condition.notify_all()
             return self.preparation_status(pipeline_id)
 
@@ -243,8 +258,49 @@ class InferenceService:
                 raise ValueError("No pending TensorRT preparation to cancel")
             client._preparation_intent = "cancel"
             client.preparation_status = "Stopping the isolated preparation worker; CUDA remains active"
+            self._publish_preparation_tasks_locked()
             self._condition.notify_all()
             return self.preparation_status(pipeline_id)
+
+    def preparation_tasks_snapshot(self):
+        """Refresh retained jobs for the existing task-progress delivery path."""
+        with self._condition:
+            self._publish_preparation_tasks_locked(refresh_elapsed=True)
+            return self.preparation_task_state.snapshot()
+
+    def cancel_preparation_task(self, task_id: str) -> bool:
+        with self._condition:
+            client = self._preparation_task_clients.get(task_id)
+            if client is None or client._preparation_task_id != task_id or client._closed:
+                return False
+            self.cancel_preparation(client.registration.pipeline_id)
+            return True
+
+    def _publish_preparation_tasks_locked(self, *, refresh_elapsed: bool = False) -> None:
+        for task_id, client in tuple(self._preparation_task_clients.items()):
+            result = self._preparation_status_locked(client)
+            if client._closed and client._preparation_job is None:
+                result.update(status="cancelled", phase="cancelled", can_prepare=False, can_cancel=False)
+            state = result["status"]
+            # READY still awaits adoption; failure/cancel with live cleanup is not terminal yet.
+            status = {"activated": "complete", "failed": "failed", "cancelled": "cancelled",
+                      "queued": "queued"}.get(state, "running")
+            job = client._preparation_job
+            runtime = getattr(job, "runtime", None) if job is not None else None
+            if status in ("failed", "cancelled") and runtime is not None and runtime.status().alive:
+                status = "running"
+            previous = self.preparation_task_state.tasks.get(task_id)
+            if (not refresh_elapsed and previous is not None and previous.status == status
+                    and previous.result is not None
+                    and {key: value for key, value in previous.result.items() if key != 'elapsed_seconds'}
+                    == {key: value for key, value in result.items() if key != 'elapsed_seconds'}):
+                continue
+            self.preparation_task_state.update(task_id, status=status, result=result, error=result["error"],
+                cancellation_requested=state in ("stopping", "cancelled"),
+                progress=TaskProgress(phase=result["phase"], progress_fraction=None,
+                                      detail=result["message"] or result["phase"]))
+            if status not in ("queued", "running"):
+                del self._preparation_task_clients[task_id]
 
     def _initial_sessions(self, client: InferenceClient) -> tuple[SessionRequest, ...]:
         requests = []
@@ -444,6 +500,8 @@ class InferenceService:
                         retired_client._lease.close()
                 self._process_preparation_intents(pool)
                 self._activate_ready_preparations(pool)
+                with self._condition:
+                    self._publish_preparation_tasks_locked()
                 if client is None or pending is None:
                     with self._condition:
                         # Submission and retirement can occur while leases are released.
@@ -570,3 +628,4 @@ class InferenceService:
         if self._retirements:
             raise RuntimeError("Native cleanup could not be queued; service still owns retired resources")
         self._preparation.close()
+        self.preparation_tasks_snapshot()

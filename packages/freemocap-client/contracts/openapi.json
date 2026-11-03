@@ -3775,7 +3775,9 @@
             "type": "string",
             "enum": [
               "export",
-              "sync"
+              "sync",
+              "realtime_startup",
+              "onnx_preparation"
             ],
             "title": "Task Type"
           },
@@ -5196,7 +5198,9 @@
               "mocap",
               "calibration",
               "export",
-              "sync"
+              "sync",
+              "realtime_startup",
+              "onnx_preparation"
             ],
             "title": "Kind"
           }

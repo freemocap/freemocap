@@ -179,8 +179,10 @@ CUDA when available and does not compile TensorRT engines automatically.
 
 The **Processing** control beside the lightning button opens camera startup,
 model loading/warmup, elapsed time, and first-frame details without resizing the
-viewer. Preparation status refreshes only while an active operation's details
-are open; idle and completed preparation do not poll repeatedly.
+viewer. Startup and preparation updates arrive through the existing WebSocket
+progress subscription, including retained status after reconnect. Opening the
+control can fetch an initial status snapshot; Prepare and Stop are explicit HTTP
+commands. Neither status view repeatedly polls HTTP.
 Camera images stream as soon as capture produces
 them, while processing continues to load. The same stream adds matched processing
 results when available. A processing delay or failure returns to raw preview,

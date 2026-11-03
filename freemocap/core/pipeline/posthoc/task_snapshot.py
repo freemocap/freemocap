@@ -73,7 +73,7 @@ class BackgroundTaskSnapshot(SnapshotModel):
 
     task_id: str = Field(min_length=1)
     revision: int = Field(ge=1)
-    task_type: Literal["export", "sync"]
+    task_type: Literal["export", "sync", "realtime_startup", "onnx_preparation"]
     recording: RecordingStructure | None = None
     source_run_id: int | None = None
     source_revision: str | None = None

@@ -1,7 +1,4 @@
-// binary-frame-parser.ts
-// @freemocap/client reads SkellyCam's image payload and decodes its JPEGs; the
-// camera workers receive each camera's RGBA pixels with its identity.
-import {decodeImagePixels, readImagePayload} from '@freemocap/client/images';
+import {readImagePayload, decodeImagePixels} from '@freemocap/client/images';
 
 export interface ParsedFrame {
     cameraId: string;
@@ -13,8 +10,9 @@ export interface ParsedFrame {
     pixelBuffer: ArrayBuffer;
 }
 
-/** Read a multi-camera image payload and decode every camera's JPEG to RGBA.
- *  Throws for a malformed payload or JPEG rather than returning part of it. */
-export async function parseMultiFramePayload(data: ArrayBuffer): Promise<ParsedFrame[]> {
-    return decodeImagePixels(readImagePayload(data));
+/** Called in the existing decode worker; returns only transferable RGBA frames. */
+export async function parseMultiFramePayload(data: ArrayBuffer): Promise<ParsedFrame[] | null> {
+    const images = await decodeImagePixels(readImagePayload(data));
+    // Do not retain or clone the source JPEG views into camera-renderer messages.
+    return images.map(({jpeg: _jpeg, ...frame}) => frame);
 }

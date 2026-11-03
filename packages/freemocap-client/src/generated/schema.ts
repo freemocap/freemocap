@@ -1217,6 +1217,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/freemocap/realtime/startup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Realtime Startup Status
+         * @description Observe startup without waiting for camera or native inference operations.
+         */
+        get: operations["realtime_startup_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/realtime/startup/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop Realtime Startup
+         * @description Request a safe stop; native work remains owned until its boundary/cleanup.
+         */
+        post: operations["stop_realtime_startup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/onnx/preparation/{pipeline_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preparation Status
+         * @description Observe cached preparation state without creating or querying native sessions.
+         */
+        get: operations["onnx_preparation_status"];
+        put?: never;
+        /**
+         * Prepare Onnx
+         * @description Request isolated preparation explicitly, retaining current processing until ready.
+         */
+        post: operations["prepare_onnx"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/freemocap/onnx/preparation/{pipeline_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop Onnx Preparation
+         * @description Request preparation cancellation; report stopped only after worker cleanup.
+         */
+        post: operations["stop_onnx_preparation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1928,6 +2012,8 @@ export interface components {
             detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
+            /** Dlc Geometry Path */
+            dlc_geometry_path?: string | null;
             /**
              * Dlc Confidence Threshold
              * @default 0.4
@@ -2003,6 +2089,8 @@ export interface components {
             detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
+            /** Dlc Geometry Path */
+            dlc_geometry_path?: string | null;
             /**
              * Dlc Confidence Threshold
              * @default 0.4
@@ -2367,26 +2455,29 @@ export interface components {
         DlcConversionRequest: {
             /**
              * Pose Config Path
-             * Format: path
+             * @default null
              */
-            pose_config_path: string;
+            pose_config_path?: string | null;
             /**
              * Checkpoint Path
-             * Format: path
+             * @default null
              */
-            checkpoint_path: string;
-            /** Project Config Path */
+            checkpoint_path?: string | null;
+            /**
+             * Project Config Path
+             * @default null
+             */
             project_config_path?: string | null;
             /**
              * Image Height
-             * @default 480
+             * @default null
              */
-            image_height?: number;
+            image_height?: number | null;
             /**
              * Image Width
-             * @default 640
+             * @default null
              */
-            image_width?: number;
+            image_width?: number | null;
         };
         /** DlcInspectRequest */
         DlcInspectRequest: {
@@ -3294,6 +3385,8 @@ export interface components {
             detectorType?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "dlc";
             /** Dlcmodelpath */
             dlcModelPath?: string | null;
+            /** Dlcgeometrypath */
+            dlcGeometryPath?: string | null;
             /**
              * Dlcconfidencethreshold
              * @default 0.4
@@ -4529,6 +4622,64 @@ export interface components {
          * @enum {string}
          */
         WorkerMode: "process" | "thread";
+        /** RealtimeStartupResponse */
+        RealtimeStartupResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "running" | "stopping" | "ready" | "failed" | "stopped";
+            /** Phase */
+            phase: string;
+            /** Elapsed Seconds */
+            elapsed_seconds: number;
+            /** Phase Elapsed Seconds */
+            phase_elapsed_seconds: number;
+            /** Pipeline Id */
+            pipeline_id?: string | null;
+            /** Message */
+            message?: string | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * Delayed
+             * @default false
+             */
+            delayed?: boolean;
+            /**
+             * Preview Ready
+             * @default false
+             */
+            preview_ready?: boolean;
+        };
+        /** PreparationStatusResponse */
+        PreparationStatusResponse: {
+            /** Pipeline Id */
+            pipeline_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unavailable" | "idle" | "queued" | "running" | "stopping" | "ready" | "activated" | "failed" | "cancelled";
+            /** Phase */
+            phase: string;
+            /** Elapsed Seconds */
+            elapsed_seconds: number;
+            /** Model Name */
+            model_name?: string | null;
+            /** Message */
+            message?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Can Prepare */
+            can_prepare: boolean;
+            /** Can Cancel */
+            can_cancel: boolean;
+            /** Requested Provider */
+            requested_provider?: string | null;
+            /** Active Provider */
+            active_provider?: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -6922,6 +7073,139 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraPauseState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    realtime_startup_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeStartupResponse"];
+                };
+            };
+        };
+    };
+    stop_realtime_startup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeStartupResponse"];
+                };
+            };
+        };
+    };
+    onnx_preparation_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pipeline_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreparationStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_onnx: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pipeline_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreparationStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_onnx_preparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pipeline_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreparationStatusResponse"];
                 };
             };
             /** @description Validation Error */

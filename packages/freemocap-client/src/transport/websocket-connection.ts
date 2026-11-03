@@ -1,7 +1,8 @@
 let clientId: string | undefined;
 
 /** A random version 4 UUID. `crypto.randomUUID` exists only in secure contexts (HTTPS or
- *  localhost); a page served over plain HTTP from another computer still has getRandomValues. */
+ *  localhost); a page served over plain HTTP from another computer still has getRandomValues.
+ *  [@mdnCryptoRandomUUID; @mdnCryptoGetRandomValues; @rfc9562] */
 export function randomId(): string {
     if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
     const bytes = crypto.getRandomValues(new Uint8Array(16));

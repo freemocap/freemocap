@@ -9,14 +9,14 @@ import {defaultRealtimePipelineConfig} from '@/store/slices/realtime/realtime-ty
 import {dlcPosthocExecutionSettings} from '@/store/slices/mocap/dlc-execution-settings';
 import {DETECTOR_OPTIONS} from '@/components/mocap-setup/detector-options';
 
-test('DLC selection projects explicit CPU/CUDA 2D execution without losing human settings', () => {
+test('DLC selection preserves calibrated triangulation while projecting explicit CPU/CUDA execution', () => {
     const human = structuredClone(defaultRealtimePipelineConfig);
     human.skeleton_inference_node_config.execution_provider = 'trt';
     const requested = {...human, camera_node_config: {...human.camera_node_config, detector_type: 'dlc' as const, dlc_model_path: '/model.yaml'}};
     for (const provider of ['cpu', 'cuda'] as const) {
         const outgoing = realtimeExecutionSettings(requested, provider);
         assert.equal(outgoing.skeleton_inference_node_config.execution_provider, provider);
-        assert.equal(outgoing.aggregator_config.triangulation_enabled, false);
+        assert.equal(outgoing.aggregator_config.triangulation_enabled, requested.aggregator_config.triangulation_enabled);
         assert.equal(outgoing.aggregator_config.skeleton_fitting_enabled, false);
         assert.equal(outgoing.camera_node_config.charuco_tracking_enabled, false);
         assert.equal(outgoing.aggregator_config.calibration_toml_path, null);
@@ -28,6 +28,34 @@ test('DLC selection projects explicit CPU/CUDA 2D execution without losing human
     assert.equal(human.aggregator_config.triangulation_enabled, true);
     assert.equal(requested.skeleton_inference_node_config.execution_provider, 'trt');
     assert.ok(DETECTOR_OPTIONS.some(option => option.value === 'dlc'));
+});
+
+test('DLC calibrated posthoc processing retains the selected calibration without human alignment', () => {
+    const settings = {...{calibrationTomlPath: '/calibration.toml'}, ...dlcPosthocExecutionSettings('dlc', 'cpu', true)};
+    assert.ok('stopStage' in settings);
+    assert.equal(settings.stopStage, 'filtering');
+    assert.equal(settings.calibrationTomlPath, '/calibration.toml');
+    // Core selects the calibration frame; preserve any user reference transform.
+    assert.equal('bodyAlignment' in settings, false);
+    const requested = structuredClone(defaultRealtimePipelineConfig);
+    requested.camera_node_config.detector_type = 'dlc';
+    requested.aggregator_config.triangulation_enabled = false;
+    assert.equal(realtimeExecutionSettings(requested, 'cpu').aggregator_config.triangulation_enabled, false);
+});
+
+test('optional object geometry enables reconstruction only with triangulation', () => {
+    const spatial = dlcPosthocExecutionSettings('dlc', 'cpu', true, '/features.json');
+    const imageOnly = dlcPosthocExecutionSettings('dlc', 'cpu', false, '/features.json');
+    assert.ok('stopStage' in spatial && 'stopStage' in imageOnly);
+    assert.equal(spatial.stopStage, 'reconstruction');
+    assert.equal(imageOnly.stopStage, 'observations');
+    const requested = structuredClone(defaultRealtimePipelineConfig);
+    requested.camera_node_config.detector_type = 'dlc';
+    requested.camera_node_config.dlc_geometry_path = '/features.json';
+    requested.aggregator_config.triangulation_enabled = true;
+    assert.equal(realtimeExecutionSettings(requested, 'cpu').aggregator_config.skeleton_fitting_enabled, true);
+    requested.aggregator_config.triangulation_enabled = false;
+    assert.equal(realtimeExecutionSettings(requested, 'cpu').aggregator_config.skeleton_fitting_enabled, false);
 });
 
 test('DLC observation-only settings override a selected reconstruction stage and preserve run selection', () => {
@@ -82,7 +110,7 @@ test('live DLC applies with an unavailable calibration without requesting one', 
     const state = {...original, cameras: {...original.cameras, cameras: []}, calibration: {...original.calibration,
         loadRequestId: 'unrelated-calibration-load', loadedCalibration: null, error: 'No calibration'},
         mocap: {...original.mocap, config: {...original.mocap.config, dlcExecutionProvider: 'cpu' as const}}};
-    const requested = {...defaultRealtimePipelineConfig, camera_node_config: {...defaultRealtimePipelineConfig.camera_node_config,
+    const requested = {...defaultRealtimePipelineConfig, aggregator_config: {...defaultRealtimePipelineConfig.aggregator_config, triangulation_enabled: false}, camera_node_config: {...defaultRealtimePipelineConfig.camera_node_config,
         detector_type: 'dlc' as const, dlc_model_path: '/model.yaml'}};
     const requests: string[] = [];
     context.mock.method(globalThis, 'fetch', async (input: string | URL, init?: RequestInit) => {

@@ -3,6 +3,7 @@
 import asyncio
 from dataclasses import dataclass
 from types import SimpleNamespace
+from threading import Condition
 from unittest.mock import AsyncMock, Mock
 
 from fastapi import FastAPI
@@ -13,6 +14,10 @@ from starlette.websockets import WebSocket
 from freemocap.api.websocket import websocket_server
 from freemocap.api.websocket.websocket_server import WebsocketServer
 from freemocap.app.freemocap_application import FreemocapApplication
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.startup_status import RealtimeStartupStatus
+from freemocap.core.pipeline.inference_service import InferenceService
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.producers.producer_contexts import StreamContext
 
@@ -40,6 +45,8 @@ def server(monkeypatch: pytest.MonkeyPatch) -> WebsocketServer:
     manager.camera_groups = {}
     app = FreemocapApplication.__new__(FreemocapApplication)
     app.camera_group_manager = manager
+    app.startup_status = RealtimeStartupStatus()
+    app.inference_service = SimpleNamespace(has_result=Mock(return_value=True))
     monkeypatch.setattr(websocket_server, "get_freemocap_app", lambda: app)
     monkeypatch.setattr(
         WebsocketServer,
@@ -81,15 +88,19 @@ async def test_stopped_pipeline_does_not_block_reconnected_camera_video(server: 
 
 
 async def test_live_pipeline_still_waits_for_matching_reconstruction(server: WebsocketServer) -> None:
+    server._pipeline_source_ids = ("live",)
+    server._pipeline_frame_cursor = 1
+    server._preview_mode = False
     server._app.realtime_pipeline_manager = SimpleNamespace(
-        pipelines={"live": SimpleNamespace(alive=True)},
+        pipelines={"live": SimpleNamespace(alive=True, config=RealtimePipelineConfig())},
     )
     server._app.camera_group_manager.camera_groups = {
         "capture": CameraPayload(id="capture", frame_number=12),
     }
     server._app.get_latest_aggregator_outputs = Mock(return_value=[])
     server._app.wait_for_realtime_result = AsyncMock()
-    assert await server._await_next_frame() is None
+    frame = await server._await_next_frame()
+    assert frame is not None and frame.frame_number == 12 and frame.aggregator_output is None
     server._app.wait_for_realtime_result.assert_awaited_once()
 
 
@@ -97,11 +108,14 @@ async def test_processing_cursor_is_independent_of_capture_cursor(server: Websoc
     server._relay._last_sent_frame_number = 10000
     server._pipeline_source_ids = ("old",)
     server._pipeline_frame_cursor = 500
-    server._app.realtime_pipeline_manager = SimpleNamespace(pipelines={"new": SimpleNamespace(alive=True)})
+    server._app.realtime_pipeline_manager = SimpleNamespace(
+        pipelines={"new": SimpleNamespace(alive=True, config=RealtimePipelineConfig())},
+    )
     server._app.get_latest_aggregator_outputs = Mock(return_value=[])
     server._app.wait_for_realtime_result = AsyncMock()
     assert await server._await_next_frame() is None
-    assert [call.kwargs["if_newer_than"] for call in server._app.get_latest_aggregator_outputs.call_args_list] == [-1, -1]
+    assert [call.kwargs["if_newer_than"] for call in server._app.get_latest_aggregator_outputs.call_args_list] == [-1]
+    server._app.wait_for_realtime_result.assert_not_awaited()
 
 
 @pytest.mark.parametrize("fails", [False, True])
@@ -142,3 +156,124 @@ async def test_group_counters_are_independent(server: WebsocketServer) -> None:
     server._app.camera_group_manager.camera_groups["slow"].frame_number = 3
     third = await server._await_camera_only_frame()
     assert third is not None and third.frame_number == 3
+
+
+async def test_preview_during_model_loading_upgrades_to_matching_processed_frame(server: WebsocketServer) -> None:
+    inference = InferenceService.__new__(InferenceService)
+    inference._condition = Condition()
+    inference._startup_records = {"live": {"phase": "loading_models"}}
+    server._app.inference_service = inference
+    camera = CameraPayload(id="capture", frame_number=100)
+    server._app.camera_group_manager.camera_groups = {"capture": camera}
+    capture = SimpleNamespace(get_frontend_payload_by_frame_number=Mock(return_value=(b"matched", 9.25)))
+    pipeline = SimpleNamespace(alive=True, config=RealtimePipelineConfig(), camera_group=capture)
+    server._app.realtime_pipeline_manager = SimpleNamespace(pipelines={"live": pipeline})
+    output = Mock(spec=AggregationNodeOutputMessage, pipeline_id="live", camera_group_id="capture", frame_number=9,
+                  pipeline_config=pipeline.config, camera_node_outputs={})
+    server._app.get_latest_aggregator_outputs = Mock(return_value=[output])
+    server._app.wait_for_realtime_result = AsyncMock()
+
+    preview = await server._await_next_frame()
+    assert preview.frame_number == 100 and preview.timestamp == 100.0
+    assert preview.aggregator_output is None and bytes(preview.image_payload) == b"image"
+    server._app.get_latest_aggregator_outputs.assert_not_called()
+    capture.get_frontend_payload_by_frame_number.assert_not_called()
+    server._app.wait_for_realtime_result.assert_not_awaited()
+    server._ensure_composition.assert_awaited_with(None)
+
+    inference._startup_records["live"]["phase"] = "running"
+    # An older aggregator timeout is not proof that this frame has inference.
+    camera.frame_number = 101
+    timeout_preview = await server._await_next_frame()
+    assert timeout_preview.aggregator_output is None and timeout_preview.frame_number == 101
+    assert server._pipeline_frame_cursor == -1
+    capture.get_frontend_payload_by_frame_number.assert_not_called()
+    # Non-None includes a valid empty/no-person observation: visibility is not readiness.
+    output.camera_node_outputs = {"camera": SimpleNamespace(skeleton_observation=SimpleNamespace(stages={}))}
+    processed = await server._await_next_frame()
+    assert processed.aggregator_output is output and processed.frame_number == 9
+    assert processed.timestamp == 9.25 and processed.image_payload == b"matched"
+    capture.get_frontend_payload_by_frame_number.assert_called_once_with(
+        frame_number=9, display_image_sizes=server._display_image_sizes,
+    )
+    assert server._camera_frame_cursors == {"capture": 101}
+    assert server._pipeline_frame_cursor == 9
+
+    # A processing stall waits once, then continues preview at capture cadence.
+    server._app.get_latest_aggregator_outputs.return_value = []
+    camera.frame_number = 102
+    stalled = await server._await_next_frame()
+    assert stalled.frame_number == 102 and stalled.aggregator_output is None
+    server._app.wait_for_realtime_result.assert_awaited_once_with(timeout=0.5)
+    camera.frame_number = 103
+    assert (await server._await_next_frame()).frame_number == 103
+    assert server._app.wait_for_realtime_result.await_count == 1
+    assert server._preview_mode
+
+    output.frame_number = 10
+    server._app.get_latest_aggregator_outputs.return_value = [output]
+    resumed = await server._await_next_frame()
+    assert resumed.frame_number == 10 and resumed.aggregator_output is output
+    assert not server._preview_mode
+    assert server._app.wait_for_realtime_result.await_count == 1
+
+    # A subsequent inference failure must not expose the retained last result.
+    inference._startup_records["live"]["phase"] = "failed"
+    camera.frame_number = 104
+    after_failure = await server._await_next_frame()
+    assert after_failure.aggregator_output is None and after_failure.frame_number == 104
+    assert capture.get_frontend_payload_by_frame_number.call_count == 2
+
+
+@pytest.mark.parametrize("expired", [False, True])
+async def test_missing_matched_image_preserves_startup_preview(server: WebsocketServer, expired: bool) -> None:
+    capture = SimpleNamespace(get_frontend_payload_by_frame_number=Mock(
+        side_effect=IndexError("expired") if expired else None, return_value=None,
+    ))
+    config = RealtimePipelineConfig()
+    config.camera_node_config.skeleton_tracking_enabled = False
+    server._app.realtime_pipeline_manager = SimpleNamespace(
+        pipelines={"live": SimpleNamespace(alive=True, config=config, camera_group=capture)},
+    )
+    output = Mock(spec=AggregationNodeOutputMessage, pipeline_id="live", frame_number=1, pipeline_config=config)
+    server._app.get_latest_aggregator_outputs = Mock(return_value=[output])
+    server._app.wait_for_realtime_result = AsyncMock()
+    server._app.camera_group_manager.camera_groups = {"capture": CameraPayload(id="capture", frame_number=10)}
+    frame = await server._await_next_frame()
+    assert frame.frame_number == 10 and frame.aggregator_output is None
+    assert server._preview_mode and server._pipeline_frame_cursor == -1
+    server._app.wait_for_realtime_result.assert_not_awaited()
+
+
+@pytest.mark.parametrize("terminal", ["failed", "stopping", "stopped"])
+async def test_failed_or_cancelled_processing_preserves_raw_preview(server: WebsocketServer, terminal: str) -> None:
+    server._app.startup_status.begin()
+    server._app.startup_status.pipeline_created("live")
+    if terminal == "failed":
+        server._app.startup_status.fail("model failed")
+    else:
+        server._app.startup_status.request_stop()
+        if terminal == "stopped":
+            server._app.startup_status.stopped()
+    server._app.realtime_pipeline_manager = SimpleNamespace(
+        pipelines={"live": SimpleNamespace(alive=True, config=RealtimePipelineConfig())},
+    )
+    server._app.camera_group_manager.camera_groups = {"capture": CameraPayload(id="capture", frame_number=10)}
+    server._app.get_latest_aggregator_outputs = Mock()
+    server._app.wait_for_realtime_result = AsyncMock()
+    frame = await server._await_next_frame()
+    assert frame.frame_number == 10 and frame.aggregator_output is None
+    server._app.get_latest_aggregator_outputs.assert_not_called()
+    server._app.wait_for_realtime_result.assert_not_awaited()
+
+
+async def test_first_aggregator_result_does_not_delay_preview_or_reuse_dead_pipeline_output(server: WebsocketServer) -> None:
+    server._app.realtime_pipeline_manager = SimpleNamespace(
+        pipelines={"new": SimpleNamespace(alive=True, config=RealtimePipelineConfig())},
+    )
+    server._app.camera_group_manager.camera_groups = {"capture": CameraPayload(id="capture", frame_number=10)}
+    server._app.get_latest_aggregator_outputs = Mock(return_value=[SimpleNamespace(pipeline_id="dead", frame_number=999)])
+    server._app.wait_for_realtime_result = AsyncMock()
+    frame = await server._await_next_frame()
+    assert frame.frame_number == 10 and frame.aggregator_output is None
+    server._app.wait_for_realtime_result.assert_not_awaited()

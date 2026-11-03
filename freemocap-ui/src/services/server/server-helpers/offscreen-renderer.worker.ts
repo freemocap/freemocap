@@ -15,10 +15,8 @@ let ctx: ImageBitmapRenderingContext | null = null;
 let pendingFrame: ImageBitmap | null = null;
 let renderScheduled = false;
 
-// This worker handles exactly one camera, so a single OverlayManager + a single
-// latest observation is all the state it needs.
+// This worker handles exactly one camera. Observations belong to each image.
 const overlayManager = new OverlayManager();
-let latestSkeleton: SkeletonObservation | null = null;
 let skeletonEnabled = true;
 
 interface InitMessage { type: "init"; canvas: OffscreenCanvas; }
@@ -64,7 +62,6 @@ self.addEventListener("message", (event: MessageEvent) => {
             break;
         case "visibility":
             skeletonEnabled = msg.skeleton;
-            if (!skeletonEnabled) latestSkeleton = null;
             break;
     }
 });
@@ -79,10 +76,9 @@ function handleFrame(
         return;
     }
 
-    // The observation travels WITH its frame; a null here means "no overlay
-    // this frame" — keep the last one (replaced only by a newer observation).
-    if (skeleton !== null) latestSkeleton = skeleton;
-    const skeletonObs = skeletonEnabled ? latestSkeleton : null;
+    // A self-contained raw frame has no observations. Never carry detections
+    // from a previous processed image into this image.
+    const skeletonObs = skeletonEnabled ? skeleton : null;
 
     // Create ImageBitmap from raw pixels — this is the GPU upload step,
     // happening independently in each per-camera worker instead of batched

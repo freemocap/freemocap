@@ -92,6 +92,7 @@ class WebsocketServer:
         self._camera_frame_cursors: dict[CameraGroupIdString, int] = {}
         self._pipeline_source_ids: tuple[str, ...] = ()
         self._pipeline_frame_cursor = -1
+        self._preview_mode = True
 
         # ── Standard-stream send path ────────────────────────────────────
         # One writer (the serializer owns the send lock).
@@ -109,10 +110,37 @@ class WebsocketServer:
             serializer=self._serializer,
             source=self._await_next_frame,
             should_continue=lambda: self.should_continue,
+            on_frame_sent=self._record_startup_delivery,
         )
         # The initial composition (may be image-only — rebuilt when the data
         # model changes, e.g. a pipeline starts).
         self._relay.set_composition(self._compose_current())
+
+    def _record_startup_delivery(self, frame: FrameContext) -> None:
+        startup = getattr(self._app, "startup_status", None)
+        if frame.image_payload is not None and startup is not None:
+            startup.record_preview_delivery()
+        if frame.aggregator_output is not None:
+            output = frame.aggregator_output
+            if not self._has_matching_tracking_result(output):
+                return
+            config = output.pipeline_config
+            if (config is not None and config.use_centralized_inference
+                    and config.camera_node_config.skeleton_tracking_enabled
+                    and not self._app.inference_service.has_result(output.pipeline_id)):
+                # A timeout can still deliver camera images before tracking is ready.
+                return
+            if startup is not None:
+                startup.record_frame_delivery(output.pipeline_id)
+
+    @staticmethod
+    def _has_matching_tracking_result(output: AggregationNodeOutputMessage) -> bool:
+        """Distinguish timeout image bundles from completed inference, including no-person results."""
+        config = output.pipeline_config
+        if (config is not None and config.use_centralized_inference
+                and config.camera_node_config.skeleton_tracking_enabled):
+            return any(camera.skeleton_observation is not None for camera in output.camera_node_outputs.values())
+        return True
 
     # ── Composition lifecycle ──────────────────────────────────────────
 
@@ -323,9 +351,8 @@ class WebsocketServer:
         """Wait for the next frame, then compose its FrameContext.
 
         One frame message per frame carries images + overlays + reconstruction
-        together — while a pipeline is live the source waits for the NEXT
-        aggregator output (lockstep, newest-wins); with no pipeline it serves
-        camera images directly (the frame's image field).
+        together once processing is ready (lockstep, newest-wins). While
+        processing starts or stops, the same stream carries camera-only preview.
         """
         pipeline_ids = tuple(sorted(
             pipeline_id
@@ -335,28 +362,44 @@ class WebsocketServer:
         if pipeline_ids != self._pipeline_source_ids:
             self._pipeline_source_ids = pipeline_ids
             self._pipeline_frame_cursor = -1
+            self._preview_mode = True
         if not pipeline_ids:
             return await self._await_camera_only_frame()
 
-        outputs = self._app.get_latest_aggregator_outputs(
+        startup = self._app.startup_status.snapshot()
+        if (startup["status"] in ("failed", "stopping", "stopped")
+                and (startup["pipeline_id"] is None or startup["pipeline_id"] in pipeline_ids)):
+            return await self._await_camera_only_frame()
+        for pipeline_id in pipeline_ids:
+            pipeline = self._app.realtime_pipeline_manager.pipelines.get(pipeline_id)
+            if pipeline is None:
+                continue
+            config = pipeline.config
+            if (config.use_centralized_inference and config.camera_node_config.skeleton_tracking_enabled
+                    and not self._app.inference_service.has_result(pipeline_id)):
+                return await self._await_camera_only_frame()
+
+        outputs = [output for output in self._app.get_latest_aggregator_outputs(
             if_newer_than=self._pipeline_frame_cursor,
-        )
+        ) if output.pipeline_id in pipeline_ids and self._has_matching_tracking_result(output)]
+        if not outputs and self._preview_mode:
+            return await self._await_camera_only_frame()
         if not outputs:
             await self._app.wait_for_realtime_result(timeout=0.5)
-            outputs = self._app.get_latest_aggregator_outputs(
+            outputs = [output for output in self._app.get_latest_aggregator_outputs(
                 if_newer_than=self._pipeline_frame_cursor,
-            )
+            ) if output.pipeline_id in pipeline_ids and self._has_matching_tracking_result(output)]
         if not outputs:
-            # Pipeline live but no new solver output — keep waiting; the
-            # frame message must carry the frame's pose and image together.
-            return None
+            # A stalled solver must not freeze camera preview. Subsequent
+            # iterations poll without waiting until matching results resume.
+            return await self._await_camera_only_frame()
         newest = max(outputs, key=lambda m: m.frame_number)
 
         await self._ensure_composition(newest)
 
         pipeline = self._app.realtime_pipeline_manager.pipelines.get(newest.pipeline_id)
         if pipeline is None:
-            return None
+            return await self._await_camera_only_frame()
         # JPEG resize+encode of every camera is milliseconds of CPU work —
         # run it off the event loop so the frame sender, log relay, and
         # framerate relays don't stall behind it each frame.
@@ -367,12 +410,13 @@ class WebsocketServer:
                 display_image_sizes=self._display_image_sizes,
             )
         except IndexError:
-            # The image is no longer available; retry on the next relay iteration.
-            return None
+            # Never attach an old result to a newer camera image.
+            return await self._await_camera_only_frame()
         if payload is None:
-            return None
+            return await self._await_camera_only_frame()
         image_bytes, mf_timestamp = payload
         self._pipeline_frame_cursor = newest.frame_number
+        self._preview_mode = False
 
         self._record_framerate(
             camera_group_id=newest.camera_group_id,
@@ -388,11 +432,12 @@ class WebsocketServer:
         )
 
     async def _await_camera_only_frame(self) -> "FrameContext | None":
-        """Camera-only mode (no realtime pipeline): serve camera images.
+        """Serve camera preview without borrowing any processed-frame values.
 
         Each frame message carries just the
         newest camera-group payload.
         """
+        self._preview_mode = True
         await self._ensure_composition(None)
         payloads: dict[
             CameraGroupIdString, tuple[FrameNumberInt, float, bytes | bytearray | memoryview]

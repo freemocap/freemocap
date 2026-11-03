@@ -123,6 +123,9 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     tracker_config = config.tracker_config.model_copy(deep=True)
     bundles = (() if config.detector_type == "dlc" else
                (build_standard_human_bundle(detector_type=config.detector_type, anchor_segment_name=config.anchor_segment_name),))
+    if config.detector_type == "dlc" and config.dlc_geometry_path:
+        from freemocap.core.skeletons.dlc_object_skeleton import build_dlc_object_bundle
+        bundles = (build_dlc_object_bundle(sidecar_path=config.dlc_model_path, geometry_path=config.dlc_geometry_path),)
     if config.charuco_tracking_enabled:
         from skellytracker.core.tracker.tracker_presets import with_charuco_tracker
         tracker_config = with_charuco_tracker(tracker_config, config.charuco_board)
@@ -219,13 +222,17 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
 
     def align(inputs):
         science, filtered = inputs["science"], inputs["filtered"]
+        model_only = config.detector_type == "dlc"
+        alignment_config = (config.body_alignment.model_copy(update={"mode": "calibration"})
+                            if model_only else config.body_alignment)
         return align_mocap_recording(request=MocapAlignmentRequest(filtered_points=filtered.points,
             measured_support=filtered.report.gap_filling.measured_support(filtered.points),
-            triangulation=science.triangulation, camera_geometry=science.camera_geometry, bundle=bundles[0],
-            definition=AlignmentDefinition.from_default_human(skeleton=bundles[0].skeleton),
+            triangulation=science.triangulation, camera_geometry=science.camera_geometry,
+            bundle=None if model_only else bundles[0],
+            definition=None if model_only else AlignmentDefinition.from_default_human(skeleton=bundles[0].skeleton),
             timestamps_seconds=np.asarray(timing.synchronized.timestamps_s),
-            preserve_reference_frame=config.body_alignment.preserve_reference_frame(calibration_aligned=calibration.aligned),
-            config=config.body_alignment))
+            preserve_reference_frame=alignment_config.preserve_reference_frame(calibration_aligned=calibration.aligned),
+            config=alignment_config))
 
     operation("align_reference", "aligned_recording", {"science": "match_and_triangulate", "filtered": "filter_trajectories"}, align)
     operation("reconstruction_input", "reconstruction_input", {"aligned": "align_reference", "filtered": "filter_trajectories"}, lambda inputs:

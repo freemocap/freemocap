@@ -1,11 +1,12 @@
 import logging
+from typing import Literal
 
 from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.camera_group.camera_group import CameraConfigs
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
-from freemocap.app.freemocap_application import get_freemocap_app
+from freemocap.app.freemocap_application import RealtimeStartupConfigurationError, RealtimeStartupStopped, get_freemocap_app
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
@@ -17,6 +18,43 @@ from freemocap.pubsub.pubsub_topics import (
 logger = logging.getLogger(__name__)
 
 realtime_router = APIRouter(prefix="/realtime", tags=["Realtime processing"])
+
+
+class RealtimeStartupResponse(BaseModel):
+    status: Literal["idle", "running", "stopping", "ready", "failed", "stopped"]
+    phase: str
+    elapsed_seconds: float
+    phase_elapsed_seconds: float
+    pipeline_id: str | None = None
+    message: str | None = None
+    error: str | None = None
+    delayed: bool = False
+    preview_ready: bool = False
+
+
+@realtime_router.get("/startup", operation_id="realtime_startup_status")
+def realtime_startup_status() -> RealtimeStartupResponse:
+    """Observe startup without waiting for camera or native inference operations."""
+    app = get_freemocap_app()
+    snapshot = app.startup_status.snapshot()
+    if snapshot["pipeline_id"] and snapshot["status"] == "running":
+        inference = app.inference_service.startup_status(snapshot["pipeline_id"])
+        if inference is not None:
+            app.startup_status.observe_inference(
+                snapshot["pipeline_id"], **{key: inference[key] for key in (
+                    "status", "phase", "phase_elapsed_seconds", "message", "error",
+                )},
+            )
+            snapshot = app.startup_status.snapshot()
+    snapshot["delayed"] = snapshot["status"] in ("running", "stopping") and snapshot["phase_elapsed_seconds"] >= 15
+    return RealtimeStartupResponse(**snapshot)
+
+
+@realtime_router.post("/startup/stop", operation_id="stop_realtime_startup")
+async def stop_realtime_startup() -> RealtimeStartupResponse:
+    """Request a safe stop; native work remains owned until its boundary/cleanup."""
+    await get_freemocap_app().stop_realtime_startup()
+    return realtime_startup_status()
 
 
 class TemporalConfigStatus(BaseModel):
@@ -143,6 +181,10 @@ async def pipeline_apply_endpoint(
         response = RealtimePipelineCreateResponse.from_pipeline(pipeline=pipeline)
         logger.api(f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
         return response
+    except RealtimeStartupConfigurationError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except RealtimeStartupStopped as error:
+        raise HTTPException(status_code=409, detail={"code": "startup_stopped", "message": str(error)}) from error
     except Exception as e:
         logger.error(f"Error when processing `pipeline/connect` request: {type(e).__name__} - {e}")
         logger.exception(e)

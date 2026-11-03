@@ -25,6 +25,7 @@ from skellyforge.core.biomechanics.center_of_mass import CenterOfMassDefinitions
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 from skellytracker.core.io.tracker_mapping import MappedLandmarkEvidence, TrackerMappingSnapshot
+from freemocap.core.skeletons.rigid_object_geometry import RigidObjectGeometry
 
 
 @runtime_checkable
@@ -102,6 +103,8 @@ class TrackedSkeletonBundle:
     scale_reference_name: str
     anchor_segment_name: str | None = None
     tracker_connections: tuple[tuple[str, str], ...] = ()
+    object_geometry: RigidObjectGeometry | None = None
+    tracker_stage_path: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.anchor_segment_name is not None and self.anchor_segment_name not in self.skeleton.segments:

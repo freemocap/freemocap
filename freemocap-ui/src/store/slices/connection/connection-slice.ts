@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AppStateMessage, ConnectionState } from './connection-types';
 
 const initialState: ConnectionState = {
+    streamError: null,
     isConnected: false,
     serverPid: null,
     cameraGroups: [],
@@ -12,6 +13,12 @@ export const connectionSlice = createSlice({
     name: 'connection',
     initialState,
     reducers: {
+        streamErrorReceived: (state, action: PayloadAction<string>) => {
+            state.streamError = action.payload;
+        },
+        streamErrorCleared: (state) => {
+            state.streamError = null;
+        },
         // WebSocket open/closed — the single source of truth for "connected".
         wsConnectionChanged: (state, action: PayloadAction<boolean>) => {
             state.isConnected = action.payload;
@@ -33,4 +40,4 @@ export const connectionSlice = createSlice({
     },
 });
 
-export const { wsConnectionChanged, serverStateReceived, serverDisconnected } = connectionSlice.actions;
+export const { wsConnectionChanged, serverStateReceived, serverDisconnected, streamErrorReceived, streamErrorCleared } = connectionSlice.actions;

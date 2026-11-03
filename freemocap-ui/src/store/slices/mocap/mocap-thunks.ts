@@ -14,7 +14,7 @@ import type {StageSelection} from '@/services/recording/posthoc-processing';
 function buildPosthocConfig(state: RootState) {
     const { config } = state.mocap;
     const blender = state.blender;
-    if (config.detectorType !== 'dlc' && state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
+    if ((config.detectorType !== 'dlc' || config.dlcTriangulationEnabled, config.dlcGeometryPath) && state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
     const calibrationTomlPath = selectLoadedCalibration(state)?.path ?? null;
     return {
         bodyAlignment: {
@@ -66,7 +66,7 @@ function buildPosthocConfig(state: RootState) {
         blenderExportConfig: blender.exportConfig,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
         autoOpenBlendFile: blender.autoOpenBlendFile,
-        ...dlcPosthocExecutionSettings(config.detectorType, config.dlcExecutionProvider),
+        ...dlcPosthocExecutionSettings(config.detectorType, config.dlcExecutionProvider, config.dlcTriangulationEnabled, config.dlcGeometryPath),
     };
 }
 
@@ -324,12 +324,12 @@ export const processMocapRecording = createAsyncThunk<
 
             console.log('🔧 Processing recording:', {
                 mocapRecordingDirectory,
-                mocapTaskConfig: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)},
+                mocapTaskConfig: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider, state.mocap.config.dlcTriangulationEnabled, state.mocap.config.dlcGeometryPath)},
             });
 
             const response = await serverClient().responses.process_recording_freemocap_recordings__recording_id__processing_post({...recordingRequest(mocapRecordingDirectory),headers: { 'Content-Type': 'application/json' }, body: {
                     kind: 'mocap',
-                    config: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)},
+                    config: {...configWithCalibration, ...selection, ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider, state.mocap.config.dlcTriangulationEnabled, state.mocap.config.dlcGeometryPath)},
                 }});
 
             if (!response.ok) {

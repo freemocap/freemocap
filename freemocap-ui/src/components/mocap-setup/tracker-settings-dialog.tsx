@@ -12,11 +12,17 @@ export default function TrackerSettingsDialog({title, onClose, children}: {title
         dialog.current?.focus();
         return () => previous?.focus();
     }, []);
-    return createPortal(<div className="tracker-dialog-overlay" onMouseDown={event => event.stopPropagation()}
+    return createPortal(<div className="tracker-dialog-overlay" onMouseDown={event => {
+            event.stopPropagation();
+            if (event.target === event.currentTarget) {
+                event.preventDefault();
+                onClose();
+            }
+        }}
         onKeyDown={event => {
             if (event.key === 'Escape') {event.stopPropagation(); onClose();}
             if (event.key === 'Tab') {
-                const nodes = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary') ?? [])
+                const nodes = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary, [role=button][tabindex="0"]') ?? [])
                     .filter(element => element.getClientRects().length > 0);
                 if (!nodes?.length) return;
                 const first = nodes[0], last = nodes[nodes.length - 1];
@@ -25,7 +31,7 @@ export default function TrackerSettingsDialog({title, onClose, children}: {title
             }
         }}>
         <div ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="mocap-settings-modal tracker-settings-modal">
-            <ModalWindowControls title={title}/>
+            <ModalWindowControls title={title} onClose={onClose}/>
             <div className="modal-window-body mocap-settings-content settings-layout">{children}</div>
             <footer className="mocap-settings-footer"><ButtonSm text="Done" className="primary accent" textColor="text-white" onClick={onClose}/></footer>
         </div>

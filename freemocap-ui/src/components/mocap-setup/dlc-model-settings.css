@@ -1,5 +1,5 @@
 .tracker-dialog-overlay { position: fixed; inset: 0; z-index: 1500; background: var(--color-surface-overlay, #000a); }
-.tracker-settings-modal { width: calc(100vw - 40px); height: calc(100dvh - 40px); }
+.mocap-settings-modal.tracker-settings-modal { position: fixed; display: flex; flex-direction: column; width: min(1200px, calc(100vw - 48px)); height: min(900px, calc(100dvh - 48px)); top: 50%; left: 50%; transform: translate(-50%, -50%); }
 .tracker-settings-modal .segmented-control-container { flex-wrap: wrap; }
 .tracker-settings-modal .modal-window-body { padding: 24px; }
 .tracker-settings-modal .mocap-settings-footer { padding: 12px 24px; align-items: flex-end; }

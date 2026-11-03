@@ -160,6 +160,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                 onClick={() => toggleActive("trackingSettings")}
                 tooltip
                 tooltipText="Skeleton Setup"
+                ariaLabel="Skeleton Setup"
                 tooltipPosition="pos-bottom"
                 disabled={false}
                 className={`is-menu icon-size-25 ${active.trackingSettings ? "active" : ""}`}
@@ -167,7 +168,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               {/* RTP MediaPipe Settings Modal */}
               <RTPMediaPipeDetectorSettings
                 open={active.trackingSettings}
-                onClose={() => toggleActive("trackingSettings")}
+                onClose={() => setActive(previous => ({...previous, trackingSettings: false}))}
               />
             </div>
           </div>

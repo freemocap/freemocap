@@ -74,7 +74,8 @@ test('DLC setup is readable, loads models, reports errors and saves optional geo
     }
     await page.getByRole('button',{name:'DLC',exact:true}).click();
     const dialog=page.getByRole('dialog',{name:'Skeleton Setup',exact:true});
-    expect((await dialog.boundingBox())!.width).toBeGreaterThan(1300);
+    expect((await dialog.boundingBox())!.width).toBe(1200);
+    expect((await dialog.boundingBox())!.x).toBeCloseTo(120);
     const chooseModel = page.getByRole('button',{name:'Choose converted model…',exact:true});
     await expect(chooseModel).not.toBeVisible();
     await page.getByText('Load a different converted model (optional)',{exact:true}).click();

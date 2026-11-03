@@ -4,12 +4,22 @@ import IconButton from './IconButton';
 import './modal-window.css';
 
 /** Opt-in movement, resizing and maximizing for working dialogs. */
-export default function ModalWindowControls({title}: {title: string}) {
+export default function ModalWindowControls({title, onClose}: {title: string; onClose?: () => void}) {
     const header = useRef<HTMLDivElement>(null);
     const panel = useRef<HTMLDivElement | null>(null);
     const restore = useRef<DOMRect | null>(null);
     const gesture = useRef<{x: number; y: number; bounds: DOMRect} | null>(null);
     const [maximized, setMaximized] = useState(false);
+    function fitToViewport(bounds: {left: number; top: number; width: number; height: number}): void {
+        if (!panel.current) return;
+        const width = Math.min(bounds.width, innerWidth - 16);
+        const height = Math.min(bounds.height, innerHeight - 16);
+        Object.assign(panel.current.style, {
+            left: `${Math.max(8, Math.min(bounds.left, innerWidth - width - 8))}px`,
+            top: `${Math.max(8, Math.min(bounds.top, innerHeight - height - 8))}px`,
+            width: `${width}px`, height: `${height}px`,
+        });
+    }
     useLayoutEffect(() => {
         const parent = header.current?.parentElement;
         if (!(parent instanceof HTMLDivElement)) throw new Error('Modal controls require a modal div parent.');
@@ -19,9 +29,18 @@ export default function ModalWindowControls({title}: {title: string}) {
         parent.classList.add('modal-window');
         parent.setAttribute('role', 'dialog');
         if (!parent.hasAttribute('aria-label')) parent.setAttribute('aria-label', title);
-        Object.assign(parent.style, {position: 'fixed', transform: 'none', left: `${Math.max(8, bounds.left)}px`, top: `${Math.max(8, bounds.top)}px`, width: `${Math.min(bounds.width, innerWidth - 16)}px`, height: `${Math.min(bounds.height + 32, innerHeight - 16)}px`});
+        Object.assign(parent.style, {position: 'fixed', transform: 'none'});
+        fitToViewport(bounds);
         return () => {parent.style.cssText = originalStyle; parent.classList.remove('modal-window'); panel.current = null;};
     }, [title]);
+    useLayoutEffect(() => {
+        const resize = () => {
+            if (!panel.current) return;
+            fitToViewport(maximized ? {left: 8, top: 8, width: innerWidth - 16, height: innerHeight - 16} : panel.current.getBoundingClientRect());
+        };
+        window.addEventListener('resize', resize);
+        return () => window.removeEventListener('resize', resize);
+    }, [maximized]);
     function maximize(): void {
         if (!panel.current) return;
         if (!maximized) {
@@ -29,7 +48,7 @@ export default function ModalWindowControls({title}: {title: string}) {
             Object.assign(panel.current.style, {left: '8px', top: '8px', width: 'calc(100vw - 16px)', height: 'calc(100vh - 16px)'});
         } else if (restore.current) {
             const bounds = restore.current;
-            Object.assign(panel.current.style, {left: `${bounds.left}px`, top: `${bounds.top}px`, width: `${bounds.width}px`, height: `${bounds.height}px`});
+            fitToViewport(bounds);
         }
         setMaximized(!maximized);
     }
@@ -51,7 +70,12 @@ export default function ModalWindowControls({title}: {title: string}) {
             onPointerUp={event => {gesture.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);}}
             onPointerCancel={() => {gesture.current = null;}}>
             <span className="text md text-white">{title}</span>
-            <IconButton icon="expand-icon" title={maximized ? 'Restore window size' : 'Maximize window'} onClick={maximize}/>
+            <div className="modal-window-actions">
+                {onClose ? <>
+                    <button type="button" className="modal-window-action" onClick={maximize}>{maximized ? 'Restore' : 'Maximize'}</button>
+                    <button type="button" className="modal-window-action" aria-label={`Close ${title}`} onClick={onClose}>Close <span aria-hidden="true">×</span></button>
+                </> : <IconButton icon="expand-icon" title={maximized ? 'Restore window size' : 'Maximize window'} onClick={maximize}/>}
+            </div>
         </div>
         {!maximized && <PanelResizeHandles panelRef={panel}/>}
     </>;

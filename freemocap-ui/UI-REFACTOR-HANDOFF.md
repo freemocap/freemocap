@@ -31,6 +31,39 @@ contract; the UI builds the request only through `mocapProcessingConfig`.
 
 Report on each item in `.test-artifacts/reports/<sha>.md` under "Requests".
 
+## 009588c2 Mocap processing: outline with List or Graph (design canvas boards 13-17)
+
+Picks up after a2c2f899; requests 1-3 there stay open.
+
+What changed (freemocap-ui only):
+- `mocap-setup-modal.tsx` + `mocap-processing.css`: one window size in both views, title bar with an X,
+  run controls and a large Process Mocap button in the header, outline on the left, List or Graph on
+  the right (Graph by default in playback).
+- Sections are Recording, 1 2D tracking, 2 Triangulation, 3 Gap filling and filtering, 4 Person scale
+  fitting, 5 Skeleton reconstruction, Blender, Exports (`processing-sections.tsx`). Person scale
+  fitting holds the skeleton anchor; Triangulation holds the reference frame.
+- Graph (`stage-graph.ts`, `stage-layout.ts`, `ProcessingGraphView.tsx`): one node per section with its
+  stage switch, data sockets, the section's real settings, live bars, and saved files that open their
+  folder. Magnifier zooms onto a node; the info button covers the graph and points callouts at the
+  node's sockets, settings and saved data, using each setting's info text.
+- Defaults: exports Wide CSV + NPY + notebook, exported after processing; Blender on. With Blender on
+  and no executable found, the request sends `exportToBlender: false`, the node shows "Blender not
+  found" with blender.org/download and a "Detect again" button.
+- Request fixture `e2e/fixtures/mocap-processing-request.baseline.json` updated for those defaults;
+  otherwise the request is unchanged.
+
+Run against it:
+1. `npx tsc --noEmit -p .`, `stage-graph.test.ts`, the operation-progress tests, the full e2e suite.
+2. `ui-refactor-baseline.spec.ts` now walks the outline sections in List view; its screenshot names
+   changed, so regenerate those baselines. `mocap-graph-settings.spec.ts` now opens List view first.
+3. With the real backend: process `freemocap_sample_data` once; check the request matches the
+   settings shown, that Blender is skipped (not failed) when no executable is found, and attach
+   screenshots of Graph while running and after completion.
+4. Then do request 4 above: push, open FreeMoCap on Mocap processing > Graph with
+   `freemocap_sample_data` loaded, and leave it open.
+
+Known here: `streaming-outputs.spec.ts` "late polling" is flaky without this commit too.
+
 ## Pushing
 
 The local agent pushes `sfn26-ui-refactor` to origin: after picking up new commits on this branch,

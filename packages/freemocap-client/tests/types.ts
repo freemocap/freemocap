@@ -1,4 +1,4 @@
-import {createClient, type ApiResult} from '../src/index.js';
+import {createClient, TransportService, type ApiResult} from '../src/index.js';
 function check(client:ReturnType<typeof createClient>){
  client.operations.describe_recording_freemocap_recordings__recording_id__get({path:{recording_id:'trial'}});
  // @ts-expect-error recording identity is required
@@ -14,3 +14,12 @@ function check(client:ReturnType<typeof createClient>){
  void asset;
 }
 void check;
+function checkApplicationKinds(client:ReturnType<typeof createClient>){
+ const stream=new TransportService({url:'ws://robot.invalid/ws',kinds:{robot_state:{parse:(message:unknown)=>message as {servos:Record<string,number>}}}});
+ stream.subscribeToKind('robot_state',state=>{const pan:number|undefined=state.servos.pan;void pan;});
+ // @ts-expect-error only registered kinds can be subscribed
+ stream.subscribeToKind('telemetry',()=>{});
+ // @ts-expect-error a FreeMoCap client registers no application kinds
+ client.stream.subscribeToKind('robot_state',()=>{});
+}
+void checkApplicationKinds;

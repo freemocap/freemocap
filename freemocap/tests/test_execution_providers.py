@@ -115,13 +115,36 @@ def test_live_changes_rebuild_only_affected_inference(change):
     pipeline.inference_service.close.assert_not_called()
 
 
-def test_per_camera_factory_receives_selected_provider():
+@pytest.mark.parametrize('provider', ['cpu', 'cuda', 'coreml', 'directml'])
+def test_per_camera_factory_receives_selected_provider(provider):
     from freemocap.core.pipeline.realtime.camera_node import _build_skeleton_tracker_from_config
     from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
     from freemocap.core.tracking import tracker_factory
     with patch.object(tracker_factory, 'build_configured_tracker') as create:
-        _build_skeleton_tracker_from_config(CameraNodeConfig(), 'cpu')
-    assert create.call_args.kwargs['execution_provider'] == 'cpu'
+        _build_skeleton_tracker_from_config(CameraNodeConfig(), provider)
+    assert create.call_args.kwargs['execution_provider'] == provider
+
+
+@pytest.mark.parametrize('available,expected', [
+    (['trt', 'cuda', 'cpu'], 'cuda'), (['coreml', 'cpu'], 'coreml'),
+    (['trt', 'cpu'], 'cpu'), (['directml', 'cpu'], 'directml'),
+])
+def test_per_camera_auto_never_builds_tensorrt(available, expected):
+    from freemocap.core.pipeline.realtime.camera_node import _build_skeleton_tracker_from_config
+    from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
+    with patch('freemocap.core.tracking.execution_providers.advertised_providers', return_value=available), \
+         patch('freemocap.core.tracking.tracker_factory.build_configured_tracker') as create:
+        _build_skeleton_tracker_from_config(CameraNodeConfig())
+    assert create.call_args.kwargs['execution_provider'] == expected
+
+
+def test_per_camera_saved_tensorrt_uses_cuda():
+    from freemocap.core.pipeline.realtime.camera_node import _build_skeleton_tracker_from_config
+    from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
+    with patch('freemocap.core.tracking.execution_providers.advertised_providers', return_value=['trt', 'cuda', 'cpu']), \
+         patch('freemocap.core.tracking.tracker_factory.build_configured_tracker') as create:
+        _build_skeleton_tracker_from_config(CameraNodeConfig(), 'trt')
+    assert create.call_args.kwargs['execution_provider'] == 'cuda'
 
 
 def test_failed_explicit_direct_session_is_closed():

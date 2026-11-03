@@ -7,10 +7,10 @@ export async function requestExecutionProviders(baseUrl: string, signal?: AbortS
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (!Array.isArray(data.available) || data.available.some((value: unknown) =>
-        typeof value !== 'string' || !EXECUTION_PROVIDERS.some(option => option.value === value))) {
+        typeof value !== 'string' || (value !== 'trt' && !EXECUTION_PROVIDERS.some(option => option.value === value)))) {
         throw new Error('Invalid provider response');
     }
-    return data.available;
+    return data.available.filter((value: string) => value !== 'trt');
 }
 
 export function executionProviderOptions(selected: ExecutionProviderName | null,

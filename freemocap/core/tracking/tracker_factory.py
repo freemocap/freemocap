@@ -79,7 +79,10 @@ def tracker_session_requests(
     )
     if not requests:
         raise ValueError("Tracker configuration requires at least one detector")
-    return requests
+    from freemocap.core.tracking.execution_providers import application_provider
+    return tuple(SessionRequest(session_type=request.session_type,
+        config=request.config.model_copy(update={"execution_provider": application_provider(request.config.execution_provider)}))
+        if request.config.backend == "onnx" else request for request in requests)
 
 
 def build_charuco_tracker(
@@ -116,6 +119,8 @@ def build_skeleton_onnx_session(
         yolox_model_name: YOLOX person detector model variant.
     """
     from skellytracker.core.tracker.tracker_presets import skeleton_model_specs
+    from freemocap.core.tracking.execution_providers import application_provider
+    execution_provider = application_provider(execution_provider)
     model_specs = skeleton_model_specs(model_name=model_name, yolox_model_name=yolox_model_name)
 
     with _onnx_session_build_lock:

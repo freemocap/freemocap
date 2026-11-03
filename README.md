@@ -172,14 +172,21 @@ uv venv
 uv sync
 ```
 
-This installs `skellytracker` with TensorRT and CUDA on Windows/Linux, or
-CPU-only on macOS, automatically. TensorRT is declared in the default dependency
-group and locked in `uv.lock`; later syncs retain it. Auto provider selection uses
-TensorRT when available. The first start can take several minutes to compile
-engines for the selected models and camera count; later starts reuse the cache.
+This installs `skellytracker` with CUDA on Windows/Linux and CPU-only on macOS.
+The default is declared in `pyproject.toml` and locked in `uv.lock`.
+Auto and older saved TensorRT selections use CUDA when available, with the
+existing platform fallback otherwise. Explicit CPU selections remain CPU.
+There is no background TensorRT preparation or automatic provider switching.
 
-For CUDA without TensorRT, use `uv sync --no-default-groups --group cuda`.
-Use the same group selection with `uv run` when launching that environment.
+The **Realtime processing** toolbar button starts and stops processing. During
+startup it shows the current stage and a spinner; click it to cancel startup.
+The button turns green when processing is ready and offers retry after a failure.
+Errors appear in the application's error banner. Startup updates use the existing
+WebSocket progress subscription, with no recurring HTTP status polling.
+Camera images stream as soon as capture produces them. The same stream adds
+matched processing results when available; a processing delay or failure returns
+to raw preview, clearing old overlays without restarting capture.
+
 If you're on Windows/Linux without a
 supported GPU, force the CPU-only build instead:
 

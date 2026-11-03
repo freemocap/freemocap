@@ -77,6 +77,26 @@ def test_websocket_uses_owned_metadata_without_model_io(monkeypatch):
     reader.assert_not_called()
 
 
+@pytest.mark.parametrize("calibrated,camera_count,publishes_3d", [(True, 2, True), (False, 2, False), (True, 1, False)])
+def test_model_only_spatial_channel_requires_calibrated_multicamera(calibrated, camera_count, publishes_3d):
+    from skellyforge.core.data_tensors.channel_values import ChannelValues, SPATIAL_COMPONENTS
+    descriptor = metadata()
+    # Reverse input storage to verify wire rows follow the model's declared identities.
+    points = ChannelValues(tuple(reversed(descriptor.keypoint_names)), np.array([[40., 50., 60.], [10., 20., 30.]]),
+                           np.ones(2, dtype=bool), component_names=SPATIAL_COMPONENTS)
+    outputs = {str(i): CameraNodeOutputMessage(camera_id=str(i), frame_number=0) for i in range(camera_count)}
+    aggregation = AggregationNodeOutputMessage(frame_number=0, pipeline_config=RealtimePipelineConfig(),
+        camera_group_id="test", camera_node_outputs=outputs, keypoints_arrays=points, calibration_applicable=calibrated)
+    composition = compose_messages(StreamContext(skeletons=(), independent_trackers=(descriptor,), pipeline_live=True))
+    wire = cbor2.loads(encode_message(composition.compose_frame_message(FrameContext(0, 0., aggregator_output=aggregation))))
+    assert wire['models'] == wire['instances'] == []
+    channels = [c for c in wire['trackers'][0]['channels'] if c['kind'] == 'KEYPOINTS_3D']
+    assert bool(channels) is publishes_3d
+    if publishes_3d:
+        assert channels[0]['names'] == list(descriptor.keypoint_names)
+        np.testing.assert_array_equal(np.frombuffer(channels[0]['data'], '<f4').reshape(2, 3), [[10,20,30],[40,50,60]])
+
+
 def test_posthoc_annotation_uses_declared_connections(monkeypatch):
     from skellytracker.core.config.tracker_config import TrackerConfig
     from skellytracker.core.config.detection_stage_config import DetectionStageConfig

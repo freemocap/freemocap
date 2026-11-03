@@ -14,7 +14,7 @@ import type {StageSelection} from '@/services/recording/posthoc-processing';
 function buildPosthocConfig(state: RootState) {
     const { config } = state.mocap;
     const blender = state.blender;
-    if (config.detectorType !== 'dlc' && state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
+    if ((config.detectorType !== 'dlc' || config.dlcTriangulationEnabled) && state.calibration.loadRequestId) throw new Error('Wait for the selected calibration to finish loading.');
     const calibrationTomlPath = selectLoadedCalibration(state)?.path ?? null;
     return {
         bodyAlignment: {
@@ -59,14 +59,15 @@ function buildPosthocConfig(state: RootState) {
             cutoff: config.posthoc_filter.cutoff,
             order: config.posthoc_filter.order,
         },
-        exportToBlender: blender.exportToBlenderEnabled,
+        // A user run without a Blender executable on the server skips Blender; the Blender node says why.
+        exportToBlender: blender.exportToBlenderEnabled && Boolean(blender.blenderExePath ?? blender.detectedBlenderExePath),
         blenderImportRoute: blender.importRoute,
         blenderPackage: blender.packageName,
         blenderDevelopmentBuildHash: blender.developmentBuildHash,
         blenderExportConfig: blender.exportConfig,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
         autoOpenBlendFile: blender.autoOpenBlendFile,
-        ...dlcPosthocExecutionSettings(config.detectorType, config.dlcExecutionProvider),
+        ...dlcPosthocExecutionSettings(config.detectorType, config.dlcExecutionProvider, config.dlcTriangulationEnabled, config.dlcGeometryPath),
     };
 }
 
@@ -308,7 +309,8 @@ export const getSyncResult = createAsyncThunk<
 /** The mocap processing configuration sent by Process and by the plan preview: one source for both. */
 export function mocapProcessingConfig(state: RootState, selection: StageSelection | void) {
     return {...buildPosthocConfig(state), ...selection,
-        ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider)};
+        ...dlcPosthocExecutionSettings(state.mocap.config.detectorType, state.mocap.config.dlcExecutionProvider,
+            state.mocap.config.dlcTriangulationEnabled, state.mocap.config.dlcGeometryPath)};
 }
 
 export const processMocapRecording = createAsyncThunk<

@@ -22,4 +22,8 @@
     overflow: auto;
 }
 .modal-window > .modal-window-body { flex: 1; min-height: 0; }
+.modal-window-actions { display: flex; align-items: center; gap: 8px; }
+.modal-window-action { padding: 4px 10px; border: 1px solid var(--color-border-hairline-strong, #666); border-radius: 4px; background: var(--color-surface-ground, #222); color: var(--color-text-primary, #eee); cursor: pointer; font-size: 12px; }
+.modal-window-action:hover { background: var(--color-surface-raised, #444); }
+.modal-window-action:focus-visible { outline: 2px solid var(--color-accent, #7dd3fc); outline-offset: 2px; }
 

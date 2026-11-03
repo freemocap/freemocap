@@ -45,6 +45,7 @@ class RealtimePipelineManager(PipelineManagerABC):
     inference_service: InferenceService
     lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, RealtimePipeline] = field(default_factory=dict)
+    _lifecycle_lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock, repr=False)
 
     # ------------------------------------------------------------------
     # Pipeline CRUD
@@ -65,18 +66,17 @@ class RealtimePipelineManager(PipelineManagerABC):
             if realtime_camera_ids is not None
             else set(camera_group.camera_ids)
         )
-        with self.lock:
-            # Return existing pipeline for this camera set (with updated config)
-            for pipeline in self.pipelines.values():
-                if set(pipeline.camera_ids) == target_camera_ids:
-                    logger.info(
-                        f"Found existing RealtimePipeline [{pipeline.id}] "
-                        f"for camera group [{pipeline.camera_group_id}]"
-                    )
-                    pipeline.update_config(new_config=pipeline_config)
-                    if camera_group is not pipeline.camera_group:
-                        camera_group.close_transport()
-                    return pipeline
+        # Map readers (including websocket tasks) must not wait for native
+        # startup. Serialize lifecycle mutations separately from map access.
+        with self._lifecycle_lock:
+            with self.lock:
+                existing = next((pipeline for pipeline in self.pipelines.values()
+                                 if set(pipeline.camera_ids) == target_camera_ids), None)
+            if existing is not None:
+                existing.update_config(new_config=pipeline_config)
+                if camera_group is not existing.camera_group:
+                    camera_group.close_transport()
+                return existing
 
             pipeline = RealtimePipeline.create(
                 inference_service=self.inference_service,
@@ -86,10 +86,11 @@ class RealtimePipelineManager(PipelineManagerABC):
                 realtime_camera_ids=realtime_camera_ids,
             )
             pipeline.start()
-            self.pipelines[pipeline.id] = pipeline
+            with self.lock:
+                self.pipelines[pipeline.id] = pipeline
             logger.info(
                 f"Created RealtimePipeline [{pipeline.id}] "
-                f"for camera group [{pipeline.camera_group_id}]"
+                f"for camera group [{camera_group.id}]"
             )
             return pipeline
 
@@ -99,8 +100,9 @@ class RealtimePipelineManager(PipelineManagerABC):
         pipeline_id: PipelineIdString,
         new_config: RealtimePipelineConfig,
     ) -> RealtimePipeline:
-        with self.lock:
-            pipeline = self.pipelines.get(pipeline_id)
+        with self._lifecycle_lock:
+            with self.lock:
+                pipeline = self.pipelines.get(pipeline_id)
             if pipeline is None:
                 raise KeyError(f"No realtime pipeline with ID '{pipeline_id}'")
             pipeline.update_config(new_config=new_config)
@@ -164,16 +166,22 @@ class RealtimePipelineManager(PipelineManagerABC):
                 pipeline.camera_group.pause_unpause()
 
     def stop_pipeline(self, *, pipeline_id: PipelineIdString) -> bool:
-        with self.lock:
-            pipeline = self.pipelines.pop(pipeline_id, None)
-        if pipeline is None:
-            return False
-        pipeline.shutdown()
-        return True
+        with self._lifecycle_lock:
+            with self.lock:
+                pipeline = self.pipelines.get(pipeline_id)
+            if pipeline is None:
+                return False
+            pipeline.shutdown()
+            with self.lock:
+                self.pipelines.pop(pipeline_id, None)
+            return True
 
     def shutdown(self) -> None:
-        with self.lock:
-            for pipeline in self.pipelines.values():
+        with self._lifecycle_lock:
+            with self.lock:
+                pipelines = tuple(self.pipelines.values())
+            for pipeline in pipelines:
                 pipeline.shutdown()
-            self.pipelines.clear()
+                with self.lock:
+                    self.pipelines.pop(pipeline.id, None)
         logger.info("RealtimePipelineManager: all pipelines shut down")

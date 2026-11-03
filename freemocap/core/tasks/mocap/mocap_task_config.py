@@ -72,6 +72,7 @@ class PosthocMocapPipelineConfig(BaseModel):
         description="Tracking preset: RTMW, MediaPipe, or RTMW with MediaPipe hands.",
     )
     dlc_model_path: str | None = Field(default=None, alias="dlcModelPath")
+    dlc_geometry_path: str | None = Field(default=None, alias="dlcGeometryPath")
     dlc_confidence_threshold: float = Field(default=0.4, ge=0, le=1, alias="dlcConfidenceThreshold")
     # RTMPose settings
     rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = Field(
@@ -188,8 +189,8 @@ class PosthocMocapPipelineConfig(BaseModel):
     @model_validator(mode="after")
     def _validate_stage_range(self) -> "PosthocMocapPipelineConfig":
         if self.detector_type == "dlc":
-            if self.stop_stage != "observations" or self.export_to_blender:
-                raise ValueError("DLC currently supports observation-only processing; select stopStage=observations and disable Blender export, with no anatomical model association")
+            if (self.stop_stage not in ("observations", "triangulation", "filtering") and not self.dlc_geometry_path) or self.export_to_blender:
+                raise ValueError("DLC model-only processing supports observations, triangulation and filtering; rigid reconstruction requires an explicit object geometry association and Blender export must be disabled")
             if self.graph_execution_provider not in ("cpu", "cuda"):
                 raise ValueError("DLC requires graphExecutionProvider=cpu or cuda (FP32)")
             if self.execution_provider not in (None, "cpu", "cuda"):

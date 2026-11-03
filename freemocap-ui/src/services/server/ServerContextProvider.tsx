@@ -1,5 +1,6 @@
 import type {DiagnosticsFrame, DiagnosticsCallback} from './transport/TransportService';
 import {applyTaskSnapshot} from './task-progress';
+import {subscribeToStreamErrors} from './stream-errors';
 
 // ServerContextProvider.tsx
 //
@@ -27,7 +28,7 @@ import {
 } from "@/components/viewport3d/KeypointsSourceContext";
 import {store} from "@/store";
 
-import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/store/slices/connection/connection-slice";
+import {serverStateReceived, wsConnectionChanged, serverDisconnected, streamErrorReceived} from "@/store/slices/connection/connection-slice";
 import {modelsReceived} from "@/store/slices/model";
 import {conventionReceived} from "@/store/slices/convention";
 import {camerasReceived} from "@/store/slices/camera-layout";
@@ -103,6 +104,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
         const subs: (() => void)[] = [];
         const transport = transportRef.current;
+        subs.push(subscribeToStreamErrors(transport, message => store.dispatch(streamErrorReceived(message))));
         subs.push(transport.subscribeToDiagnostics((frame) => {
             diagnosticsRef.current = frame;
             for (const cb of diagnosticsSubscribersRef.current) cb(frame);

@@ -41,3 +41,20 @@ test('retired socket callbacks cannot deliver after a manual disconnect',()=>{
  let messages=0;client.stream.subscribeToMessages(()=>messages++);client.stream.connect();socket.open();
  const old=socket.onmessage;client.close();old({data:new ArrayBuffer(0)});assert.equal(messages,0);
 });
+test('connects from pages without a secure context, where crypto.randomUUID is missing',()=>{
+ const prototype=Object.getPrototypeOf(globalThis.crypto);const original=Object.getOwnPropertyDescriptor(prototype,'randomUUID');
+ Object.defineProperty(prototype,'randomUUID',{value:undefined,configurable:true});
+ try{
+  let socket;const connection=new WebSocketConnection({url:'ws://192.168.1.20:8080/stream',socketFactory:url=>(socket=new Socket(url))});
+  const errors=[];connection.on('error',error=>errors.push(error));
+  connection.connect();socket.open();
+  assert.match(socket.url.searchParams.get('connection_id'),/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.equal(connection.getState(),'CONNECTED');assert.deepEqual(errors,[]);connection.disconnect();
+ }finally{Object.defineProperty(prototype,'randomUUID',original);}
+});
+test('a socket that cannot be created is reported, then retried',()=>{
+ const connection=new WebSocketConnection({url:'ws://server.invalid/stream',reconnectDelay:60000,socketFactory:()=>{throw new SyntaxError('bad socket URL');}});
+ const errors=[];connection.on('error',error=>errors.push(error));
+ connection.connect();
+ assert.equal(errors[0]?.message,'bad socket URL');assert.equal(connection.getState(),'RECONNECTING');connection.disconnect();
+});

@@ -9,6 +9,12 @@ test('unknown server support exposes Auto and the saved selection only', () => {
     assert.deepEqual(executionProviderOptions(null, ['cpu']).map(option => option.value), [null, 'cpu']);
 });
 
+test('legacy TensorRT selections and server advertisements cannot offer it for new work', async () => {
+    assert.deepEqual(executionProviderOptions('trt', ['trt', 'cuda', 'cpu']).map(option => option.value), [null, 'cuda', 'cpu']);
+    assert.deepEqual(await requestExecutionProviders('http://legacy.invalid', undefined,
+        (async () => Response.json({available: ['trt', 'cuda', 'cpu']})) as typeof fetch), ['cuda', 'cpu']);
+});
+
 test('reconnected or different servers are queried again and preserve abort signals', async () => {
     const calls: string[] = [];
     const controller = new AbortController();

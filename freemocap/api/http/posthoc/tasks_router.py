@@ -28,8 +28,8 @@ def get_task(task_id: str) -> TaskSnapshot | BackgroundTaskSnapshot:
 
 
 @tasks_router.post('/tasks/{task_id}/cancel')
-def cancel_task(task_id: str) -> TaskSnapshot | BackgroundTaskSnapshot:
-    return task_interface.cancel_task(get_freemocap_app(), task_id)
+async def cancel_task(task_id: str) -> TaskSnapshot | BackgroundTaskSnapshot:
+    return await task_interface.cancel_task_async(get_freemocap_app(), task_id)
 
 
 class CancelTasksRequest(BaseModel):
@@ -37,9 +37,9 @@ class CancelTasksRequest(BaseModel):
 
 
 @tasks_router.post('/tasks/cancel')
-def cancel_tasks(request: CancelTasksRequest) -> TaskRegistrySnapshot:
+async def cancel_tasks(request: CancelTasksRequest) -> TaskRegistrySnapshot:
     app = get_freemocap_app()
     for task in task_interface.task_snapshot(app).tasks:
         if task.task_type == request.kind and task.status in ('queued', 'running'):
-            task_interface.cancel_task(app, task.task_id)
+            await task_interface.cancel_task_async(app, task.task_id)
     return task_interface.task_snapshot(app)

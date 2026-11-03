@@ -100,3 +100,22 @@ test('a reconnect decodes the task plan and file identities without prior state'
  assert.deepEqual(message.snapshot.tasks[0].plan,plan);
  assert.deepEqual(message.snapshot.tasks[0].operations,[operation]);
 });
+
+test('startup uses complete retained progress records after reconnect',()=>{
+ const snapshots = [
+  {task_type:'realtime_startup', result:{status:'ready',phase:'ready',pipeline_id:'live',preview_ready:true}},
+ ];
+ const packet=encode({kind:'progress',version:0,timestamp:0,sequence:0,snapshot:{
+  server_instance_id:'00000000-0000-4000-8000-000000000001',revision:9,recording_owners:[],
+  tasks:snapshots.map((entry,index)=>({...entry,task_id:`${entry.task_type}:generation`,revision:3,
+   recording:null,status:index===0?'complete':'cancelled',progress:{phase:entry.result.phase,
+   progress_fraction:null,detail:'Retained status'},cameras:[],
+   created_at:'2026-11-02T20:00:00Z',updated_at:'2026-11-02T20:01:00Z'})),
+ }});
+ for(const decoder of [new MessageDecoder(),new MessageDecoder()]) {
+  const message=decoder.decode(packet);assert.equal(message?.kind,'progress');
+  if(message?.kind!=='progress')throw new Error('Expected progress');
+  assert.deepEqual(message.snapshot.tasks.map(task=>task.result),snapshots.map(task=>task.result));
+  assert.equal(message.snapshot.revision,9);
+ }
+});

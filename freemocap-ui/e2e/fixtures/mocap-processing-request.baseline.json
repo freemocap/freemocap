@@ -12,7 +12,11 @@
     "anchorSegmentName": "pelvis",
     "exportTallCsv": false,
     "exportOptions": {
-      "formats": [],
+      "formats": [
+        "npz",
+        "wide_csv",
+        "notebook"
+      ],
       "data": [
         "LANDMARKS_3D"
       ]
@@ -49,7 +53,7 @@
       "cutoff": 6,
       "order": 4
     },
-    "exportToBlender": true,
+    "exportToBlender": false,
     "blenderImportRoute": "auto",
     "blenderPackage": null,
     "blenderDevelopmentBuildHash": null,

@@ -9,6 +9,7 @@ import {selectCalibrationConfig, selectLoadedCalibration} from "@/store/slices/c
 import {loadRealtimeCalibrationDefault} from '@/store/slices/calibration/calibration-thunks';
 import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
 import {realtimeExecutionSettings} from './realtime-settings';
+import {checkStartupStopped} from '@/services/server/startup-stopped';
 
 export const applyRealtimePipeline = createAsyncThunk<
     PipelineApplyResponse,
@@ -74,6 +75,7 @@ export const applyRealtimePipeline = createAsyncThunk<
             }});
 
         if (!response.ok) {
+            await checkStartupStopped(response);
             throw new Error(`Failed to apply realtime: ${await getDetailedErrorMessage(response)}`);
         }
 

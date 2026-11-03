@@ -5,6 +5,7 @@ import { selectRecordingError, recordingErrorCleared } from "@/store/slices/reco
 import { selectCalibrationError, calibrationErrorCleared } from "@/store/slices/calibration/calibration-slice";
 import { selectMocapError, mocapErrorCleared } from "@/store/slices/mocap/mocap-slice";
 import { selectPipelineError, pipelineErrorCleared } from "@/store/slices/realtime";
+import {streamErrorCleared} from '@/store/slices/connection/connection-slice';
 
 /**
  * Single place where a failed operation request surfaces to the user.
@@ -18,6 +19,7 @@ export const OperationErrorBanner: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const entries = [
+    { label: "Live stream", error: useAppSelector(state => state.connection.streamError), clear: streamErrorCleared },
     { label: "Recording", error: useAppSelector(selectRecordingError), clear: recordingErrorCleared },
     { label: "Calibration", error: useAppSelector(selectCalibrationError), clear: calibrationErrorCleared },
     { label: "Motion capture", error: useAppSelector(selectMocapError), clear: mocapErrorCleared },

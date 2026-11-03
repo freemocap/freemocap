@@ -344,5 +344,30 @@ export const operationDefinitions = {
     "method": "PUT",
     "path": "/skellycam/camera/group/all/pause",
     "asset": false
+  },
+  "realtime_startup_status": {
+    "method": "GET",
+    "path": "/freemocap/realtime/startup",
+    "asset": false
+  },
+  "stop_realtime_startup": {
+    "method": "POST",
+    "path": "/freemocap/realtime/startup/stop",
+    "asset": false
+  },
+  "onnx_preparation_status": {
+    "method": "GET",
+    "path": "/freemocap/onnx/preparation/{pipeline_id}",
+    "asset": false
+  },
+  "prepare_onnx": {
+    "method": "POST",
+    "path": "/freemocap/onnx/preparation/{pipeline_id}",
+    "asset": false
+  },
+  "stop_onnx_preparation": {
+    "method": "POST",
+    "path": "/freemocap/onnx/preparation/{pipeline_id}/stop",
+    "asset": false
   }
 } as const;

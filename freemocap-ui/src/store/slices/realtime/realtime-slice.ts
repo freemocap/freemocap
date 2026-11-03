@@ -4,8 +4,11 @@ import {applyRealtimePipeline, closePipeline, fetchTemporalConfig, applyTemporal
 import {serverStateReceived, serverDisconnected} from "@/store/slices/connection/connection-slice";
 import {matchesSavedManualOffset, saveCalibrationTransform} from '@/store/slices/calibration/calibration-save';
 import {realtimePipelineSettings, acceptedRealtimeSettings} from './realtime-settings';
+import {isStartupStopped} from '@/services/server/startup-stopped';
 
 const initialState: PipelineState = {
+    applyPending: false,
+    lastApplyConfig: null,
     temporalStatus: null,
     temporalLoading: false,
     temporalError: null,
@@ -74,11 +77,14 @@ export const realtimeSlice = createSlice({
             });
         builder
             // ========== Apply Pipeline (POST /realtime/apply) ==========
-            .addCase(applyRealtimePipeline.pending, (state) => {
+            .addCase(applyRealtimePipeline.pending, (state, action) => {
+                state.applyPending = true;
+                state.lastApplyConfig = action.meta.arg;
                 state.isLoading = true;
                 state.error = null;
             })
             .addCase(applyRealtimePipeline.fulfilled, (state, action) => {
+                state.applyPending = false;
                 state.cameraGroupId = action.payload.camera_group_id;
                 state.pipelineId = action.payload.pipeline_id;
                 state.pipelineConfig = acceptedRealtimeSettings(action.payload.resolved_config, action.meta.arg);
@@ -86,8 +92,9 @@ export const realtimeSlice = createSlice({
                 state.isLoading = false;
             })
             .addCase(applyRealtimePipeline.rejected, (state, action) => {
+                state.applyPending = false;
                 state.isLoading = false;
-                state.error = action.error.message || 'Failed to apply pipeline';
+                state.error = isStartupStopped(action.error) ? null : action.error.message || 'Failed to apply pipeline';
             })
 
             // ========== Close Pipeline (DELETE /realtime/all/close) ==========

@@ -48,16 +48,18 @@ class SendSerializer:
             and self.websocket.application_state == WebSocketState.CONNECTED
         )
 
-    async def send_message(self, message_bytes: bytes) -> None:
+    async def send_message(self, message_bytes: bytes) -> bool:
         """Send one CBOR message (a binary frame)."""
-        await self.send_raw_bytes(message_bytes)
+        return await self.send_raw_bytes(message_bytes)
 
-    async def send_raw_bytes(self, data: bytes) -> None:
+    async def send_raw_bytes(self, data: bytes) -> bool:
         if not self.is_connected:
-            return
+            return False
         async with self._send_lock:
             if self.is_connected:
                 await self.websocket.send_bytes(data)
+                return True
+        return False
 
     async def send_raw_text(self, text: str) -> None:
         if not self.is_connected:

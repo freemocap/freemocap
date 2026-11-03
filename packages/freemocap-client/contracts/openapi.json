@@ -3421,6 +3421,177 @@
           }
         }
       }
+    },
+    "/freemocap/realtime/startup": {
+      "get": {
+        "tags": [
+          "Realtime processing"
+        ],
+        "summary": "Realtime Startup Status",
+        "description": "Observe startup without waiting for camera or native inference operations.",
+        "operationId": "realtime_startup_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeStartupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/realtime/startup/stop": {
+      "post": {
+        "tags": [
+          "Realtime processing"
+        ],
+        "summary": "Stop Realtime Startup",
+        "description": "Request a safe stop; native work remains owned until its boundary/cleanup.",
+        "operationId": "stop_realtime_startup",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeStartupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/onnx/preparation/{pipeline_id}": {
+      "get": {
+        "tags": [
+          "ONNX"
+        ],
+        "summary": "Preparation Status",
+        "description": "Observe cached preparation state without creating or querying native sessions.",
+        "operationId": "onnx_preparation_status",
+        "parameters": [
+          {
+            "name": "pipeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pipeline Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparationStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ONNX"
+        ],
+        "summary": "Prepare Onnx",
+        "description": "Request isolated preparation explicitly, retaining current processing until ready.",
+        "operationId": "prepare_onnx",
+        "parameters": [
+          {
+            "name": "pipeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pipeline Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparationStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/freemocap/onnx/preparation/{pipeline_id}/stop": {
+      "post": {
+        "tags": [
+          "ONNX"
+        ],
+        "summary": "Stop Onnx Preparation",
+        "description": "Request preparation cancellation; report stopped only after worker cleanup.",
+        "operationId": "stop_onnx_preparation",
+        "parameters": [
+          {
+            "name": "pipeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pipeline Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparationStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10281,6 +10452,189 @@
           "thread"
         ],
         "title": "WorkerMode"
+      },
+      "RealtimeStartupResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "running",
+              "stopping",
+              "ready",
+              "failed",
+              "stopped"
+            ],
+            "title": "Status"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "elapsed_seconds": {
+            "type": "number",
+            "title": "Elapsed Seconds"
+          },
+          "phase_elapsed_seconds": {
+            "type": "number",
+            "title": "Phase Elapsed Seconds"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "delayed": {
+            "type": "boolean",
+            "title": "Delayed",
+            "default": false
+          },
+          "preview_ready": {
+            "type": "boolean",
+            "title": "Preview Ready",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "phase",
+          "elapsed_seconds",
+          "phase_elapsed_seconds"
+        ],
+        "title": "RealtimeStartupResponse"
+      },
+      "PreparationStatusResponse": {
+        "properties": {
+          "pipeline_id": {
+            "type": "string",
+            "title": "Pipeline Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unavailable",
+              "idle",
+              "queued",
+              "running",
+              "stopping",
+              "ready",
+              "activated",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "elapsed_seconds": {
+            "type": "number",
+            "title": "Elapsed Seconds"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "can_prepare": {
+            "type": "boolean",
+            "title": "Can Prepare"
+          },
+          "can_cancel": {
+            "type": "boolean",
+            "title": "Can Cancel"
+          },
+          "requested_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Provider"
+          },
+          "active_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pipeline_id",
+          "status",
+          "phase",
+          "elapsed_seconds",
+          "can_prepare",
+          "can_cancel"
+        ],
+        "title": "PreparationStatusResponse"
       }
     }
   },

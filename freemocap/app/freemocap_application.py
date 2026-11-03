@@ -6,6 +6,7 @@ calibration/mocap pipeline operations.
 """
 import logging
 import multiprocessing
+import asyncio
 from freemocap.core.recording.recording_access import RecordingAccess
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
@@ -27,6 +28,7 @@ from freemocap.core.pipeline.posthoc.sync_job_manager import SyncJobManager
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
+from freemocap.core.pipeline.realtime.startup_status import RealtimeStartupStatus
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
@@ -36,6 +38,24 @@ from skelly_synchronize.core.models import SyncRequest
 from freemocap.core.streaming.outputs.manager import StreamingOutputManager
 
 logger = logging.getLogger(__name__)
+
+
+class RealtimeStartupConfigurationError(ValueError):
+    """Requested realtime settings cannot safely start through this path."""
+
+
+class RealtimeStartupStopped(RuntimeError):
+    """The request stopped at a safe lifecycle boundary, not inside native work."""
+
+
+async def _drain_realtime_operation(operation: asyncio.Task):
+    """Retain ownership through repeated cancellation; native calls are not killed."""
+    while not operation.done():
+        try:
+            await asyncio.shield(operation)
+        except asyncio.CancelledError:
+            continue
+    return operation.result()
 
 
 @dataclass
@@ -48,6 +68,11 @@ class FreemocapApplication:
     sync_job_manager: SyncJobManager
     camera_group_manager: CameraBackendManager
     streaming_outputs: StreamingOutputManager = field(init=False)
+    startup_status: RealtimeStartupStatus = field(default_factory=RealtimeStartupStatus, init=False)
+    _realtime_lifecycle_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
+    _realtime_startup_operation: asyncio.Task | None = field(default=None, init=False, repr=False)
+    _realtime_stop_task: asyncio.Task | None = field(default=None, init=False, repr=False)
+    _startup_pipeline_owned: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         from freemocap.core.streaming.outputs.registry import builtin_protocols
@@ -116,28 +141,142 @@ class FreemocapApplication:
             pipeline_config: RealtimePipelineConfig,
             realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
+        # Keep the lock until a cancelled caller's actual operation has drained.
+        # Cancelling to_thread's await does not stop its native work.
+        if self._realtime_stop_task is not None:
+            await asyncio.shield(self._realtime_stop_task)
+        async with self._realtime_lifecycle_lock:
+            self.startup_status.begin()
+            self._startup_pipeline_owned = False
+            operation = asyncio.create_task(self._apply_realtime_pipeline(
+                camera_configs=camera_configs, pipeline_config=pipeline_config,
+                realtime_camera_ids=realtime_camera_ids,
+            ))
+            self._realtime_startup_operation = operation
+            try:
+                return await asyncio.shield(operation)
+            except asyncio.CancelledError:
+                self.startup_status.request_stop()
+                try:
+                    pipeline = await _drain_realtime_operation(operation)
+                except RealtimeStartupStopped:
+                    pass
+                except Exception as error:
+                    logger.error("Realtime startup failed while its caller was stopping: %s", error)
+                else:
+                    # Cancellation can arrive after creation's final stop check.
+                    if self._startup_pipeline_owned:
+                        self.startup_status.phase("stopping_pipeline")
+                        cleanup = asyncio.create_task(asyncio.to_thread(
+                            self.realtime_pipeline_manager.stop_pipeline, pipeline_id=pipeline.id,
+                        ))
+                        try:
+                            await _drain_realtime_operation(cleanup)
+                        except Exception as error:
+                            self.startup_status.fail(str(error))
+                            logger.exception("Cancelled startup pipeline cleanup failed")
+                        else:
+                            self.startup_status.stopped()
+                    else:
+                        self.startup_status.stopped("Startup request stopped; the existing pipeline remains running")
+                raise
+            finally:
+                self._realtime_startup_operation = None
 
+    async def stop_realtime_startup(self) -> bool:
+        """Record stop intent immediately; completion is reported after cleanup."""
+        if not self.startup_status.request_stop():
+            return False
+        operation = self._realtime_startup_operation
+        if operation is None or operation.done():
+            if self._startup_pipeline_owned:
+                if self._realtime_stop_task is None or self._realtime_stop_task.done():
+                    self._realtime_stop_task = asyncio.create_task(self._stop_created_startup_pipeline())
+            else:
+                self.startup_status.stopped("Startup request stopped; the existing pipeline remains running")
+        return True
+
+    async def _stop_created_startup_pipeline(self) -> None:
+        async with self._realtime_lifecycle_lock:
+            pipeline_id = self.startup_status.snapshot()["pipeline_id"]
+            try:
+                self.startup_status.phase("stopping_pipeline")
+                await asyncio.to_thread(self.realtime_pipeline_manager.stop_pipeline, pipeline_id=pipeline_id)
+            except Exception as error:
+                self.startup_status.fail(str(error))
+                logger.exception("Failed to stop newly created realtime pipeline")
+            else:
+                self.startup_status.stopped()
+
+    def _check_startup_stop(self) -> None:
+        if self.startup_status.stop_requested.is_set():
+            raise RealtimeStartupStopped("Realtime startup stopped at a safe boundary")
+
+    async def _apply_realtime_pipeline(
+        self, *, camera_configs: CameraConfigs, pipeline_config: RealtimePipelineConfig,
+        realtime_camera_ids: list[CameraIdString] | None,
+    ) -> RealtimePipeline:
+        try:
+            return await self._apply_realtime_pipeline_steps(
+                camera_configs=camera_configs, pipeline_config=pipeline_config,
+                realtime_camera_ids=realtime_camera_ids,
+            )
+        except RealtimeStartupStopped:
+            self.startup_status.stopped(
+                "Startup request stopped; camera capture and any pre-existing pipeline remain independently managed"
+            )
+            raise
+        except Exception as error:
+            self.startup_status.fail(str(error))
+            raise
+
+    async def _apply_realtime_pipeline_steps(
+        self, *, camera_configs: CameraConfigs, pipeline_config: RealtimePipelineConfig,
+        realtime_camera_ids: list[CameraIdString] | None,
+    ) -> RealtimePipeline:
+        if (not pipeline_config.use_centralized_inference
+                and pipeline_config.camera_node_config.skeleton_tracking_enabled
+                and pipeline_config.skeleton_inference_node_config.execution_provider == "trt"):
+            raise RealtimeStartupConfigurationError("TensorRT preparation requires centralized realtime inference")
         for pipeline in list(self.realtime_pipeline_manager.pipelines.values()):
+            self._check_startup_stop()
             if not pipeline.alive:
-                self.realtime_pipeline_manager.stop_pipeline(pipeline_id=pipeline.id)
+                self.startup_status.phase("stopping_pipeline")
+                await asyncio.to_thread(self.realtime_pipeline_manager.stop_pipeline, pipeline_id=pipeline.id)
                 continue
-            pipeline.update_config(new_config=pipeline_config)
+            self.startup_status.phase("updating_pipeline")
+            await asyncio.to_thread(self.realtime_pipeline_manager.update_pipeline_config,
+                                    pipeline_id=pipeline.id, new_config=pipeline_config)
+            self._check_startup_stop()
+            self.startup_status.pipeline_created(pipeline.id)
             return pipeline
 
+        self._check_startup_stop()
+        self.startup_status.phase("starting_cameras")
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
             camera_configs=camera_configs,
             backend=self.camera_group_manager.backend,
         )
-        capture = CaptureGroup(camera_group, self.global_kill_flag)
+        self._check_startup_stop()
+        self.startup_status.phase("starting_pipeline")
+        capture = await asyncio.to_thread(CaptureGroup, camera_group, self.global_kill_flag)
         try:
-            pipeline = self.realtime_pipeline_manager.create_pipeline(
+            self._check_startup_stop()
+            pipeline = await asyncio.to_thread(
+                self.realtime_pipeline_manager.create_pipeline,
                 camera_group=capture,
                 pipeline_config=pipeline_config,
                 realtime_camera_ids=realtime_camera_ids,
             )
         except BaseException:
-            capture.close_transport()
+            await asyncio.to_thread(capture.close_transport)
             raise
+        self._startup_pipeline_owned = True
+        if self.startup_status.stop_requested.is_set():
+            self.startup_status.phase("stopping_pipeline")
+            await asyncio.to_thread(self.realtime_pipeline_manager.stop_pipeline, pipeline_id=pipeline.id)
+            self._check_startup_stop()
+        self.startup_status.pipeline_created(pipeline.id)
         return pipeline
 
     # ------------------------------------------------------------------

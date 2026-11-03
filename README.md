@@ -174,9 +174,30 @@ uv sync
 
 This installs `skellytracker` with TensorRT and CUDA on Windows/Linux, or
 CPU-only on macOS, automatically. TensorRT is declared in the default dependency
-group and locked in `uv.lock`; later syncs retain it. Auto provider selection uses
-TensorRT when available. The first start can take several minutes to compile
-engines for the selected models and camera count; later starts reuse the cache.
+group and locked in `uv.lock`; later syncs retain it. Realtime Auto starts with
+CUDA when available and does not compile TensorRT engines automatically.
+
+The startup banner reports camera startup, model loading/warmup, elapsed time,
+and first live frame delivery. Camera images stream as soon as capture produces
+them, while processing continues to load. The same stream adds matched processing
+results when available. A processing delay or failure returns to raw preview,
+clearing old overlays without restarting capture.
+
+With centralized inference, choose **Prepare
+TensorRT** to prepare acceleration explicitly while CUDA continues processing.
+A saved TensorRT selection also starts with CUDA and waits for this action.
+The preparation panel distinguishes the requested provider from the active one.
+An explicit CUDA selection stays on CUDA; select Auto to enable optional preparation.
+
+Preparation owns a separate process and can take several minutes for uncached
+models. It may reduce live FPS through GPU contention. **Stop preparation; keep
+CUDA** requests cancellation and reports completion after the worker exits.
+Preparation failures leave CUDA active and expose a retry action. TensorRT is
+activated only after model loading and warmup succeed; a cached file alone does
+not establish readiness. Compatible completed artifacts are reused, but model,
+runtime or capacity changes may need new preparation. Leaving a camera's view
+does not itself request preparation. The legacy per-camera inference mode uses
+non-TensorRT providers; TensorRT preparation requires centralized inference.
 
 For CUDA without TensorRT, use `uv sync --no-default-groups --group cuda`.
 Use the same group selection with `uv run` when launching that environment.

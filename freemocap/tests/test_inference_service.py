@@ -10,7 +10,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellytracker.core import TrackerConfig
 from skellytracker.core.data_primitives.observation import Observation
-from skellytracker.core.sessions.shared_sessions import SessionRequest, TrackerLease
+from skellytracker.core.sessions.shared_sessions import SessionRequest, SharedSessionPool, TrackerLease
 from skellytracker.core.sessions.cpu_session import CpuSession, CpuSessionConfig
 from skellytracker.core.tracker.tracker_state import TrackerState
 
@@ -82,7 +82,7 @@ class InferenceServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.global_shutdown = multiprocessing.Value("b", False)
         self.registry = WorkerRegistry(global_kill_flag=self.global_shutdown, worker_mode=WorkerMode.THREAD)
-        self.pool = Mock()
+        self.pool = Mock(spec=SharedSessionPool)
         self.leases: list[TrackerLease] = []
         self.pool.create_tracker.side_effect = self.create_lease
         self.patch = patch("freemocap.core.pipeline.inference_service.SharedSessionPool", return_value=self.pool)

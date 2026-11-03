@@ -177,7 +177,7 @@ async def test_waiting_senders_do_not_write_after_first_send_disconnects():
     protocol.writable.set()
     results = await asyncio.gather(first, second, third, return_exceptions=True)
     assert isinstance(results[0], WebSocketDisconnect)
-    assert results[1:] == [None, None]
+    assert results[1:] == [False, None]
     assert socket.client_state == WebSocketState.CONNECTED
     assert socket.application_state == WebSocketState.DISCONNECTED
     assert not serializer.is_connected

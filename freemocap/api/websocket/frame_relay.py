@@ -42,6 +42,7 @@ class FrameRelay:
         source: FrameSource,
         should_continue: Callable[[], bool],
         connection_id: str,
+        on_frame_sent: Callable[[FrameContext], None] | None = None,
     ):
         self._serializer = serializer
         self._source = source
@@ -50,6 +51,7 @@ class FrameRelay:
         self._last_sent_frame_number: int = -1
         self._timing = FrameDeliveryTiming(connection_id=connection_id)
         self._source_seconds = 0.0
+        self._on_frame_sent = on_frame_sent
 
     async def run(self) -> None:
         """Relay frames until the supervisor's should_continue goes False."""
@@ -70,7 +72,10 @@ class FrameRelay:
         composed = time.perf_counter()
         payload = encode_message(message)
         encoded = time.perf_counter()
-        await self._serializer.send_message(payload)
+        if not await self._serializer.send_message(payload):
+            return
+        if self._on_frame_sent is not None:
+            self._on_frame_sent(frame_ctx)
         sent = time.perf_counter()
         self._timing.record(FrameDeliverySample(
             source_seconds=self._source_seconds,

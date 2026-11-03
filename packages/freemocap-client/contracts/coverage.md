@@ -77,3 +77,8 @@ errors, aborts, cancellation and asset ownership; compatibility records list act
 | POST | `/freemocap/dlc/inspect` | `inspect_model_freemocap_dlc_inspect_post` | Core integration |
 | POST | `/freemocap/dlc/import` | `import_model_freemocap_dlc_import_post` | Core integration |
 | GET | `/freemocap/dlc/import/{job_id}` | `import_status_freemocap_dlc_import__job_id__get` | Core integration |
+| GET | `/freemocap/realtime/startup` | `realtime_startup_status` | Core integration |
+| POST | `/freemocap/realtime/startup/stop` | `stop_realtime_startup` | Core integration |
+| GET | `/freemocap/onnx/preparation/{pipeline_id}` | `onnx_preparation_status` | Core integration |
+| POST | `/freemocap/onnx/preparation/{pipeline_id}` | `prepare_onnx` | Core integration |
+| POST | `/freemocap/onnx/preparation/{pipeline_id}/stop` | `stop_onnx_preparation` | Core integration |

@@ -96,6 +96,8 @@ export interface PipelineApplyResponse {
 // ==================== Redux State ====================
 
 export interface PipelineState {
+    applyPending: boolean;
+    lastApplyConfig: RealtimePipelineConfig | null;
     temporalStatus: TemporalStatus | null;
     temporalLoading: boolean;
     temporalError: string | null;

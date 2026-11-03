@@ -934,6 +934,76 @@
         "missing converter and unsupported model errors remain explicit",
         "CPU contract tests cover inspection and import job state"
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/realtime/startup",
+      "operation_id": "realtime_startup_status",
+      "handler": "realtime_startup_status",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "CPU startup/preparation state and cleanup tests; GPU verification requires a coordinated hardware slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/realtime/startup/stop",
+      "operation_id": "stop_realtime_startup",
+      "handler": "stop_realtime_startup",
+      "source": "freemocap/api/http/realtime/realtime_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "CPU startup/preparation state and cleanup tests; GPU verification requires a coordinated hardware slot"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/freemocap/onnx/preparation/{pipeline_id}",
+      "operation_id": "onnx_preparation_status",
+      "handler": "preparation_status",
+      "source": "freemocap/api/http/onnx/onnx_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "CPU startup/preparation state and cleanup tests; GPU verification requires a coordinated hardware slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/onnx/preparation/{pipeline_id}",
+      "operation_id": "prepare_onnx",
+      "handler": "prepare_onnx",
+      "source": "freemocap/api/http/onnx/onnx_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "CPU startup/preparation state and cleanup tests; GPU verification requires a coordinated hardware slot"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/freemocap/onnx/preparation/{pipeline_id}/stop",
+      "operation_id": "stop_onnx_preparation",
+      "handler": "stop_onnx_preparation",
+      "source": "freemocap/api/http/onnx/onnx_router.py",
+      "owner": "Core integration",
+      "validation": [
+        "request path/query/body serialization matches declared aliases and optionality",
+        "response and error bodies retain contract distinctions",
+        "network failure and request abort surfaced without blind mutation retry",
+        "CPU startup/preparation state and cleanup tests; GPU verification requires a coordinated hardware slot"
+      ]
     }
   ],
   "nonpublic_registered": [

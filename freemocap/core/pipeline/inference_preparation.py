@@ -15,6 +15,7 @@ class InferencePreparation:
     def __init__(self, worker_registry):
         self._queue = Queue()
         self._jobs = set()
+        self._retired = {}
         self._lock = Lock()
         self._closed = False
         self._shutdown = multiprocessing.Value("b", False)
@@ -38,7 +39,8 @@ class InferencePreparation:
         with self._lock:
             if self._closed:
                 raise RuntimeError("Preparation worker is closed")
-            self._queue.put(resource.close)
+            self._retired[id(resource)] = resource
+            self._queue.put(False)
 
     def _run(self):
         while True:
@@ -47,7 +49,7 @@ class InferencePreparation:
             except Empty:
                 callback = False
             if callback is None:
-                return
+                callback = False
             try:
                 if callback:
                     callback()
@@ -56,6 +58,12 @@ class InferencePreparation:
             with self._lock:
                 jobs = tuple(self._jobs)
             for job in jobs:
+                runtime = getattr(job, "runtime", None)
+                if self._closed and runtime is not None and runtime.status().alive:
+                    try:
+                        runtime.close()
+                    except Exception:
+                        logger.exception("Isolated runtime is still stopping")
                 if job.snapshot().phase == PreparationPhase.STOPPING:
                     try:
                         job.dispose()
@@ -63,9 +71,22 @@ class InferencePreparation:
                         logger.exception("Background preparation disposal failed")
                 if job.snapshot().phase in (
                     PreparationPhase.TRANSFERRED, PreparationPhase.FAILED, PreparationPhase.CANCELLED,
-                ):
+                ) and (runtime is None or not runtime.status().alive):
                     with self._lock:
                         self._jobs.discard(job)
+            with self._lock:
+                retired = tuple(self._retired.values())
+            for resource in retired:
+                try:
+                    resource.close()
+                except Exception:
+                    logger.exception("Retired native resource is still stopping")
+                else:
+                    with self._lock:
+                        self._retired.pop(id(resource), None)
+            with self._lock:
+                if self._closed and not self._jobs and not self._retired and self._queue.empty():
+                    return
 
     def close(self):
         with self._lock:
@@ -73,6 +94,9 @@ class InferencePreparation:
                 self._closed = True
                 for job in self._jobs:
                     job.request_stop()
+                    runtime = getattr(job, "runtime", None)
+                    if runtime is not None:
+                        runtime.request_stop()
                     self._queue.put(job.dispose)
                 self._queue.put(None)
         self.worker.mark_stopping()

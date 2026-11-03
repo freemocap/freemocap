@@ -24,9 +24,10 @@ test('camera geometry keeps its summary visible without repeating the calibratio
             import Section from './src/components/common/settings-layout/settings-section';
             import Summary from './src/components/mocap-setup/camera-geometry-summary';
             import Settings from './src/components/mocap-setup/capture-volume-settings';
+            import ReferenceFrameSettings from './src/components/mocap-setup/reference-frame-settings';
             store.dispatch(calibrationLoadedFromBundle({path:'C:/recordings/freemocap_test_data/freemocap_test_data_camera_calibration.toml', cameras:[{},{},{}],metadata:{aligned:false}}));
             createRoot(document.getElementById('root')!).render(<Provider store={store}><MemoryRouter>
-                <div className="settings-layout"><Section title="Camera geometry" summary={<Summary mode="playback"/>}><Settings mode="playback"/></Section></div>
+                <div className="settings-layout"><Section title="Camera geometry" summary={<Summary mode="playback"/>}><Settings mode="playback"/></Section><Section title="Triangulation"><ReferenceFrameSettings/></Section></div>
             </MemoryRouter></Provider>);
         `},
         external: ['/images/*', '../images/*', '../assets/icons/import-icon.svg'],
@@ -99,6 +100,8 @@ test('camera geometry keeps its summary visible without repeating the calibratio
     await page.getByRole('button', {name: 'Set up calibration'}).click();
     await header.click();
     await expect(header).toContainText('Mocap: align to person');
+    await expect(person).toBeVisible();
+    await page.getByRole('button', {name: /^Triangulation/}).click();
     await expect(person).toBeHidden();
     await page.screenshot({path: testInfo.outputPath('camera-geometry-collapsed.png')});
     expect(errors).toEqual([]);

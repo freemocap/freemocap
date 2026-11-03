@@ -7132,6 +7132,40 @@
         ],
         "title": "OpenInBlenderResponse"
       },
+      "ItemProgressSnapshot": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          },
+          "completed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Completed"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "completed",
+          "total",
+          "unit"
+        ],
+        "title": "ItemProgressSnapshot",
+        "description": "Progress of one independently counted item within an operation, such as one video."
+      },
       "OperationProgressSnapshot": {
         "properties": {
           "operation_id": {
@@ -7264,6 +7298,14 @@
               }
             ],
             "title": "Unit"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemProgressSnapshot"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
           },
           "elapsed_seconds": {
             "anyOf": [

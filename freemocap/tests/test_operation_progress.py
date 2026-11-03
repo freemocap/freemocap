@@ -5,9 +5,10 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import cbor2
+import pytest
 
 from freemocap.core.pipeline.posthoc.operation_progress import OperationProgressReporter
-from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, ItemProgressSnapshot
 from freemocap.core.pipeline.posthoc.task_snapshot import TaskRegistry, TaskRegistrySnapshot
 from freemocap.core.streaming.message_model import ProgressMessage, encode_message
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
@@ -147,3 +148,33 @@ def test_unknown_frame_count_never_becomes_camera_image_denominator(tmp_path, mo
     assert latest.operations[0].seconds_per_motion_frame is None
     assert latest.timing.motion_frame_count is None
     assert latest.timing.seconds_per_motion_frame is None
+
+
+def test_per_video_items_persist_until_replaced_and_survive_the_task_snapshot(tmp_path):
+    reporter = OperationProgressReporter()
+    request = SimpleNamespace(pipeline_id="run", progress_queue=Queue(),
+        recording=SimpleNamespace(recording_name="recording", full_recording_path=tmp_path))
+    videos = (ItemProgressSnapshot(label="Video 1 (cam0)", completed=4, total=10, unit="frames"),
+              ItemProgressSnapshot(label="Video 2 (cam1)", completed=3, total=10, unit="frames"))
+    reporter.update(request, "load_and_track", "Detect poses", "running", completed=7, total=20,
+                    unit="camera images", items=videos)
+    reporter.update(request, "load_and_track", "Detect poses", "complete")
+    latest = list(request.progress_queue.queue)[-1]
+    # Completion keeps the measured per-video counts instead of claiming every frame was tracked.
+    assert latest.operations[0].items == videos
+    registry = TaskRegistry()
+    registry.register(task_id="run", task_type="mocap",
+        recording=RecordingStructure(base_directory=tmp_path, recording_name="recording"))
+    registry.update(task_id="run", messages=[latest])
+    decoded = TaskRegistrySnapshot.model_validate(cbor2.loads(encode_message(
+        ProgressMessage(snapshot=registry.snapshot())))["snapshot"])
+    assert decoded.tasks[0].operations[0].items == videos
+
+
+def test_per_video_item_cannot_report_more_work_than_its_total(tmp_path):
+    reporter = OperationProgressReporter()
+    request = SimpleNamespace(pipeline_id="run", progress_queue=Queue(),
+        recording=SimpleNamespace(recording_name="recording", full_recording_path=tmp_path))
+    with pytest.raises(ValueError, match="Video 1"):
+        reporter.update(request, "load_and_track", "Detect poses", "running",
+            items=(ItemProgressSnapshot(label="Video 1", completed=11, total=10, unit="frames"),))

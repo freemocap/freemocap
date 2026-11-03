@@ -13,7 +13,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.pipeline_phases import AggregatorPhase, PosthocPipelineType
-from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, ItemProgressSnapshot, PipelineProgressMessage
 from freemocap.core.pipeline.posthoc.operation_progress import OperationProgressReporter
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 
@@ -36,9 +36,10 @@ class MocapWorkerRequest:
     def report_operation(self, operation_id: str, label: str, status: str,
                          detail: str = "", completed: int | None = None,
                          total: int | None = None, unit: str | None = None,
-                         *, phase: str = "reconstructing") -> None:
+                         *, phase: str = "reconstructing",
+                         items: tuple[ItemProgressSnapshot, ...] | None = None) -> None:
         self.operation_progress.update(self, operation_id, label, status, detail,
-                                       completed, total, unit, phase=phase)
+                                       completed, total, unit, phase=phase, items=items)
 
     def report_export(self, task_id: str, label: str, state: str, detail: str,
                       completed: int | None = None, total: int | None = None) -> None:

@@ -1,6 +1,6 @@
 """Recording graph composition using the application's existing operations."""
 from freemocap.core.recording.result_processing.run_save_session import RunSaveSession
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import CancelledError
 from contextlib import closing, nullcontext
 from dataclasses import replace
@@ -60,6 +60,7 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
     observation_loader: Callable[[], ObservationCollection] | None = None,
     annotation_service: RecordingAnnotationWorkers | None = None,
     progress: Callable[[str, str, float], None] | None = None,
+    tracking_progress: Callable[[Mapping[str, int]], None] | None = None,
     artifacts: Callable | None = None,
 ) -> tuple[CompiledGraph, dict[str, Callable[[dict[str, object]], dict[str, object]]]]:
     """Build the same definition that execution consumes; callers may serialize it.
@@ -165,14 +166,21 @@ def build_recording_pipeline(*, sources: RecordingVideoSources, recording: Recor
                 mediapipe_disable_gpu=True if config.detector_type == "mediapipe" else None)
             with closing(adapter.track_recording(sources=sources, execution_id="recording-graph", shutdown_flag=shutdown_flag)) as events:
                 camera_frame_count = 0
+                tracked_frames_per_camera = {source.camera_id: 0 for source in sources.camera_sources}
                 total_camera_frames = sum(source.video_metadata.frame_count for source in sources.camera_sources)
                 from freemocap.core.pipeline.dataflow.tracker_adapter import TrackedCameraFrame
                 for event in events:
                     collection.accept(event)
                     if isinstance(event, TrackedCameraFrame):
                         camera_frame_count += 1
-                        if progress is not None and camera_frame_count % max(1, total_camera_frames // 100) == 0:
-                            progress("load_and_track", "tracking", camera_frame_count / total_camera_frames)
+                        tracked_frames_per_camera[event.frame_key.camera] += 1
+                        if camera_frame_count % max(1, total_camera_frames // 100) == 0:
+                            if tracking_progress is not None:
+                                tracking_progress(dict(tracked_frames_per_camera))
+                            if progress is not None:
+                                progress("load_and_track", "tracking", camera_frame_count / total_camera_frames)
+                if tracking_progress is not None:
+                    tracking_progress(dict(tracked_frames_per_camera))
         finally:
             service.close()
             registry.remove_dead()

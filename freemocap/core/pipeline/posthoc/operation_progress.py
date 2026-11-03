@@ -7,6 +7,7 @@ from time import perf_counter
 from freemocap.core.pipeline.dataflow.processing_plan import ProcessingPlan
 from freemocap.core.pipeline.posthoc.progress_messages import (
     AggregatorNodeProgressMessage,
+    ItemProgressSnapshot,
     OperationProgressSnapshot,
     RunTimingSnapshot,
 )
@@ -68,9 +69,14 @@ class OperationProgressReporter:
     def update(self, request, operation_id: str, label: str, status: str,
                detail: str = "", completed: int | None = None,
                total: int | None = None, unit: str | None = None,
-               *, phase: str = "reconstructing") -> None:
+               *, phase: str = "reconstructing",
+               items: tuple[ItemProgressSnapshot, ...] | None = None) -> None:
+        """``items=None`` keeps the operation's existing per-item records."""
         if completed is not None and total is not None and completed > total:
             raise ValueError("Completed work cannot exceed total work")
+        for item in items or ():
+            if item.completed > item.total:
+                raise ValueError(f"Completed work cannot exceed total work for {item.label}")
         fraction = completed / total if completed is not None and total else None
         with self.lock:
             previous = self.operations.get(operation_id)
@@ -86,6 +92,8 @@ class OperationProgressReporter:
             if previous is not None and completed is None and total is None:
                 completed, total, unit = previous.completed, previous.total, previous.unit
                 fraction = previous.progress_fraction
+            if items is None:
+                items = previous.items if previous is not None else ()
             if status == "complete":
                 fraction = 1.0
                 if total is not None:
@@ -94,7 +102,7 @@ class OperationProgressReporter:
                 operation_id=operation_id, label=label, status=status,
                 **({key: getattr(previous, key) for key in ("stage", "effects", "dependencies", "waiting_for", "files_read", "files_written")} if previous else {}),
                 progress_fraction=fraction, detail=detail,
-                completed=completed, total=total, unit=unit,
+                completed=completed, total=total, unit=unit, items=items,
                 elapsed_seconds=elapsed,
                 seconds_per_motion_frame=(elapsed / request.performance.frames
                     if status == "complete" and elapsed is not None

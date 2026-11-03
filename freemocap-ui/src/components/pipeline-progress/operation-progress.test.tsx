@@ -10,7 +10,7 @@ import fullPlan from '@/components/processing-graph/fixtures/plan-full.json';
 
 const operation = (operation_id: string, changes: Partial<TaskOperation> = {}): TaskOperation => ({
     operation_id, label: operation_id, status: 'running', progress_fraction: null,
-    completed: null, total: null, unit: null, detail: '', elapsed_seconds: null, seconds_per_motion_frame: null, ...changes,
+    completed: null, total: null, unit: null, items: [], detail: '', elapsed_seconds: null, seconds_per_motion_frame: null, ...changes,
 });
 function snapshot(revision: number, operations: TaskOperation[], status = 'running') {
     return TaskRegistrySnapshotSchema.parse({server_instance_id: '20000000-0000-4000-8000-000000000003',

@@ -1,4 +1,5 @@
 """Run typed data flow graph V1 inside the application's existing managed task."""
+from collections.abc import Mapping
 from concurrent.futures import CancelledError
 from dataclasses import replace
 from pathlib import Path
@@ -6,6 +7,7 @@ from threading import Lock
 
 from freemocap.core.pipeline.dataflow.recording_pipeline import run_recording_pipeline
 from freemocap.core.pipeline.dataflow.video_sources import RecordingVideoSources
+from freemocap.core.pipeline.posthoc.progress_messages import ItemProgressSnapshot
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 
 NODE_LABELS = {
@@ -107,6 +109,16 @@ def _run_application_graph(*, request) -> None:
     lock = Lock()
     active: set[str] = set()
     finished: set[str] = set()
+    tracked_frames_per_camera: dict[str, int] = {}
+    # Stages whose work is one pass over every synchronized motion frame.
+    motion_frame_stages = ('triangulation', 'filtering', 'scale_fit', 'reconstruction')
+
+    def video_label(index: int) -> str:
+        return f'Video {index + 1} ({sources.camera_sources[index].camera_id})'
+
+    def tracking_progress(frames_per_camera: Mapping[str, int]) -> None:
+        with lock:
+            tracked_frames_per_camera.update(frames_per_camera)
 
     def progress(node: str, event: str, fraction: float) -> None:
         if not request.ipc.should_continue:
@@ -129,19 +141,34 @@ def _run_application_graph(*, request) -> None:
                             'rtmw_mediapipe_hands': 'RTMW + MediaPipe hands', 'dlc': 'DeepLabCut'}[config.detector_type]
                 device = f'requested provider: {provider}; applied providers are reported at session startup'
                 board_text = ' and ChArUco board points' if config.charuco_tracking_enabled else ''
+                videos = tuple(ItemProgressSnapshot(label=video_label(index),
+                    completed=tracked_frames_per_camera[source.camera_id],
+                    total=source.video_metadata.frame_count, unit='frames')
+                    for index, source in enumerate(sources.camera_sources))
                 request.report_operation(node,
                     f'Detect poses{board_text} in {cameras} videos ({detector}, {device})',
                     'running', completed=round(fraction * total_images), total=total_images,
-                    unit='camera images', phase='collecting_camera_output')
+                    unit='camera images', phase='collecting_camera_output', items=videos)
                 request.report('collecting_camera_output',
                     f'Reading {cameras} videos and detecting poses{board_text} with {detector} on {device}. '
                     f'Processed {round(fraction * total_images):,} of {total_images:,} camera images '
                     f'({cameras} videos x {count:,} frames each). '
                     'This percentage is for detection only; 3D reconstruction and saving follow.', fraction)
             else:
-                request.report_operation(node, describe_active_operation(node),
-                    {'started': 'running', 'finished': 'complete', 'failed': 'failed',
-                     'cancelled': 'cancelled'}[event])
+                status = {'started': 'running', 'finished': 'complete', 'failed': 'failed',
+                          'cancelled': 'cancelled'}[event]
+                counts: dict[str, object] = {}
+                stage = request.operation_progress.operations[node].stage if node in request.operation_progress.operations else None
+                if node.startswith('annotate_camera_'):
+                    index = int(node.removeprefix('annotate_camera_'))
+                    frames = sources.camera_sources[index].video_metadata.frame_count
+                    counts['items'] = (ItemProgressSnapshot(label=video_label(index),
+                        completed=frames if event == 'finished' else 0, total=frames, unit='frames'),)
+                elif event == 'finished' and stage in motion_frame_stages and request.performance.frames:
+                    # Measured: synchronized frames that completed detection in this run.
+                    counts.update(completed=request.performance.frames, total=request.performance.frames,
+                                  unit='motion frames')
+                request.report_operation(node, describe_active_operation(node), status, **counts)
                 detail = '. Also running: '.join(labels) if labels else (
                     'The current processing steps have finished; checking remaining work and requested exports')
                 request.report('reconstructing', detail + '. The recording is still processing.', 0.0)
@@ -174,7 +201,8 @@ def _run_application_graph(*, request) -> None:
         source_options = {'observation_loader': lambda: saved_collection} if saved_collection is not None else {}
         result = run_recording_pipeline(sources=sources, recording=request.recording, config=config, run_session=session, **source_options,
             execution_provider=provider, annotate=request.config.graph_annotate,
-            shutdown_flag=request.ipc.pipeline_shutdown_flag, performance=request.performance, progress=progress, artifacts=artifacts, graph_ready=graph_ready)
+            shutdown_flag=request.ipc.pipeline_shutdown_flag, performance=request.performance, progress=progress,
+            tracking_progress=tracking_progress, artifacts=artifacts, graph_ready=graph_ready)
     for node, seconds in result.elapsed_seconds.items():
         request.performance.record(f'graph.{node}', seconds)
     for node, prerequisites in result.blocked.items():

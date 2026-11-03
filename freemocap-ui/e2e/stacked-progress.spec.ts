@@ -10,7 +10,7 @@ test('concurrent exports have independent bars and retain a completed sibling', 
         import {createRoot} from 'react-dom/client';
         import Bars from './src/components/pipeline-progress/OperationProgressBars';
         const root = createRoot(document.getElementById('root'));
-        const operation = (operation_id, changes={}) => ({operation_id, label:operation_id, status:'running', progress_fraction:null, detail:'', completed:null,total:null,unit:null,elapsed_seconds:42.6,seconds_per_motion_frame:0.0384,...changes});
+        const operation = (operation_id, changes={}) => ({operation_id, label:operation_id, status:'running', progress_fraction:null, detail:'', completed:null,total:null,unit:null,items:[],elapsed_seconds:42.6,seconds_per_motion_frame:0.0384,...changes});
         window.showCompletedExport = () => root.render(<Bars operations={[
             operation('Save CSV', {status:'complete',progress_fraction:1}), operation('Export Blender')
         ]} plan={null}/>);
@@ -40,7 +40,7 @@ for (const cardWidth of [440, 900]) test(`styled stacked operations remain reada
         import {createRoot} from 'react-dom/client';
         import Bars from './src/components/pipeline-progress/OperationProgressBars';
         import Timing from './src/components/pipeline-progress/ProcessingTiming';
-        const operation=(operation_id,changes={})=>({operation_id,label:operation_id,status:'running',progress_fraction:null,detail:'',completed:null,total:null,unit:null,elapsed_seconds:42.6,seconds_per_motion_frame:0.0384,...changes});
+        const operation=(operation_id,changes={})=>({operation_id,label:operation_id,status:'running',progress_fraction:null,detail:'',completed:null,total:null,unit:null,items:[],elapsed_seconds:42.6,seconds_per_motion_frame:0.0384,...changes});
         createRoot(document.getElementById('root')).render(<div style={{padding:20,background:'#161616',minHeight:'100vh'}}>
           <div className="progress-container flex flex-col gap-2 text-white br-2 m-1 bg-dark pipeline-group-card pipeline-group-card__border-running" style={{width:${cardWidth},padding:16}}>
             <h3 style={{margin:0}}>freemocap_sample_data - Running</h3>

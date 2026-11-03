@@ -17,7 +17,7 @@ const runs = (value: DraftStage): Record<ResumeStage, DraftStage> =>
 const inputs: GraphInputs = {stages: runs({runs: true, reusedFrom: null}), blenderOn: false, blenderFound: true, exportsOn: false,
     exportChannels: ['LANDMARKS_3D'], plan: plans.full, run: null};
 const operation = (id: string, changes: Partial<TaskOperation> = {}): TaskOperation => ({operation_id: id, label: id, status: 'waiting',
-    progress_fraction: null, detail: '', completed: null, total: null, unit: null, elapsed_seconds: null, seconds_per_motion_frame: null, ...changes});
+    progress_fraction: null, detail: '', completed: null, total: null, unit: null, items: [], elapsed_seconds: null, seconds_per_motion_frame: null, ...changes});
 
 test('the graph has one node per section in order, and every plan node belongs to exactly one', () => {
     for (const plan of Object.values(plans)) {

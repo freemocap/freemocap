@@ -3053,6 +3053,20 @@ export interface components {
             blend_file_path?: string | null;
         };
         /**
+         * ItemProgressSnapshot
+         * @description Progress of one independently counted item within an operation, such as one video.
+         */
+        ItemProgressSnapshot: {
+            /** Label */
+            label: string;
+            /** Completed */
+            completed: number;
+            /** Total */
+            total: number;
+            /** Unit */
+            unit: string;
+        };
+        /**
          * OperationProgressSnapshot
          * @description One independently executing operation, described by its producer.
          */
@@ -3106,6 +3120,11 @@ export interface components {
             total?: number | null;
             /** Unit */
             unit?: string | null;
+            /**
+             * Items
+             * @default []
+             */
+            items?: components["schemas"]["ItemProgressSnapshot"][];
             /** Elapsed Seconds */
             elapsed_seconds?: number | null;
             /** Seconds Per Motion Frame */

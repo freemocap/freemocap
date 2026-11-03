@@ -319,6 +319,11 @@ export const ProcessingPlanSchema = z.object({
 });
 export type ProcessingPlan = z.infer<typeof ProcessingPlanSchema>;
 
+export const TaskOperationItemSchema = z.object({
+  label: z.string().min(1), completed: z.number().int().nonnegative(), total: z.number().int().nonnegative(), unit: z.string().min(1),
+}).refine(item => item.completed <= item.total, {message: 'Completed work cannot exceed total work'});
+export type TaskOperationItem = z.infer<typeof TaskOperationItemSchema>;
+
 export const TaskOperationSchema = z.object({
   operation_id: z.string().min(1), label: z.string().min(1),
   stage:z.string().nullable().optional(), effects:z.array(z.enum(["read_record","read_live","write_disk","display"])).optional(),
@@ -328,6 +333,7 @@ export const TaskOperationSchema = z.object({
   progress_fraction: z.number().min(0).max(1).nullable(), detail: z.string(),
   completed: z.number().int().nonnegative().nullable(), total: z.number().int().nonnegative().nullable(),
   unit: z.string().nullable(),
+  items: z.array(TaskOperationItemSchema),
   elapsed_seconds: z.number().nonnegative().nullable().default(null),
   seconds_per_motion_frame: z.number().nonnegative().nullable().default(null),
 });

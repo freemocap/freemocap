@@ -42,13 +42,14 @@ class ApplicationGraphTests(TestCase):
         from queue import Queue
         destination=self.root/'recording'; destination.mkdir()
         request=MocapWorkerRequest(pipeline_id='test', recording=RecordingInfo(recording_name='recording', recording_directory=str(self.root)), config=self.config, ipc=Mock(spec=PipelineIPC, should_continue=True, pipeline_shutdown_flag=multiprocessing.Value('b', False)), progress_queue=Queue())
-        sources=Mock(spec=RecordingVideoSources,recording_path=destination,camera_sources=[SimpleNamespace(video_metadata=SimpleNamespace(frame_count=222)) for _ in range(3)])
+        sources=Mock(spec=RecordingVideoSources,recording_path=destination,camera_sources=[SimpleNamespace(camera_id=f'cam{index}',video_metadata=SimpleNamespace(frame_count=222)) for index in range(3)])
         with patch('freemocap.core.pipeline.dataflow.application_pipeline.RecordingVideoSources.resolve',return_value=sources), \
              patch('freemocap.core.pipeline.dataflow.application_pipeline.run_recording_pipeline',return_value=RecordingExecutionResult()) as run, \
              patch('freemocap.core.pipeline.posthoc.mocap_pipeline.complete_mocap') as complete:
             def execute(**kwargs):
                 progress=kwargs['progress']
                 progress('load_and_track','started',0.0)
+                kwargs['tracking_progress']({'cam0':111,'cam1':110,'cam2':112})
                 progress('load_and_track','tracking',0.5)
                 progress('load_and_track','finished',1.0)
                 progress('annotate_camera_0','started',0.0)
@@ -67,6 +68,10 @@ class ApplicationGraphTests(TestCase):
             operations = {operation.operation_id: operation for operation in messages[-1].operations}
             self.assertEqual(operations['load_and_track'].status, 'complete')
             self.assertEqual(operations['load_and_track'].completed, 666)
+            self.assertEqual([(video.label, video.completed, video.total, video.unit) for video in operations['load_and_track'].items],
+                             [('Video 1 (cam0)', 111, 222, 'frames'), ('Video 2 (cam1)', 110, 222, 'frames'), ('Video 3 (cam2)', 112, 222, 'frames')])
+            self.assertEqual([(video.label, video.completed, video.total) for video in operations['annotate_camera_0'].items],
+                             [('Video 1 (cam0)', 0, 222)])
             self.assertEqual(operations['annotate_camera_0'].status, 'running')
             self.assertEqual(operations['reconstruct_skeletons'].status, 'running')
             complete.assert_called_once()

@@ -1,6 +1,6 @@
 # Streaming stereo and depth from another application
 
-Report date 2026-11-02. UltraSkelly, the animatronic skeleton that already reuses this
+Report date 2026-11-02, updated 2026-11-03 with the dashboard's depth views. UltraSkelly, the animatronic skeleton that already reuses this
 stream ([sdk-for-other-applications.md](sdk-for-other-applications.md)), added a ZED Mini
 stereo camera in the skull's eye sockets. Its Raspberry Pi 5 streams both eyes, computes
 depth from them and streams the depth for 3D views: a point cloud and mesh placed on the
@@ -79,19 +79,45 @@ These come from UltraSkelly's dashboard work and match its earlier review
 - **Frame numbers are per source.** Overlays pair with their image by frame number, and
   separate cameras count separately, so numbers repeat across sources. Filtering by camera
   ID is enough today; an identity per message would remove the trap.
+- **Every viewer decodes depth itself.** Registering `depth_frame` as a kind is easy, but
+  inflating the bytes, reading little-endian uint16 and unprojecting with the intrinsics
+  are left to each consumer. A client `decodeDepthFrame` returning millimetres, intrinsics
+  and pose, usable in a worker, with a matching `freemocap_stream` encoder, would make depth
+  the SDK's payload rather than one application's.
+- **Decoding starts on the main thread.** The client parses and validates each message
+  before a consumer sees it, so a viewer that decodes depth in a worker first copies the
+  bytes out (the decoder may reuse its storage) and posts them. An option to receive a
+  kind's raw message bytes, or its byte strings as transferable copies, would let the whole
+  decode leave the page's thread.
+- **Depth arrives apart from its frame.** `depth_frame.frame_number` names the stereo pair it
+  came from, but the pair, the preview frames and the depth travel as separate messages, each
+  with its own delivery order and newest-wins handling. Depth inside the frame message
+  (recommendation 1) would share the frame's identity and its slot.
+- **A camera's pose in a body is a local convention.** `camera_to_head` (rotation rows, a
+  translation in metres, a named target frame and a `nominal` status) is UltraSkelly's own.
+  If camera entries could carry an optional extrinsic to a named rig frame, with a status
+  such as `nominal`, `designed` or `measured`, any 3D viewer could place such a camera the
+  same way.
 
 ## Recommendations
 
-1. Add an optional lossless depth block to the frame message, with Python writer and
-   client reader helpers, before a second application invents another depth message.
-2. Add `calibrated_camera` to `freemocap-stream`, and name the camera optical frame in
-   the protocol next to the world convention.
-3. Offer per-source newest-wins decoding and decode-at-size in `@freemocap/client`.
+1. Add an optional lossless depth block to the frame message, with a Python writer and a
+   worker-safe client reader (`decodeDepthFrame`), before a second application invents
+   another depth message.
+2. Add `calibrated_camera` to `freemocap-stream`, with an optional extrinsic to a named rig
+   frame and its status, and name the camera optical frame in the protocol next to the
+   world convention.
+3. Offer per-source newest-wins decoding, decode-at-size and raw message bytes for worker
+   decoding in `@freemocap/client`.
 
 ## Not verified
 
-The browser side of `depth_frame` was not run: UltraSkelly's dashboard rebuild draws it
-next, and its decoder is so far checked only in Python, against synthetic depth with known
-geometry. `DecompressionStream` support across browser versions was not checked against
-compatibility data. The camera pose in each message is nominal until the robot's camera
+The browser side of `depth_frame` now runs in UltraSkelly's dashboard
+([depth views](https://github.com/freemocap/ultraskelly/blob/a89aead/docs/dashboard.md#depth)):
+a worker inflates and colours the millimetres, and vertex shaders unproject them onto the
+head. Against the synthetic sample, whose geometry is known, every depth pixel landed
+within 0.5 mm of its surface. On the Pi, replaying recorded samples at 5 depth frames a
+second, Chromium used about one core. Live depth from the real matcher with the dashboard
+on the same Pi is not measured yet. `DecompressionStream` support across browser versions
+was not checked against compatibility data. The camera pose in each message is nominal until the robot's camera
 bracket gives the real one.

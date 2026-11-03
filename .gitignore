@@ -44,6 +44,8 @@ pip-delete-this-directory.txt
 
 # Unit test / coverage reports
 htmlcov/
+# Generated test/diagnostic outputs at any depth, including freemocap-ui.
+.test-artifacts/
 .tox/
 .nox/
 .coverage
@@ -169,3 +171,6 @@ upx.exe
 /CLAUDE.md
 .aider*
 freemocap-ui/freemocap_server
+/.codex/*
+# Local experiment reports retained when switching from development branches.
+/experiments/executable_graph_lab/evidence/

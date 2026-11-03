@@ -112,15 +112,23 @@ jobs:
       - name: Validate macOS code signing prerequisites
         if: matrix.platform == 'macos'
         shell: bash
+        # Setup and secret meanings: .github/APPLE_SIGNING.md
+        env:
+          MAC_CERTIFICATE_P12: ${{ secrets.MAC_CERTIFICATE_P12 }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_FREEMOCAP_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           MISSING=()
-          [ -z "${{ secrets.MAC_CERTIFICATE_P12 }}" ] && MISSING+=("MAC_CERTIFICATE_P12")
-          [ -z "${{ secrets.MAC_CERTIFICATE_PASSWORD }}" ] && MISSING+=("MAC_CERTIFICATE_PASSWORD")
-          [ -z "${{ secrets.APPLE_ID }}" ] && MISSING+=("APPLE_ID")
-          [ -z "${{ secrets.APPLE_ID_PASSWORD }}" ] && MISSING+=("APPLE_ID_PASSWORD")
-          [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && MISSING+=("APPLE_TEAM_ID")
+          [ -z "$MAC_CERTIFICATE_P12" ] && MISSING+=("MAC_CERTIFICATE_P12")
+          [ -z "$MAC_CERTIFICATE_PASSWORD" ] && MISSING+=("MAC_CERTIFICATE_PASSWORD")
+          [ -z "$APPLE_ID" ] && MISSING+=("APPLE_ID")
+          [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ] && MISSING+=("APPLE_FREEMOCAP_APP_SPECIFIC_PASSWORD")
+          [ -z "$APPLE_TEAM_ID" ] && MISSING+=("APPLE_TEAM_ID")
           if [ ${#MISSING[@]} -gt 0 ]; then
             echo "::error::Missing required secrets for macOS code signing: ${MISSING[*]}"
+            echo "See .github/APPLE_SIGNING.md; organization secrets must grant this repository access."
             exit 1
           fi
           echo "All required macOS code signing secrets are available"
@@ -370,7 +378,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "true"
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_FREEMOCAP_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd freemocap-ui

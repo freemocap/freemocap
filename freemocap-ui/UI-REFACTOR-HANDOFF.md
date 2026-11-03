@@ -87,6 +87,20 @@ Recording in the mocap task panel. Contrast checks should now pass for these but
 Run: E2E suite (both specs above and `staged-processing.spec.ts`), visual and contrast checks. Look at: Processing
 stages with all stages running, with a saved run and a later start, and with an early finish over saved stages.
 
+## Exports section on the settings rows
+
+- `mocap-export-settings.tsx`: Data, Formats and Run now are settings groups; every data type and format is a row
+  with an info button and a switch (`role="switch"`), followed by "Export selected formats after processing".
+  "Export saved Run N" and "Saved results" rows hold the Export saved result and Reload saved results buttons.
+  Status, alerts and the completed-export note keep their text. `export-settings.css` is deleted.
+- `settings-layout.css`: `.settings-disclosure` gives Tall CSV and Blender's advanced package diagnostics the section
+  chevron; `.settings-note-error` uses `--color-danger-text`.
+- `e2e/recording-exports.spec.ts`: selects switches by role and loads the app stylesheet so switches are visible.
+
+Run: `recording-exports.spec.ts` (3 cases), `tall-csv-export.spec.ts`, `blender-package.spec.ts`, then the full E2E,
+visual and contrast checks. Look at: Exports with no saved result, with a saved run, during an export (Cancel export
+row), after a completed export, with unavailable data selected; Blender's advanced diagnostics disclosure.
+
 ## Backend asks (local agent builds; UI branch reviews and consumes)
 
 Current-code facts the UI relies on: `experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0.

@@ -374,20 +374,27 @@
 .record-button-duration {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.7rem;
-  color: var(--color-white-alpha-60);
+  color: var(--color-text-primary);
   letter-spacing: 0.5px;
 }
 
+/* Idle: a secondary button whose record dot carries the colour */
 .record-button-idle {
-  background-color: var(--color-danger);
+  background-color: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
 }
 
 .record-button-idle:not(:disabled):hover {
-  background-color: var(--metric-median);
+  background-color: var(--color-surface-hover);
 }
 
+.record-button-idle .record-icon {
+  background-color: var(--color-record-dot);
+}
+
+/* Recording: the only state with a red fill */
 .record-button-active {
-  background-color: var(--metric-median);
+  background-color: var(--color-record-fill);
   animation: recording-button-pulse 2s infinite ease-in-out;
 }
 
@@ -398,11 +405,11 @@
 @keyframes recording-button-pulse {
   0%,
   100% {
-    background-color: var(--log-critical);
+    background-color: var(--color-record-fill);
   }
 
   50% {
-    background-color: var(--color-danger-muted);
+    background-color: var(--color-record-fill-dim);
   }
 }
 

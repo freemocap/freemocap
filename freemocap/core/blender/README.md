@@ -35,8 +35,14 @@ The ZIP cache key includes source identity, host-builder contents and target
 runtime. Checksums detect damaged cached ZIPs. A source or builder change selects
 a new package. An application-supplied provenance record avoids running Git on
 users' machines. An older dependency lacking the host builder produces a clear
-update-required error. Current automatic runtime coverage is Windows x64 with
-Blender 3.0, 3.6, 4.2, 4.5 and 5.2; other combinations fail explicitly.
+update-required error. Core validates the Blender/Python ABI and uses the installed add-on builder's
+platform declarations, rather than imposing a separate Windows-only restriction.
+The builder currently declares Windows x64, Linux x64 and macOS x64/ARM64. The
+Blender ABI table contains 3.0, 3.6, 4.2, 4.5 and 5.2; missing runtime/architecture
+coverage is tracked as compatibility work in the
+[cross-platform audit](../../../benchmarks/COMPATIBILITY-AUDIT-2026-11-03.md).
+The full standard reference-data workflow verifies automatic preparation, export
+and saved-scene acceptance on this Mac with Blender 5.2.1/Python 3.13.
 
 ## Installation and process boundary
 

@@ -32,12 +32,18 @@ def build_from_dependency(runtime, requested_hash):
     kind, python = TARGETS.get(version, (None, None))
     machine = {'amd64': 'x64', 'x86_64': 'x64', 'arm64': 'arm64', 'aarch64': 'arm64'}.get(runtime['machine'].lower())
     platform = {'Windows': 'windows', 'Linux': 'linux', 'Darwin': 'macos'}.get(runtime['system'])
-    if not kind or python != runtime['python'] or platform != 'windows' or machine != 'x64':
-        raise RuntimeError(f'Automatic Blender packaging is not yet supported for Blender {version}, Python {runtime["python"]}, {platform}-{machine}')
+    if not kind or python != runtime['python'] or platform is None or machine is None:
+        raise RuntimeError(f'No automatic Blender package target for Blender {version}, Python {runtime["python"]}, {platform}-{machine}')
     platform += '-' + machine
     tools = root / '_host_tools'
     if not (tools/'build_addon.py').is_file():
         raise RuntimeError('Update the FreeMoCap Blender add-on dependency: this version does not include its host package builder')
+    spec = importlib.util.spec_from_file_location('freemocap_host_package_builder', tools/'build_addon.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    # The add-on owns wheel/platform packaging; Core owns matching Blender's Python ABI.
+    if platform not in builder.PLATFORMS:
+        raise RuntimeError(f'The installed add-on builder has no package target for {platform}')
     builder_hash = hashlib.sha256()
     for path in sorted(tools.rglob('*')):
         if path.is_file() and '__pycache__' not in path.parts and path.suffix != '.pyc':
@@ -58,9 +64,6 @@ def build_from_dependency(runtime, requested_hash):
             if intact:
                 validate_archive(archive, runtime)
                 return archive, kind, checksum
-        spec = importlib.util.spec_from_file_location('freemocap_host_package_builder', tools/'build_addon.py')
-        builder = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(builder)
         wheels = cache/'wheels'
         wheels.mkdir(exist_ok=True)
         # One wheel writer at a time, even if different Blender versions are requested.

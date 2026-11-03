@@ -29,9 +29,11 @@ python -B -m freemocap.tools.machine_benchmarks compare benchmarks/results/*.jso
 ```
 
 The default dataset profile is `standard`, including Blender export/validation.
-An installed, prepared Blender is required; the underlying standard workflow can
-prepare its isolated add-on environment. Obtain environment-change authorization
-where local policy requires it. `--output-profile numerical` explicitly excludes
+An installed Blender executable is required. The standard workflow automatically
+builds the matching add-on package, installs it in its managed Blender profile,
+and validates it. An absent add-on before processing is normal first-run state,
+not a reason to skip Blender or downgrade the run. Failures in that workflow must
+be diagnosed and fixed through the owning implementation. `--output-profile numerical` explicitly excludes
 Blender and must only be compared with other numerical runs. `--recordings-root`
 selects existing raw recordings or their acquisition destination. Every run uses a
 new output directory and fresh calibration/processing, even when models are cached.
@@ -100,3 +102,6 @@ Never hand-edit measured values. Corrections should add a clearly explained new 
 Verified hardware inventories can be retained separately in `benchmarks/machines/`.
 Restricted system queries may return generic CPU descriptions in individual runs;
 the stable machine label links these to the independently captured inventory.
+
+See the [cross-platform audit](COMPATIBILITY-AUDIT-2026-11-03.md) for fixed
+Windows assumptions and remaining compatibility work.

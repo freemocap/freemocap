@@ -67,7 +67,7 @@ print('FROZEN_BLENDER_OK')
         env = environment(cache/'normal')
         env['FREEMOCAP_BLENDER_STORAGE'] = str(cache/'managed')
         runtime = inspect_blender(blender)
-        seed_wheels(cache/'managed/wheels', runtime['python'])
+        seed_wheels(cache/'managed/wheels', runtime)
         env.pop('FREEMOCAP_BLENDER_PACKAGE_CATALOG', None)
         for dataset in ('freemocap_test_data', 'freemocap_sample_data'):
             ready = checked_ready(Path(os.environ['FREEMOCAP_PREPARED_DATA_ROOT'])/dataset)

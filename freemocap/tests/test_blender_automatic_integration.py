@@ -34,7 +34,7 @@ def installed_blender():
                 env.setenv(key, value)
         runtime = inspect_blender(blender)
         assert not runtime['packages']
-        seed_wheels(root/'managed/wheels', runtime['python'])
+        seed_wheels(root/'managed/wheels', runtime)
         env.setenv('FREEMOCAP_BLENDER_STORAGE', str(root/'managed'))
         env.delenv('FREEMOCAP_BLENDER_PACKAGE_CATALOG', raising=False)
         env.delenv('FREEMOCAP_BLENDER_DEVELOPMENT_BUILD_HASH', raising=False)

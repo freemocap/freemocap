@@ -13,9 +13,8 @@ source file.
 
 Configuration surface (`mocap-setup-modal.tsx`, `mocap-stage-selection.tsx`, `mocap-detector-settings.tsx`):
 
-- One pipeline: `pipeline_implementation: Literal["typed_dataflow"]` (`mocap_task_config.py`).
-  `ProcessingPipelineSelect` shows that option and a disabled "Add custom pipeline…". No legacy path,
-  no "Pipeline implementation" choice to draw.
+- `ProcessingPipelineSelect` shows the typed data flow pipeline and a disabled "Add custom
+  pipeline…". There is no pipeline choice to draw.
 - No "Tracking device" row. Detectors has "Execution provider" (Auto, TensorRT, CUDA, CoreML,
   DirectML, CPU; filtered by `GET /freemocap/onnx/execution_providers`) for RTMW and RTMW + MediaPipe
   hands, stored in Redux `mocap.config.executionProvider`. DLC has "DLC execution provider"
@@ -35,10 +34,8 @@ Request and control (`processing_router.py`, `mocap-thunks.ts`, `tasks_router.py
 
 - Launch `POST /freemocap/recordings/{recording_id}/processing` with `{kind: 'mocap', config}`;
   returns 202 `{task_id, ...}`. Cancel `POST /freemocap/tasks/{task_id}/cancel`. Stage inventory
-  `GET /freemocap/recordings/{recording_id}/stages` and `.../runs/{run_id}/stages`. Older routes are
-  hidden compatibility routes.
-- Export settings field is `exportOptions` (`formats`, `data`, optional `wide_csv`). The validator
-  `migrate_export_settings` accepts older names and rejects conflicting values.
+  `GET /freemocap/recordings/{recording_id}/stages` and `.../runs/{run_id}/stages`.
+- Export settings field is `exportOptions` (`formats`, `data`, optional `wide_csv`).
 - Validators: export-settings conflict, provider agreement (`executionProvider` vs
   `graphExecutionProvider`), DLC constraints, stop stage not before start stage, tracker config.
 

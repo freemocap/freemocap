@@ -211,10 +211,10 @@ const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     bodyAlignmentMode: 'auto',
     anchorSegmentName: "pelvis",
     exportTallCsv: false,
-    exportFormats: [],
+    exportFormats: ['npz', 'wide_csv', 'notebook'],
     exportChannels: ['LANDMARKS_3D'],
     exportChannelOverrides: null,
-    exportAfterProcessing: false,
+    exportAfterProcessing: true,
     referenceTransform: null,
     referenceTransformEnabled: false,
 };
@@ -263,10 +263,10 @@ export const mocapSlice = createSlice({
     initialState,
     reducers: {
         exportSettingsReset: (state) => {
-            state.config.exportFormats = [];
+            state.config.exportFormats = [...DEFAULT_MOCAP_CONFIG.exportFormats];
             state.config.exportChannels = ['LANDMARKS_3D'];
             state.config.exportChannelOverrides = null;
-            state.config.exportAfterProcessing = false;
+            state.config.exportAfterProcessing = DEFAULT_MOCAP_CONFIG.exportAfterProcessing;
             state.exportSettingsError = null;
         },
         exportChannelsUpdated: (state, action: PayloadAction<ExportChannelKind[]>) => {

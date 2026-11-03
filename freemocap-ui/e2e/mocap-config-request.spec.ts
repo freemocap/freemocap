@@ -30,6 +30,9 @@ test('Mocap requests keep person alignment and custom transforms independent of 
             import {activeRecordingSet} from './src/store/slices/active-recording/active-recording-slice';
             import {startMocapRecording, stopMocapRecording, processMocapRecording} from './src/store/slices/mocap/mocap-thunks';
             async function run(): Promise<void> {
+                const defaults = store.getState();
+                if (!defaults.blender.exportToBlenderEnabled || !defaults.blender.autoOpenBlendFile) throw new Error('Blender export and opening must default on');
+                if (!defaults.mocap.config.exportAfterProcessing || JSON.stringify(defaults.mocap.config.exportFormats) !== JSON.stringify(['npz', 'wide_csv', 'notebook'])) throw new Error('Standard scientific exports must default on');
                 store.dispatch(activeRecordingSet({baseDirectory: 'C:/recordings', recordingName: 'sample', origin: 'browsed'}));
                 if (store.getState().mocap.config.bodyAlignmentMode !== 'auto') throw new Error('Alignment must default to auto');
                 store.dispatch(referenceTransformUpdated([0,-1,0,125,1,0,0,-80,0,0,1,42,0,0,0,1]));

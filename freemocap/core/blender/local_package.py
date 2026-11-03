@@ -13,13 +13,6 @@ from .helpers.addon_identity import source_hash
 from .helpers.install_blender_addon import validate_archive
 from .package_catalog import digest, storage_root
 
-# Tested Blender/Python intervals; do not guess across ABI changes.
-TARGETS = {
-    '3.0': ('legacy', '3.9'), '3.6': ('legacy', '3.10'),
-    '4.2': ('extension', '3.11'), '4.5': ('extension', '3.11'),
-    '5.2': ('extension', '3.13'),
-}
-
 
 def build_from_dependency(runtime, requested_hash):
     root = addon_source()
@@ -29,11 +22,12 @@ def build_from_dependency(runtime, requested_hash):
     if source_hash(root) != requested_hash:
         raise RuntimeError('Bundled add-on source differs from its expected identity')
     version = '.'.join(map(str, runtime['blender'][:2]))
-    kind, python = TARGETS.get(version, (None, None))
+    kind = 'extension' if tuple(runtime['blender']) >= (4, 2, 0) else 'legacy'
+    python = runtime['python']
     machine = {'amd64': 'x64', 'x86_64': 'x64', 'arm64': 'arm64', 'aarch64': 'arm64'}.get(runtime['machine'].lower())
     platform = {'Windows': 'windows', 'Linux': 'linux', 'Darwin': 'macos'}.get(runtime['system'])
-    if not kind or python != runtime['python'] or platform != 'windows' or machine != 'x64':
-        raise RuntimeError(f'Automatic Blender packaging is not yet supported for Blender {version}, Python {runtime["python"]}, {platform}-{machine}')
+    if platform is None or machine is None:
+        raise RuntimeError(f'Cannot identify Blender package platform: {runtime["system"]}-{runtime["machine"]}')
     platform += '-' + machine
     tools = root / '_host_tools'
     if not (tools/'build_addon.py').is_file():
@@ -61,6 +55,8 @@ def build_from_dependency(runtime, requested_hash):
         spec = importlib.util.spec_from_file_location('freemocap_host_package_builder', tools/'build_addon.py')
         builder = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(builder)
+        if platform not in builder.PLATFORMS:
+            raise RuntimeError(f'The add-on package builder has no wheel target for {platform}')
         wheels = cache/'wheels'
         wheels.mkdir(exist_ok=True)
         # One wheel writer at a time, even if different Blender versions are requested.

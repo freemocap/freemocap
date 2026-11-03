@@ -4,6 +4,16 @@ Baseline source: `8c209ec2` (2026-11-02), before the Skull theme refactor.
 Harness branch: `sfn26-ui-harness`; local design remote: `refactor`.
 Initial baseline work is complete with the acceptance failures documented below.
 
+## Standard export acceptance
+
+Owner correction, 2026-11-03: standard sample processing must enable Blender
+(with automatic opening), NPZ, wide CSV, and the IPython notebook. Do not disable
+exports to obtain a passing UI capture or treat a numerical-only run as standard
+acceptance. Report requested-export failures explicitly and investigate them.
+Separate numerical comparison tools and focused mocked unit tests may isolate their
+stated scope; their results do not certify the standard processing workflow.
+Historical captures with exports disabled remain evidence of that narrower scope.
+
 ## Reproduce
 
 Run from `repos/freemocap-ui-harness/freemocap-ui` unless stated otherwise.

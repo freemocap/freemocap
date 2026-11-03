@@ -118,7 +118,8 @@ def test_blender_option_validation():
 def test_processing_completion_uses_exporter_without_losing_publication(enabled, cancelled, failure, tmp_path):
     from freemocap.core.pipeline.posthoc.mocap_pipeline import complete_mocap, MocapWorkerRequest
     from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-    config = PosthocMocapPipelineConfig(exportTallCsv=False, exportToBlender=enabled,
+    # This unit test isolates Blender completion with a mocked exporter and no Parquet fixture.
+    config = PosthocMocapPipelineConfig(exportTallCsv=False, exportOptions={'formats': []}, exportToBlender=enabled,
         autoOpenBlendFile=False, blenderImportRoute='parquet_constraints', blenderPackage='test.package',
         blenderExportConfig=dict(rest_pose='apose', formats=['bvh']), detectorType='rtmpose')
     reports = []
@@ -163,3 +164,11 @@ def test_implicit_selected_run_uses_its_own_blender_destination(tmp_path):
          patch('freemocap.core.blender.export_to_blender.prepare_blender', return_value=SimpleNamespace(package=None, profile=None)), \
          patch('freemocap.core.blender.export_to_blender.run_blender', side_effect=export):
         assert export_to_blender(tmp_path, open_file_on_completion=False) == str(expected)
+
+
+def test_standard_processing_defaults_include_all_exports():
+    from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
+    config = PosthocMocapPipelineConfig()
+    assert config.export_to_blender
+    assert config.auto_open_blend_file
+    assert config.export_options.formats == ('npz', 'wide_csv', 'notebook')

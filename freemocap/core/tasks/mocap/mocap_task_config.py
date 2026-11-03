@@ -162,7 +162,7 @@ class PosthocMocapPipelineConfig(BaseModel):
 
 
     export_tall_csv: bool = Field(default=False, alias="exportTallCsv")
-    export_options: ExportOptions = Field(default_factory=ExportOptions, alias='exportOptions')
+    export_options: ExportOptions = Field(default_factory=lambda: ExportOptions(formats=('npz', 'wide_csv', 'notebook')), alias='exportOptions')
 
     blender_import_route: Literal['auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints'] = Field(default='auto', alias='blenderImportRoute')
     blender_package: str | None = Field(default=None, alias='blenderPackage')

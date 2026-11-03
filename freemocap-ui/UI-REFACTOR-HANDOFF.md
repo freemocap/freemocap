@@ -7,6 +7,12 @@ in this checkout (ignored by git).
 
 Pushes: commits land locally first; the owner or the local test agent pushes.
 
+## Pushing
+
+The local agent pushes `sfn26-ui-refactor` to origin: after picking up new commits on this branch,
+run `git push origin sfn26-ui-refactor` (set upstream on the first push). The design side commits
+from an environment without GitHub credentials and cannot push. The owner does not push.
+
 ## Plan
 
 - [x] **1.** Port the Skull colour, icon and progress-colour edits onto the current `sfn26-ui-refactor` files and commit them after checking that every image file is free of the signed block.

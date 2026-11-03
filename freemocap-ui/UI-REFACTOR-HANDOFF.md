@@ -102,23 +102,13 @@ and `freemocap_sample_data` available.
   directly). Add `.test-artifacts/ui-inventory/index.md` listing the commit, each file and what state it shows.
 - Do not commit the images.
 
-Screens:
+Screens without data are covered: the design side uses the surface and mocap-section captures from
+your visual runs plus its own renders of the welcome, tour, menus and dialogs. Still needed, with the
+server running and `freemocap_sample_data` loaded:
 
-1. Start screen as the app opens (welcome modal if it shows).
-2. Settings modal.
-3. Live view (`StreamingViewPage`) with no cameras connected.
-4. Recording path modal and import videos modal.
-5. Recording browser.
-6. Playback (`PlaybackPage`) with `freemocap_sample_data` loaded, 3D view and videos visible.
-7. Mocap processing modal in playback mode: one capture per navigation section, scrolled to the top
-   (Processing stages, Detectors, Triangulation, Camera geometry, Post-processing, Exports, Blender,
-   and any others present). Detectors with RTMW selected and with MediaPipe selected.
-8. Mocap processing modal in recording mode.
-9. Transform editor (Camera geometry → Apply custom transform).
-10. Calibration module and calibration settings.
-11. A full mocap run on the sample data: progress panel and snackbar just after launch, during
-    tracking, during reconstruction, and complete.
-12. A failed run (for example, a missing calibration file) showing the failure in the progress panel.
-13. Log terminal open.
-14. Streaming outputs control.
-15. Tutorial tour overlay, first step.
+1. Playback with `freemocap_sample_data` loaded: videos, 3D view and timeline visible.
+2. Recording browser with recordings listed.
+3. A full mocap run on the sample data: progress panel and snackbar just after launch, during
+   tracking, during reconstruction, and complete.
+4. A failed run (for example, a missing calibration file) showing the failure in the progress panel.
+5. Log terminal open with server output, and the settings modal.

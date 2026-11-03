@@ -3,6 +3,11 @@ import {RootState} from '../../root-state-types';
 import {stopAllPipelines, stopPipeline} from './pipelines-thunks';
 import type {TaskOperation, TaskRegistrySnapshot} from '@/services/server/transport/message-contract';
 import {loadFromStorage} from '@/store/persistence';
+import {serverDisconnected} from '@/store/slices/connection/connection-slice';
+
+export function isRealtimeTask(task: TaskRegistrySnapshot['tasks'][number]): boolean {
+    return task.task_type === 'realtime_startup';
+}
 
 export function phaseForTask(phase: string): PipelinePhase {
     const phases: Record<string, PipelinePhase> = {
@@ -96,6 +101,7 @@ export interface PipelineProgress {
 // ==================== State ====================
 
 interface PipelinesState {
+    realtimeTasks: TaskRegistrySnapshot['tasks'];
     recordingOwners: TaskRegistrySnapshot['recording_owners'];
     serverInstanceId: string | null;
     registryRevision: number;
@@ -111,6 +117,7 @@ const dismissedTasks = loadFromStorage<{serverInstanceId: string | null; dismiss
     'pipelines.dismissals', {serverInstanceId: null, dismissedBasePipelineIds: []});
 
 const initialState: PipelinesState = {
+    realtimeTasks: [],
     recordingOwners: [],
     serverInstanceId: dismissedTasks.serverInstanceId,
     registryRevision: -1,
@@ -145,8 +152,9 @@ export const pipelinesSlice = createSlice({
             state.serverInstanceId = snapshot.server_instance_id;
             state.registryRevision = snapshot.revision;
             state.recordingOwners = snapshot.recording_owners;
+            state.realtimeTasks = snapshot.tasks.filter(isRealtimeTask);
             if (!sameServer) state.dismissedBasePipelineIds = [];
-            const newTaskStarted = snapshot.tasks.some(task => ['queued', 'running'].includes(task.status) && !previous[task.task_id]);
+            const newTaskStarted = snapshot.tasks.some(task => !isRealtimeTask(task) && ['queued', 'running'].includes(task.status) && !previous[task.task_id]);
             if (newTaskStarted) {
                 state.dismissedBasePipelineIds = [...new Set([
                     ...state.dismissedBasePipelineIds,
@@ -155,6 +163,7 @@ export const pipelinesSlice = createSlice({
             }
             state.activePipelines = {};
             for (const task of snapshot.tasks) {
+                if (task.task_type === 'realtime_startup') continue;
                 const common = {pipelineType: task.task_type, recordingName: task.recording?.recording_name ?? '',
                     recordingPath: task.recording?.full_path ?? '', basePipelineId: task.task_id};
                 const phase = phaseForTask(task.progress.phase);
@@ -198,6 +207,12 @@ export const pipelinesSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
+            .addCase(serverDisconnected, (state) => {
+                state.realtimeTasks = [];
+                // A reconnect can replay the same registry revision. Accept it
+                // again after clearing connection-scoped realtime statuses.
+                state.registryRevision = -1;
+            })
             .addCase(stopPipeline.pending, (state) => {
                 state.cancellationError = null;
             })
@@ -215,6 +230,7 @@ export const pipelinesSlice = createSlice({
 // ==================== Selectors ====================
 
 export const selectActivePipelines = (state: RootState) => state.pipelines.activePipelines;
+export const selectRealtimeTasks = (state: RootState) => state.pipelines.realtimeTasks;
 export const selectShowCompleted = (state: RootState) => state.pipelines.showCompleted;
 export const selectFilterText = (state: RootState) => state.pipelines.filterText;
 

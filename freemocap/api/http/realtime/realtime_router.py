@@ -9,6 +9,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from freemocap.app.freemocap_application import RealtimeStartupConfigurationError, RealtimeStartupStopped, get_freemocap_app
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
+from freemocap.core.pipeline.realtime.startup_status import realtime_startup_snapshot
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.pubsub.pubsub_topics import (
     SkeletonFitterResetMessage,
@@ -35,19 +36,7 @@ class RealtimeStartupResponse(BaseModel):
 @realtime_router.get("/startup", operation_id="realtime_startup_status")
 def realtime_startup_status() -> RealtimeStartupResponse:
     """Observe startup without waiting for camera or native inference operations."""
-    app = get_freemocap_app()
-    snapshot = app.startup_status.snapshot()
-    if snapshot["pipeline_id"] and snapshot["status"] == "running":
-        inference = app.inference_service.startup_status(snapshot["pipeline_id"])
-        if inference is not None:
-            app.startup_status.observe_inference(
-                snapshot["pipeline_id"], **{key: inference[key] for key in (
-                    "status", "phase", "phase_elapsed_seconds", "message", "error",
-                )},
-            )
-            snapshot = app.startup_status.snapshot()
-    snapshot["delayed"] = snapshot["status"] in ("running", "stopping") and snapshot["phase_elapsed_seconds"] >= 15
-    return RealtimeStartupResponse(**snapshot)
+    return RealtimeStartupResponse(**realtime_startup_snapshot(get_freemocap_app()))
 
 
 @realtime_router.post("/startup/stop", operation_id="stop_realtime_startup")

@@ -333,7 +333,7 @@ export const TaskRegistrySnapshotSchema = z.object({
   })})),
   tasks: z.array(z.object({
     task_id: z.string().min(1), revision: z.number().int().positive(),
-    task_type: z.enum(['calibration', 'mocap', 'export', 'sync']),
+    task_type: z.enum(['calibration', 'mocap', 'export', 'sync', 'realtime_startup']),
     recording: z.object({base_directory: z.string(), recording_name: z.string(), full_path: z.string()}).nullable(),
     status: z.enum(['queued', 'running', 'complete', 'failed', 'cancelled']), progress: TaskProgressSchema,
     source_run_id: z.number().int().nullable().optional(), source_revision: z.string().nullable().optional(),

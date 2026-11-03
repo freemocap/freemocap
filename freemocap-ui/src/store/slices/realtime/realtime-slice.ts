@@ -33,6 +33,9 @@ export const realtimeSlice = createSlice({
         pipelineErrorCleared: (state) => {
             state.error = null;
         },
+        pipelineErrorReceived: (state, action: PayloadAction<string>) => {
+            state.error = action.payload;
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -140,4 +143,4 @@ export const realtimeSlice = createSlice({
     },
 });
 
-export const {pipelineStateReset, pipelineConfigUpdated, pipelineErrorCleared} = realtimeSlice.actions;
+export const {pipelineStateReset, pipelineConfigUpdated, pipelineErrorCleared, pipelineErrorReceived} = realtimeSlice.actions;

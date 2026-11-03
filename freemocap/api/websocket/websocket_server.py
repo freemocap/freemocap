@@ -92,6 +92,7 @@ class WebsocketServer:
         self._camera_frame_cursors: dict[CameraGroupIdString, int] = {}
         self._pipeline_source_ids: tuple[str, ...] = ()
         self._pipeline_frame_cursor = -1
+        self._last_processed_frame_at: float | None = None
         self._preview_mode = True
 
         # ── Standard-stream send path ────────────────────────────────────
@@ -362,6 +363,7 @@ class WebsocketServer:
         if pipeline_ids != self._pipeline_source_ids:
             self._pipeline_source_ids = pipeline_ids
             self._pipeline_frame_cursor = -1
+            self._last_processed_frame_at = None
             self._preview_mode = True
         if not pipeline_ids:
             return await self._await_camera_only_frame()
@@ -390,12 +392,10 @@ class WebsocketServer:
                 if_newer_than=self._pipeline_frame_cursor,
             ) if output.pipeline_id in pipeline_ids and self._has_matching_tracking_result(output)]
         if not outputs:
-            # A stalled solver must not freeze camera preview. Subsequent
-            # iterations poll without waiting until matching results resume.
-            return await self._await_camera_only_frame()
+            # The readiness event can precede publication into our subscription.
+            # An early wake is not a timeout or evidence that processing stalled.
+            return await self._preview_after_processing_stall()
         newest = max(outputs, key=lambda m: m.frame_number)
-
-        await self._ensure_composition(newest)
 
         pipeline = self._app.realtime_pipeline_manager.pipelines.get(newest.pipeline_id)
         if pipeline is None:
@@ -411,12 +411,16 @@ class WebsocketServer:
             )
         except IndexError:
             # Never attach an old result to a newer camera image.
-            return await self._await_camera_only_frame()
+            self._pipeline_frame_cursor = newest.frame_number
+            return await self._preview_after_processing_stall()
         if payload is None:
-            return await self._await_camera_only_frame()
+            self._pipeline_frame_cursor = newest.frame_number
+            return await self._preview_after_processing_stall()
         image_bytes, mf_timestamp = payload
+        await self._ensure_composition(newest)
         self._pipeline_frame_cursor = newest.frame_number
         self._preview_mode = False
+        self._last_processed_frame_at = time.perf_counter()
 
         self._record_framerate(
             camera_group_id=newest.camera_group_id,
@@ -430,6 +434,18 @@ class WebsocketServer:
             aggregator_output=newest,
             image_payload=image_bytes,
         )
+
+    async def _preview_after_processing_stall(self) -> "FrameContext | None":
+        """Keep one source through normal event/queue jitter and dropped images.
+
+        Use elapsed wall time, not the return of an event wait: notifications
+        can arrive before data. Initial preview and an actual half-second
+        processing gap still expose fresh images without stale reconstruction.
+        """
+        if (self._preview_mode or self._last_processed_frame_at is None
+                or time.perf_counter() - self._last_processed_frame_at >= 0.5):
+            return await self._await_camera_only_frame()
+        return None
 
     async def _await_camera_only_frame(self) -> "FrameContext | None":
         """Serve camera preview without borrowing any processed-frame values.

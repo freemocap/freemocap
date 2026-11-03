@@ -1,208 +1,900 @@
-/* Processing plan graph: drawn in SVG with the settings-layout tokens. Geometry is fixed; zoom scales it. */
+/* Processing graph: the Graph Lab rules from the approved design canvas, scoped under pg-.
+   Geometry is fixed in SVG units; zoom scales the drawing. */
 
-.graph-view {
+.pg-shell {
   display: flex;
   min-height: 0;
   height: 100%;
-  gap: 8px;
-}
-
-.graph-canvas-column {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
   border: 1px solid var(--color-border-hairline);
   border-radius: 8px;
-  background: var(--color-surface-ground);
   overflow: hidden;
 }
 
-.graph-toolbar {
+.pg-canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.pg-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  background-color: var(--color-bg-primary);
+  background-image: radial-gradient(var(--graph-canvas-dot) 1px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+.pg-scroll.dragging {
+  cursor: grabbing;
+}
+
+.pg-scroll svg {
+  display: block;
+  user-select: none;
+}
+
+/* ---------- overlays ---------- */
+.pg-overlay {
+  position: absolute;
+  z-index: 2;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: 10px;
+}
+
+.pg-toolbar {
+  top: 12px;
+  left: 12px;
+  right: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
-  padding: 0 10px;
-  border-bottom: 1px solid var(--color-border-hairline);
+  flex-wrap: wrap;
+  background: none;
+  border: none;
+  pointer-events: none;
 }
 
-.graph-toolbar .settings-note {
-  padding: 0;
+.pg-toolbar > * {
+  pointer-events: auto;
 }
 
-.graph-toolbar-spacer {
-  flex: 1;
+.pg-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: 10px;
 }
 
-.graph-toolbar-button {
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 4px;
-  border: 1px solid var(--color-border-control);
-  background: var(--color-surface-control);
+.pg-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   color: var(--color-text-primary);
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.graph-toolbar-button:disabled {
+.pg-btn:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.pg-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.graph-canvas {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  cursor: grab;
-  touch-action: none;
+.pg-btn.icon {
+  width: 28px;
+  padding: 0;
+  justify-content: center;
+  font-size: 15px;
 }
 
-.graph-canvas:active {
-  cursor: grabbing;
+.pg-btn.pressed {
+  background: var(--blue-900);
+  color: var(--blue-300);
 }
 
-.graph-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+.pg-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--color-bg-tertiary);
+  background: var(--color-surface-control);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--color-text-primary);
 }
 
-.graph-message {
-  padding: 16px;
+.pg-status-pill i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-help);
 }
 
-.graph-edge {
-  fill: none;
-  stroke: var(--color-text-help);
-  stroke-width: 1.25;
-  opacity: 0.75;
+.pg-status-pill.running i {
+  background: var(--graph-run);
+  box-shadow: 0 0 0 3px var(--graph-run-tint);
 }
 
-.graph-edge-effect {
-  stroke-dasharray: 4 3;
+.pg-status-pill.complete i {
+  background: var(--graph-ok);
 }
 
-.graph-node,
-.graph-terminal {
+.pg-status-pill.failed i {
+  background: var(--graph-bad);
+}
+
+.pg-seg {
+  display: inline-flex;
+}
+
+.pg-zoom-level {
+  min-width: 44px;
+  text-align: center;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pg-graph-meta {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-surface-ground);
+  font-size: 11px;
+  color: var(--color-text-help);
+}
+
+.pg-notice {
+  position: absolute;
+  left: 50%;
+  top: 62px;
+  z-index: 2;
+  transform: translateX(-50%);
+  max-width: 80%;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-bg-tertiary);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pg-notice.warn {
+  color: var(--color-warning-text);
+  border-color: var(--warning-900);
+  border-radius: 10px;
+}
+
+.pg-legend {
+  left: 12px;
+  bottom: 12px;
+  width: 560px;
+  max-width: calc(100% - 24px);
+  font-size: 11.5px;
+}
+
+.pg-legend-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pg-legend-body {
+  display: grid;
+  gap: 8px;
+  padding: 2px 12px 10px;
+}
+
+.pg-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  color: var(--color-text-muted);
+}
+
+.pg-legend-row > b {
+  min-width: 52px;
+  font-weight: 500;
+  color: var(--color-text-help);
+}
+
+.pg-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pg-key.io-read {
+  color: var(--graph-read);
+}
+
+.pg-key.io-write {
+  color: var(--graph-write);
+}
+
+.pg-key-line {
+  stroke: var(--color-text-muted);
+  stroke-width: 1.75;
+}
+
+.pg-key-line.dashed {
+  stroke-dasharray: 6 5;
+}
+
+.pg-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.pg-type-chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.pg-chev {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--color-text-help);
+  border-bottom: 1.5px solid var(--color-text-help);
+  transform: rotate(-45deg);
+}
+
+.pg-chev.open {
+  transform: rotate(45deg);
+}
+
+/* ---------- graph SVG ---------- */
+.pg-node {
   cursor: pointer;
   outline: none;
 }
 
-.graph-node > rect {
-  fill: var(--color-surface-raised);
+.pg-node .pg-body {
+  fill: var(--graph-node-fill);
+  stroke: var(--color-bg-tertiary);
+  stroke-width: 1;
+}
+
+.pg-node.annotation .pg-body {
+  fill: var(--graph-node-annotation-fill);
+}
+
+.pg-node .pg-halo {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+}
+
+.pg-node:hover .pg-body {
+  stroke: var(--color-bg-elevated);
+}
+
+.pg-node.selected .pg-halo,
+.pg-node:focus-visible .pg-halo {
+  stroke: var(--blue-300);
+  stroke-width: 2;
+}
+
+.pg-node .pg-divider {
+  fill: none;
   stroke: var(--color-border-hairline-strong);
   stroke-width: 1;
 }
 
-.graph-terminal > rect {
-  fill: var(--color-surface-control);
-  stroke: var(--color-border-control);
-  stroke-width: 1;
+.pg-node .pg-divider.soft {
+  stroke-dasharray: 2 3;
 }
 
-.graph-node.selected > rect,
-.graph-terminal.selected > rect,
-.graph-node:focus-visible > rect,
-.graph-terminal:focus-visible > rect {
-  stroke: var(--color-info-strong);
-  stroke-width: 2;
+.pg-node text {
+  pointer-events: none;
 }
 
-.graph-node-stage,
-.graph-terminal-verb {
-  font-size: 10.5px;
-  fill: var(--color-text-help);
-}
-
-.graph-node-title {
+.pg-title {
+  fill: var(--color-text-primary);
   font-size: 13px;
   font-weight: 600;
-  fill: var(--color-text-primary);
 }
 
-.graph-terminal-title {
-  font-size: 12px;
-  font-weight: 500;
-  fill: var(--color-text-primary);
-}
-
-.graph-node-divider {
-  stroke: var(--color-border-hairline);
-}
-
-.graph-slot {
-  font-size: 11.5px;
-  fill: var(--color-text-secondary);
-}
-
-.graph-slot-kind {
+.pg-meta,
+.pg-count {
   fill: var(--color-text-help);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10.5px;
 }
 
-.graph-slot-effect {
+.pg-port-name {
   fill: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.pg-port-type {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+}
+
+.pg-port-none {
+  fill: var(--color-text-help);
+  font-size: 11px;
   font-style: italic;
 }
 
-.graph-port {
-  fill: var(--color-surface-ground);
-  stroke: var(--color-text-muted);
-  stroke-width: 1.5;
+.pg-track {
+  fill: var(--color-border-hairline-strong);
 }
 
-.graph-port-effect {
-  stroke-dasharray: 2 2;
+.pg-socket {
+  stroke-width: 2;
 }
 
-.graph-terminal-icon {
+.pg-ring {
   fill: none;
-  stroke: var(--color-text-muted);
+  stroke: var(--color-text-help);
   stroke-width: 1.5;
+}
+
+.pg-node.io-read {
+  --pg-io: var(--graph-read);
+  --pg-io-tint: var(--graph-read-tint);
+}
+
+.pg-node.io-write {
+  --pg-io: var(--graph-write);
+  --pg-io-tint: var(--graph-write-tint);
+}
+
+.pg-node.io .pg-body {
+  fill: var(--pg-io-tint);
+  stroke: var(--pg-io);
+  stroke-width: 1.75;
+}
+
+/* ---------- operation states in a launched run (after the disk rule so a state stroke wins) ---------- */
+.pg-node.complete .pg-body {
+  stroke: var(--graph-ok-line);
+}
+
+.pg-node.running .pg-body {
+  stroke: var(--graph-run-line);
+}
+
+.pg-node.running .pg-halo {
+  stroke: rgba(134, 194, 197, 0.28);
+  stroke-width: 5;
+}
+
+.pg-node.failed .pg-body {
+  stroke: var(--graph-bad);
+}
+
+.pg-node.cancelled .pg-body {
+  stroke-dasharray: 4 3;
+}
+
+.pg-node.selected.running .pg-halo {
+  stroke: var(--blue-300);
+  stroke-width: 2;
+}
+
+.pg-bar {
+  fill: var(--graph-run);
+  transition: width 0.25s ease-out;
+}
+
+.pg-node.complete .pg-bar {
+  fill: var(--graph-ok);
+}
+
+.pg-node.failed .pg-bar {
+  fill: var(--graph-bad);
+}
+
+.pg-node.cancelled .pg-bar {
+  fill: var(--color-text-help);
+}
+
+.pg-st path,
+.pg-st circle {
+  vector-effect: non-scaling-stroke;
+}
+
+.pg-st-run {
+  fill: var(--graph-run);
+}
+
+.pg-st-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pg-pulse 1.2s ease-out infinite;
+}
+
+@keyframes pg-pulse {
+  from { transform: scale(1); opacity: 0.7; }
+  to { transform: scale(2.4); opacity: 0; }
+}
+
+.pg-st-okc {
+  fill: var(--graph-ok-tint);
+  stroke: var(--graph-ok);
+  stroke-width: 1.5;
+}
+
+.pg-st-okm {
+  fill: none;
+  stroke: var(--graph-ok);
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.graph-inspector {
-  flex: 0 0 320px;
-  min-width: 0;
-  overflow-y: auto;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border-hairline);
-  border-radius: 8px;
-  background: var(--color-surface-raised);
+.pg-st-badc {
+  fill: var(--graph-bad-tint);
+  stroke: var(--graph-bad);
+  stroke-width: 1.5;
 }
 
-.graph-inspector-stage {
-  margin: 0;
-  font-size: 10.5px;
+.pg-st-badm {
+  fill: none;
+  stroke: var(--graph-bad);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.pg-st-canc {
+  fill: none;
+  stroke: var(--color-text-help);
+  stroke-width: 1.5;
+}
+
+.pg-st-canm {
+  fill: none;
+  stroke: var(--color-text-help);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.pg-node.running .pg-disk .pg-rail-in {
+  stroke: var(--pg-io);
+  stroke-dasharray: 3 4;
+  animation: pg-flow 0.7s linear infinite;
+}
+
+.pg-edge.flow {
+  stroke-dasharray: 3 5;
+  animation: pg-flow 0.7s linear infinite;
+  opacity: 1;
+}
+
+@keyframes pg-flow {
+  to { stroke-dashoffset: -16; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-edge.flow,
+  .pg-st-pulse,
+  .pg-node.running .pg-disk .pg-rail-in {
+    animation: none;
+  }
+}
+
+.pg-io-tag {
+  fill: var(--pg-io);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.pg-disk .pg-rail-out {
+  fill: none;
+  stroke: var(--pg-io);
+  stroke-width: 9;
+  stroke-linecap: butt;
+}
+
+.pg-disk .pg-rail-in {
+  fill: none;
+  stroke: var(--color-bg-primary);
+  stroke-width: 3;
+}
+
+.pg-disk .pg-rail-head {
+  fill: var(--pg-io);
+}
+
+.pg-disk .pg-folder {
+  fill: var(--pg-io-tint);
+  stroke: var(--pg-io);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.pg-disk .pg-folder-lip {
+  fill: none;
+  stroke: var(--pg-io);
+  stroke-width: 1.25;
+  opacity: 0.6;
+}
+
+.pg-disk .pg-folder-arrow {
+  fill: none;
+  stroke: var(--pg-io);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pg-disk-label {
+  fill: var(--pg-io);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+}
+
+.pg-disk-file {
+  fill: var(--color-text-muted);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.pg-disk-file.more {
+  fill: var(--color-text-help);
+}
+
+.pg-disk-file.pending {
+  fill: var(--color-text-help);
+  font-style: italic;
+}
+
+.pg-edge {
+  fill: none;
+  stroke-width: 1.75;
+  opacity: 0.7;
+}
+
+.pg-edge.annotation {
+  stroke-dasharray: 6 5;
+}
+
+.pg-edge.lit {
+  opacity: 1;
+  stroke-width: 2.75;
+}
+
+svg.focusing .pg-edge:not(.lit) {
+  opacity: 0.08;
+}
+
+svg.focusing .pg-node:not(.near) {
+  opacity: 0.35;
+}
+
+svg.lod-low .pg-io-tag,
+svg.lod-low .pg-slot-text,
+svg.lod-low .pg-meta,
+svg.lod-low .pg-disk-label,
+svg.lod-low .pg-disk-file,
+svg.lod-low .pg-count,
+svg.lod-low .pg-port-none {
+  display: none;
+}
+
+/* ---------- inspector ---------- */
+.pg-inspector {
+  flex: 0 0 352px;
+  width: 352px;
+  overflow-y: auto;
+  padding: 18px;
+  background: var(--color-surface-raised);
+  border-left: 1px solid var(--color-bg-tertiary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pg-inspector h3 {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
   color: var(--color-text-help);
 }
 
-.graph-inspector-title {
-  margin: 4px 0 2px;
-  font-size: 14px;
+.pg-inspector h3 span {
+  font-weight: 400;
+}
+
+.pg-empty {
+  padding: 24px 0;
+  font-size: 12.5px;
+  color: var(--color-text-help);
+}
+
+.pg-eyebrow {
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--color-text-help);
+}
+
+.pg-eyebrow-io {
+  font-weight: 600;
+  letter-spacing: 0.6px;
+}
+
+.pg-eyebrow-io.io-read {
+  color: var(--graph-read);
+}
+
+.pg-eyebrow-io.io-write {
+  color: var(--graph-write);
+}
+
+.pg-insp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pg-insp-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+  color: var(--color-text-primary);
+}
+
+.pg-state-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--color-bg-tertiary);
+  background: var(--color-surface-control);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.pg-state-pill.running {
+  background: var(--graph-run-tint);
+  color: var(--graph-run);
+  border-color: var(--graph-run-line);
+}
+
+.pg-state-pill.complete {
+  background: var(--graph-ok-tint);
+  color: var(--graph-ok);
+  border-color: var(--graph-ok-line);
+}
+
+.pg-state-pill.failed {
+  background: var(--graph-bad-tint);
+  color: var(--graph-bad);
+  border-color: var(--graph-bad-line);
+}
+
+.pg-progress-block {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border-hairline-strong);
+  border-radius: 8px;
+  background: var(--color-bg-primary);
+}
+
+.pg-big {
+  font: 500 18px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-primary);
+}
+
+.pg-big small {
+  font-size: 12px;
+  color: var(--color-text-help);
+}
+
+.pg-pbar {
+  height: 6px;
+  margin: 8px 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--color-border-hairline-strong);
+}
+
+.pg-pbar i {
+  display: block;
+  height: 100%;
+  background: var(--graph-run);
+  transition: width 0.25s ease-out;
+}
+
+.pg-pbar.complete i {
+  background: var(--graph-ok);
+}
+
+.pg-pbar.failed i {
+  background: var(--graph-bad);
+}
+
+.pg-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--color-text-help);
+}
+
+.pg-counts b {
+  font: 500 11px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-muted);
+}
+
+.pg-reads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pg-reads code {
+  padding: 1px 6px;
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+}
+
+.pg-settings {
+  margin-top: 10px;
+}
+
+.pg-help {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-text-help);
+}
+
+.pg-slot-row {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-border-hairline-strong);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+}
+
+.pg-slot-row + .pg-slot-row {
+  margin-top: 6px;
+}
+
+.pg-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border: 2px solid;
+  border-radius: 50%;
+}
+
+.pg-slot-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pg-slot-title b {
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
-.graph-inspector-files {
-  margin: 0 0 6px;
-  padding-left: 16px;
-  font-size: 11px;
+.pg-slot-sub {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--color-text-help);
+}
+
+.pg-slot-sub code {
   color: var(--color-text-muted);
+}
+
+.pg-disk-row {
+  margin-bottom: 6px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-border-hairline-strong);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+}
+
+.pg-disk-row.io-read {
+  --pg-io: var(--graph-read);
+}
+
+.pg-disk-row.io-write {
+  --pg-io: var(--graph-write);
+}
+
+.pg-dr-name {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pg-io);
+}
+
+.pg-kv {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 5px 10px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.pg-kv dt {
+  color: var(--color-text-help);
+}
+
+.pg-kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-primary);
+}
+
+.pg-inspector pre {
+  margin: 8px 0 0;
+  padding: 10px;
+  border: 1px solid var(--color-border-hairline-strong);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+  font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-text-muted);
+}
+
+.pg-path {
+  display: block;
   overflow-wrap: anywhere;
 }
 
-.graph-inspector-settings {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border-hairline);
+.pg-reads + .pg-help {
+  margin-top: 8px;
 }

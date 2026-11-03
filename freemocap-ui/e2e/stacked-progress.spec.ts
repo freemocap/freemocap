@@ -13,10 +13,10 @@ test('concurrent exports have independent bars and retain a completed sibling', 
         const operation = (operation_id, changes={}) => ({operation_id, label:operation_id, status:'running', progress_fraction:null, detail:'', completed:null,total:null,unit:null,elapsed_seconds:42.6,seconds_per_motion_frame:0.0384,...changes});
         window.showCompletedExport = () => root.render(<Bars operations={[
             operation('Save CSV', {status:'complete',progress_fraction:1}), operation('Export Blender')
-        ]}/>);
+        ]} plan={null}/>);
         root.render(<Bars operations={[
             operation('Save CSV',{progress_fraction:0.25,completed:1,total:4,unit:'channels'}),operation('Export Blender')
-        ]}/>);
+        ]} plan={null}/>);
     `}, bundle: true, write: false, format: 'esm', jsx: 'automatic'});
     await page.addScriptTag({content: result.outputFiles[0].text, type: 'module'});
     await expect(page.getByRole('progressbar')).toHaveCount(2);
@@ -55,7 +55,7 @@ for (const cardWidth of [440, 900]) test(`styled stacked operations remain reada
               operation('Save annotated camera video 3',{status:'complete',progress_fraction:1}),
               operation('Save files (CSV, NPY and NPZ)',{progress_fraction:1/3,completed:5,total:15,unit:'channels',detail:'Writing landmark coordinates and validating saved values.'}),
               operation('Create Blender scene, FBX and BVH files',{detail:'Blender is running in a separate process.'})
-            ]}/>
+            ]} plan={null}/>
           </div>
         </div>);
     `}, bundle:true,write:false,outdir:'styled-progress',format:'esm',jsx:'automatic',

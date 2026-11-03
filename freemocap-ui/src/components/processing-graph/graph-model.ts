@@ -1,7 +1,8 @@
 import type {ProcessingPlan} from '@/services/recording/processing-plan';
+import type {TaskOperation} from '@/services/server/transport/message-contract';
 import {PROCESSING_STAGES} from '@/services/recording/posthoc-processing';
 
-export type NodeEffect = ProcessingPlan['graph']['nodes'][number]['effects'][number];
+type PlanNode = ProcessingPlan['graph']['nodes'][number];
 
 /** The settings section that holds a node's configuration, named as in the mocap processing window. */
 export type SettingsSectionName = 'Processing stages' | 'Detectors' | 'Camera geometry' | 'Triangulation'
@@ -9,22 +10,34 @@ export type SettingsSectionName = 'Processing stages' | 'Detectors' | 'Camera ge
 
 export interface DisplaySlot {
     name: string;
-    /** The data contract kind carried by the slot, or the record/disk/display a terminal stands for. */
+    /** The data contract kind; slots and wires of one kind share a colour. */
     kind: string;
+    /** The node feeding an input slot. */
+    from: string | null;
 }
 
-/** A computation in the plan, or a terminal: where data enters (source) or ends (sink). */
+export interface DiskFile {
+    name: string;
+    path: string;
+}
+
+/** A plan node as drawn: a card with typed slots, and a disk card when it loads or saves. */
 export interface DisplayNode {
     id: string;
-    role: 'operation' | 'source' | 'sink';
     title: string;
+    resource: string;
+    stageNumber: number;
     stageLabel: string;
-    effect: NodeEffect | null;
+    camera: number | null;
+    annotation: boolean;
+    /** Saves win over loads: a node that reads and writes the recording file is a save. */
+    io: 'read' | 'write' | null;
+    files: DiskFile[];
     inputs: DisplaySlot[];
     outputs: DisplaySlot[];
-    section: SettingsSectionName | null;
-    /** Files a source reads, from the plan's read paths. */
-    files: string[];
+    section: SettingsSectionName;
+    settings: string[];
+    definition: PlanNode;
 }
 
 export interface DisplayEdge {
@@ -33,11 +46,15 @@ export interface DisplayEdge {
     sourceSlot: string;
     target: string;
     targetSlot: string;
+    kind: string;
+    annotation: boolean;
 }
 
 export interface DisplayGraph {
     nodes: DisplayNode[];
     edges: DisplayEdge[];
+    /** Data kinds in order of first appearance; a kind's index picks its colour. */
+    kinds: string[];
 }
 
 const TITLES: Record<string, string> = {
@@ -79,7 +96,7 @@ const SECTIONS: Record<string, SettingsSectionName> = {
     reconstruct_skeletons: 'Post-processing',
     observation_request: 'Processing stages',
     save_observations: 'Processing stages',
-    spatial_request: 'Processing stages',
+    spatial_request: 'Camera geometry',
     save_spatial: 'Processing stages',
     save_recording: 'Processing stages',
     stage_result_request: 'Processing stages',
@@ -92,79 +109,147 @@ const SECTIONS: Record<string, SettingsSectionName> = {
     blender: 'Blender',
 };
 
+/** Request fields each operation reads (mocap_task_config.py names), shown in the inspector. */
+const SETTINGS: Record<string, string[]> = {
+    load_and_track: ['detectorType', 'rtmPoseModelName', 'rtmPoseConfidenceThreshold', 'executionProvider', 'charucoTrackingEnabled', 'charucoBoard', 'videoFps'],
+    annotate: ['detectorType', 'rtmPoseModelName', 'rtmPoseConfidenceThreshold', 'graphAnnotate'],
+    match_and_triangulate: ['cameraMatching', 'triangulationConfig', 'calibrationTomlPath'],
+    filter_trajectories: ['filterConfig'],
+    align_reference: ['bodyAlignment', 'anchorSegmentName', 'detectorType'],
+    reconstruction_input: ['anchorSegmentName', 'detectorType', 'charucoBoard'],
+    fit_model_dimensions: ['anchorSegmentName', 'detectorType'],
+    reconstruct_skeletons: ['anchorSegmentName', 'detectorType'],
+    observation_request: ['detectorType', 'baseRunId', 'startStage'],
+    save_observations: ['startStage', 'baseRunId', 'runSaveMode'],
+    spatial_request: ['bodyAlignment.additional_transform'],
+    save_spatial: ['baseRunId', 'runSaveMode'],
+    save_recording: ['calibrationTomlPath', 'baseRunId', 'runSaveMode'],
+    load_saved_observations: ['baseRunId', 'sensorGroup'],
+    load_saved_spatial: ['baseRunId', 'sensorGroup'],
+    load_saved_model_fits: ['baseRunId', 'sensorGroup'],
+    save_stage_result: ['startStage', 'stopStage', 'runSaveMode'],
+    save_model_fits: ['baseRunId', 'runSaveMode'],
+    stage_result_request: ['stopStage'],
+    channel_exports: ['exportOptions'],
+    export_recording: ['exportOptions'],
+    tall_csv: ['exportTallCsv'],
+    export_tall_csv: ['exportTallCsv'],
+    blender: ['exportToBlender', 'blenderImportRoute', 'blenderExportConfig', 'autoOpenBlendFile'],
+};
+
 const ANNOTATION = /^annotate_camera_(\d+)$/;
 
 export function nodeTitle(id: string): string {
     const annotation = ANNOTATION.exec(id);
-    if (annotation) return `Draw tracking on video ${Number(annotation[1]) + 1}`;
+    if (annotation) return `Annotate video ${Number(annotation[1]) + 1}`;
     const title = TITLES[id];
     if (!title) throw new Error(`The graph view has no title for plan node "${id}"`);
     return title;
 }
 
-export function nodeSection(id: string): SettingsSectionName | null {
+export function nodeSection(id: string): SettingsSectionName {
     if (ANNOTATION.test(id)) return 'Detectors';
     const section = SECTIONS[id];
     if (!section) throw new Error(`The graph view has no settings section for plan node "${id}"`);
     return section;
 }
 
-export function stageLabel(stage: string | null): string {
-    if (stage === null) return '';
-    const entry = PROCESSING_STAGES.find(([key]) => key === stage);
-    if (!entry) throw new Error(`Unknown processing stage "${stage}"`);
-    return entry[1];
+function stageOf(stage: string | null): {stageNumber: number; stageLabel: string} {
+    if (stage === null) return {stageNumber: 0, stageLabel: ''};
+    const index = PROCESSING_STAGES.findIndex(([key]) => key === stage);
+    if (index < 0) throw new Error(`Unknown processing stage "${stage}"`);
+    return {stageNumber: index + 1, stageLabel: PROCESSING_STAGES[index][1]};
 }
 
-const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+export const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
-/** A short name for what a source reads: one file by name, several by count and kind. */
-export function describeFiles(files: string[]): string {
-    if (files.length === 0) return 'Saved recording data';
-    if (files.length === 1) return basename(files[0]);
-    const extensions = new Set(files.map(file => basename(file).split('.').pop()?.toLowerCase()));
-    if (extensions.size === 1 && ['mp4', 'avi', 'mov', 'mkv'].includes([...extensions][0] ?? '')) return `${files.length} videos`;
-    return `${files.length} files`;
-}
-
-const SINK_TITLES: Record<'write_disk' | 'display', string> = {write_disk: 'Saved to disk', display: 'Opened for display'};
-
-/**
- * The plan as drawn: every operation, plus a source terminal for each record or live read
- * and a sink terminal for each disk write or display. Terminals come only from declared effects.
- */
+/** The plan as drawn. Disk cards come only from declared effects and the plan's read paths. */
 export function displayGraph(plan: ProcessingPlan): DisplayGraph {
-    const nodes: DisplayNode[] = [];
-    const edges: DisplayEdge[] = plan.graph.edges.map(edge => ({
-        id: `${edge.source.node}.${edge.source.port}->${edge.target.node}.${edge.target.port}`,
-        source: edge.source.node, sourceSlot: edge.source.port,
-        target: edge.target.node, targetSlot: edge.target.port,
-    }));
-    for (const node of plan.graph.nodes) {
-        const reads = node.effects.filter(effect => effect === 'read_record' || effect === 'read_live');
-        const sinks = node.effects.filter((effect): effect is 'write_disk' | 'display' => effect === 'write_disk' || effect === 'display');
-        const files = plan.read_paths[node.id] ?? [];
-        nodes.push({
-            id: node.id, role: 'operation', title: nodeTitle(node.id), stageLabel: stageLabel(node.stage), effect: null,
-            inputs: [...node.inputs.map(port => ({name: port.name, kind: port.contract.kind})),
-                ...reads.map(effect => ({name: `@${effect}`, kind: effect === 'read_live' ? 'live source' : 'record'}))],
-            outputs: [...node.outputs.map(port => ({name: port.name, kind: port.contract.kind})),
-                ...sinks.map(effect => ({name: `@${effect}`, kind: effect === 'display' ? 'display' : 'disk'}))],
-            section: nodeSection(node.id), files,
-        });
-        for (const effect of reads) {
-            const id = `${effect}:${node.id}`;
-            nodes.push({id, role: 'source', title: effect === 'read_live' ? 'Live cameras' : describeFiles(files),
-                stageLabel: '', effect, inputs: [], outputs: [{name: 'data', kind: effect === 'read_live' ? 'live source' : 'record'}],
-                section: null, files});
-            edges.push({id: `${id}->${node.id}`, source: id, sourceSlot: 'data', target: node.id, targetSlot: `@${effect}`});
-        }
-        for (const effect of sinks) {
-            const id = `${effect}:${node.id}`;
-            nodes.push({id, role: 'sink', title: SINK_TITLES[effect], stageLabel: '', effect,
-                inputs: [{name: 'data', kind: effect === 'display' ? 'display' : 'disk'}], outputs: [], section: null, files: []});
-            edges.push({id: `${node.id}->${id}`, source: node.id, sourceSlot: `@${effect}`, target: id, targetSlot: 'data'});
-        }
+    const kinds: string[] = [];
+    const note = (kind: string): void => {
+        if (!kinds.includes(kind)) kinds.push(kind);
+    };
+    const nodeKinds = new Map(plan.graph.nodes.map(node => [node.id, node]));
+    const edges: DisplayEdge[] = plan.graph.edges.map(edge => {
+        const source = nodeKinds.get(edge.source.node);
+        if (!source) throw new Error(`Plan edge from unknown node "${edge.source.node}"`);
+        const port = source.outputs.find(output => output.name === edge.source.port);
+        if (!port) throw new Error(`Plan edge from unknown slot "${edge.source.node}.${edge.source.port}"`);
+        return {id: `${edge.source.node}.${edge.source.port}>${edge.target.node}.${edge.target.port}`,
+            source: edge.source.node, sourceSlot: edge.source.port, target: edge.target.node, targetSlot: edge.target.port,
+            kind: port.contract.kind, annotation: ANNOTATION.test(edge.target.node)};
+    });
+    const nodes = plan.graph.nodes.map((node): DisplayNode => {
+        const annotation = ANNOTATION.exec(node.id);
+        const io = node.effects.includes('write_disk') ? 'write' : node.effects.includes('read_record') || node.effects.includes('read_live') ? 'read' : null;
+        const paths = plan.read_paths[node.id] ?? [];
+        node.inputs.forEach(port => note(port.contract.kind));
+        node.outputs.forEach(port => note(port.contract.kind));
+        return {
+            id: node.id, title: nodeTitle(node.id), resource: node.execution_resource, ...stageOf(node.stage),
+            camera: annotation ? Number(annotation[1]) : null, annotation: Boolean(annotation), io,
+            files: paths.map(path => ({name: basename(path), path})),
+            inputs: node.inputs.map(port => ({name: port.name, kind: port.contract.kind,
+                from: edges.find(edge => edge.target === node.id && edge.targetSlot === port.name)?.source ?? null})),
+            outputs: node.outputs.map(port => ({name: port.name, kind: port.contract.kind, from: null})),
+            section: nodeSection(node.id), settings: SETTINGS[annotation ? 'annotate' : node.id] ?? [], definition: node,
+        };
+    });
+    return {nodes, edges, kinds};
+}
+
+/** A launched processing task: the plan it was admitted with and its operations as the server reports them. */
+export interface LaunchedRun {
+    taskId: string;
+    status: 'queued' | 'running' | 'complete' | 'failed' | 'cancelled';
+    plan: ProcessingPlan;
+    operations: TaskOperation[];
+}
+
+export type OperationState = TaskOperation['status'];
+
+/** Each plan node's operation. Operation ids are plan node ids; an admitted run reports one for every node. */
+export function runOperations(run: LaunchedRun): Map<string, TaskOperation> {
+    const operations = new Map(run.operations.map(operation => [operation.operation_id, operation]));
+    if (run.operations.length === 0) return operations;
+    const missing = run.plan.graph.nodes.filter(node => !operations.has(node.id)).map(node => node.id);
+    if (missing.length) throw new Error(`Task ${run.taskId} reports no operation for plan node(s): ${missing.join(', ')}`);
+    return operations;
+}
+
+/** Counts with their unit when the server reports them; otherwise elapsed time; otherwise nothing. */
+export function operationCount(operation: TaskOperation): string {
+    if (operation.completed !== null && operation.total !== null) {
+        return `${operation.completed}/${operation.total}${operation.unit ? ` ${operation.unit}` : ''}`;
     }
-    return {nodes, edges};
+    if (operation.elapsed_seconds !== null) return `${operation.elapsed_seconds.toFixed(1)} s`;
+    return '';
+}
+
+/** Operations of one processing stage, in the plan's topological order. Stage 0 holds work outside the stages. */
+export interface OperationGroup {
+    stageNumber: number;
+    stageLabel: string;
+    rows: {title: string; operation: TaskOperation}[];
+}
+
+/** A run's operations in an order fixed at launch: by processing stage, then by the plan's topological order. */
+export function operationGroups(plan: ProcessingPlan, operations: TaskOperation[]): OperationGroup[] {
+    const planIds = new Set(plan.graph.nodes.map(node => node.id));
+    const unplanned = operations.filter(operation => !planIds.has(operation.operation_id)).map(operation => operation.operation_id);
+    if (unplanned.length) throw new Error(`Operations not in the task's plan: ${unplanned.join(', ')}`);
+    if (operations.length === 0) return [];
+    const byId = new Map(operations.map(operation => [operation.operation_id, operation]));
+    const stages = new Map(plan.graph.nodes.map(node => [node.id, stageOf(node.stage)]));
+    const groups = new Map<number, OperationGroup>();
+    for (const id of plan.topological_order) {
+        const operation = byId.get(id);
+        if (!operation) throw new Error(`The task reports no operation for plan node "${id}"`);
+        const stage = stages.get(id)!;
+        const group = groups.get(stage.stageNumber) ?? {...stage, rows: []};
+        group.rows.push({title: nodeTitle(id), operation});
+        groups.set(stage.stageNumber, group);
+    }
+    const rank = (group: OperationGroup): number => group.stageNumber === 0 ? PROCESSING_STAGES.length + 1 : group.stageNumber;
+    return [...groups.values()].sort((a, b) => rank(a) - rank(b));
 }

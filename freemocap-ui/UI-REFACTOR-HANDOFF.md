@@ -21,8 +21,8 @@ from an environment without GitHub credentials and cannot push. The owner does n
 - [x] **4.** Redesign the Mocap processing modal's list view on the canvas from that inventory and implement the approved version in `mocap-setup-modal.tsx` and its settings sections.
 - [x] **5.** Move the "Processing stages" choices (start stage, stop stage, saved run to start from, overwrite or keep that run) from `MocapStageSelection` component state into the shared mocap Redux store, so the list view and the graph view read and edit the same values.
 - [x] **6.** Backend work in "Backend asks" below, built by the local agent; this branch reviews it and consumes it.
-- [ ] **7.** Implement the Graph view in the playback Mocap processing modal by porting the Graph Lab renderer and inspector to React/TypeScript.
-- [ ] **8.** Connect live operation progress from task snapshots to the Graph view nodes by operation id.
+- [x] **7.** Implement the Graph view in the playback Mocap processing modal by porting the Graph Lab renderer and inspector to React/TypeScript.
+- [x] **8.** Connect live operation progress from task snapshots to the Graph view nodes by operation id.
 - [ ] **9.** Merge the latest `sfn26` into `sfn26-ui-refactor`, resolve conflicts, and hand the branch off for the merge back.
 
 ## 52b97572 Apply the Skull theme colours, theme-aware icons and danger tokens
@@ -119,10 +119,12 @@ suites, and the backend tests from `89224110` on this branch.
 - Playback mode has a List | Graph switch at the top of the window's navigation. Graph view posts the same
   configuration Process sends (`mocapProcessingConfig` in `mocap-thunks.ts`) to
   `POST /freemocap/recordings/{id}/processing/plan`, 250 ms after the last settings change, and draws the plan.
-- `components/processing-graph/`: `graph-model.ts` turns plan nodes into titled operations and adds a source
-  terminal for each `read_record`/`read_live` effect and a sink for each `write_disk`/`display` effect;
-  `graph-layout.ts` is the Graph Lab layered layout in TypeScript; `ProcessingGraphView.tsx` draws it with pan,
-  wheel zoom and Fit, and the side panel shows the selected node's files and its real settings section.
+- `components/processing-graph/` draws the plan with the approved Graph Lab design (design canvas boards 2–6):
+  per-data-type slot and wire colours (`--graph-type-*` in `color.css`), cut-corner load and save cards with
+  folder rails (`--graph-read`, `--graph-write`), dashed annotation wires, hover focus, legend, left-to-right
+  and top-down layouts, 75% readable starting zoom, Fit all / 100% / Focus node, and the node inspector with
+  the settings it reads, the real settings section, typed inputs and outputs, files read, and the GraphNode.
+  Load or save comes only from the node's declared effects; save cards show the written path once a run reports it.
 - An unknown plan node id fails loudly in the view ("no title for plan node …"); add it to `graph-model.ts`.
 - The saved-stage inventory now loads once per recording in the modal (`useSavedStageInventory`).
 - `graph-model.test.ts` checks three plans built from the production recipes
@@ -134,7 +136,27 @@ selected; start at Gap filling (saved run) ; finish at Triangulation; a configur
 example no calibration file) showing the errors. Save to `.test-artifacts/ui-inventory/graph-*.png`.
 Report any plan node the view cannot name.
 
-## Backend asks (local agent builds; UI branch reviews and consumes)
+## 0c874d36 Live run on the graph; progress bars in plan order
+
+- Process Mocap keeps the window open and switches to Graph. Once the server accepts, the graph draws the
+  task snapshot's `plan` (the plan the run was admitted with) and each node's operation by id: waiting ring,
+  running pulse with animated incoming wires and save rail, complete tick, failed cross, cancelled dashed.
+  Footer bars and counts come from the operation (`completed/total unit`, else elapsed); no invented percentages.
+- Save cards name `files_written`; load cards name `files_read`, falling back to the plan's read paths.
+- Inspector: state pill, progress block (counts, bar, detail, elapsed, s per motion frame), what a waiting
+  node waits for, files read and saved. Live settings are not shown for a run; "New draft" returns to the draft.
+- Toolbar status pill (draft / queued / running / complete / failed / cancelled) and "n/N operations complete".
+  Footer button reads Close while a run is shown (closing does not cancel the run).
+- Fails loudly in view: a run whose operations miss a plan node, a task reported without its plan.
+- Progress panel: a task with a plan lists every bar from launch, grouped "Stage N · name" in plan order,
+  named as in the graph (server label on hover). Tasks without a plan keep the server's order.
+- `pipelines-slice` keeps `plan` per task; `dispatchProcessMocapRecording` returns the thunk promise.
+
+Run: unit suite (graph-model 20, operation-progress 9), full E2E. Then with the server and
+`freemocap_sample_data`: Process from Graph and capture `.test-artifacts/ui-inventory/graph-live-{running,done}.png`
+and the progress panel during the run (`progress-ordered.png`). Report any run whose operations do not match
+its plan nodes, and whether save operations report `files_written` (and annotation saves their video paths).
+
 
 Current-code facts the UI relies on: `experiments/executable_graph_lab/production_view/DESIGN-SESSION-HANDOFF.md` section 0.
 DLC is out of scope for this work; keep its current behaviour intact and do not plan around it.

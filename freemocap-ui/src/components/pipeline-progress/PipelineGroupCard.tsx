@@ -245,7 +245,7 @@ export default function PipelineGroupCard({
 
       {group.aggregator && (
         <div className="flex flex-col gap-2 p-2 br-2 bg-darkgray ">
-          {group.aggregator.operations?.length ? <OperationProgressBars operations={group.aggregator.operations}/> : group.pipelineType === PipelineType.CALIBRATION &&
+          {group.aggregator.operations?.length ? <OperationProgressBars operations={group.aggregator.operations} plan={group.aggregator.plan ?? null}/> : group.pipelineType === PipelineType.CALIBRATION &&
             (group.aggregator.calibrationStage || group.isComplete) ? (
             CALIBRATION_STAGES.map((stage, index) => {
               const aggregator = group.aggregator!;

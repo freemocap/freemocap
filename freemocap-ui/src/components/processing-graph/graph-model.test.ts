@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {ProcessingPlanSchema} from '@/services/server/transport/message-contract';
-import {displayGraph} from './graph-model';
+import {displayGraph, type LaunchedRun, operationCount, runOperations} from './graph-model';
 import {computeLayout, type GraphDirection} from './graph-layout';
 // Plans from the production recipes; regenerate with tools/make-processing-plan-fixtures.py.
 import full from './fixtures/plan-full.json';
@@ -70,4 +70,31 @@ test('an unknown plan node fails loudly instead of being drawn unnamed', () => {
     const plan = ProcessingPlanSchema.parse(full.plan);
     const broken = {...plan, graph: {...plan.graph, nodes: [...plan.graph.nodes, {...plan.graph.nodes[0], id: 'unknown_operation'}]}};
     assert.throws(() => displayGraph(broken), /unknown_operation/);
+});
+
+const operation = (id: string): LaunchedRun['operations'][number] => ({operation_id: id, label: id, status: 'waiting',
+    progress_fraction: null, detail: '', completed: null, total: null, unit: null, elapsed_seconds: null, seconds_per_motion_frame: null});
+
+test('a launched run maps every plan node to its operation by id', () => {
+    const plan = ProcessingPlanSchema.parse(full.plan);
+    const run: LaunchedRun = {taskId: 'task', status: 'running', plan, operations: plan.graph.nodes.map(node => operation(node.id))};
+    const operations = runOperations(run);
+    for (const node of plan.graph.nodes) assert.equal(operations.get(node.id)?.operation_id, node.id);
+});
+
+test('a queued run with no operations yet draws every node waiting', () => {
+    const plan = ProcessingPlanSchema.parse(full.plan);
+    assert.equal(runOperations({taskId: 'task', status: 'queued', plan, operations: []}).size, 0);
+});
+
+test('a run missing an operation for a plan node fails loudly', () => {
+    const plan = ProcessingPlanSchema.parse(full.plan);
+    const operations = plan.graph.nodes.slice(1).map(node => operation(node.id));
+    assert.throws(() => runOperations({taskId: 'task', status: 'running', plan, operations}), new RegExp(plan.graph.nodes[0].id));
+});
+
+test('operation counts carry their unit, then fall back to elapsed time', () => {
+    assert.equal(operationCount({...operation('a'), completed: 120, total: 900, unit: 'camera images'}), '120/900 camera images');
+    assert.equal(operationCount({...operation('a'), elapsed_seconds: 3.25}), '3.3 s');
+    assert.equal(operationCount(operation('a')), '');
 });

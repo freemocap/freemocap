@@ -198,6 +198,16 @@
   --graph-node-fill: var(--color-bg-secondary);
   --graph-node-annotation-fill: #2b2a22;
   --graph-canvas-dot: #2a3434;
+  /* Operation states in a launched run. */
+  --graph-run: var(--blue-300);
+  --graph-run-line: var(--blue-600);
+  --graph-run-tint: var(--blue-900);
+  --graph-ok: var(--green-100);
+  --graph-ok-line: var(--green-500);
+  --graph-ok-tint: var(--green-800);
+  --graph-bad: var(--red-400);
+  --graph-bad-line: var(--red-700);
+  --graph-bad-tint: var(--red-900);
 
   /* One colour per data type, assigned in order of first appearance in a plan. */
   --graph-type-1: #8ab6ff;

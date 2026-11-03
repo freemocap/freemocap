@@ -110,6 +110,41 @@
   color: var(--blue-300);
 }
 
+.pg-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--color-bg-tertiary);
+  background: var(--color-surface-control);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--color-text-primary);
+}
+
+.pg-status-pill i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-help);
+}
+
+.pg-status-pill.running i {
+  background: var(--graph-run);
+  box-shadow: 0 0 0 3px var(--graph-run-tint);
+}
+
+.pg-status-pill.complete i {
+  background: var(--graph-ok);
+}
+
+.pg-status-pill.failed i {
+  background: var(--graph-bad);
+}
+
 .pg-seg {
   display: inline-flex;
 }
@@ -349,6 +384,134 @@
   stroke-width: 1.75;
 }
 
+/* ---------- operation states in a launched run (after the disk rule so a state stroke wins) ---------- */
+.pg-node.complete .pg-body {
+  stroke: var(--graph-ok-line);
+}
+
+.pg-node.running .pg-body {
+  stroke: var(--graph-run-line);
+}
+
+.pg-node.running .pg-halo {
+  stroke: rgba(134, 194, 197, 0.28);
+  stroke-width: 5;
+}
+
+.pg-node.failed .pg-body {
+  stroke: var(--graph-bad);
+}
+
+.pg-node.cancelled .pg-body {
+  stroke-dasharray: 4 3;
+}
+
+.pg-node.selected.running .pg-halo {
+  stroke: var(--blue-300);
+  stroke-width: 2;
+}
+
+.pg-bar {
+  fill: var(--graph-run);
+  transition: width 0.25s ease-out;
+}
+
+.pg-node.complete .pg-bar {
+  fill: var(--graph-ok);
+}
+
+.pg-node.failed .pg-bar {
+  fill: var(--graph-bad);
+}
+
+.pg-node.cancelled .pg-bar {
+  fill: var(--color-text-help);
+}
+
+.pg-st path,
+.pg-st circle {
+  vector-effect: non-scaling-stroke;
+}
+
+.pg-st-run {
+  fill: var(--graph-run);
+}
+
+.pg-st-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pg-pulse 1.2s ease-out infinite;
+}
+
+@keyframes pg-pulse {
+  from { transform: scale(1); opacity: 0.7; }
+  to { transform: scale(2.4); opacity: 0; }
+}
+
+.pg-st-okc {
+  fill: var(--graph-ok-tint);
+  stroke: var(--graph-ok);
+  stroke-width: 1.5;
+}
+
+.pg-st-okm {
+  fill: none;
+  stroke: var(--graph-ok);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pg-st-badc {
+  fill: var(--graph-bad-tint);
+  stroke: var(--graph-bad);
+  stroke-width: 1.5;
+}
+
+.pg-st-badm {
+  fill: none;
+  stroke: var(--graph-bad);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.pg-st-canc {
+  fill: none;
+  stroke: var(--color-text-help);
+  stroke-width: 1.5;
+}
+
+.pg-st-canm {
+  fill: none;
+  stroke: var(--color-text-help);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.pg-node.running .pg-disk .pg-rail-in {
+  stroke: var(--pg-io);
+  stroke-dasharray: 3 4;
+  animation: pg-flow 0.7s linear infinite;
+}
+
+.pg-edge.flow {
+  stroke-dasharray: 3 5;
+  animation: pg-flow 0.7s linear infinite;
+  opacity: 1;
+}
+
+@keyframes pg-flow {
+  to { stroke-dashoffset: -16; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-edge.flow,
+  .pg-st-pulse,
+  .pg-node.running .pg-disk .pg-rail-in {
+    animation: none;
+  }
+}
+
 .pg-io-tag {
   fill: var(--pg-io);
   font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -408,6 +571,10 @@
   fill: var(--color-text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 11px;
+}
+
+.pg-disk-file.more {
+  fill: var(--color-text-help);
 }
 
 .pg-disk-file.pending {
@@ -529,6 +696,78 @@ svg.lod-low .pg-port-none {
   color: var(--color-text-muted);
 }
 
+.pg-state-pill.running {
+  background: var(--graph-run-tint);
+  color: var(--graph-run);
+  border-color: var(--graph-run-line);
+}
+
+.pg-state-pill.complete {
+  background: var(--graph-ok-tint);
+  color: var(--graph-ok);
+  border-color: var(--graph-ok-line);
+}
+
+.pg-state-pill.failed {
+  background: var(--graph-bad-tint);
+  color: var(--graph-bad);
+  border-color: var(--graph-bad-line);
+}
+
+.pg-progress-block {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--color-border-hairline-strong);
+  border-radius: 8px;
+  background: var(--color-bg-primary);
+}
+
+.pg-big {
+  font: 500 18px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-primary);
+}
+
+.pg-big small {
+  font-size: 12px;
+  color: var(--color-text-help);
+}
+
+.pg-pbar {
+  height: 6px;
+  margin: 8px 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--color-border-hairline-strong);
+}
+
+.pg-pbar i {
+  display: block;
+  height: 100%;
+  background: var(--graph-run);
+  transition: width 0.25s ease-out;
+}
+
+.pg-pbar.complete i {
+  background: var(--graph-ok);
+}
+
+.pg-pbar.failed i {
+  background: var(--graph-bad);
+}
+
+.pg-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--color-text-help);
+}
+
+.pg-counts b {
+  font: 500 11px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--color-text-muted);
+}
+
 .pg-reads {
   display: flex;
   flex-wrap: wrap;
@@ -610,6 +849,10 @@ svg.lod-low .pg-port-none {
   --pg-io: var(--graph-read);
 }
 
+.pg-disk-row.io-write {
+  --pg-io: var(--graph-write);
+}
+
 .pg-dr-name {
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 12.5px;
@@ -650,4 +893,8 @@ svg.lod-low .pg-port-none {
 .pg-path {
   display: block;
   overflow-wrap: anywhere;
+}
+
+.pg-reads + .pg-help {
+  margin-top: 8px;
 }

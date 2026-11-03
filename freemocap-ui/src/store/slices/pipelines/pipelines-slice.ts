@@ -1,7 +1,7 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../root-state-types';
 import {stopAllPipelines, stopPipeline} from './pipelines-thunks';
-import type {TaskOperation, TaskRegistrySnapshot} from '@/services/server/transport/message-contract';
+import type {ProcessingPlan, TaskOperation, TaskRegistrySnapshot} from '@/services/server/transport/message-contract';
 import {loadFromStorage} from '@/store/persistence';
 
 export function phaseForTask(phase: string): PipelinePhase {
@@ -87,6 +87,8 @@ export interface PipelineProgress {
     recordingName: string;
     recordingPath: string;
     operations?: TaskOperation[];
+    /** The plan this task runs, fixed when it was admitted. */
+    plan?: ProcessingPlan | null;
     timing?: TaskRegistrySnapshot['tasks'][number]['timing'];
     taskStatus?: TaskRegistrySnapshot['tasks'][number]['status'];
     calibrationStage?: PipelinePhase;
@@ -160,7 +162,7 @@ export const pipelinesSlice = createSlice({
                 const phase = phaseForTask(task.progress.phase);
                 const terminal = !['queued', 'running'].includes(task.status);
                 state.activePipelines[task.task_id] = {...common, pipelineId: task.task_id, cameraId: null,
-                    operations: task.operations, taskStatus: task.status, timing: task.timing,
+                    operations: task.operations, plan: task.plan ?? null, taskStatus: task.status, timing: task.timing,
                     phase, progress: task.progress.progress_fraction === null ? null : Math.round(task.progress.progress_fraction * 100),
                     detail: task.progress.detail, completedAt: terminal ? Date.parse(task.updated_at) : undefined,
                     calibrationStage: CALIBRATION_STAGES.includes(phase) ? phase : undefined};

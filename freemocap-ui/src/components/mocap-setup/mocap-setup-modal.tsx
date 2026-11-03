@@ -23,8 +23,8 @@ import {PROCESSING_STAGES} from '@/services/recording/posthoc-processing';
 import {selectSourceRunId, selectStageSelection} from '@/store/slices/processing-stages';
 import {useSavedStageInventory} from '@/hooks/useSavedStageInventory';
 import {useProcessingPlan} from '@/hooks/useProcessingPlan';
-import ProcessingGraphView from '@/components/processing-graph/ProcessingGraphView';
-import type {SettingsSectionName} from '@/components/processing-graph/graph-model';
+import ProcessingGraphView, {GraphNotice} from '@/components/processing-graph/ProcessingGraphView';
+import type {LaunchedRun, SettingsSectionName} from '@/components/processing-graph/graph-model';
 import {selectBlender} from '@/store/slices/blender';
 import {useRecordingCalibrationDefault} from '@/hooks/useRecordingCalibrationDefault';
 
@@ -65,7 +65,24 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
     const [view, setView] = useState<'list' | 'graph'>('list');
     const graphView = mode === 'playback' && view === 'graph';
     useSavedStageInventory(mode === 'playback' ? mocapRecordingPath : null);
-    const planState = useProcessingPlan(graphView ? mocapRecordingPath : null, processSelection);
+    const [launchedTaskId, setLaunchedTaskId] = useState<string | null>(null);
+    const [launching, setLaunching] = useState(false);
+    const launched = useAppSelector(state => launchedTaskId ? state.pipelines.activePipelines[launchedTaskId] ?? null : null);
+    const run = useMemo((): LaunchedRun | null => launched?.plan && launched.taskStatus
+        ? {taskId: launched.basePipelineId, status: launched.taskStatus, plan: launched.plan, operations: launched.operations ?? []}
+        : null, [launched]);
+    const planState = useProcessingPlan(graphView && !launchedTaskId ? mocapRecordingPath : null, processSelection);
+    const launchProcessing = async (selection: NonNullable<typeof processSelection>): Promise<void> => {
+        setLaunching(true);
+        setView('graph');
+        try {
+            const accepted = await dispatchProcessMocapRecording(selection).unwrap();
+            if (!accepted.pipeline_id) throw new Error('The server accepted processing without a task id');
+            setLaunchedTaskId(accepted.pipeline_id);
+        } finally {
+            setLaunching(false);
+        }
+    };
 
 
     useEffect(() => {
@@ -198,8 +215,12 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
                         }}/>)}
                 </nav>
                 {graphView && <div className="mocap-settings-content flex-1">
-                    <ProcessingGraphView planState={planState} sectionContent={(name: SettingsSectionName) =>
-                        <div className="settings-layout">{sections.find(section => section.name === name)?.content}</div>}/>
+                    {launching ? <GraphNotice warn={false}>Starting the run…</GraphNotice>
+                        : launchedTaskId && !launched ? <GraphNotice warn={false}>Waiting for the server to report run {launchedTaskId}…</GraphNotice>
+                        : launchedTaskId && !run ? <GraphNotice warn>The server reported run {launchedTaskId} without its processing plan.</GraphNotice>
+                        : <ProcessingGraphView planState={planState} run={run} onNewDraft={() => setLaunchedTaskId(null)}
+                            sectionContent={(name: SettingsSectionName) =>
+                                <div className="settings-layout">{sections.find(section => section.name === name)?.content}</div>}/>}
                 </div>}
                 <div ref={scrollContainerRef} style={graphView ? {display: 'none'} : undefined} className="mocap-settings-content settings-layout flex-1 overflow-y-auto">
                     {sections.filter(section => mode === 'playback' || section.name !== SetupSection.Stages).map(section => <div key={section.name}
@@ -215,12 +236,12 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({onClose, mode = "playb
             </div>
             <footer className="mocap-settings-footer flex flex-col align-end gap-2">
                 <div className="mocap-settings-actions flex flex-row gap-2">
-                    <ButtonSm text="Cancel" buttonType="quaternary" onClick={onClose}/>
+                    <ButtonSm text={launchedTaskId ? 'Close' : 'Cancel'} buttonType="quaternary" onClick={onClose}/>
                     {mode === "playback" ? (
                         <ButtonSm text="Process Mocap" textColor="text-white" iconClass="processmocap-icon"
                             buttonType="" className="primary accent"
-                            onClick={() => {if (processSelection) {dispatchProcessMocapRecording(processSelection); onClose?.();}}}
-                            disabled={!canProcessMocapRecording || !stageSelection} tooltip tooltipPosition="pos-top"
+                            onClick={() => {if (processSelection) void launchProcessing(processSelection);}}
+                            disabled={!canProcessMocapRecording || !stageSelection || launching} tooltip tooltipPosition="pos-top"
                             tooltipText={processBlockedReason ?? (stageSelection ? "Start mocap processing" : "Select a stage to process")}/>
                     ) : (
                         <ButtonSm text="Save" textColor="text-white" buttonType="" className="primary accent"

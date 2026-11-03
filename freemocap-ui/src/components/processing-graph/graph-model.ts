@@ -1,4 +1,5 @@
 import type {ProcessingPlan} from '@/services/recording/processing-plan';
+import type {TaskOperation} from '@/services/server/transport/message-contract';
 import {PROCESSING_STAGES} from '@/services/recording/posthoc-processing';
 
 type PlanNode = ProcessingPlan['graph']['nodes'][number];
@@ -160,7 +161,7 @@ function stageOf(stage: string | null): {stageNumber: number; stageLabel: string
     return {stageNumber: index + 1, stageLabel: PROCESSING_STAGES[index][1]};
 }
 
-const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+export const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 /** The plan as drawn. Disk cards come only from declared effects and the plan's read paths. */
 export function displayGraph(plan: ProcessingPlan): DisplayGraph {
@@ -195,4 +196,60 @@ export function displayGraph(plan: ProcessingPlan): DisplayGraph {
         };
     });
     return {nodes, edges, kinds};
+}
+
+/** A launched processing task: the plan it was admitted with and its operations as the server reports them. */
+export interface LaunchedRun {
+    taskId: string;
+    status: 'queued' | 'running' | 'complete' | 'failed' | 'cancelled';
+    plan: ProcessingPlan;
+    operations: TaskOperation[];
+}
+
+export type OperationState = TaskOperation['status'];
+
+/** Each plan node's operation. Operation ids are plan node ids; an admitted run reports one for every node. */
+export function runOperations(run: LaunchedRun): Map<string, TaskOperation> {
+    const operations = new Map(run.operations.map(operation => [operation.operation_id, operation]));
+    if (run.operations.length === 0) return operations;
+    const missing = run.plan.graph.nodes.filter(node => !operations.has(node.id)).map(node => node.id);
+    if (missing.length) throw new Error(`Task ${run.taskId} reports no operation for plan node(s): ${missing.join(', ')}`);
+    return operations;
+}
+
+/** Counts with their unit when the server reports them; otherwise elapsed time; otherwise nothing. */
+export function operationCount(operation: TaskOperation): string {
+    if (operation.completed !== null && operation.total !== null) {
+        return `${operation.completed}/${operation.total}${operation.unit ? ` ${operation.unit}` : ''}`;
+    }
+    if (operation.elapsed_seconds !== null) return `${operation.elapsed_seconds.toFixed(1)} s`;
+    return '';
+}
+
+/** Operations of one processing stage, in the plan's topological order. Stage 0 holds work outside the stages. */
+export interface OperationGroup {
+    stageNumber: number;
+    stageLabel: string;
+    rows: {title: string; operation: TaskOperation}[];
+}
+
+/** A run's operations in an order fixed at launch: by processing stage, then by the plan's topological order. */
+export function operationGroups(plan: ProcessingPlan, operations: TaskOperation[]): OperationGroup[] {
+    const planIds = new Set(plan.graph.nodes.map(node => node.id));
+    const unplanned = operations.filter(operation => !planIds.has(operation.operation_id)).map(operation => operation.operation_id);
+    if (unplanned.length) throw new Error(`Operations not in the task's plan: ${unplanned.join(', ')}`);
+    if (operations.length === 0) return [];
+    const byId = new Map(operations.map(operation => [operation.operation_id, operation]));
+    const stages = new Map(plan.graph.nodes.map(node => [node.id, stageOf(node.stage)]));
+    const groups = new Map<number, OperationGroup>();
+    for (const id of plan.topological_order) {
+        const operation = byId.get(id);
+        if (!operation) throw new Error(`The task reports no operation for plan node "${id}"`);
+        const stage = stages.get(id)!;
+        const group = groups.get(stage.stageNumber) ?? {...stage, rows: []};
+        group.rows.push({title: nodeTitle(id), operation});
+        groups.set(stage.stageNumber, group);
+    }
+    const rank = (group: OperationGroup): number => group.stageNumber === 0 ? PROCESSING_STAGES.length + 1 : group.stageNumber;
+    return [...groups.values()].sort((a, b) => rank(a) - rank(b));
 }

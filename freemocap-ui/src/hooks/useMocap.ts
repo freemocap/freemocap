@@ -214,9 +214,8 @@ export function useMocap() {
         dispatch(stopMocapRecording());
     }, [dispatch]);
 
-    const dispatchProcessMocapRecording = useCallback((selection?: StageSelection) => {
-        dispatch(processMocapRecording(selection));
-    }, [dispatch]);
+    const dispatchProcessMocapRecording = useCallback((selection?: StageSelection) =>
+        dispatch(processMocapRecording(selection)), [dispatch]);
 
     const setCalibrationTomlPath = useCallback(
         (path: string) => {

@@ -2,10 +2,11 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {TaskRegistrySnapshotSchema, type TaskOperation} from '@/services/server/transport/message-contract';
+import {ProcessingPlanSchema, TaskRegistrySnapshotSchema, type TaskOperation} from '@/services/server/transport/message-contract';
 import reducer, {taskSnapshotReceived, selectGroupedPipelinesAll} from '@/store/slices/pipelines/pipelines-slice';
 import ProcessingTiming from './ProcessingTiming';
 import OperationProgressBars from './OperationProgressBars';
+import fullPlan from '@/components/processing-graph/fixtures/plan-full.json';
 
 const operation = (operation_id: string, changes: Partial<TaskOperation> = {}): TaskOperation => ({
     operation_id, label: operation_id, status: 'running', progress_fraction: null,
@@ -57,7 +58,7 @@ test('bars show independent percentages, real counts and unmeasured work without
         operation('Export Blender'), operation('Save NPY', {status: 'complete', progress_fraction: 1}),
         operation('Save NPZ', {status: 'failed'}), operation('Save FBX', {status: 'cancelled'}),
         operation('Save BVH', {status: 'waiting'}),
-    ]}/>);
+    ]} plan={null}/>);
     assert.equal((html.match(/role="progressbar"/g) ?? []).length, 6);
     assert.equal((html.match(/aria-valuenow=/g) ?? []).length, 2);
     assert.match(html, /1 \/ 4 channels/);
@@ -88,7 +89,7 @@ test('elapsed times and motion-frame rates come directly from backend snapshots'
     raw.tasks[0].timing = {elapsed_seconds: 137, motion_frame_count: 1108, seconds_per_motion_frame: 0.124};
     const state = reducer(undefined, taskSnapshotReceived(raw));
     assert.deepEqual(state.activePipelines.recording.timing, raw.tasks[0].timing);
-    const rows = renderToStaticMarkup(<OperationProgressBars operations={raw.tasks[0].operations}/>);
+    const rows = renderToStaticMarkup(<OperationProgressBars operations={raw.tasks[0].operations} plan={null}/>);
     assert.match(rows, /42.6 s/);
     assert.match(rows, /38.4 ms \/ mocap frame/);
     const total = renderToStaticMarkup(<ProcessingTiming timing={state.activePipelines.recording.timing!} running={false}/>);
@@ -105,4 +106,27 @@ test('older snapshots and unknown counts do not invent elapsed times or motion-f
     const html = renderToStaticMarkup(<ProcessingTiming timing={{elapsed_seconds: 5, motion_frame_count: null, seconds_per_motion_frame: null}} running={false}/>);
     assert.match(html, /5 s/);
     assert.ok(!html.includes('frame'));
+});
+
+test('a planned task lists every bar from launch, grouped by stage in plan order and named as in the graph', () => {
+    const plan = ProcessingPlanSchema.parse(fullPlan.plan);
+    const raw = snapshot(0, plan.topological_order.map(id => operation(id, {status: 'waiting'})));
+    raw.tasks[0].plan = plan;
+    const state = reducer(undefined, taskSnapshotReceived(raw));
+    assert.deepEqual(state.activePipelines.recording.plan, plan);
+    const html = renderToStaticMarkup(<OperationProgressBars operations={state.activePipelines.recording.operations!} plan={plan}/>);
+    const ids = [...html.matchAll(/data-operation-id="([^"]+)"/g)].map(match => match[1]);
+    assert.deepEqual(ids, ['load_and_track', 'annotate_camera_0', 'annotate_camera_1', 'annotate_camera_2', 'observation_request',
+        'save_observations', 'match_and_triangulate', 'align_reference', 'spatial_request', 'filter_trajectories', 'save_spatial',
+        'reconstruction_input', 'fit_model_dimensions', 'reconstruct_skeletons', 'save_recording']);
+    const headings = [...html.matchAll(/aria-label="(Stage [^"]+)"/g)].map(match => match[1]);
+    assert.equal(headings.length, 5);
+    assert.ok(html.includes('Detect poses in videos'));
+});
+
+test('a planned task reporting an operation outside its plan shows the mismatch instead of guessing', () => {
+    const plan = ProcessingPlanSchema.parse(fullPlan.plan);
+    const html = renderToStaticMarkup(<OperationProgressBars operations={[operation('unplanned_work')]} plan={plan}/>);
+    assert.match(html, /role="alert"/);
+    assert.match(html, /unplanned_work/);
 });

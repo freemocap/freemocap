@@ -9,6 +9,9 @@ from freemocap.core.pipeline.dataflow.video_sources import RecordingVideoSources
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 
 NODE_LABELS = {
+    'channel_exports': 'Saving requested scientific exports',
+    'tall_csv': 'Saving tall CSV files',
+    'blender': 'Creating Blender scene and animation exports',
     'load_saved_spatial': 'Loading saved 3D points and their coordinate frame',
     'load_saved_model_fits': 'Loading saved skeleton body dimensions',
     'save_model_fits': 'Saving fitted skeleton body dimensions',
@@ -143,18 +146,35 @@ def _run_application_graph(*, request) -> None:
                     'The current processing steps have finished; checking remaining work and requested exports')
                 request.report('reconstructing', detail + '. The recording is still processing.', 0.0)
 
+    def graph_ready(graph):
+        plan = request.operation_progress.plan
+        if plan is not None:
+            expected = {node.id: node for node in plan.graph.nodes if node.id not in ('channel_exports', 'tall_csv', 'blender')}
+            if {node.id: node for node in graph.definition.nodes} != expected:
+                raise ValueError('Executable graph differs from the admitted processing plan')
+            edges = tuple(edge for edge in plan.graph.edges if edge.target.node in expected)
+            if graph.definition.edges != edges:
+                raise ValueError('Executable dependencies differ from the admitted processing plan')
+
+    def artifacts(node, writes):
+        plan = request.operation_progress.plan
+        reads = plan.read_paths.get(node, ()) if plan is not None else ()
+        request.operation_progress.artifacts(request, node, reads=reads, writes=writes)
+
     if saved_spatial_loader is not None:
         from freemocap.core.pipeline.dataflow.saved_spatial_pipeline import build_saved_spatial_pipeline
         from freemocap.core.pipeline.dataflow.recording_executor import execute_recording_graph
         graph, handlers = build_saved_spatial_pipeline(source_loader=saved_spatial_loader, config=config, run_session=session,
-            cancelled=lambda: not request.ipc.should_continue, progress=progress)
+            cancelled=lambda: not request.ipc.should_continue, progress=progress,
+            artifacts=lambda node, result: artifacts(node, (recording_structure(str(request.recording.full_recording_path)).data_parquet_path,) if node == 'save_stage_result' else ()))
+        graph_ready(graph)
         result = execute_recording_graph(graph=graph, handlers=handlers,
             cancelled=lambda: not request.ipc.should_continue)
     else:
         source_options = {'observation_loader': lambda: saved_collection} if saved_collection is not None else {}
         result = run_recording_pipeline(sources=sources, recording=request.recording, config=config, run_session=session, **source_options,
             execution_provider=provider, annotate=request.config.graph_annotate,
-            shutdown_flag=request.ipc.pipeline_shutdown_flag, performance=request.performance, progress=progress)
+            shutdown_flag=request.ipc.pipeline_shutdown_flag, performance=request.performance, progress=progress, artifacts=artifacts, graph_ready=graph_ready)
     for node, seconds in result.elapsed_seconds.items():
         request.performance.record(f'graph.{node}', seconds)
     for node, prerequisites in result.blocked.items():

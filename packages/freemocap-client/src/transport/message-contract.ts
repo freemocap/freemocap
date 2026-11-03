@@ -296,8 +296,25 @@ export const AppStateMessageSchema = z.object({
   }),
 });
 
+const GraphContractSchema = z.object({kind:z.string(), data_granularity:z.enum(['recording','camera_frame','group_frame']), namespace:z.string().nullable(), reference_frame:z.string().nullable(), units:z.string().nullable()});
+const GraphPortSchema = z.object({name:z.string(),contract:GraphContractSchema});
+export const ProcessingPlanSchema = z.object({
+  plan_id:z.string(), recording_path:z.string(), configuration:z.record(z.string(),z.unknown()),
+  read_paths:z.record(z.string(),z.array(z.string())), topological_order:z.array(z.string()),
+  graph:z.object({
+    nodes:z.array(z.object({id:z.string(),operation:z.string(),execution_resource:z.string(),stage:z.string().nullable(),
+      effects:z.array(z.enum(['read_record','read_live','write_disk','display'])),inputs:z.array(GraphPortSchema),outputs:z.array(GraphPortSchema)})),
+    edges:z.array(z.object({source:z.object({node:z.string(),port:z.string()}),target:z.object({node:z.string(),port:z.string()}),
+      binding:z.enum(['same_key','broadcast','all_cameras','collect'])})),
+  }),
+});
+export type ProcessingPlan = z.infer<typeof ProcessingPlanSchema>;
+
 export const TaskOperationSchema = z.object({
   operation_id: z.string().min(1), label: z.string().min(1),
+  stage:z.string().nullable().optional(), effects:z.array(z.enum(["read_record","read_live","write_disk","display"])).optional(),
+  dependencies:z.array(z.string()).optional(), waiting_for:z.array(z.string()).optional(),
+  files_read:z.array(z.string()).optional(), files_written:z.array(z.string()).optional(),
   status: z.enum(['waiting', 'running', 'complete', 'failed', 'cancelled']),
   progress_fraction: z.number().min(0).max(1).nullable(), detail: z.string(),
   completed: z.number().int().nonnegative().nullable(), total: z.number().int().nonnegative().nullable(),
@@ -331,6 +348,7 @@ export const TaskRegistrySnapshotSchema = z.object({
     cancellation_requested: z.boolean().optional(), error: z.string().nullable().optional(),
     result: z.record(z.string(), z.unknown()).nullable().optional(),
     operations: z.array(TaskOperationSchema).default([]),
+    plan:ProcessingPlanSchema.nullable().optional(),
     timing: TaskTimingSchema.nullable().default(null),
     cameras: z.array(z.object({node_id: z.string(), camera_id: z.string(), progress: TaskProgressSchema})),
     created_at: z.string().datetime({offset: true}), updated_at: z.string().datetime({offset: true}),

@@ -1217,6 +1217,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/freemocap/recordings/{recording_id}/processing/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Mocap Plan */
+        post: operations["preview_mocap_plan_freemocap_recordings__recording_id__processing_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1370,6 +1387,7 @@ export interface components {
              */
             operations?: components["schemas"]["OperationProgressSnapshot"][];
             timing?: components["schemas"]["RunTimingSnapshot"] | null;
+            plan?: components["schemas"]["ProcessingPlan"] | null;
             /**
              * Created At
              * Format: date-time
@@ -2996,6 +3014,33 @@ export interface components {
             operation_id: string;
             /** Label */
             label: string;
+            /** Stage */
+            stage?: string | null;
+            /**
+             * Effects
+             * @default []
+             */
+            effects?: ("read_record" | "read_live" | "write_disk" | "display")[];
+            /**
+             * Dependencies
+             * @default []
+             */
+            dependencies?: string[];
+            /**
+             * Waiting For
+             * @default []
+             */
+            waiting_for?: string[];
+            /**
+             * Files Read
+             * @default []
+             */
+            files_read?: string[];
+            /**
+             * Files Written
+             * @default []
+             */
+            files_written?: string[];
             /**
              * Status
              * @enum {string}
@@ -4381,6 +4426,7 @@ export interface components {
              */
             operations?: components["schemas"]["OperationProgressSnapshot"][];
             timing?: components["schemas"]["RunTimingSnapshot"] | null;
+            plan?: components["schemas"]["ProcessingPlan"] | null;
             /**
              * Created At
              * Format: date-time
@@ -4529,6 +4575,110 @@ export interface components {
          * @enum {string}
          */
         WorkerMode: "process" | "thread";
+        /** ProcessingPlan */
+        ProcessingPlan: {
+            /** Plan Id */
+            plan_id: string;
+            /** Recording Path */
+            recording_path: string;
+            graph: components["schemas"]["GraphDefinition"];
+            /** Topological Order */
+            topological_order: string[];
+            /** Configuration */
+            configuration: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Read Paths */
+            read_paths?: {
+                [key: string]: string[];
+            };
+        };
+        /** GraphDefinition */
+        GraphDefinition: {
+            /** Nodes */
+            nodes: components["schemas"]["GraphNode"][];
+            /** Edges */
+            edges: components["schemas"]["GraphConnection"][];
+        };
+        /** GraphConnection */
+        GraphConnection: {
+            source: components["schemas"]["PortReference"];
+            target: components["schemas"]["PortReference"];
+            binding: components["schemas"]["InputBindingRule"];
+        };
+        /**
+         * InputBindingRule
+         * @enum {string}
+         */
+        InputBindingRule: "same_key" | "broadcast" | "all_cameras" | "collect";
+        /** PortReference */
+        PortReference: {
+            /** Node */
+            node: string;
+            /** Port */
+            port: string;
+        };
+        /** GraphNode */
+        GraphNode: {
+            /** Id */
+            id: string;
+            /** Operation */
+            operation: string;
+            /**
+             * Execution Resource
+             * @default compute
+             */
+            execution_resource?: string;
+            /** Stage */
+            stage?: string | null;
+            /**
+             * Effects
+             * @default []
+             */
+            effects?: ("read_record" | "read_live" | "write_disk" | "display")[];
+            /**
+             * Inputs
+             * @default []
+             */
+            inputs?: components["schemas"]["GraphPort"][];
+            /**
+             * Outputs
+             * @default []
+             */
+            outputs?: components["schemas"]["GraphPort"][];
+        };
+        /** GraphPort */
+        GraphPort: {
+            /** Name */
+            name: string;
+            contract: components["schemas"]["DataContract"];
+        };
+        /** DataContract */
+        DataContract: {
+            /** Kind */
+            kind: string;
+            data_granularity: components["schemas"]["DataGranularity"];
+            /** Namespace */
+            namespace?: string | null;
+            /** Reference Frame */
+            reference_frame?: string | null;
+            /** Units */
+            units?: string | null;
+        };
+        /**
+         * DataGranularity
+         * @enum {string}
+         */
+        DataGranularity: "recording" | "camera_frame" | "group_frame";
+        /** PlanPreview */
+        PlanPreview: {
+            plan?: components["schemas"]["ProcessingPlan"] | null;
+            /**
+             * Errors
+             * @default []
+             */
+            errors?: string[];
+        };
     };
     responses: never;
     parameters: never;
@@ -6922,6 +7072,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraPauseState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_mocap_plan_freemocap_recordings__recording_id__processing_plan_post: {
+        parameters: {
+            query?: {
+                recording_parent_directory?: string | null;
+            };
+            header?: never;
+            path: {
+                recording_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MocapProcessingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanPreview"];
                 };
             };
             /** @description Validation Error */

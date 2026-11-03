@@ -80,3 +80,23 @@ test('non-frame kinds decode without a frame or metadata handshake',()=>{
  delta_t:'0',message:'hello',asctime:'fixture',formatted_message:'hello',type:'log'};
  assert.equal(decodeMessage(encode({...envelope,kind:'log',record}))?.kind,'log');
 });
+
+test('a reconnect decodes the task plan and file identities without prior state',()=>{
+ const plan={plan_id:'stable-plan',recording_path:'/recordings/sample',configuration:{stop_stage:'observations'},
+  read_paths:{track:['/recordings/sample/video.mp4']},topological_order:['track'],graph:{nodes:[{
+   id:'track',operation:'track',execution_resource:'compute',stage:'observations',effects:['read_record'],inputs:[],
+   outputs:[{name:'result',contract:{kind:'camera_observations',data_granularity:'recording',namespace:null,reference_frame:null,units:null}}],
+  }],edges:[]}};
+ const operation={operation_id:'track',label:'Read recorded video',stage:'observations',effects:['read_record'],
+  dependencies:[],waiting_for:[],files_read:['/recordings/sample/video.mp4'],files_written:[],status:'complete',
+  progress_fraction:1,detail:'Read',completed:222,total:222,unit:'frames',elapsed_seconds:2,seconds_per_motion_frame:null};
+ const task={task_id:'run',revision:1,task_type:'mocap',recording:null,status:'complete',plan,operations:[operation],
+  progress:{phase:'complete',progress_fraction:1,detail:'Complete'},cameras:[],timing:null,
+  created_at:'2026-11-02T00:00:00Z',updated_at:'2026-11-02T00:00:00Z'};
+ const message=new MessageDecoder().decode(encode({kind:'progress',version:0,timestamp:0,sequence:0,
+  snapshot:{server_instance_id:'00000000-0000-4000-8000-000000000001',revision:1,recording_owners:[],tasks:[task]}}));
+ assert.equal(message?.kind,'progress');
+ if(message?.kind!=='progress')throw new Error('Expected progress');
+ assert.deepEqual(message.snapshot.tasks[0].plan,plan);
+ assert.deepEqual(message.snapshot.tasks[0].operations,[operation]);
+});

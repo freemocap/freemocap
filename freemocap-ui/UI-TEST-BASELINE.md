@@ -127,3 +127,46 @@ The active `freemocap-ui-integration-watch` chat heartbeat checks the local refa
 `e2e/mocap-backend-contract.spec.ts` captures real Redux-thunk POSTs, then feeds their config into the actual Python `PosthocMocapPipelineConfig`. It characterizes the reported DLC export conflict and verifies that the default UI threshold 0.004 overrides the backend-only default 0.4. This diagnostic passes when the existing rejection is reproduced; it does not certify successful DLC processing. It uses `FREEMOCAP_TEST_PYTHON` and runs with `npm run test:standard`. After the production defect is fixed, change the diagnostic to require accepted, unambiguous export settings.
 
 Run the standard suite and visual suite sequentially. Their Vite configurations can invalidate a shared dependency optimizer cache if run concurrently, causing HTTP 504 Outdated Optimize Dep and an empty React root. Restart the visual Vite server after the standard suite before comparing screenshots.
+
+## Processing graph contract
+
+The harness backend exposes `POST /freemocap/recordings/{recording_id}/processing/plan`
+with the same `MocapProcessingRequest` body as launch. It reads recording metadata
+and video headers, validates admission, and returns `{plan, errors}` without
+loading detector models, starting workers, or reserving a run. The plan includes
+its configuration hash, typed graph, stage/effect declarations and node order.
+Actual execution uses the same pure graph recipes and checks them against the
+admitted plan. Every initial operation is waiting; operation IDs equal node IDs.
+Each retained task snapshot carries its entire plan, dependencies, waiting inputs
+and actual completed-node file paths, including after reconnect. Scientific
+exports share the `recording_export_manifest` resource; their serialization is
+not a successful-data dependency, and an independent export may still succeed
+when another fails. Existing full self-describing messages remain intact.
+
+Run focused checks from the harness root with Core's configured Python:
+`../freemocap/.venv/bin/python -m pytest freemocap/tests/test_processing_plan.py freemocap/tests/test_recording_definition.py freemocap/tests/test_operation_progress.py freemocap/tests/test_posthoc_terminal_progress.py freemocap/tests/test_recording_pipeline.py freemocap/tests/test_saved_spatial_graph.py freemocap/tests/test_application_graph.py freemocap/tests/test_export_completion.py freemocap/tests/test_api_contract.py`.
+`npm test` in `packages/freemocap-client` also checks decoding a complete plan in
+a fresh connection, generated bindings, and compatibility examples.
+
+The Blender add-on currently returns only its `.blend` path; optional FBX/BVH
+files and sidecars cannot yet be inventoried from producer results. Extending
+that independent repository is pending owner direction. This limitation is not
+reported as complete artifact coverage. DLC behavior is unchanged.
+
+Both RTMPose thresholds completed both reference recordings on CPU. At 0.4,
+finite RAW_KEYPOINTS_3D/LANDMARKS_3D values were 98,367/96,333 (test) and
+490,311/481,242 (sample). At 0.004 they were 101,091/98,703 and 503,889/493,764.
+All four runs passed frame coverage, alignment and provenance checks. More
+finite values establish greater coverage, not improved accuracy without ground
+truth; no production default was changed. Exact logs/configuration/timing are in
+`.test-artifacts/runs/0d146740/confidence-comparison.json` and its linked runs.
+
+Backend validation on isolated fresh video copies passed for both numerical
+profiles: 222 frames in 45.322 s (0.204153 s/frame), and 1,108 frames in
+206.741 s (0.186589 s/frame). Both final snapshots retained all 15 planned
+operations in graph order, every operation completed, and every reported read
+and written file existed. These timings overlap other validation and are not
+controlled benchmarks. Evidence: `.test-artifacts/backend-plan-validation/summary.json`.
+Focused backend validation passed 68 tests plus 15 subtests; client tests and
+70 operation bindings passed. Broader per-design UI/reference results are
+reported separately when those suites complete.

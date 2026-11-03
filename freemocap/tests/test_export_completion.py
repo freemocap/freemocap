@@ -28,7 +28,8 @@ def test_export_overlap_independent_failure_and_shared_manifest_order(recording_
     structure, _ = recording_processing
     request = make_request(structure)
     export_started, blender_started, export_finished = Event(), Event(), Event()
-    output = SimpleNamespace(manifest_path=structure.exports_dir / 'metadata.json')
+    output = SimpleNamespace(manifest_path=structure.exports_dir / 'metadata.json', files=(structure.exports_dir / 'data.npy',))
+    request.operation_progress = Mock()
 
     def export_channels(**kwargs):
         export_started.set()
@@ -58,6 +59,7 @@ def test_export_overlap_independent_failure_and_shared_manifest_order(recording_
         complete_recording_exports(request)
         assert request.report.call_args.args[0] == 'complete'
     states = {(call.args[0], call.args[2]) for call in request.report_export.call_args_list}
+    assert request.operation_progress.artifacts.call_count == (2 if export_fails else 3)
     assert ('blender', 'complete') in states
     assert ('tall_csv', 'complete') in states
     assert ('channel_exports', 'failed' if export_fails else 'complete') in states

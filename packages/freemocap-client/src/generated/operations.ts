@@ -344,5 +344,10 @@ export const operationDefinitions = {
     "method": "PUT",
     "path": "/skellycam/camera/group/all/pause",
     "asset": false
+  },
+  "preview_mocap_plan_freemocap_recordings__recording_id__processing_plan_post": {
+    "method": "POST",
+    "path": "/freemocap/recordings/{recording_id}/processing/plan",
+    "asset": false
   }
 } as const;

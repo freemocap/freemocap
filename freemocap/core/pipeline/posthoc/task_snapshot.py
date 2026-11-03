@@ -14,6 +14,7 @@ from freemocap.core.pipeline.posthoc.progress_messages import (
     VideoNodeProgressMessage,
 )
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
+from freemocap.core.pipeline.dataflow.processing_plan import ProcessingPlan
 from freemocap.core.recording.recording_access import RecordingOwner
 
 
@@ -56,6 +57,7 @@ class TaskSnapshot(SnapshotModel):
     cameras: tuple[CameraTaskSnapshot, ...]
     operations: tuple[OperationProgressSnapshot, ...] = ()
     timing: RunTimingSnapshot | None = None
+    plan: ProcessingPlan | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -85,6 +87,7 @@ class BackgroundTaskSnapshot(SnapshotModel):
     cameras: tuple[CameraTaskSnapshot, ...] = ()
     operations: tuple[OperationProgressSnapshot, ...] = ()
     timing: RunTimingSnapshot | None = None
+    plan: ProcessingPlan | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -146,12 +149,17 @@ class TaskRegistry:
         progress = previous.progress
         operations = previous.operations
         timing = previous.timing
+        plan = previous.plan
         cameras = {camera.node_id: camera for camera in previous.cameras}
         for message in messages:
             if message.pipeline_id == task_id:
                 progress = TaskProgress.from_message(message=message)
                 if message.operations is not None:
                     operations = message.operations
+                if message.plan is not None:
+                    if plan is not None and plan.plan_id != message.plan.plan_id:
+                        raise ValueError("Running task plan identity cannot change")
+                    plan = message.plan
                 if message.timing is not None:
                     timing = message.timing
             elif isinstance(message, VideoNodeProgressMessage):
@@ -177,12 +185,13 @@ class TaskRegistry:
             }) if operation.status in ("waiting", "running") else operation
                 for operation in operations)
         ordered = tuple(sorted(cameras.values(), key=lambda camera: camera.node_id))
-        if (progress, ordered, status, operations, timing) == (
+        if (progress, ordered, status, operations, timing, plan) == (
             previous.progress,
             previous.cameras,
             previous.status,
             previous.operations,
             previous.timing,
+            previous.plan,
         ):
             return
         self.tasks[task_id] = previous.model_copy(
@@ -191,6 +200,7 @@ class TaskRegistry:
                 "cameras": ordered,
                 "operations": operations,
                 "timing": timing,
+                "plan": plan,
                 "status": status,
                 "revision": previous.revision + 1,
                 "updated_at": datetime.now(tz=timezone.utc),

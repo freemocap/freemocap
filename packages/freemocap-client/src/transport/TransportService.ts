@@ -24,6 +24,7 @@ import {
 import { decode } from "cbor-x";
 import { MessageDecoder, ownByteStrings } from "./cbor-codec.js";
 import { FrameResolver } from "./frame-resolution.js";
+import {resolveChannelViews, type ChannelViewsFrame} from './channel-views.js';
 import {
     parseApplicationMessage,
     validateApplicationKinds,
@@ -126,6 +127,7 @@ export class TransportService<Kinds extends ApplicationKinds = {}> {
     private readonly modelFramesSubscribers = new Set<ModelFramesCallback>();
     private readonly overlaySubscribers = new Set<OverlayCallback>();
     private readonly imageSubscribers = new Set<ImageCallback>();
+    private readonly channelSubscribers = new Set<(frame: ChannelViewsFrame | null) => void>();
 
     // Static-model + kind subscriber sets.
     private readonly modelsSubscribers = new Set<ModelsCallback>();
@@ -212,6 +214,9 @@ export class TransportService<Kinds extends ApplicationKinds = {}> {
     }
 
     private handleFrame(frame: FrameMessage): void {
+        if (this.channelSubscribers.size) {
+            fanOut(this.channelSubscribers, resolveChannelViews(frame));
+        }
         this.diagnosticsLatest = {frameNumber: frame.frame_number, values: frame.diagnostics};
         fanOut(this.diagnosticsSubscribers, this.diagnosticsLatest);
         this.updateStaticModel(frame);
@@ -298,6 +303,13 @@ export class TransportService<Kinds extends ApplicationKinds = {}> {
     }
 
     // ── frame-channel subscriptions ──────────────────────────────────────
+
+    /** All channels, including application kinds, from each incoming frame.
+     * No replay; null marks disconnect/reset. Unused views allocate nothing. */
+    subscribeToChannels(cb: (frame: ChannelViewsFrame | null) => void): () => void {
+        this.channelSubscribers.add(cb);
+        return () => { this.channelSubscribers.delete(cb); };
+    }
 
     subscribeToKeypoints(cb: (f: PointSourcesFrame) => void): () => void {
         this.keypointsSubscribers.add(cb);
@@ -398,6 +410,7 @@ export class TransportService<Kinds extends ApplicationKinds = {}> {
     reset(): void {
         this.decoder.reset();
         this.frameResolver.reset();
+        fanOut(this.channelSubscribers, null);
         this.diagnosticsLatest = null;
         fanOut(this.diagnosticsSubscribers, null);
         this.keypointsLatest = null;

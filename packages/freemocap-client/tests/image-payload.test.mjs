@@ -16,6 +16,17 @@ const expected = [
 const withoutJpeg = ({jpeg,...image}) => image;
 const secondCameraOffset = buffer => IMAGE_PAYLOAD_HEADER_SIZE + IMAGE_FRAME_HEADER_SIZE + new DataView(buffer).getInt32(IMAGE_PAYLOAD_HEADER_SIZE + 48, true);
 
+test('rejects imprecise frame identities and invalid camera metadata',()=>{
+ for(const edit of [
+  view=>view.setBigInt64(8,9007199254740992n,true),
+  view=>view.setUint8(IMAGE_PAYLOAD_HEADER_SIZE+16,255),
+  view=>view.setInt32(IMAGE_PAYLOAD_HEADER_SIZE+32,-1,true),
+  view=>view.setInt32(IMAGE_PAYLOAD_HEADER_SIZE+36,0,true),
+  view=>view.setInt32(IMAGE_PAYLOAD_HEADER_SIZE+40,0,true),
+  view=>view.setInt32(IMAGE_PAYLOAD_HEADER_SIZE+44,0,true),
+ ]) {const buffer=payloadBuffer();edit(new DataView(buffer));assert.throws(()=>readImagePayload(buffer));}
+});
+
 test('reads every camera SkellyCam encoded, with JPEG views over the payload',()=>{
  const buffer = payloadBuffer();
  const payload = readImagePayload(buffer);

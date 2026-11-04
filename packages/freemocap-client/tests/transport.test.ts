@@ -79,6 +79,13 @@ test('non-frame kinds decode without a frame or metadata handshake',()=>{
  lineno:1,funcName:'fixture',created:1,msecs:0,relativeCreated:0,thread:1,threadName:'main',processName:'test',process:1,
  delta_t:'0',message:'hello',asctime:'fixture',formatted_message:'hello',type:'log'};
  assert.equal(decodeMessage(encode({...envelope,kind:'log',record}))?.kind,'log');
+ for (const thread of [BigInt(0x16f123000), 18446744073709551615n]) {
+  const message=decodeMessage(encode({...envelope,kind:'log',record:{...record,thread}}));
+  assert.equal(message?.kind,'log');
+  if(message?.kind!=='log')throw new Error('Expected log');
+  assert.equal(message.record.thread,Number.isSafeInteger(Number(thread)) ? Number(thread) : thread.toString());
+  assert.doesNotThrow(()=>JSON.stringify(message.record));
+ }
 });
 
 test('a reconnect decodes the task plan and file identities without prior state',()=>{

@@ -19,7 +19,12 @@ export const LogRecordSchema = z.object({
     created: z.number(),
     msecs: z.number(),
     relativeCreated: z.number(),
-    thread: z.number(),
+    // Python thread identifiers can use CBOR uint64, decoded as bigint on macOS.
+    // Keep ordinary numeric IDs compatible and preserve larger IDs without rounding.
+    thread: z.union([z.number(), z.string(), z.bigint()]).transform(value =>
+        typeof value === 'bigint'
+            ? (Number.isSafeInteger(Number(value)) ? Number(value) : value.toString())
+            : value),
     threadName: z.string(),
     processName: z.string(),
     process: z.number(),

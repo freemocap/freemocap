@@ -7,6 +7,7 @@ test.use({channel: process.env.PLAYWRIGHT_CHANNEL});
 test('Mocap requests keep person alignment and custom transforms independent of board alignment', async ({page}) => {
     page.on('pageerror', error => {throw error;});
     const requests: {mocapTaskConfig: {
+        exportToBlender: boolean; autoOpenBlendFile: boolean;
         bodyAlignment: {mode: 'auto' | 'calibration' | 'person'; additional_transform: {matrix: number[]} | null};
         filterConfig: {enabled: boolean; method: string; cutoff: number; order: number};
     }}[] = [];
@@ -64,6 +65,10 @@ test('Mocap requests keep person alignment and custom transforms independent of 
     await expect(page.locator('#result')).toHaveText('done');
     expect(requests).toHaveLength(36);
     for (const [index, request] of requests.entries()) {
+        if (index % 3 === 2) {
+            expect(request.mocapTaskConfig.exportToBlender).toBe(true);
+            expect(request.mocapTaskConfig.autoOpenBlendFile).toBe(true);
+        }
         const combination = Math.floor(index / 3) % 6;
         expect(request.mocapTaskConfig.filterConfig).toEqual({enabled: true, method: 'butter_low_pass', cutoff: 4.5, order: 3});
         expect(request.mocapTaskConfig.bodyAlignment).toEqual({

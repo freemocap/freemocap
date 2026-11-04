@@ -163,7 +163,6 @@ export function stageGraph(input: GraphInputs): StageGraph {
         if (id === 'blender' || id === 'exports') {
             const on = id === 'blender' ? input.blenderOn : input.exportsOn;
             if (!on) return {...base, state: 'off', bars: []};
-            if (id === 'blender' && !input.blenderFound) return {...base, state: 'skipped', provenance: 'Blender not found', bars: []};
             if (live && ids.length) {
                 const bars = id === 'blender' ? [mergedBar('Export to Blender', steps(ids))]
                     : ids.map(member => mergedBar(member === 'tall_csv' ? 'Tall CSV' : 'Export files', steps([member])));

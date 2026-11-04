@@ -159,7 +159,12 @@ def _run_application_graph(*, request) -> None:
                           'cancelled': 'cancelled'}[event]
                 counts: dict[str, object] = {}
                 stage = request.operation_progress.operations[node].stage if node in request.operation_progress.operations else None
-                if node.startswith('annotate_camera_'):
+                if node == 'load_and_track' and event == 'finished':
+                    counts['items'] = tuple(ItemProgressSnapshot(label=video_label(index),
+                        completed=tracked_frames_per_camera[source.camera_id],
+                        total=source.video_metadata.frame_count, unit='frames')
+                        for index, source in enumerate(sources.camera_sources))
+                elif node.startswith('annotate_camera_'):
                     index = int(node.removeprefix('annotate_camera_'))
                     frames = sources.camera_sources[index].video_metadata.frame_count
                     counts['items'] = (ItemProgressSnapshot(label=video_label(index),

@@ -59,8 +59,7 @@ function buildPosthocConfig(state: RootState) {
             cutoff: config.posthoc_filter.cutoff,
             order: config.posthoc_filter.order,
         },
-        // A user run without a Blender executable on the server skips Blender; the Blender node says why.
-        exportToBlender: blender.exportToBlenderEnabled && Boolean(blender.blenderExePath ?? blender.detectedBlenderExePath),
+        exportToBlender: blender.exportToBlenderEnabled,
         blenderImportRoute: blender.importRoute,
         blenderPackage: blender.packageName,
         blenderDevelopmentBuildHash: blender.developmentBuildHash,

@@ -40,12 +40,12 @@ test('stages that do not run are reused with their provenance, and the recording
     assert.ok(graph.wires.find(wire => wire.source === 'triangulation' && wire.target === 'filtering')!.active);
 });
 
-test('Blender is off when switched off, and skipped with a reason when the server found no executable', () => {
+test('Requested Blender export remains enabled regardless of cached executable detection', () => {
     const node = (graph: ReturnType<typeof stageGraph>) => graph.nodes.find(item => item.id === 'blender')!;
     assert.equal(node(stageGraph(inputs)).state, 'off');
-    const missing = node(stageGraph({...inputs, blenderOn: true, blenderFound: false}));
-    assert.equal(missing.state, 'skipped');
-    assert.equal(missing.provenance, 'Blender not found');
+    const missing = node(stageGraph({...inputs, plan: null, blenderOn: true, blenderFound: false}));
+    assert.equal(missing.state, 'will run');
+    assert.equal(missing.provenance, null);
 });
 
 test('exports take one input per chosen channel, in their producers\' order', () => {

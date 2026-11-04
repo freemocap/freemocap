@@ -51,6 +51,7 @@ class ApplicationGraphTests(TestCase):
                 progress('load_and_track','started',0.0)
                 kwargs['tracking_progress']({'cam0':111,'cam1':110,'cam2':112})
                 progress('load_and_track','tracking',0.5)
+                kwargs['tracking_progress']({'cam0':222,'cam1':222,'cam2':222})
                 progress('load_and_track','finished',1.0)
                 progress('annotate_camera_0','started',0.0)
                 progress('reconstruct_skeletons','started',0.0)
@@ -69,7 +70,7 @@ class ApplicationGraphTests(TestCase):
             self.assertEqual(operations['load_and_track'].status, 'complete')
             self.assertEqual(operations['load_and_track'].completed, 666)
             self.assertEqual([(video.label, video.completed, video.total, video.unit) for video in operations['load_and_track'].items],
-                             [('Video 1 (cam0)', 111, 222, 'frames'), ('Video 2 (cam1)', 110, 222, 'frames'), ('Video 3 (cam2)', 112, 222, 'frames')])
+                             [('Video 1 (cam0)', 222, 222, 'frames'), ('Video 2 (cam1)', 222, 222, 'frames'), ('Video 3 (cam2)', 222, 222, 'frames')])
             self.assertEqual([(video.label, video.completed, video.total) for video in operations['annotate_camera_0'].items],
                              [('Video 1 (cam0)', 0, 222)])
             self.assertEqual(operations['annotate_camera_0'].status, 'running')

@@ -23,6 +23,7 @@
     "test:sdk": "tsc --noEmit && node tools/test-sdk-integration.mjs",
     "test:styles": "node tools/check-ui-styles.mjs",
     "test:harness": "playwright test --config playwright.harness.config.ts",
+    "pretest:standard": "vite build --mode=test",
     "test:standard": "playwright test --config playwright.standard.config.ts",
     "test": "npm run test:sdk"
   },

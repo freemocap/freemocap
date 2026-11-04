@@ -32,6 +32,12 @@ def build_from_dependency(runtime, requested_hash):
     tools = root / '_host_tools'
     if not (tools/'build_addon.py').is_file():
         raise RuntimeError('Update the FreeMoCap Blender add-on dependency: this version does not include its host package builder')
+    spec = importlib.util.spec_from_file_location('freemocap_host_package_builder', tools/'build_addon.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    # The add-on owns wheel/platform packaging; Core owns matching Blender's Python ABI.
+    if platform not in builder.PLATFORMS:
+        raise RuntimeError(f'The installed add-on builder has no package target for {platform}')
     builder_hash = hashlib.sha256()
     for path in sorted(tools.rglob('*')):
         if path.is_file() and '__pycache__' not in path.parts and path.suffix != '.pyc':
@@ -52,11 +58,7 @@ def build_from_dependency(runtime, requested_hash):
             if intact:
                 validate_archive(archive, runtime)
                 return archive, kind, checksum
-        spec = importlib.util.spec_from_file_location('freemocap_host_package_builder', tools/'build_addon.py')
-        builder = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(builder)
-        if platform not in builder.PLATFORMS:
-            raise RuntimeError(f'The add-on package builder has no wheel target for {platform}')
+
         wheels = cache/'wheels'
         wheels.mkdir(exist_ok=True)
         # One wheel writer at a time, even if different Blender versions are requested.

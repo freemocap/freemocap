@@ -209,7 +209,12 @@ def process(name: str, **options) -> Path:
                                environment=environment, log_path=log_path, timeout=plan['timeout'] * 2 + 120)
         except (OSError, subprocess.SubprocessError) as error:
             raise RuntimeError(f'Processing failed; previous results retained. Log: {log_path}') from error
+        finally:
+            from .reporting import read_performance
+            timings = read_performance(log_path)
+            write_json(attempt / 'timings.json', dict(version=1, reports=timings))
         result = json.loads((attempt / 'result.json').read_text(encoding='utf-8'))
+        result['timing_reports'] = timings
         if result.get('implementation') != plan['implementation']:
             raise ValueError('Worker result does not identify the requested posthoc implementation')
         result['performance'] = performance

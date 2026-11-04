@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+import json
 import logging
 from threading import Lock
 from time import perf_counter
@@ -68,10 +69,11 @@ class PerformanceReport:
                     if row.count > 1 else 0.0)
                 for name, row in self._rows.items()}
 
-    def log(self, *, pipeline_id: str, outcome: str) -> None:
+    def log(self, *, pipeline_id: str, outcome: str, scope: str = 'posthoc') -> None:
         elapsed = self.elapsed_seconds
         rows = self.snapshot()
-        lines = [f"Posthoc performance [{pipeline_id}] outcome={outcome}; wall={elapsed:.3f}s",
+        title = 'Posthoc' if scope == 'posthoc' else 'Dataset worker'
+        lines = [f"{title} performance [{pipeline_id}] outcome={outcome}; wall={elapsed:.3f}s",
             f"Completed detection: {self.frames} synchronized frames; {self.images} camera images.",
             "Wall-clock timings, not GPU kernel timings. Worker and coordinator rows overlap; do not sum them.",
             "Coordinator waits measure exposed blocking; worker rows measure work, including work hidden by overlap."]
@@ -95,3 +97,9 @@ class PerformanceReport:
             lines.insert(2, f"Detection throughput: {self.frames / detection:.2f} synchronized frames/s; "
                          f"{self.images / detection:.2f} camera images/s (includes setup and video finalization).")
         logger.info("\n%s\n", "\n".join(lines))
+        structured_rows = {name: dict(row, mean_after_first_ms=row['mean_after_first_ms']
+                                      if row['count'] > 1 else None) for name, row in rows.items()}
+        logger.info('Processing performance: %s', json.dumps(dict(
+            version=1, pipeline_id=pipeline_id, scope=scope, outcome=outcome,
+            elapsed_s=elapsed, frames=self.frames, images=self.images,
+            stages=structured_rows, counts=self.counts_snapshot()), allow_nan=False))

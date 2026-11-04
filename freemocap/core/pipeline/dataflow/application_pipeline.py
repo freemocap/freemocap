@@ -51,13 +51,18 @@ def validate_application_graph(*, config: PosthocMocapPipelineConfig) -> None:
 
 
 def resolve_tracking_provider(config: PosthocMocapPipelineConfig) -> str:
-    """Explicit ONNX selection wins; retain the graph's existing Auto policy."""
+    """Preserve CUDA preference; otherwise use Tracker's accelerator discovery."""
     if config.detector_type == 'mediapipe':
         return 'cpu'
     provider = config.execution_provider or config.graph_execution_provider
     if provider == 'auto' and config.start_stage == 'observations':
         import onnxruntime
-        return 'cuda' if 'CUDAExecutionProvider' in onnxruntime.get_available_providers() else 'cpu'
+        from skellytracker.core.sessions.ort_session_utils import auto_detect_provider
+        # Preserve the application's CUDA preference over cold TensorRT builds.
+        # Other hardware uses Tracker's existing discovery, including Apple CoreML.
+        if 'CUDAExecutionProvider' in onnxruntime.get_available_providers():
+            return 'cuda'
+        return auto_detect_provider()
     return provider
 
 

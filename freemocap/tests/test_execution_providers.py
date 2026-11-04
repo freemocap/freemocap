@@ -209,3 +209,17 @@ def test_session_status_endpoint_reports_actual_values():
     model = response.json()[0]['models'][0]
     assert model['requested_provider'] is None
     assert model['applied_providers'] == ['CUDAExecutionProvider', 'CPUExecutionProvider']
+
+
+def test_graph_auto_uses_available_coreml_instead_of_forcing_cpu():
+    from freemocap.core.pipeline.dataflow.application_pipeline import resolve_tracking_provider
+    with patch('onnxruntime.get_available_providers', return_value=['CoreMLExecutionProvider', 'CPUExecutionProvider']), \
+         patch('skellytracker.core.sessions.ort_session_utils.sys.platform', 'darwin'):
+        assert resolve_tracking_provider(PosthocMocapPipelineConfig()) == 'coreml'
+
+
+def test_graph_auto_preserves_cuda_preference_over_tensorrt_compilation():
+    from freemocap.core.pipeline.dataflow.application_pipeline import resolve_tracking_provider
+    with patch('onnxruntime.get_available_providers',
+               return_value=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']):
+        assert resolve_tracking_provider(PosthocMocapPipelineConfig()) == 'cuda'

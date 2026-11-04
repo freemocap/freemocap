@@ -144,6 +144,22 @@ def validate_parquet(recording: Path, *, expected_frames: int) -> dict:
 
 
 def run_worker(request_path: Path) -> None:
+    """Retain workflow-phase measurements on success and failure."""
+    from freemocap.core.pipeline.performance_report import PerformanceReport
+    report = PerformanceReport()
+    outcome = 'failed'
+    try:
+        _run_worker(request_path, report)
+        request = json.loads(request_path.read_text(encoding='utf-8'))
+        report.frames = request['frames']
+        report.images = report.frames * sum(path.is_file() and path.suffix.lower() == '.mp4'
+                                           for path in synchronized_video_directory(Path(request['recording'])).iterdir())
+        outcome = 'complete'
+    finally:
+        report.log(pipeline_id=request_path.parent.name, outcome=outcome, scope='dataset_worker')
+
+
+def _run_worker(request_path: Path, phases) -> None:
     """Called only in a dedicated process with FREEMOCAP_BASE_FOLDER isolated."""
     from .execution import require_implementation
     request = json.loads(request_path.read_text(encoding="utf-8"))
@@ -173,7 +189,8 @@ def run_worker(request_path: Path) -> None:
     prepared_blender = None
     if request.get('operation', 'process') != 'calibrate' and profile == 'standard':
         from freemocap.tools.datasets.blender_validation import preflight_blender
-        prepared_blender = preflight_blender(request.get('blender_path'))
+        with phases.measure('workflow.blender_preparation'):
+            prepared_blender = preflight_blender(request.get('blender_path'))
     (base / "calibrations").mkdir(parents=True, exist_ok=True)
     create_websocket_log_queue()
     flag = multiprocessing.Value("b", False)
@@ -184,12 +201,14 @@ def run_worker(request_path: Path) -> None:
     info = RecordingInfo(recording_directory=str(recording.parent), recording_name=recording.name, mic_device_index=-1)
     board = CharucoBoardDefinition.create_test_data_7x5()
     try:
-        service.start()
+        with phases.measure('workflow.inference_service_start'):
+            service.start()
         calibration_config = PosthocCalibrationPipelineConfig(board_mode=CharucoBoardMode.EXPLICIT, charuco_board=board)
         calibration_status = None
         if request.get('calibration_mode', 'fresh') == 'fresh':
-            calibration_task = manager.create_calibration_pipeline(recording_info=info, calibration_config=calibration_config)
-            calibration_status = wait_for_success(manager, calibration_task, timeout=request["timeout"])
+            with phases.measure('workflow.calibration'):
+                calibration_task = manager.create_calibration_pipeline(recording_info=info, calibration_config=calibration_config)
+                calibration_status = wait_for_success(manager, calibration_task, timeout=request["timeout"])
         calibration_path = find_recording_calibration(recording_folder=recording)
         if calibration_path is None:
             raise ValueError("Recording has no calibration TOML")
@@ -215,32 +234,39 @@ def run_worker(request_path: Path) -> None:
         mocap_status = None
         validation = None
         if request.get('operation', 'process') != 'calibrate':
-            mocap_task = manager.create_mocap_pipeline(recording_info=info, mocap_config=config)
-            mocap_status = wait_for_success(manager, mocap_task, timeout=request["timeout"])
+            with phases.measure('workflow.mocap'):
+                mocap_task = manager.create_mocap_pipeline(recording_info=info, mocap_config=config)
+                mocap_status = wait_for_success(manager, mocap_task, timeout=request["timeout"])
             logger.info('validation: Checking recording channels and frame coverage (running)')
-            if request.get('stage_matrix', False):
-                from freemocap.tools.datasets.stage_matrix import validate_stage_output
-                validation = validate_stage_output(recording, stop=request['stop_stage'],
-                                                   expected_frames=request['frames'])
-            else:
-                from freemocap.tools.datasets.validation import validate_outputs
-                stage_order = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
-                executed = list(stage_order[stage_order.index(request.get('start_stage', 'observations')):])
-                if 'observations' in executed:
-                    executed.append('timing')
-                if 'reconstruction' in executed:
-                    executed.append('biomechanics')
-                validation = validate_outputs(recording, expected_frames=request['frames'],
-                    run_id=request.get('run_id'),
-                    sensor_group=request.get('sensor_group'),
-                    require_provenance_stages=tuple(executed),
-                    require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
-                                       and request.get('alignment', 'auto') != 'calibration'))
+            with phases.measure('workflow.numerical_validation'):
+                if request.get('stage_matrix', False):
+                    from freemocap.tools.datasets.stage_matrix import validate_stage_output
+                    validation = validate_stage_output(recording, stop=request['stop_stage'],
+                                                       expected_frames=request['frames'])
+                else:
+                    from freemocap.tools.datasets.validation import validate_outputs
+                    stage_order = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
+                    executed = list(stage_order[stage_order.index(request.get('start_stage', 'observations')):])
+                    if 'observations' in executed:
+                        executed.append('timing')
+                    if 'reconstruction' in executed:
+                        executed.append('biomechanics')
+                    validation = validate_outputs(recording, expected_frames=request['frames'],
+                        run_id=request.get('run_id'),
+                        sensor_group=request.get('sensor_group'),
+                        require_provenance_stages=tuple(executed),
+                        require_alignment=(request.get('start_stage', 'observations') in ('observations', 'triangulation')
+                                           and request.get('alignment', 'auto') != 'calibration'))
+            if not request.get('stage_matrix', False):
                 # Numerical completion alone cannot certify a selected export. Reopen
                 # the actual saved scene in another Blender process before readiness.
                 from freemocap.tools.datasets.blender_validation import validate_blender
-                checks = validate_blender(recording, validation, prepared=prepared_blender) if profile == 'standard' else None
-                validation = accept_outputs(recording, validation, profile=profile, blender_checks=checks)
+                checks = None
+                if profile == 'standard':
+                    with phases.measure('workflow.blender_validation'):
+                        checks = validate_blender(recording, validation, prepared=prepared_blender)
+                with phases.measure('workflow.output_acceptance'):
+                    validation = accept_outputs(recording, validation, profile=profile, blender_checks=checks)
             logger.info('validation: Recording checks passed (complete)')
         # Processing may have updated the recording-local calibration: hash the saved file.
         calibration = CalibrationResult.load_toml(calibration_path)
@@ -253,13 +279,14 @@ def run_worker(request_path: Path) -> None:
                   "calibration_filename": calibration_path.name, "calibration_sha256": file_digest(calibration_path)}
         (request_path.parent / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     finally:
-        try:
-            manager.shutdown()
-        finally:
+        with phases.measure('workflow.shutdown'):
             try:
-                service.close()
+                manager.shutdown()
             finally:
-                registry.shutdown_all()
+                try:
+                    service.close()
+                finally:
+                    registry.shutdown_all()
 
 
 def reuse_recording(root: Path, identity: dict, *, require_complete: bool = True, check_exports: bool = True) -> Path | None:

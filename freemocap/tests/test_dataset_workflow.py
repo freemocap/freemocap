@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 from unittest.mock import Mock
+from types import SimpleNamespace
 
 import pytest
 
@@ -307,7 +308,8 @@ def test_completed_save_with_leftover_journal_keeps_new_result(tmp_path):
 
 def test_long_windows_video_path_is_rejected_before_worker(recording_workflow, monkeypatch):
     name, options, calls = recording_workflow
-    monkeypatch.setattr(workflow.os, 'name', 'nt')
+    # Simulate only this module's platform branch; filelock/pathlib must retain the host OS.
+    monkeypatch.setattr(workflow, 'os', SimpleNamespace(**(vars(workflow.os) | {'name': 'nt'})))
     options['prepared_root'] = options['prepared_root'] / ('long-root-' * 12)
     with pytest.raises(ValueError, match='shorter --prepared-root'):
         workflow.process(name, **options)

@@ -22,10 +22,12 @@ def install_dependency(destination, monkeypatch):
     return source
 
 
-def seed_wheels(destination, python):
+def seed_wheels(destination, runtime):
     """Preseed exact pinned binary inputs; network must not be needed afterward."""
     cache = Path(os.environ['FREEMOCAP_TEST_WHEEL_CACHE'])
-    lock = cache/f'{python}-windows-x64.json'
+    system = {'Windows': 'windows', 'Darwin': 'macos', 'Linux': 'linux'}[runtime['system']]
+    machine = {'AMD64': 'x64', 'x86_64': 'x64', 'arm64': 'arm64', 'aarch64': 'arm64'}[runtime['machine']]
+    lock = cache/f'{runtime["python"]}-{system}-{machine}.json'
     destination.mkdir(parents=True)
     shutil.copyfile(lock, destination/lock.name)
     for entry in json.loads(lock.read_text()):

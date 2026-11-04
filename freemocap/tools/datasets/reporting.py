@@ -1,5 +1,6 @@
 """Plain-text reports of recorded measurements; no processing or acceptance side effects."""
 import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -34,6 +35,83 @@ def leaves(value, prefix=''):
         yield prefix, value
 
 
+def parse_performance(lines) -> list[dict]:
+    """Prefer full-precision events; recover both historical display-table formats."""
+    reports = {}
+    current = None
+    for raw in lines:
+        line = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', raw).replace('\x00', '').strip()
+        if 'Processing performance: ' in line:
+            try:
+                report = json.loads(line.split('Processing performance: ', 1)[1])
+                if report['version'] == 1 and isinstance(report['stages'], dict):
+                    report['source'] = 'structured'
+                    reports[report['pipeline_id']] = report
+            except (ValueError, KeyError, TypeError):
+                pass  # Historical table remains usable when a structured line is truncated.
+            continue
+        header = re.match(r'^(Posthoc|Dataset worker) performance \[(.+)\] outcome=(\S+); wall=([\d.eE+-]+)s', line)
+        if header:
+            current = dict(version=1, pipeline_id=header[2], scope='posthoc' if header[1] == 'Posthoc' else 'dataset_worker',
+                           outcome=header[3], elapsed_s=float(header[4]), frames=None, images=None,
+                           stages={}, counts={}, source='log_table_rounded')
+            reports.setdefault(header[2], current)
+            continue
+        frames = re.match(r'^Completed detection: (\d+) synchronized frames; (\d+) camera images.', line)
+        if frames and current is not None:
+            current.update(frames=int(frames[1]), images=int(frames[2]))
+        counter = re.match(r'^count (\S+): (\d+)$', line)
+        if counter and current is not None:
+            current['counts'][counter[1]] = int(counter[2])
+        cells = [part.strip() for part in line.strip('|').split('|')]
+        if len(cells) != 7 or not cells[1].isdigit():
+            continue
+        try:
+            count = int(cells[1])
+            values = [None if value == '-' else float(value) for value in cells[2:]]
+            if count < 1 or any(value is not None and not math.isfinite(value) for value in values):
+                continue
+        except ValueError:
+            continue
+        if current is None:
+            current = dict(version=1, pipeline_id='legacy', scope='posthoc', outcome=None,
+                           elapsed_s=None, frames=None, images=None, stages={}, counts={}, source='log_table_rounded')
+            reports['legacy'] = current
+        current['stages'][cells[0]] = dict(count=count, total_s=values[0], mean_ms=values[1],
+                                          first_ms=values[2], mean_after_first_ms=values[3] if count > 1 else None,
+                                          max_ms=values[4])
+    return list(reports.values())
+
+
+def read_performance(log_path: Path) -> list[dict]:
+    if not log_path.is_file():
+        return []
+    with log_path.open(encoding='utf-8', errors='replace') as source:
+        return parse_performance(source)
+
+
+def normalized_stages(report):
+    for name, stage in report['stages'].items():
+        yield name, dict(stage,
+            amortized_ms_per_frame=1000 * stage['total_s'] / report['frames'] if report.get('frames') else None,
+            amortized_ms_per_image=1000 * stage['total_s'] / report['images'] if report.get('images') else None,
+            synchronized_frames_per_second=report['frames'] / stage['total_s']
+                if report.get('frames') and stage['total_s'] else None,
+            camera_images_per_second=report['images'] / stage['total_s']
+                if report.get('images') and stage['total_s'] else None)
+
+
+def performance_tables(reports) -> str:
+    sections = []
+    for report in reports:
+        sections += [f"{report['scope']} / {report['pipeline_id']} / {report.get('outcome')} / source={report['source']}",
+                     f"Wall: {cell(report.get('elapsed_s'))} s; synchronized frames: {cell(report.get('frames'))}; camera images: {cell(report.get('images'))}",
+                     table(['Operation', 'Calls', 'Total s', 'Mean ms/call', 'First ms', 'After first ms', 'Max ms', 'Amortized ms/frame', 'Frames/s', 'Amortized ms/image', 'Images/s'],
+                           [[name, stage['count'], stage['total_s'], stage['mean_ms'], stage['first_ms'], stage['mean_after_first_ms'], stage['max_ms'],
+                             stage['amortized_ms_per_frame'], stage['synchronized_frames_per_second'], stage['amortized_ms_per_image'], stage['camera_images_per_second']] for name, stage in normalized_stages(report)])]
+    return '\n\n'.join(sections) if sections else 'Detailed operation timing: not recorded.'
+
+
 def render_report(result: dict, *, log_path: Path, label: str, identity=None) -> str:
     lines = ['FREEMOCAP DATASET REPORT', '=' * 78, label,
              f'Processing log: {log_path}',
@@ -48,11 +126,12 @@ def render_report(result: dict, *, log_path: Path, label: str, identity=None) ->
               table(['Field', 'Recorded value'], list(leaves(identity or {})) or [['Identity', None]])]
     lines += ['', 'EXECUTED SETTINGS',
               table(['Setting', 'Value'], list(leaves(result.get('mocap_config', {}))) or [['Settings', None]])]
-    timing_rows, statistics, summaries = [], [], []
+    statistics, summaries, log_lines = [], [], []
     malformed = 0
     if log_path.is_file():
         with log_path.open(encoding='utf-8', errors='replace') as source:
             for raw in source:
+                log_lines.append(raw)
                 line = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', raw).replace('\x00', '').strip()
                 if 'Processing statistics: ' in line:
                     try:
@@ -64,10 +143,6 @@ def render_report(result: dict, *, log_path: Path, label: str, identity=None) ->
                         statistics.extend(['', record['stage'], rendered, record.get('caption', '')])
                     except (ValueError, KeyError, TypeError, IndexError):
                         malformed += 1
-                if re.match(r'^\S+ \| \d+ \| [-+\d.eE]+ \|', line):
-                    row = line.split(' | ')
-                    if len(row) == 7:
-                        timing_rows.append(row)
                 if any(line.startswith(prefix) for prefix in (
                     'Posthoc performance [', 'Detection throughput:', 'Completed detection:',
                     'Detector=', 'Recording:', 'Settings:', 'Iterations:', 'Native solve (ms):', 'Converged:')):
@@ -76,8 +151,8 @@ def render_report(result: dict, *, log_path: Path, label: str, identity=None) ->
         summaries.append('Processing log unavailable; no timing inferred.')
     lines += ['', 'PROCESSING TIMING', *summaries,
               'Wall-clock spans overlap: do not add rows. These are not GPU kernel times.',
-              table(['Operation', 'Calls', 'Total s', 'Mean ms', 'First ms', 'Mean after first ms', 'Max ms'], timing_rows)
-              if timing_rows else 'Detailed operation timing: not recorded.',
+              performance_tables(result.get('timing_reports') or parse_performance(log_lines)),
+              'Amortized per-frame/image costs divide total work by the recording size; they are not individual-frame latency percentiles.',
               '', 'NUMERICAL DIAGNOSTICS', *(statistics or ['No structured numerical log records.'])]
     if malformed:
         lines.append(f'Unrecognized diagnostic records: {malformed}; inspect original log.')

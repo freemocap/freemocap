@@ -105,6 +105,8 @@ def test_export_and_open_share_managed_profile(tmp_path, monkeypatch, inventory)
     assert len(files) == (1 if inventory == 'legacy' else 4)
     assert all(Path(file).is_file() for file in files)
     assert launch.call_args.kwargs['env']['BLENDER_USER_CONFIG'] == str(profile/'config')
+    for stream in ('stdin', 'stdout', 'stderr'):
+        assert launch.call_args.kwargs[stream] == module.subprocess.DEVNULL
 
 
 def test_managed_environment_overrides_inherited_profile(tmp_path, monkeypatch):

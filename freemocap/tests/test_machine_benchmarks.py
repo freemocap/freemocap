@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -76,7 +77,9 @@ def test_suite_startup_failure_is_retained(tmp_path):
 
 
 def test_published_records_replace_home_in_nested_paths():
-    assert portable({'items': [str(Path.home() / 'private/run')]}) == {'items': ['<HOME>/private/run']}
+    suffix = str(Path('private') / 'run')
+    assert portable({'items': [str(Path.home() / suffix)]}) == {'items': ['<HOME>' + os.sep + suffix]}
+    assert portable({'items': [(Path.home() / suffix).as_posix()]}) == {'items': ['<HOME>/private/run']}
 
 
 def test_wrapper_delegates_to_existing_runner_and_persists_failure(tmp_path, monkeypatch):
@@ -88,7 +91,10 @@ def test_wrapper_delegates_to_existing_runner_and_persists_failure(tmp_path, mon
     monkeypatch.setattr(module, 'capture_provenance', lambda: {})
     monkeypatch.setattr(module, 'load_snapshot', lambda: {})
     calls = []
+    original_run = module.subprocess.run
     def execute(command, **kwargs):
+        if command[0] == 'git':
+            return original_run(command, **kwargs)
         calls.append(command)
         return CompletedProcess(command, 1)
     monkeypatch.setattr(module.subprocess, 'run', execute)
@@ -97,6 +103,7 @@ def test_wrapper_delegates_to_existing_runner_and_persists_failure(tmp_path, mon
                      tracker_preset='rtmpose', timeout=30, blender_path=None)
     assert module.run(args) == 1
     assert calls[0][2:6] == ['-m', 'freemocap.tools.datasets', 'process', 'test_data']
+    assert '--close-blender-after-open' in calls[0]
     saved = json.loads((args.output / 'benchmark.json').read_text())
     assert saved['status'] == 'failed'
     assert saved['cases'][0]['metrics'] == {}

@@ -40,6 +40,19 @@ new output directory and fresh calibration/processing, even when models are cach
 Downloads, data copying and identity capture are outside worker timing; the wrapper's
 elapsed time covers the invoked command, including acquisition if needed.
 
+On Windows, use a short external temporary output root if the video-path preflight
+rejects a workspace path. Standard processing exports and validates Blender in the
+worker, then automatically opens the scene at its final location after promotion.
+The worker's saved `auto_open_blend_file=false` records this deferred launch; it does
+not disable the workflow's automatic opening. GUI launch and final promotion are
+included in wrapper elapsed time, outside worker-lifecycle timing. The interactive
+Blender process does not inherit the worker's captured standard streams.
+The benchmark wrapper additionally passes `--close-blender-after-open`: Blender
+asserts that the final scene loaded, runs its GUI event loop for two seconds, then
+quits gracefully. The workflow waits up to 60 seconds and records GUI exit evidence;
+on failure it cleans up only that launched process and fails the run. Ordinary
+dataset/application auto-open does not enable this test teardown policy.
+
 Run workloads sequentially. Acquire datasets/models before measured repetitions;
 record cold/cache state in `--conditions`. Prefer at least three fresh process runs
 per dataset and compare medians/ranges, keeping each repetition separately. One run

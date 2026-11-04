@@ -33,6 +33,8 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument('--output-profile', choices=('standard', 'numerical'), default='standard',
                              help='Standard requires validated Blender output; numerical is explicitly partial')
             sub.add_argument('--blender-path', help='Blender executable for standard-output acceptance')
+            sub.add_argument('--close-blender-after-open', action='store_true',
+                             help='Validate the opened GUI scene, then close only the test-owned Blender instance')
             sub.add_argument('--calibration', help='fresh, existing, or a TOML path; full runs default to fresh')
             sub.add_argument('--alignment', choices=('auto', 'calibration', 'person'), help='Default: auto')
             sub.add_argument('--from', dest='start', choices=workflow.STARTS, default='observations')
@@ -72,7 +74,8 @@ def main(argv: list[str] | None = None) -> int:
                     options.update(start=args.start, calibration=args.calibration, alignment=args.alignment,
                                    run_id=args.run_id, sensor_group=args.sensor_group,
                                    output_profile=args.output_profile, blender_path=args.blender_path,
-                                   implementation=args.implementation, tracker_preset=args.tracker_preset)
+                                   implementation=args.implementation, tracker_preset=args.tracker_preset,
+                                   close_blender_after_open=args.close_blender_after_open)
                 result = workflow.preflight(name, **options) if args.dry_run else str(workflow.process(name, **options))
             print(json.dumps(result, indent=2), flush=True)
     except (ValueError, OSError, RuntimeError, KeyError) as error:

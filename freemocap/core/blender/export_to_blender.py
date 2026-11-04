@@ -11,6 +11,18 @@ from freemocap.system.recording_status.recording_status import raise_if_not_blen
 ROUTES = ('auto', 'legacy_npy', 'parquet_segments', 'parquet_constraints')
 
 
+def open_blend_file(blender, output, *, profile=None, python_expression=None):
+    """Open a saved scene without retaining its producer's captured handles."""
+    output = Path(output).resolve()
+    if not output.is_file():
+        raise FileNotFoundError(output)
+    command = [str(blender), str(output)]
+    if python_expression is not None:
+        command.extend(['--python-exit-code', '1', '--python-expr', python_expression])
+    return start_external(command, cwd=output.parent, env=environment(profile), shell=False,
+                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 def export_to_blender(recording_folder_path, detector=None, blend_file_path=None,
                       blender_exe_path=None, open_file_on_completion=True, *, route='auto',
                       package=None, trajectory_channel='LANDMARKS_3D', run_id=None, sensor_group=None, blender_export_config=None, development_build_hash=None, progress=None, cancelled=None, artifact_report=None):
@@ -74,5 +86,7 @@ def export_to_blender(recording_folder_path, detector=None, blend_file_path=None
     if open_file_on_completion:
         if progress:
             progress('Opening the recording in Blender')
-        start_external([str(blender), str(output)], cwd=output.parent, env=environment(prepared.profile), shell=False)
+        # The interactive GUI outlives the export worker. Inheriting its captured
+        # output keeps dataset log readers open after the worker has exited.
+        open_blend_file(blender, output, profile=prepared.profile)
     return str(output)

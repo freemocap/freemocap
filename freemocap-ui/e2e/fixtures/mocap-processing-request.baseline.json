@@ -53,7 +53,7 @@
       "cutoff": 6,
       "order": 4
     },
-    "exportToBlender": false,
+    "exportToBlender": true,
     "blenderImportRoute": "auto",
     "blenderPackage": null,
     "blenderDevelopmentBuildHash": null,

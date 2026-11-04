@@ -97,6 +97,7 @@ def recording_workflow(tmp_path, monkeypatch):
     monkeypatch.setattr(workflow, 'acquire_recording', lambda *a, **kw: raw)
     monkeypatch.setattr(workflow, 'inspect_recording', lambda *a, **kw: source)
     monkeypatch.setattr(workflow, 'software_identity', lambda: {'revision': 'current'})
+    monkeypatch.setattr(workflow, 'open_promoted_recording', Mock(return_value={'opened': True, 'closed': False}))
     calls = []
 
     def worker(command, *, environment, log_path, timeout):
@@ -142,6 +143,49 @@ def test_processing_replaces_old_result_but_calibration_only_does_not(recording_
     assert report['result']['performance']['status'] == 'complete'
     assert calls[0]['filtering_enabled'] is False
     assert (options['recordings_root'] / workflow.TEST_DATA.name / 'synchronized_videos/camera.mp4').read_bytes() == b'original video'
+
+
+def test_standard_opens_final_scene_after_promotion(recording_workflow, monkeypatch):
+    name, options, calls = recording_workflow
+    opened = []
+    def open_final(recording, blender_path, *, close_after_open):
+        assert '/attempts/' not in recording.as_posix()
+        assert (recording / f'{recording.name}.blend').read_bytes() == b'test scene'
+        assert workflow.checked_ready(options['prepared_root'] / workflow.TEST_DATA.name)
+        opened.append(recording)
+        return dict(opened=True, closed=close_after_open)
+    monkeypatch.setattr(workflow, 'open_promoted_recording', open_final)
+    current = workflow.process(name, **options)
+    assert opened == [current]
+    assert calls[0]['defer_blender_open'] is True
+    workflow.process(name, operation='calibrate', **options)
+    assert opened == [current]
+
+
+@pytest.mark.parametrize('timeout', [False, True])
+def test_bounded_blender_gui_waits_and_cleans_up_only_owned_process(tmp_path, monkeypatch, timeout):
+    from types import SimpleNamespace
+    from freemocap.tools.datasets import blender_validation
+    from freemocap.core.blender import export_to_blender
+    process = Mock()
+    process.poll.return_value = None
+    process.wait.side_effect = [subprocess.TimeoutExpired('blender', 60), 0] if timeout else [0]
+    launch = Mock(return_value=process)
+    monkeypatch.setattr(export_to_blender, 'open_blend_file', launch)
+    monkeypatch.setattr(blender_validation, 'preflight_blender',
+                        lambda _: ('blender', SimpleNamespace(profile=None)))
+    if timeout:
+        with pytest.raises(subprocess.TimeoutExpired):
+            blender_validation.open_promoted_recording(tmp_path, close_after_open=True)
+        process.terminate.assert_called_once()
+        assert process.wait.call_count == 2
+    else:
+        result = blender_validation.open_promoted_recording(tmp_path, close_after_open=True)
+        assert result['closed'] and result['exit_code'] == 0
+        process.wait.assert_called_once_with(timeout=60)
+        process.terminate.assert_not_called()
+    assert 'bpy.data.filepath' in launch.call_args.kwargs['python_expression']
+    assert 'quit_blender' in launch.call_args.kwargs['python_expression']
 
 
 def test_fresh_processing_does_not_require_readable_previous_outputs(recording_workflow):

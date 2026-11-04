@@ -4,7 +4,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 const root = path.resolve(import.meta.dirname, '..');
 const base = process.env.UI_BASELINE_COMMIT || '8c209ec2';
-const files = fs.readdirSync(path.join(root, 'src'), {recursive:true}).filter(f => /\.(css|tsx?|jsx?)$/.test(f)).sort();
+const files = fs.readdirSync(path.join(root, 'src'), {recursive:true}).map(f => f.split(path.sep).join('/')).filter(f => /\.(css|tsx?|jsx?)$/.test(f)).sort();
 const sources = files.map(f => [f, fs.readFileSync(path.join(root,'src',f),'utf8').replace(/\/\*[\s\S]*?\*\//g,'')]);
 const declarations = new Set();
 for (const [,text] of sources) {

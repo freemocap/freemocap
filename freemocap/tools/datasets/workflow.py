@@ -18,6 +18,7 @@ from .preparation import PREPARATION_VERSION, execute_worker, file_digest, softw
 from .storage import recover, save_current, write_json
 from .validation import validate_outputs
 from .execution import measure_worker, require_implementation
+from .blender_validation import open_promoted_recording
 
 DATASETS = {'test_data': TEST_DATA, 'sample_data': SAMPLE_DATA}
 STARTS = ('observations', 'triangulation', 'filtering', 'scale_fit', 'reconstruction')
@@ -71,7 +72,8 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
               start: str = 'observations', calibration: str | None = None, alignment: str | None = None,
               run_id: int | None = None, sensor_group: str | None = None,
               timeout: float = 1800.0, output_profile: str = 'standard', blender_path: str | None = None,
-              implementation: str = 'graph', tracker_preset: str | None = None) -> dict:
+              implementation: str = 'graph', tracker_preset: str | None = None,
+              close_blender_after_open: bool = False) -> dict:
     require_implementation(implementation)
     if tracker_preset is not None:
         from skellytracker.core.io.tracker_profiles import tracker_profile
@@ -105,7 +107,8 @@ def preflight(name: str, *, recordings_root: Path, prepared_root: Path, operatio
                 raw=str(raw), root=str(root), run_id=run_id, sensor_group=sensor_group,
                 current=ready['recording'] if ready else None, output_profile=output_profile,
                 required_outputs=required_outputs(output_profile), blender_path=blender_path,
-                implementation=implementation, tracker_preset=tracker_preset or 'rtmpose')
+                implementation=implementation, tracker_preset=tracker_preset or 'rtmpose',
+                close_blender_after_open=close_blender_after_open)
     if operation == 'process' and start != 'observations':
         if ready is None:
             raise ValueError('No prepared recording. Run the complete dataset workflow first.')
@@ -196,7 +199,7 @@ def process(name: str, **options) -> Path:
                 raise ValueError('Calibration changed during copying')
         request = dict(plan, recording=str(recording), frames=dataset.expected_frame_count,
                        fps=source['videos'][0]['nominal_fps'], filtering_enabled=name == 'sample_data',
-                       validate_workflow=True, run_id=plan['run_id'] or 0)
+                       validate_workflow=True, run_id=plan['run_id'] or 0, defer_blender_open=True)
         request_path = attempt / 'request.json'
         write_json(request_path, request)
         environment = dict(os.environ, FREEMOCAP_BASE_FOLDER=str(attempt / 'app-data'), PYTHONUTF8='1')
@@ -245,6 +248,10 @@ def process(name: str, **options) -> Path:
             candidate.rename(destination)
             candidate = destination
         save_current(target, candidate, saved)
+        if plan['operation'] != 'calibrate' and plan['output_profile'] == 'standard':
+            result['blender_gui'] = open_promoted_recording(output, plan.get('blender_path'),
+                close_after_open=plan['close_blender_after_open'])
+            write_json(target / 'ready.json', saved)
         logger.info('Saved %s results: %s', name, output)
         return output
 

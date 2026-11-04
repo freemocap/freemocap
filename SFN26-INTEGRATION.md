@@ -7,7 +7,9 @@ dde00dff and 329ef092 preserve the source histories.
 ## Integration decisions
 
 - Preserve requested Blender export and automatic opening, NPZ, wide CSV and notebook.
-  The standard dataset worker now also opens Blender instead of overriding that choice.
+  The standard dataset workflow opens Blender after promoting its validated output
+  to the final path. Opening inside the temporary worker locks promotion on Windows;
+  the GUI must also have independent standard handles so worker log collection can finish.
 - Keep runtime-based Blender/Python packaging and add-on-owned platform/wheel validation.
   Do not restore the obsolete version allowlist. Keep builder source in the package cache key.
 - Preserve explicit provider choices and CUDA preference, then use Tracker discovery for Auto,

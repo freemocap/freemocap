@@ -133,7 +133,8 @@ def collect_dataset(output: Path, dataset: str, profile: str, preset: str) -> di
                 worker=performance, timing_reports=timings,
                 timing_log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest() if log_path and log_path.exists() else None,
                 executed_settings=result.get('mocap_config'),
-                validation=result.get('validation'), calibration=result.get('calibration'))
+                validation=result.get('validation'), calibration=result.get('calibration'),
+                blender_gui=result.get('blender_gui'))
 
 
 def collect_camera(output: Path, backend: str) -> list[dict]:
@@ -270,7 +271,7 @@ def run(args):
         command = [sys.executable, '-B', '-m', 'freemocap.tools.datasets', 'process', args.dataset,
                    '--recordings-root', str(args.recordings_root.resolve()), '--prepared-root', str(output / 'prepared'),
                    '--output-profile', args.output_profile, '--tracker-preset', args.tracker_preset,
-                   '--timeout', str(args.timeout)]
+                   '--timeout', str(args.timeout), '--close-blender-after-open']
         if args.blender_path:
             command += ['--blender-path', args.blender_path]
     else:

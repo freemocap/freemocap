@@ -28,6 +28,7 @@
 .secondary {
   background-color: var(--color-surface-control);
   border: 1px solid var(--color-border-control);
+  color: var(--color-text-primary);
 }
 
 .secondary>p {

@@ -704,7 +704,7 @@
 
 .unit-label {
 
-  color: var(--color-border-primary);
+  color: var(--color-text-muted);
 }
 
 .segmented-control-icon {

@@ -259,13 +259,13 @@
   flex: none;
   width: 14px;
   font: 600 11px ui-monospace, Menlo, Consolas, monospace;
-  color: var(--color-text-help);
+  color: var(--color-text-muted);
 }
 
 .mp-outline-state {
   flex: none;
   font-size: 11px;
-  color: var(--color-text-help);
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 

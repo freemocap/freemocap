@@ -438,7 +438,7 @@
 
 .text-darkgray,
 .color-darkgray {
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
 }
 
 .text-white,
@@ -452,7 +452,7 @@
 }
 
 .text-error {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 /* ========================================

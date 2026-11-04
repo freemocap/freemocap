@@ -40,4 +40,7 @@ def resolve_recording_board(*, sources: RecordingVideoSources, config: PosthocMo
                 selected = selected.model_copy(update={'square_length_mm': config.charuco_board.square_length_mm})
                 report(f'Detected ChArUco board: {selected.squares_x} x {selected.squares_y}; square length {selected.square_length_mm:g} mm')
                 return config.model_copy(update={'board_mode': CharucoBoardMode.EXPLICIT, 'charuco_board': selected})
-    raise ValueError('Automatic board detection found no supported 5x3 or 7x5 board. Choose an explicit board for a custom layout, or disable board tracking if this recording has no board.')
+    # A completed search without a match is a valid detection result. Preserve
+    # AUTO and the enabled setting; no board geometry has been established.
+    report('Board search complete; no board detected. Continuing motion capture processing.')
+    return config

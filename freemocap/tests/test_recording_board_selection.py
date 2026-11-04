@@ -47,11 +47,13 @@ class RecordingBoardSelectionTests(TestCase):
         for config in [PosthocMocapPipelineConfig(charuco_tracking_enabled=False),PosthocMocapPipelineConfig(board_mode=CharucoBoardMode.EXPLICIT)]:
             self.assertIs(resolve_recording_board(sources=sources,config=config,cancelled=lambda:False,report=lambda detail:None),config)
 
-    def test_missing_board_reports_failure_and_closes_readers(self):
+    def test_missing_board_keeps_auto_enabled_and_closes_readers(self):
         config=PosthocMocapPipelineConfig(charuco_tracking_enabled=True,board_mode=CharucoBoardMode.AUTO)
         sources=Mock(spec=RecordingVideoSources,camera_sources=(SimpleNamespace(video_metadata=SimpleNamespace(file_path=Path('blank.mp4'),frame_count=4)),))
         reader=Mock();reader.read_bgr.return_value=np.full((200,200,3),255,dtype=np.uint8)
         with patch('freemocap.core.tracking.recording_board_selection.SequentialVideoReader',return_value=reader):
-            with self.assertRaisesRegex(ValueError,'found no supported'):
-                resolve_recording_board(sources=sources,config=config,cancelled=lambda:False,report=lambda detail:None)
+            resolved = resolve_recording_board(sources=sources,config=config,cancelled=lambda:False,report=lambda detail:None)
+        self.assertIs(resolved, config)
+        self.assertTrue(resolved.charuco_tracking_enabled)
+        self.assertEqual(resolved.board_mode, CharucoBoardMode.AUTO)
         reader.close.assert_called_once()

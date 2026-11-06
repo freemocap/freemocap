@@ -152,3 +152,57 @@ intervals are separately measured by the existing hardware suite.
 Historical records remain unchanged. Detailed new runs are separate observations,
 with their own code provenance and cache/load conditions, not replacements for
 previous measurements.
+
+## Human-facing run report
+
+Human-requested runs must produce useful tables directly in chat, during long runs
+and again in the final response. Artifact links supplement those tables.
+
+### Reading order
+
+1. **Matched cross-machine result.** Lead with three or four outcome rows:
+   inference, processing with outputs, and the complete command. Columns are
+   machines, with paired `ms/frame · FPS` in each cell. Identify hardware,
+   actual providers, input/frame/camera counts and repetitions beside the table.
+   Show differences and say which measured phase explains them. If no compatible
+   baseline exists, say so; do not substitute another dataset or timing scope.
+2. **Processing costs, grouped by purpose.** Use small tables in pipeline order:
+   video/tracking; triangulation/filtering/reconstruction; saving/annotation/export.
+   Show seconds and paired ms/frame/FPS for frame-processing stages. Keep model
+   startup, calibration, preparation and validation in a separate setup/checks
+   table, in seconds. Do not lead with Blender preparation or dump raw metric keys.
+   Retain the full raw stage detail in JSON and the technical appendix.
+3. **Camera-group health.** Follow SkellyCam's `RecordingTimestampsStats` structure:
+   recording context, frame timing, processing breakdown, and quality. Group by
+   backend and camera configuration. Show target versus achieved FPS, ms/frame,
+   available interval distributions (including p99), synchronization and missing
+   frames, then acceptance/failure. Compare matching resolution/FPS/count cases
+   across machines while naming different camera hardware. Different suite sizes
+   are not equivalent workloads. Include failed measurements, never as passes.
+4. **Repeatability and evidence.** Show run count and range alongside medians,
+   separating between-run variation from within-run latency distributions. Embed
+   a labeled plot for multi-machine or multi-stage results when plotting is
+   available; use separate panels for scopes and error bars for observed ranges.
+   Persist source JSON, readable comparison, revisions, conditions and failures.
+
+### Measurement rules
+
+- One synchronized frame contains one image per camera. Images/s is a separate
+  unit. Compare identical scopes and workloads, including output settings.
+- Nested/parallel spans cannot be summed into phase wall times. Label nesting;
+  show individually measured stages rather than inventing aggregate durations.
+  Percentages require a valid, explicitly stated denominator.
+- Startup is a fixed per-run cost, not a camera framerate. Derived processing FPS
+  is equivalent throughput, not evidence of live realtime performance.
+- Do not fabricate percentiles, zero-fill missing measurements, or treat the
+  maximum as p99. Say what was not recorded. Preserve SkellyCam's existing
+  median/mean/std/min/max and stage/idle statistics when those artifacts exist.
+- Differences between machines are observations, not isolated hardware effects:
+  disclose software revisions, devices, sample counts, cache and background load.
+
+The final chat must be understandable without reading progress messages: comparison,
+phase breakdown, camera health, failures and evidence links. A flat all-stages
+spreadsheet is a technical appendix, not the human-facing result. Documentation
+changes do not require repeating expensive hardware or processing tests.
+
+Latest grouped example: [Mac–Windows comparison, November 6](MAC-WINDOWS-2026-11-06.md), with matched scopes, processing phases, camera failures and [source-hashed JSON](comparisons/2026-11-06-mac-vs-windows.json).

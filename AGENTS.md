@@ -68,3 +68,16 @@ follow [CITATIONS.md](CITATIONS.md): register the source in root `references.bib
 cite its stable key beside the supported claim, and record review scope honestly.
 Run the bibliography validator and its tests before handoff. Preserve useful
 background references even when they have no current inline citation.
+
+## Human-requested tests and benchmarks
+
+When a human requests tests or benchmarks, report measured results directly in
+chat, during long runs and in the final response. Lead with matched cross-machine
+comparisons when available, then explain costs in processing order using small
+phase-specific tables. Pair ms/frame with FPS; separate one-time startup costs.
+Never compare inference FPS to whole-run FPS or dump a flat list of internal
+metrics. Model camera reports on SkellyCam's recording context, frame timing,
+processing breakdown and quality statistics. Include repetitions/ranges, actual
+providers and failures. Embed a comparison plot when plotting is available.
+Completion requires in-chat tables plus persisted JSON and a readable report;
+follow [the reporting contract](benchmarks/README.md#human-facing-run-report).

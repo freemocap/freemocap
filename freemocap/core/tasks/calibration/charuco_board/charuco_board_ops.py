@@ -88,14 +88,25 @@ def estimate_pose_points(
 ) -> tuple[np.ndarray | None, np.ndarray | None]:
     """solvePnP-based board pose estimate. Returns (rvec, tvec) or (None, None).
 
-    Requires >= 6 charuco corner correspondences (cv2.solvePnP DLT minimum).
+    Requires >= 6 finite charuco corner correspondences (cv2.solvePnP DLT
+    minimum). Empty detections arrive as all-NaN rows with every corner id
+    present, so only the finite corners count toward the minimum; NaN
+    corners are filtered out before solvePnP, and a non-finite solve result
+    is treated as "no pose".
     """
     if corners is None or ids is None or len(corners) < 6:
         return None, None
 
-    flat_ids = ids.flatten()
+    img_points = np.asarray(corners, dtype=np.float64).reshape(-1, 1, 2)
+    flat_ids = np.asarray(ids).ravel()
+    finite = np.isfinite(img_points[:, 0, :]).all(axis=1)
+    if np.count_nonzero(finite) < 6:
+        return None, None
+    if not finite.all():
+        img_points = img_points[finite]
+        flat_ids = flat_ids[finite]
+
     obj_points = get_object_points(board)[flat_ids].astype(np.float64)
-    img_points = corners.reshape(-1, 1, 2).astype(np.float64)
 
     K = camera.intrinsics.to_camera_matrix()
     D = camera.intrinsics.to_dist_coeffs_5()
@@ -106,7 +117,7 @@ def estimate_pose_points(
         cameraMatrix=K,
         distCoeffs=D,
     )
-    if not ret:
+    if not ret or not (np.isfinite(rvec).all() and np.isfinite(tvec).all()):
         return None, None
     return rvec, tvec
 

@@ -14,6 +14,8 @@ from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineCon
 from freemocap.core.pipeline.realtime import realtime_pipeline as live
 from skellytracker.core.sessions.session_errors import SessionCreationError
 
+pytestmark = pytest.mark.usefixtures('simulated_providers_load')
+
 
 @pytest.mark.parametrize('provider,native', PROVIDER_NAMES.items())
 def test_explicit_provider_and_actual_session_report(provider, native, caplog):
@@ -223,3 +225,16 @@ def test_graph_auto_preserves_cuda_preference_over_tensorrt_compilation():
     with patch('onnxruntime.get_available_providers',
                return_value=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']):
         assert resolve_tracking_provider(PosthocMocapPipelineConfig()) == 'cuda'
+
+
+def test_auto_skips_cuda_that_is_installed_but_does_not_load():
+    """onnxruntime-gpu lists CUDA on machines with no NVIDIA GPU; Auto must fall to CPU."""
+    from freemocap.core.pipeline.dataflow.application_pipeline import resolve_tracking_provider
+    from freemocap.core.tracking.execution_providers import application_provider
+    listed = ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+    with patch('onnxruntime.get_available_providers', return_value=listed), \
+         patch('skellytracker.core.sessions.ort_session_utils.provider_loads', side_effect=lambda p: p == 'cpu'):
+        assert resolve_tracking_provider(PosthocMocapPipelineConfig()) == 'cpu'
+        assert application_provider(None) == 'cpu'
+        assert application_provider('trt') == 'cpu'
+        assert application_provider('cuda') == 'cuda'  # Explicit choices stay strict.

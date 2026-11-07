@@ -56,11 +56,11 @@ def resolve_tracking_provider(config: PosthocMocapPipelineConfig) -> str:
         return 'cpu'
     provider = config.execution_provider or config.graph_execution_provider
     if provider == 'auto' and config.start_stage == 'observations':
-        import onnxruntime
-        from skellytracker.core.sessions.ort_session_utils import auto_detect_provider
+        from skellytracker.core.sessions.ort_session_utils import auto_detect_provider, provider_loads
         # Preserve the application's CUDA preference over cold TensorRT builds.
         # Other hardware uses Tracker's existing discovery, including Apple CoreML.
-        if 'CUDAExecutionProvider' in onnxruntime.get_available_providers():
+        # Installed is not loadable: onnxruntime-gpu lists CUDA on machines without NVIDIA.
+        if provider_loads('cuda'):
             return 'cuda'
         return auto_detect_provider()
     return provider

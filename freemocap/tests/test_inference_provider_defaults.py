@@ -15,6 +15,8 @@ from freemocap.core.pipeline.inference_service import (
     InferenceMode, InferenceRegistration, InferenceRequest, InferenceService,
 )
 
+pytestmark = pytest.mark.usefixtures('simulated_providers_load')
+
 
 @pytest.mark.parametrize('mode', [InferenceMode.REALTIME, InferenceMode.POSTHOC])
 @pytest.mark.parametrize('requested', [None, 'trt'])

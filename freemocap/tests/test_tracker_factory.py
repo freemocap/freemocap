@@ -10,6 +10,8 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 
 from freemocap.core.tracking.tracker_factory import build_configured_tracker
 
+pytestmark = pytest.mark.usefixtures('simulated_providers_load')
+
 
 @pytest.mark.parametrize('saved_provider', [None, 'trt'])
 def test_application_requests_replace_auto_and_saved_trt_with_cuda(saved_provider):

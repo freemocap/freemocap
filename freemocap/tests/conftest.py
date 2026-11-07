@@ -32,6 +32,24 @@ def websocket_log_queue() -> None:
     create_websocket_log_queue()
 
 
+@pytest.fixture
+def simulated_providers_load(monkeypatch):
+    """Treat every simulated installed provider as loadable on this machine.
+
+    Provider-policy tests patch the installed list to describe hardware. Without
+    this, Tracker's real session probe would answer for the test machine instead.
+    """
+    import onnxruntime
+    from freemocap.core.tracking import execution_providers
+    from skellytracker.core.sessions import ort_session_utils
+
+    def loads(provider):
+        return (execution_providers.PROVIDER_NAMES[provider] in onnxruntime.get_available_providers()
+                or provider in execution_providers.advertised_providers())
+
+    monkeypatch.setattr(ort_session_utils, 'provider_loads', loads)
+
+
 def pytest_sessionfinish(session, exitstatus):
     """Prevent leftover multiprocessing.Queue feeder threads from hanging exit.
 

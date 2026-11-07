@@ -24,9 +24,11 @@ def application_provider(requested: str | None) -> str:
     """Use CUDA for Auto and obsolete TensorRT settings, with platform fallback."""
     if requested not in (None, 'trt'):
         return requested
+    from skellytracker.core.sessions.ort_session_utils import provider_loads
     available = advertised_providers()
+    # Advertised means built into the installed wheel; Auto needs a provider that loads here.
     for provider in ('cuda', 'coreml', 'directml', 'cpu'):
-        if provider in available:
+        if provider in available and provider_loads(provider):
             return provider
     raise ValueError('No supported inference provider is available')
 

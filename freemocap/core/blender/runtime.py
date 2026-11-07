@@ -76,7 +76,9 @@ def executable(path=None):
     selected = path or get_best_guess_of_blender_path()
     if not selected or not Path(selected).expanduser().is_file():
         raise ValueError('Select an existing Blender executable in Blender settings')
-    return Path(selected).expanduser().resolve()
+    # Keep symlinks: launchers such as /snap/bin/blender dispatch on their own name,
+    # and resolving them selects the shared snap binary instead of Blender.
+    return Path(selected).expanduser().absolute()
 
 
 def environment(profile=None):

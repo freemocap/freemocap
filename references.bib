@@ -753,3 +753,33 @@
   claim = {CoreML compute-unit options can enable CPU and GPU or all compatible Apple devices; provider graph support and compute-plan profiling are distinct from merely registering the provider},
   note = {Reviewed configuration-option excerpts, including MLComputeUnits, RequireStaticInputShapes and ProfileComputePlan; not a measurement of FreeMoCap model performance}
 }
+
+@misc{npmInstallFolderV10,
+  title = {npm-install | npm Docs},
+  author = {{npm CLI contributors}},
+  url = {https://docs.npmjs.com/cli/v10/commands/npm-install},
+  urldate = {2026-11-08},
+  review = {excerpt},
+  claim = {npm links a folder dependency outside the project root without installing dependencies in that folder; it runs prepare, after installing devDependencies, only for git dependencies.},
+  note = {npm CLI v10 documentation. Reviewed only the folder and git dependency descriptions.}
+}
+
+@misc{npmScriptsV10,
+  title = {scripts | npm Docs},
+  author = {{npm CLI contributors}},
+  url = {https://docs.npmjs.com/cli/v10/using-npm/scripts},
+  urldate = {2026-11-08},
+  review = {excerpt},
+  claim = {npm run executes pre and post scripts with matching names, and npm install and npm ci run postinstall after installing modules.},
+  note = {npm CLI v10 documentation. Reviewed only the pre and post script description and the life cycle operation order.}
+}
+
+@misc{npmIncludeConfigV10,
+  title = {config | npm Docs},
+  author = {{npm CLI contributors}},
+  url = {https://docs.npmjs.com/cli/v10/using-npm/config},
+  urldate = {2026-11-08},
+  review = {excerpt},
+  claim = {A dependency type listed in both include and omit is included.},
+  note = {npm CLI v10 documentation. Reviewed only the include and omit descriptions.}
+}

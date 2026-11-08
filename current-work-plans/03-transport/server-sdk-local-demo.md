@@ -7,7 +7,9 @@ source and installed files; it has **not** been launched in this planning pass.
 No server, browser, camera or GPU job was started.
 
 The commands below target the canonical Core checkout and its in-repository
-`packages/freemocap-client` package. Build that package before building the UI.
+`packages/freemocap-client` package. The UI's `npm install` and `npm run dev` build
+that package; running its examples without the UI needs `npm ci --ignore-scripts`
+and `npm run build` in it first.
 Normal editable imports resolve the configured Cam/Tracker/Forge checkouts;
 this is not a frozen dependency environment. The earlier W6 acceptance evidence
 came from its isolated checkout. These manual commands have not been launched

@@ -19,7 +19,7 @@ Historical captures with exports disabled remain evidence of that narrower scope
 Run from `repos/freemocap-ui-harness/freemocap-ui` unless stated otherwise.
 
 - `npm install`, then `npm install-scripts approve electron esbuild`.
-- In `../packages/freemocap-client`: `npm install && npm run build` first.
+- `npm install` also installs and builds `../packages/freemocap-client`; the dev, build and test scripts rebuild it when its sources change.
 - `npx playwright install chromium`.
 - `npm test`: existing SDK/typecheck/unit runner, including camera and operation-progress checks.
 - `npm run test:styles`: all source CSS variable definitions, exact-case `icons.css` targets, and hex additions relative to `8c209ec2` outside `styles/color.css`.

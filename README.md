@@ -26,15 +26,14 @@ retention, compatibility, and reproducible validation.
 ### React GUI
 0. Install Node.js
    - https://nodejs.org/en/download/
-1. Build the client package from the repository root:
-   - `cd packages/freemocap-client`
-   - `npm ci --ignore-scripts`
-   - `npm run build`
-   - `cd ../..`
-2. Change directory to the `freemocap-ui` folder
+1. Change directory to the `freemocap-ui` folder
    - `cd freemocap-ui`
-3. Install dependencies
+2. Install dependencies
    - `npm install`
+   - This also installs and builds the local `@freemocap/client` package in
+     `packages/freemocap-client`. `npm run dev`, `npm run build` and the UI test
+     scripts rebuild it first when its sources change, so no separate client
+     step is needed.
 
 ## Run the FreeMoCap application in development mode 
 1. Start the Python Server:

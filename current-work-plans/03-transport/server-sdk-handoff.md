@@ -26,9 +26,11 @@ That recipe was source-inspected, not freshly launched during planning.
 - SDK source is `packages/freemocap-client` within the FreeMoCap repository. It is
   a private, unpublished `0.1.0-dev.0` package with its own API, tests and build.
   The original isolated sibling source remains preserved as historical evidence.
-- Core UI consumes `file:../packages/freemocap-client`. Build the SDK before building
-  the UI. The SDK owns HTTP bindings, connection/decoder/resolver code and pure
-  recording readers. Existing UI import paths re-export these implementations.
+- Core UI consumes `file:../packages/freemocap-client`. Its `postinstall` and its
+  dev, build and test pre-scripts install and build the SDK through
+  `freemocap-ui/tools/ensure-freemocap-client.mjs`. The SDK owns HTTP bindings,
+  connection/decoder/resolver code and pure recording readers. Existing UI import
+  paths re-export these implementations.
 - Core retains application configuration, stores, rendering, worker ownership and
   cross-repository integration tests. No component detector/geometry logic moved.
 - Public documentation changes belong to the separate `freemocap.github.io` repository.

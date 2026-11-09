@@ -76,16 +76,18 @@ Older revisions use `APPLE_ID_PASSWORD`; some development revisions use
 `APPLE_FREEMOCAP_APP_SPECIFIC_PASSWORD`, with no fallback to ambiguous names.
 Do not delete or rename shared secrets until their other consumers are checked.
 
-After the secret is saved and this branch is published, dispatch
-`build-installers-pyinstaller.yml` on **fix/apple-signing-credentials** (or the
-branch containing this change). Rerunning the October 27 run uses its old workflow
-and therefore still requests `APPLE_ID_PASSWORD`.
+After saving the secret, run the credential check on a published branch containing
+this workflow:
 
-Inspect the workflow's upload and release steps before dispatch: this is the full
-installer workflow, including artifact and R2 uploads, not a credentials-only
-probe. Success requires the macOS prerequisite check, certificate import, signing,
-and notarization to pass. A missing-secret check only establishes availability;
-Apple authentication is verified later during notarization.
+```shell
+gh workflow run build-installers-pyinstaller.yml --repo freemocap/freemocap --ref fix/apple-signing-credentials -f check_apple_credentials=true
+```
+
+The macOS job calls Apple's notary service to read submission history and
+discards the response. Success verifies the account email, team ID and
+app-specific password together [@appleNotaryCredentialTest]. The installer
+build and release jobs are skipped. A full installer build separately verifies
+the certificate and an actual submission.
 
 For a read-only inventory of names available to this repository:
 

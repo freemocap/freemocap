@@ -8,6 +8,10 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      check_apple_credentials:
+        description: 'Only verify Apple notarization credentials'
+        type: boolean
+        default: false
       variant:
         description: 'Build variant'
         type: choice
@@ -18,10 +22,29 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  check-apple-credentials:
+    if: github.event_name == 'workflow_dispatch' && inputs.check_apple_credentials
+    runs-on: macos-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Authenticate with the Apple notary service
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_FREEMOCAP_APP_SPECIFIC_PASSWORD }}
+        run: |
+          : "${APPLE_ID:?Missing APPLE_ID}"
+          : "${APPLE_TEAM_ID:?Missing APPLE_TEAM_ID}"
+          : "${APPLE_APP_SPECIFIC_PASSWORD:?Missing APPLE_FREEMOCAP_APP_SPECIFIC_PASSWORD}"
+          xcrun notarytool history --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" > /dev/null
+          echo "Apple accepted the FreeMoCap notarization credentials."
+
   # ═══════════════════════════════════════════════════════
   # BUILD — runs on all platform/arch/variant combos
   # ═══════════════════════════════════════════════════════
   build:
+    if: github.event_name != 'workflow_dispatch' || !inputs.check_apple_credentials
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

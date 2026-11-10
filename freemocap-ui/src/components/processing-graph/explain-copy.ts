@@ -1,8 +1,9 @@
 // Text for the explain view's callouts about stages, their data and their saved files. Settings explain
 // themselves with the same text as their info buttons.
-import type {DataKey, NodeId} from './stage-graph';
+import type {DataKey, GraphNodeId, NodeId} from './stage-graph';
 
-export const STAGE_TEXT: Record<NodeId, string> = {
+/** The posthoc sections' texts. A node that is not a posthoc section is explained by its section's own `explain`. */
+export const STAGE_TEXT: Partial<Record<GraphNodeId, string>> = {
     recording: 'The recording folder: its synchronized videos and the calibration the cameras were calibrated with.',
     observations: 'Detects the skeleton keypoints in every frame of every video, with the selected detector.',
     triangulation: 'Matches the cameras\' 2D keypoints and calculates each keypoint\'s 3D position.',
@@ -11,7 +12,7 @@ export const STAGE_TEXT: Record<NodeId, string> = {
     reconstruction: 'Fits the skeleton to every frame, giving each rigid-body segment its position and rotation.',
     blender: 'Builds a Blender scene from the reconstructed skeleton after processing.',
     exports: 'Writes the selected data as files after processing. Everything is always saved in the recording\'s Parquet file.',
-};
+} satisfies Record<NodeId, string>;
 
 export const DATA_TEXT: Record<DataKey, string> = {
     calibration: 'Camera intrinsics and poses from the recording\'s calibration file.',
@@ -25,6 +26,9 @@ export const DATA_TEXT: Record<DataKey, string> = {
     landmarks: 'Anatomical landmark positions on the fitted skeleton, per frame.',
     blend: 'A .blend file of the animated skeleton.',
     files: 'The export files in the selected formats.',
+    frames: 'Each camera\'s frames as they arrive, synchronized across cameras.',
+    vmc: 'Bone rotations sent to a VMC receiver over UDP.',
+    lsl: 'The selected channels published as a Lab Streaming Layer stream.',
 };
 
 export const SAVE_TEXT = 'Where this stage writes its results. Click a file to open its folder.';

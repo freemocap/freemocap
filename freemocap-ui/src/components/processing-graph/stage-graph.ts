@@ -1,6 +1,7 @@
 // The processing graph as the window's sections: the recording, the five processing stages, then Blender
 // and the exports. Plan nodes belong to a section by their stage, except the Blender and export nodes.
 // Draft states come from the stage controls; run states, progress and saved files from the task's operations.
+// The node, wire and data types also describe the realtime pipeline's graph, which is built where that pipeline is.
 import type {ProcessingPlan} from '@/services/recording/processing-plan';
 import type {TaskOperation} from '@/services/server/transport/message-contract';
 import type {ExportChannelKind} from '@/types/recording-exports';
@@ -8,8 +9,13 @@ import {PROCESSING_STAGES, type ResumeStage} from '@/services/recording/posthoc-
 import {ANNOTATION, basename, type CameraProgress, type LaunchedRun, type OperationState} from './graph-model';
 
 export type NodeId = 'recording' | ResumeStage | 'blender' | 'exports';
-export type DataKey = 'calibration' | 'videos' | 'keypoints2d' | 'annotated' | 'raw3d' | 'filtered3d' | 'dimensions'
+/** A node of either pipeline's graph: a posthoc section, or the realtime pipeline's cameras or a streaming output. */
+export type GraphNodeId = NodeId | 'cameras' | 'vmc' | 'lsl';
+/** The data the posthoc sections pass on. */
+type PosthocData = 'calibration' | 'videos' | 'keypoints2d' | 'annotated' | 'raw3d' | 'filtered3d' | 'dimensions'
     | 'segments' | 'landmarks' | 'blend' | 'files';
+/** The data on either pipeline's wires: the posthoc data, and what only the realtime pipeline passes on. */
+export type DataKey = PosthocData | 'frames' | 'vmc' | 'lsl';
 
 /** Data on the wires, named as the Exports section's "Data to export" names it where it is exportable. */
 export const DATA: Record<DataKey, {name: string; detail: string; colour: string}> = {
@@ -24,15 +30,18 @@ export const DATA: Record<DataKey, {name: string; detail: string; colour: string
     landmarks: {name: '3D landmarks', detail: '', colour: 'var(--graph-type-7)'},
     blend: {name: 'Blender scene', detail: '.blend', colour: 'var(--graph-type-9)'},
     files: {name: 'Export files', detail: '', colour: 'var(--graph-type-10)'},
+    frames: {name: 'Camera frames', detail: 'live', colour: 'var(--graph-type-1)'},
+    vmc: {name: 'VMC messages', detail: 'UDP', colour: 'var(--graph-type-11)'},
+    lsl: {name: 'LSL stream', detail: '', colour: 'var(--graph-type-12)'},
 };
 
-const CHANNEL_DATA: Record<ExportChannelKind, DataKey> = {
+const CHANNEL_DATA: Record<ExportChannelKind, PosthocData> = {
     OVERLAY_2D: 'keypoints2d', RAW_KEYPOINTS_3D: 'raw3d', KEYPOINTS_3D: 'filtered3d', SEGMENT_POSES: 'segments', LANDMARKS_3D: 'landmarks',
 };
 /** Exports' inputs in the order their producers' outputs sit, so their wires keep their order. */
-const EXPORT_INPUT_ORDER: DataKey[] = ['keypoints2d', 'raw3d', 'filtered3d', 'segments', 'landmarks'];
+const EXPORT_INPUT_ORDER: PosthocData[] = ['keypoints2d', 'raw3d', 'filtered3d', 'segments', 'landmarks'];
 
-export const PORTS: Record<NodeId, {inputs: DataKey[]; outputs: DataKey[]}> = {
+export const PORTS: Record<NodeId, {inputs: PosthocData[]; outputs: PosthocData[]}> = {
     recording: {inputs: [], outputs: ['calibration', 'videos']},
     observations: {inputs: ['videos'], outputs: ['keypoints2d', 'annotated']},
     triangulation: {inputs: ['calibration', 'keypoints2d'], outputs: ['raw3d']},
@@ -42,7 +51,7 @@ export const PORTS: Record<NodeId, {inputs: DataKey[]; outputs: DataKey[]}> = {
     blender: {inputs: ['segments', 'landmarks'], outputs: ['blend']},
     exports: {inputs: [], outputs: ['files']},
 };
-export const PRODUCER: Record<DataKey, NodeId> = {
+export const PRODUCER: Record<PosthocData, NodeId> = {
     calibration: 'recording', videos: 'recording', keypoints2d: 'observations', annotated: 'observations', raw3d: 'triangulation',
     filtered3d: 'filtering', dimensions: 'scale_fit', segments: 'reconstruction', landmarks: 'reconstruction', blend: 'blender', files: 'exports',
 };
@@ -59,10 +68,11 @@ export interface NodeBar {
     text: string;
 }
 
-export interface GraphNode {
-    id: NodeId;
-    inputs: DataKey[];
-    outputs: DataKey[];
+/** A node of either pipeline's graph; the posthoc graph's own nodes are `GraphNode<NodeId, PosthocData>`. */
+export interface GraphNode<Id extends GraphNodeId = GraphNodeId, Data extends DataKey = DataKey> {
+    id: Id;
+    inputs: Data[];
+    outputs: Data[];
     state: NodeState;
     /** Where a skipped stage's data comes from, such as "from Run 0". */
     provenance: string | null;
@@ -77,8 +87,8 @@ export interface GraphNode {
 export interface GraphWire {
     id: string;
     data: DataKey;
-    source: NodeId;
-    target: NodeId;
+    source: GraphNodeId;
+    target: GraphNodeId;
     active: boolean;
 }
 
@@ -149,7 +159,7 @@ export function stageGraph(input: GraphInputs): StageGraph {
     const saves = (ids: string[]): string[] => [...new Set(ids.filter(id => effects(id).includes('write_disk')).flatMap(id => plan!.read_paths[id] ?? []))];
     const cameras: CameraProgress[] = run?.cameras ?? [];
 
-    const nodes = NODE_ORDER.map((id): GraphNode => {
+    const nodes = NODE_ORDER.map((id): GraphNode<NodeId, PosthocData> => {
         const ids = members[id];
         const base = {id, inputs: id === 'exports'
             ? EXPORT_INPUT_ORDER.filter(data => input.exportChannels.some(channel => CHANNEL_DATA[channel] === data))

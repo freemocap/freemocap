@@ -33,6 +33,16 @@ const Checkbox: React.FC<CheckboxProps> = ({
     if (inputRef.current) inputRef.current.indeterminate = indeterminate;
   });
 
+  /*
+   * A click that the caller ignores causes no render, so the flag is also put
+   * back here. It goes back before the caller's handler runs, so that a render
+   * the handler causes has the last word.
+   */
+  const handleChange = onChange && ((event: React.ChangeEvent<HTMLInputElement>) => {
+    event.target.indeterminate = indeterminate;
+    onChange(event);
+  });
+
   return (
     <label
       className={`
@@ -52,7 +62,7 @@ const Checkbox: React.FC<CheckboxProps> = ({
         aria-label={ariaLabel}
         aria-checked={indeterminate ? "mixed" : undefined}
         checked={checked}
-        onChange={onChange}
+        onChange={handleChange}
         disabled={disabled}
         className={`
           button

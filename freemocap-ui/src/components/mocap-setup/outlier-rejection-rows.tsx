@@ -58,13 +58,15 @@ export function OutlierRejectionRows({config, onChange, inactive = false}: Outli
         {/* Governed by the switch above: indented, dimmed when off, never hidden. */}
         <DependentRowGroup>
             <SettingRow inactive={limitsInactive} label="Minimum cameras for triangulation" info={MINIMUM_CAMERAS_INFO}
-                control={<ValueSelector value={config.minimum_cameras_for_triangulation} min={2} max={100}
+                control={<ValueSelector ariaLabel="Minimum cameras for triangulation" value={config.minimum_cameras_for_triangulation}
+                    min={2} max={100}
                     onChange={minimum_cameras_for_triangulation => onChange({...config, minimum_cameras_for_triangulation})}/>}/>
             <SettingRow inactive={limitsInactive} label="Maximum cameras to drop" info={MAXIMUM_DROP_INFO}
-                control={<ValueSelector value={config.maximum_cameras_to_drop} min={0} max={100}
+                control={<ValueSelector ariaLabel="Maximum cameras to drop" value={config.maximum_cameras_to_drop} min={0} max={100}
                     onChange={maximum_cameras_to_drop => onChange({...config, maximum_cameras_to_drop})}/>}/>
             <SettingRow inactive={limitsInactive} label="Target reprojection error" info={REPROJECTION_INFO}
-                control={<ValueSelector value={config.target_reprojection_error} min={0.001} max={1.0} step={0.01}
+                control={<ValueSelector ariaLabel="Target reprojection error" value={config.target_reprojection_error}
+                    min={0.001} max={1.0} step={0.01}
                     onChange={target_reprojection_error => onChange({...config, target_reprojection_error})}/>}/>
         </DependentRowGroup>
     </>;

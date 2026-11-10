@@ -9,13 +9,17 @@ import type {TriangulationConfig} from '@/store/slices/mocap';
 import type {RealtimeDetectorType} from '@/store/slices/realtime/realtime-types';
 import {EXECUTION_PROVIDERS} from '@/types/execution-provider';
 import {DETECTOR_OPTIONS, REALTIME_DETECTOR_OPTIONS} from './detector-options';
-import {DetectorSettingRows, type DetectorSettingsValue} from './detector-setting-rows';
+import {
+    COMPLEXITY_INFO, CONFIDENCE_INFO, DETECTION_CONFIDENCE_INFO, DETECTOR_INFO, DetectorSettingRows, type DetectorSettingsValue,
+    EXECUTION_PROVIDER_INFO, MODEL_INFO, PRESENCE_CONFIDENCE_INFO, TRACKING_CONFIDENCE_INFO,
+} from './detector-setting-rows';
 import {OutlierRejectionRows} from './outlier-rejection-rows';
 import SkeletonAnchorSetting from './skeleton-anchor-setting';
 
 type DetectorRowsProps = Parameters<typeof DetectorSettingRows>[0];
 type Handler = (value: string | number | boolean) => void;
-interface RowProps {label?: ReactNode; control?: ReactElement<{onChange?: Handler; onToggle?: Handler}>; children?: ReactNode}
+interface Info {title: string; text: ReactNode}
+interface RowProps {label?: ReactNode; info?: Info; control?: ReactElement<{onChange?: Handler; onToggle?: Handler}>; children?: ReactNode}
 
 const DETECTORS: RealtimeDetectorType[] = ['rtmpose', 'mediapipe', 'rtmw_mediapipe_hands', 'dlc', 'rtmw_onnx_hands'];
 /** The realtime pipeline's detector defaults. */
@@ -52,23 +56,48 @@ const dimmed = (html: string): string[] => rowsOf(html).filter(row => / setting-
 const optionsOf = (row: string): string[] => [...row.matchAll(/<option value="([^"]*)"/g)].map(match => match[1]);
 
 /**
- * The change handler of the control in the row with this label. The unit runner has no DOM to act in, so this
- * reads the handler from the elements the rows return, and the test calls it as the control would.
+ * The row with this label, as the element the rows return. The unit runner has no DOM to act in and a row's
+ * explanation is not in the markup until it is opened, so the tests below read both from the row's own props.
  */
+function rowElement(rows: ReactNode, label: string): RowProps | undefined {
+    for (const child of Children.toArray(rows)) {
+        if (!isValidElement<RowProps>(child)) continue;
+        const found = child.props.label === label ? child.props : rowElement(child.props.children, label);
+        if (found) return found;
+    }
+    return undefined;
+}
+/** The change handler of the control in the row with this label; the test calls it as the control would. */
 function handlerOf(rows: ReactNode, label: string): Handler {
-    const search = (node: ReactNode): Handler | undefined => {
-        for (const child of Children.toArray(node)) {
-            if (!isValidElement<RowProps>(child)) continue;
-            const control = child.props.label === label ? child.props.control : undefined;
-            const found = control ? control.props.onChange ?? control.props.onToggle : search(child.props.children);
-            if (found) return found;
-        }
-        return undefined;
-    };
-    const handler = search(rows);
+    const control = rowElement(rows, label)?.control;
+    const handler = control?.props.onChange ?? control?.props.onToggle;
     assert.ok(handler, `no control with a change handler in a row labelled "${label}"`);
     return handler;
 }
+/** The explanation behind the info button of the row with this label. */
+function infoOf(rows: ReactNode, label: string): Info {
+    const info = rowElement(rows, label)?.info;
+    assert.ok(info, `no row labelled "${label}"`);
+    return info;
+}
+/** An explanation's text as markup. */
+const textOf = (info: Info): string => renderToStaticMarkup(<>{info.text}</>);
+
+/** The posthoc explanation of each detector row. */
+const POSTHOC_INFO: Record<string, Info> = {
+    'Skeleton detector': DETECTOR_INFO, 'Execution provider': EXECUTION_PROVIDER_INFO, 'Model': MODEL_INFO, 'Pose model size': COMPLEXITY_INFO,
+    'Confidence threshold': CONFIDENCE_INFO, 'Detection confidence': DETECTION_CONFIDENCE_INFO, 'Presence confidence': PRESENCE_CONFIDENCE_INFO,
+    'Tracking confidence': TRACKING_CONFIDENCE_INFO,
+};
+/** What today's realtime Skeleton Setup dialog says about the selected detector, word for word. */
+const DETECTOR_NOTES: Partial<Record<RealtimeDetectorType, string>> = {
+    rtmpose: '133 keypoints (body, hands, face) via YOLOX + RTMW. Uses GPU batched inference when available.',
+    mediapipe: 'Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.',
+    rtmw_mediapipe_hands: 'RTMW body and face with cropped MediaPipe hands. The execution provider applies to RTMW; MediaPipe hands run on CPU.',
+    rtmw_onnx_hands: 'Experimental RTMW body and face with ONNX palm and hand models. Uses CUDA; CPU is also supported. Compare hand quality with the MediaPipe hands option.',
+};
+/** And what it says above the confidences of the two presets that add hand detectors to RTMW. */
+const HANDS_NOTE = 'The confidence settings below apply to the hands.';
 
 test('key rows are two rows for every detector', () => {
     const modelRow: Record<RealtimeDetectorType, string> = {
@@ -189,4 +218,66 @@ test('inactive dims every row', () => {
     }
     assert.deepEqual(dimmed(renderToStaticMarkup(<SkeletonAnchorSetting value="pelvis" onChange={() => {}}/>)), []);
     assert.deepEqual(dimmed(renderToStaticMarkup(<SkeletonAnchorSetting value="pelvis" onChange={() => {}} inactive/>)), ['Skeleton anchor']);
+});
+
+test('number fields are named after their rows', () => {
+    /** The accessible names of a row's elements of one kind, in order. */
+    const names = (row: string, tag: string): (string | undefined)[] =>
+        (row.match(new RegExp(`<${tag}[^>]*>`, 'g')) ?? []).map(opening => opening.match(/ aria-label="([^"]*)"/)?.[1]);
+    const named = (html: string, label: string, where: string): void => {
+        const row = rowLabelled(html, label);
+        assert.deepEqual(names(row, 'input'), [label], `${where}: ${row}`);
+        // The row's buttons in order: its explanation, then the steppers either side of the field.
+        assert.deepEqual(names(row, 'button'), [label, `Decrease ${label}`, `Increase ${label}`], `${where}: ${row}`);
+    };
+    for (const context of ['posthoc', 'realtime'] as const) {
+        const html = detectorRows('rtmw_mediapipe_hands', 'all', {context});
+        for (const label of ['Confidence threshold', 'Detection confidence', 'Presence confidence', 'Tracking confidence']) named(html, label, context);
+    }
+    for (const label of OUTLIER_LIMITS) named(outlierRows(CONFIG), label, 'outlier rejection');
+});
+
+test('realtime explanations carry the Skeleton Setup notes', () => {
+    const hybrids: RealtimeDetectorType[] = ['rtmw_mediapipe_hands', 'rtmw_onnx_hands'];
+    /** The note that ends a realtime row's explanation for this detector, where the dialog has one about that row. */
+    const noteFor = (label: string, detector: RealtimeDetectorType): string | undefined =>
+        label === 'Skeleton detector' || label === 'Execution provider' ? DETECTOR_NOTES[detector]
+            : label.endsWith(' confidence') && hybrids.includes(detector) ? HANDS_NOTE : undefined;
+    const shown = new Set<string>();
+    for (const detector of DETECTORS) {
+        for (const set of ['key', 'all'] as const) {
+            const rows = DetectorSettingRows(detectorProps(detector, set));
+            for (const label of labels(detectorRows(detector, set)).filter(other => other !== 'DLC model')) {
+                const info = infoOf(rows, label), posthoc = POSTHOC_INFO[label], note = noteFor(label, detector);
+                assert.equal(info.title, posthoc.title, `${detector} ${set} ${label}`);
+                if (note === undefined) {
+                    assert.equal(info, posthoc, `${detector} ${set} ${label}`);
+                    continue;
+                }
+                // The row's own explanation, then the note as its last paragraph.
+                const own = typeof posthoc.text === 'string' ? `<p>${posthoc.text}</p>` : textOf(posthoc);
+                assert.equal(textOf(info), `${own}<p>${note}</p>`, `${detector} ${set} ${label}`);
+                shown.add(note);
+            }
+        }
+    }
+    // Each of the dialog's five notes has a row: none is left behind with the dialog.
+    assert.deepEqual([...shown].sort(), [...Object.values(DETECTOR_NOTES), HANDS_NOTE].sort());
+
+    // The DLC model row says the same in both windows.
+    const dlc = infoOf(DetectorSettingRows(detectorProps('dlc', 'all')), 'DLC model');
+    assert.equal(dlc.title, 'DLC model');
+    assert.equal(textOf(dlc), '<p>The exported DeepLabCut model to run on every camera frame.</p>');
+    assert.equal(infoOf(DetectorSettingRows(detectorProps('dlc', 'all', {context: 'posthoc', detectors: DETECTOR_OPTIONS})), 'DLC model'), dlc);
+});
+
+test('posthoc explanations are unchanged', () => {
+    for (const {value: detector} of DETECTOR_OPTIONS) {
+        const posthoc = {context: 'posthoc', detectors: DETECTOR_OPTIONS} as const;
+        const rows = DetectorSettingRows(detectorProps(detector, 'all', posthoc));
+        const shown = labels(detectorRows(detector, 'all', posthoc)).filter(label => label !== 'DLC model');
+        assert.ok(shown.length > 0, detector);
+        // The very objects posthoc had before the rows were shared.
+        for (const label of shown) assert.equal(infoOf(rows, label), POSTHOC_INFO[label], `${detector} ${label}`);
+    }
 });

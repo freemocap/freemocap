@@ -102,6 +102,7 @@ export const detectCameras = createAsyncThunk<
                     vendorId: serverCamera.vendor_id,
                     productId: serverCamera.product_id,
                     supportedModes: serverCamera.supported_modes ?? [],
+                    usbVersion: serverCamera.usb_version ?? null,
                 },
                 metrics: undefined,
             };

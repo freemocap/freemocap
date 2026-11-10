@@ -131,6 +131,11 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
             >
               {camera.name}
             </p>
+            {camera.deviceInfo?.usbVersion && (
+              <p className="text sm text-gray text-nowrap" title="USB connection reported by the system">
+                {camera.deviceInfo.usbVersion}
+              </p>
+            )}
             <div className="flex-1" />
 
             <span className="icon icon-size-20 settings-icon"></span>

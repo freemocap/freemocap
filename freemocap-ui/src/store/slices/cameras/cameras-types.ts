@@ -88,6 +88,7 @@ export interface Camera {
         vendorId?: string;
         productId?: string;
         supportedModes?: CaptureMode[];  // Empty or absent when detection reported no modes
+        usbVersion?: string | null;  // 'USB 3', 'USB 2' or 'USB 1' as the system reports it; null when unknown
     };
 
     // Performance metrics (optional, updated from websocket)
@@ -124,6 +125,7 @@ export interface DetectCamerasResponse {
         vendor_id?: string;
         product_id?: string;
         supported_modes?: CaptureMode[];
+        usb_version?: string | null;
     }>;
 }
 

@@ -42,6 +42,9 @@ export const cameraSlice = createSlice({
     name: 'cameras',
     initialState,
     reducers: {
+        cameraErrorCleared: (state) => {
+            state.error = null;
+        },
         cameraBackendSelected: (state, action: PayloadAction<CameraBackend>) => {
             if (!state.isLoading && !state.cameras.some(camera => camera.connectionStatus === 'connected')) {
                 state.backend = action.payload;
@@ -268,6 +271,7 @@ export const cameraSlice = createSlice({
 });
 
 export const {
+    cameraErrorCleared,
     cameraBackendSelected,
     cameraSelectionToggled,
     cameraRealtimeToggled,

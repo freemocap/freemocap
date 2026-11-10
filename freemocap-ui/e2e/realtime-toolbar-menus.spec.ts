@@ -8,7 +8,7 @@ test.use({channel: process.env.PLAYWRIGHT_CHANNEL || undefined});
 // the camera grid and the WebGL canvas are replaced; the canvas stub keeps the
 // production viewport root and its top-left panel, whose z-index used to paint
 // over every toolbar menu.
-test('streaming toolbar menus paint above the viewport and close from their own buttons', async ({page}) => {
+test('processing settings paint above the viewport and close without disturbing it', async ({page}) => {
     test.setTimeout(60000);
     page.on('pageerror', error => {throw error;});
     await page.route('**/*', route => route.fulfill({contentType: 'text/html', body: '<div id="root"></div>'}));
@@ -41,7 +41,7 @@ test('streaming toolbar menus paint above the viewport and close from their own 
     for (const output of bundle.outputFiles.filter(output => !output.path.endsWith('.css'))) await page.addScriptTag({content: output.text, type: 'module'});
     await expect(page.locator('.vp-layers')).toBeVisible();
 
-    for (const [name, menuSelector] of [['3D tracking settings', '.realtime-settings-flyout'], ['Streaming outputs', '.streaming-outputs-flyout']]) {
+    for (const [name, menuSelector] of [['Processing settings', '.tracker-settings-modal']]) {
         const trigger = page.getByRole('button', {name, exact: true});
         await trigger.click();
         const menu = page.locator(menuSelector);
@@ -58,7 +58,8 @@ test('streaming toolbar menus paint above the viewport and close from their own 
             return menuElement.contains(document.elementFromPoint((left + right) / 2, (top + bottom) / 2));
         }, menuSelector);
         expect(drawnOnTop).toBe(true);
-        await trigger.click();
+        await menu.getByRole('button', {name: 'Done', exact: true}).click();
         await expect(menu).toHaveCount(0);
+        await expect(trigger).toBeFocused();
     }
 });

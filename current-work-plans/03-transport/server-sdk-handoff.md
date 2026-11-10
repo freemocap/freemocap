@@ -1,5 +1,13 @@
 # JavaScript/TypeScript server SDK handoff
 
+## Reuse by other applications
+
+Branch `sfn26-ultraskelly` adds application-defined message kinds, image payload
+decoding, a browser bundle, insecure-context connections and a Python encoder
+package so other servers can use this stream. See
+[sdk-for-other-applications.md](sdk-for-other-applications.md) for the changes and
+[sdk-external-review.md](sdk-external-review.md) for the integration review and wish list.
+
 ## Additive output milestone
 
 The current working source adds five server-owned output controls to the original

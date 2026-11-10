@@ -18,6 +18,7 @@ for (const item of contract.public_http) {
     lines.push(`| ${item.method} | \`${item.path}\` | \`${item.operation_id}\` | ${item.owner} |`);
 }
 const text = lines.join('\n') + '\n';
-if (process.argv.includes('--check')) assert.equal(readFileSync('contracts/coverage.md', 'utf8'), text);
+// Git may check the committed LF file out with CRLF endings (core.autocrlf on Windows).
+if (process.argv.includes('--check')) assert.equal(readFileSync('contracts/coverage.md', 'utf8').replace(/\r\n/g, '\n'), text);
 else writeFileSync('contracts/coverage.md', text);
 console.log(`${contract.public_http.length} operation bindings and coverage entries verified`);

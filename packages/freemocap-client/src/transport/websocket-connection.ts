@@ -182,6 +182,8 @@ export class WebSocketConnection {
         if (this.disconnectRequested || this.reconnectTimer) return;
 
         this.setState(ConnectionState.RECONNECTING);
+        // State subscribers can explicitly disconnect during this notification.
+        if (this.disconnectRequested) return;
         this.reconnectTimer = (typeof window === "undefined" ? globalThis : window).setTimeout(() => {
             this.reconnectTimer = null;
             this.setState(ConnectionState.DISCONNECTED);

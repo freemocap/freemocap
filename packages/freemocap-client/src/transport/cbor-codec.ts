@@ -15,7 +15,7 @@ import { equalBytes } from './content-equality.js';
 
 function toOwnedBytes(value: unknown): Uint8Array | null {
   if (value instanceof Uint8Array) return new Uint8Array(value);
-  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (value instanceof ArrayBuffer) return new Uint8Array(value.slice(0));
   return null;
 }
 

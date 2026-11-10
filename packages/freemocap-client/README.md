@@ -18,7 +18,10 @@ In a consuming project, run `npm install /absolute/path/to/freemocap-client`.
 The default app uses this package through a local file dependency within the same
 repository. Package interfaces and tests remain independent of the application.
 Node 22+ is declared; the compatibility record names the runtimes actually tested.
-Browsers consume the ESM package through a bundler. There is no CommonJS or CDN build.
+Bundled browser apps import the ESM package. Pages without a bundler can load
+`dist/browser/freemocap-client.js` (also exported as `@freemocap/client/browser`):
+one minified ES module with its dependencies inlined and a source map, built by
+`npm run build`. There is no CommonJS or CDN build.
 
 ```js
 import {createClient} from '@freemocap/client';
@@ -90,12 +93,72 @@ state. HTTP requests and server tasks are not cancelled by `close()`.
 
 Treat received numerical/image bytes as read-only. Copy before editing or
 transferring their buffers. Later frames do not overwrite retained arrays.
+
+A frame's image is SkellyCam's multi-camera image payload. `readImagePayload`
+(also in the small `@freemocap/client/images` entry for workers) returns each
+camera's identity, declared size and JPEG bytes as views, and throws for any
+malformed payload. In a browser or worker, `decodeImageBitmaps` and
+`decodeImagePixels` decode those JPEGs to `ImageBitmap`s or transferable RGBA.
 Coordinates, units, names, channel order and clocks keep their declared meaning.
 No implicit coordinate conversion or fabricated samples are applied.
 
 A custom `socketFactory` must implement the browser WebSocket event/property
 interface. HTTP default headers do not become WebSocket upgrade headers; browser
 WebSockets use the browser's authentication facilities.
+
+### Streams from other applications
+
+Another server can reuse this stream: construct `TransportService` with its socket
+URL and register the application's own message kinds. Each kind gets a parser (a Zod
+schema works) and an optional `version` (default 0). Its messages carry the standard
+envelope (`kind`, `version`, `timestamp`, `sequence`) and stay self-describing.
+
+```ts
+import {TransportService} from '@freemocap/client';
+import {z} from 'zod';
+
+const RobotState = z.object({kind: z.literal('robot_state'), version: z.literal(0),
+  timestamp: z.number(), sequence: z.number().int(), servos: z.record(z.string(), z.number())});
+const stream = new TransportService({url: 'ws://robot.local:8080/ws', kinds: {robot_state: RobotState}});
+stream.subscribeToKind('robot_state', state => console.log(state.servos));
+stream.connect();
+```
+
+Application messages reach `subscribeToKind` only, never `subscribeToMessages`.
+FreeMoCap's kinds cannot be redefined; a server that sends `frame` messages gets the
+usual frame, image and overlay subscriptions. Unregistered kinds and other versions
+are skipped, and malformed registered messages reach protocol-error subscribers.
+
+## Generic streaming consumers
+
+Import `TransportService` from `@freemocap/client/stream` when you need streaming
+without FreeMoCap's HTTP operation bindings. The root export and browser bundle
+continue to provide the complete client.
+
+Application kind registrations are captured when the service is constructed.
+Changing the caller's registry, parser property or version later does not change
+the connection. Prefer names such as `my_app.robot_state` to avoid collisions;
+namespaces are a convention, not a prerequisite for existing kinds. A parser may
+return an application-specific projection; the incoming envelope is validated
+before it runs. Version defaults to zero. Unsupported versions are skipped.
+
+`subscribeToChannels` receives every channel in each incoming frame, including
+unknown kinds. Each view retains its descriptor, tracker or instance identity,
+channel index, row count and float32 values. The surrounding event carries source
+time, frame number, convention, models and cameras. Names omitted on the wire stay
+omitted; a custom channel's row meaning must be declared by its producer. No
+meaning or units are inferred from its spelling. Use `resolveChannelViews` for an
+already decoded frame. These views are read-only; copy before modifying or
+transferring buffers. Disconnect/reset emits `null`; the subscription does not
+replay an old frame on registration. No generic views are allocated without a
+subscriber.
+
+Detection and box overlays carry `trackerId`. Reconstructed overlays carry
+`instanceId` and `modelId`. These identify what the producer declared; they do not
+create temporal person tracking when the detector provides none.
+
+See the [UltraSkelly branch handoff](../../current-work-plans/03-transport/ultraskelly-consumer-handoff.md)
+for source-image pairing, build commands, acceptance checks and remaining work.
 
 ## Recorded data
 
@@ -140,6 +203,9 @@ those bytes. `npm test` builds, checks negative TypeScript cases and runs indepe
 HTTP/decoder/socket/recording tests. `npm run coverage:check` verifies the documented
 69-operation inventory against the generated bindings. `npm run examples:check`
 checks example syntax; real example execution is a separate owned-server gate.
+For native JPEG decoding, which Node lacks, run `node tools/serve-static.mjs` and
+open `/tests/browser/bundle-check.html` in a browser; it imports the browser bundle
+without a bundler and reports each check.
 
 Core provides `python -m freemocap.tools.sdk_validation`, `sdk_replay_validation`,
 `sdk_live_validation` and `sdk_examples_validation` for integration acceptance.

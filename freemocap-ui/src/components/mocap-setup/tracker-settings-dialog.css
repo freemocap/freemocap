@@ -1,0 +1,68 @@
+/* The tracker settings window (Skeleton Setup, DLC tracker). It owns its whole
+   surface: it used to borrow the Mocap processing window's classes, and lost its
+   background, border and footer when that window was rebuilt. */
+
+.tracker-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: var(--color-surface-overlay);
+}
+
+.tracker-settings-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(1200px, calc(100vw - 48px));
+  height: min(900px, calc(100dvh - 48px));
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-hairline-strong);
+  background: var(--color-surface-ground);
+  box-shadow: var(--shadow-raised-high);
+  color: var(--color-text-primary);
+}
+
+/* The window takes focus so keyboard users start inside it; it is not a control. */
+.tracker-settings-modal:focus {
+  outline: none;
+}
+
+.tracker-settings-modal .modal-window-titlebar {
+  flex-basis: 40px;
+  padding: 0 8px 0 16px;
+  border-bottom-color: var(--color-border-hairline-strong);
+}
+
+.tracker-settings-modal .modal-window-titlebar > span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tracker-settings-modal .segmented-control-container {
+  flex-wrap: wrap;
+}
+
+.tracker-settings-body {
+  padding: 24px;
+}
+
+.tracker-settings-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+@media (max-width: 640px) {
+  .tracker-settings-body {
+    padding: 12px;
+  }
+}

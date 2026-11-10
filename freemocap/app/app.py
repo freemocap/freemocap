@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from skellycam.core.camera_group.camera_group_manager import close_native_camera_groups
+from skellycam.core.camera_group.camera_group_manager import close_camera_groups
 from starlette.responses import FileResponse
 
 import freemocap
@@ -386,7 +386,7 @@ async def app_lifespan(
         logger.api("FreeMoCap API shutting down...")
         try:
             try:
-                await close_native_camera_groups()
+                await close_camera_groups()
             finally:
                 app.state.global_kill_flag.value = True
                 try:

@@ -97,7 +97,8 @@ export interface PipelineApplyResponse {
 
 export interface PipelineState {
     applyPending: boolean;
-    lastApplyConfig: RealtimePipelineConfig | null;
+    applyRequestId: string | null;
+    closeRequestId: string | null;
     temporalStatus: TemporalStatus | null;
     temporalLoading: boolean;
     temporalError: string | null;

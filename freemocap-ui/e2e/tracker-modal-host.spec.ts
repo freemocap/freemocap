@@ -56,12 +56,15 @@ test('streaming toolbar opens a centered tracker dialog and restores the actual 
     await expect(overlay).toHaveCount(0);
     await trigger.click();
     await expect(dialog).toBeVisible();
+    // The window paints its own surface: it was transparent once the classes it borrowed were removed.
+    await expect(dialog).not.toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+    await expect(dialog).toHaveCSS('border-top-style','solid');
     let box=(await dialog.boundingBox())!;
     expect(box.width).toBe(1200);
     expect(box.x+box.width/2).toBeCloseTo(960);
     expect(box.y+box.height/2).toBeCloseTo(540);
     await expect(dialog.getByRole('button',{name:'Close Skeleton Setup',exact:true})).toBeVisible();
-    await dialog.getByRole('button',{name:'DLC',exact:true}).click();
+    await dialog.getByRole('combobox',{name:'Skeleton detector',exact:true}).selectOption('dlc');
     await page.screenshot({path:info.outputPath('tracker-host-centered.png'),fullPage:true});
     await dialog.getByRole('button',{name:'Maximize',exact:true}).click();
     await expect(dialog).toHaveCSS('width','1904px');

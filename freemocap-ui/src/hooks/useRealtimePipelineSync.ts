@@ -51,13 +51,13 @@ export function useRealtimePipelineSync() {
 
     /** Connects or disconnects the realtime pipeline. */
     const toggleConnection = useCallback(async () => {
-        if (isLoading) return;
-        if (isConnected) {
+        const current = store.getState().realtime;
+        if (current.isConnected) {
             await dispatch(closePipeline());
         } else {
-            await dispatch(applyRealtimePipeline(pipelineConfig));
+            await dispatch(applyRealtimePipeline(current.pipelineConfig));
         }
-    }, [dispatch, isConnected, isLoading, pipelineConfig]);
+    }, [dispatch]);
 
     return {
         isConnected,

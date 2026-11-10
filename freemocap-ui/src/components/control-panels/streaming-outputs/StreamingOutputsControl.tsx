@@ -1,5 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {StreamingOutputsPanel} from './StreamingOutputsPanel';
+// The panel's settings disclosures use the settings grammar's chevron.
+import '@/components/common/settings-layout/settings-layout.css';
 import './streaming-outputs.css';
 
 export function StreamingOutputsControl() {

@@ -12,17 +12,18 @@ import {type Box, NODE_WIDTH, portOffset, ROWS, type StageLayout, stageLayout} f
 import {DATA_TEXT, SAVE_TEXT, STAGE_TEXT} from './explain-copy';
 import './processing-graph.css';
 
-/** The node the graph is zoomed onto, and whether its parts are being explained. */
-export interface GraphFocus {id: NodeId; explain: boolean}
+/** The node the graph is zoomed onto, by its section's id, and whether its parts are being explained. */
+export interface GraphFocus<Id extends string = NodeId> {id: Id; explain: boolean}
 
-interface ProcessingGraphViewProps {
+interface ProcessingGraphViewProps<Id extends string> {
     graph: StageGraph | {error: string};
-    sections: ProcessingSection[];
+    /** One section per graph node, with the node's id. */
+    sections: ProcessingSection<Id>[];
     /** Run-wide notices: the plan cannot be built, or the server rejects these settings. */
     notice: ReactNode;
     locked: boolean;
-    focus: GraphFocus | null;
-    onFocus: (focus: GraphFocus | null) => void;
+    focus: GraphFocus<Id> | null;
+    onFocus: (focus: GraphFocus<Id> | null) => void;
 }
 
 interface Camera {x: number; y: number; z: number}
@@ -58,7 +59,7 @@ function Port({data, direction}: {data: DataKey; direction: 'in' | 'out'}) {
     </div>;
 }
 
-function Disk({node, section}: {node: GraphNode; section: ProcessingSection}) {
+function Disk({node, section}: {node: GraphNode; section: ProcessingSection<string>}) {
     const files = node.id === 'recording' ? node.reads : node.writes.length ? node.writes : node.saves;
     const explain = useExplainTarget('disk', 'Saved data', node.id === 'recording' ? 'The files this run reads from the recording folder.' : SAVE_TEXT, 'left');
     if (!files.length) return null;
@@ -72,10 +73,10 @@ function Disk({node, section}: {node: GraphNode; section: ProcessingSection}) {
     </div>;
 }
 
-function Node({node, section, box, focused, explaining, locked, onMeasure, onFocus, onEntries}: {
-    node: GraphNode; section: ProcessingSection; box: Box; focused: boolean; explaining: boolean; locked: boolean;
-    onMeasure: (id: NodeId, height: number) => void; onFocus: (focus: GraphFocus | null) => void;
-    onEntries: (id: NodeId, entries: () => ExplainEntry[]) => void;
+function Node<Id extends string>({node, section, box, focused, explaining, locked, onMeasure, onFocus, onEntries}: {
+    node: GraphNode; section: ProcessingSection<Id>; box: Box; focused: boolean; explaining: boolean; locked: boolean;
+    onMeasure: (id: string, height: number) => void; onFocus: (focus: GraphFocus<Id> | null) => void;
+    onEntries: (id: string, entries: () => ExplainEntry[]) => void;
 }) {
     const {entries, Scope} = useExplainScope();
     useEffect(() => onEntries(node.id, entries), [node.id, entries, onEntries]);
@@ -103,23 +104,24 @@ function Node({node, section, box, focused, explaining, locked, onMeasure, onFoc
     </div>;
 }
 
-function Header({node, section, focused, explaining, onFocus}: {
-    node: GraphNode; section: ProcessingSection; focused: boolean; explaining: boolean; onFocus: (focus: GraphFocus | null) => void;
+function Header<Id extends string>({node, section, focused, explaining, onFocus}: {
+    node: GraphNode; section: ProcessingSection<Id>; focused: boolean; explaining: boolean; onFocus: (focus: GraphFocus<Id> | null) => void;
 }) {
-    const explain = useExplainTarget('stage', section.number ? `${section.number} · ${section.title}` : section.title, STAGE_TEXT[node.id], 'left');
-    const kind = node.id === 'recording' ? 'source' : node.id === 'blender' || node.id === 'exports' ? 'sink' : 'stage';
+    const explain = useExplainTarget('stage', section.number ? `${section.number} Â· ${section.title}` : section.title,
+        section.explain ?? STAGE_TEXT[node.id], 'left');
+    const kind = section.kind ?? (node.id === 'recording' ? 'source' : node.id === 'blender' || node.id === 'exports' ? 'sink' : 'stage');
     return <div ref={explain} className={`pg-node-head ${kind}`} style={{height: ROWS.head}}>
-        {section.stage && <StageToggle stage={section.stage} title={section.title}/>}
+        {section.toggle !== undefined ? section.toggle : section.stage && <StageToggle stage={section.stage} title={section.title}/>}
         {node.id === 'blender' && <BlenderToggle/>}
         {node.id === 'exports' && <ExportsToggle/>}
         <span className="pg-node-title">{section.number !== null && <small>{section.number}</small>}{section.title}</span>
         {(node.provenance || !['will run', 'waiting'].includes(node.state)) &&
             <span className={`pg-pill ${stateClass(node.state)}`}>{node.provenance ?? node.state}</span>}
         <button type="button" className={`pg-head-button${explaining ? ' on' : ''}`} aria-label={`Explain ${section.title}`} aria-pressed={explaining}
-            onClick={() => onFocus(explaining ? null : {id: node.id, explain: true})}>
+            onClick={() => onFocus(explaining ? null : {id: section.id, explain: true})}>
             <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.2v4M8 4.8v.2"/></svg></button>
         <button type="button" className={`pg-head-button${focused && !explaining ? ' on' : ''}`} aria-label={`Zoom to ${section.title}`}
-            aria-pressed={focused && !explaining} onClick={() => onFocus(focused && !explaining ? null : {id: node.id, explain: false})}>
+            aria-pressed={focused && !explaining} onClick={() => onFocus(focused && !explaining ? null : {id: section.id, explain: false})}>
             <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg></button>
     </div>;
 }
@@ -205,11 +207,12 @@ function Explain({entries, nodeElement, canvasElement, size, onClose}: {
     </div>;
 }
 
-export default function ProcessingGraphView({graph, sections, notice, locked, focus, onFocus}: ProcessingGraphViewProps) {
-    const [heights, setHeights] = useState<Partial<Record<NodeId, number>>>({});
-    const onMeasure = useCallback((id: NodeId, height: number) => setHeights(previous => previous[id] === height ? previous : {...previous, [id]: height}), []);
-    const entryGetters = useRef(new Map<NodeId, () => ExplainEntry[]>());
-    const onEntries = useCallback((id: NodeId, entries: () => ExplainEntry[]) => {entryGetters.current.set(id, entries);}, []);
+export default function ProcessingGraphView<Id extends string>({graph, sections, notice, locked, focus, onFocus}: ProcessingGraphViewProps<Id>) {
+    // Measured heights, explain entries and elements are kept by node id, which is the id of the node's section.
+    const [heights, setHeights] = useState<Partial<Record<string, number>>>({});
+    const onMeasure = useCallback((id: string, height: number) => setHeights(previous => previous[id] === height ? previous : {...previous, [id]: height}), []);
+    const entryGetters = useRef(new Map<string, () => ExplainEntry[]>());
+    const onEntries = useCallback((id: string, entries: () => ExplainEntry[]) => {entryGetters.current.set(id, entries);}, []);
     const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, heights), [graph, heights]);
 
     const canvasRef = useRef<HTMLDivElement>(null);
@@ -270,7 +273,7 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
         setDragging(false);
     };
 
-    const nodeElements = useRef(new Map<NodeId, HTMLElement>());
+    const nodeElements = useRef(new Map<string, HTMLElement>());
     const [explainReady, setExplainReady] = useState(false);
     useEffect(() => {
         setExplainReady(false);
@@ -279,7 +282,7 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
         return () => clearTimeout(timer);
     }, [focus?.id, focus?.explain]);
 
-    const byId = new Map(sections.map(section => [section.id, section]));
+    const byId = new Map<string, ProcessingSection<Id>>(sections.map(section => [section.id, section]));
     return <div ref={canvasRef} className={`pg-canvas${dragging ? ' dragging' : ''}${focus?.explain ? ' explaining' : ''}`} onWheel={onWheel}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
         onKeyDown={event => {if (event.key === 'Escape' && focus) onFocus(null);}} aria-label="Processing graph. Drag to pan, scroll to zoom.">
@@ -302,7 +305,7 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
             <Explain entries={entryGetters.current.get(focus.id)?.() ?? []} nodeElement={nodeElements.current.get(focus.id)!}
                 canvasElement={canvasRef.current} size={size} onClose={() => onFocus(null)}/>}
         <div className="pg-zoom" role="toolbar" aria-label="Zoom">
-            <button type="button" aria-label="Zoom out" onClick={() => zoomAbout(cam.z / 1.2, size.w / 2, size.h / 2)}>−</button>
+            <button type="button" aria-label="Zoom out" onClick={() => zoomAbout(cam.z / 1.2, size.w / 2, size.h / 2)}>âˆ’</button>
             <span>{Math.round(cam.z * 100)}%</span>
             <button type="button" aria-label="Zoom in" onClick={() => zoomAbout(cam.z * 1.2, size.w / 2, size.h / 2)}>+</button>
             <button type="button" onClick={() => {onFocus(null); setCamera(null);}}>Fit all</button>

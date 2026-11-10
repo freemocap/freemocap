@@ -8,7 +8,8 @@ import {isStartupStopped} from '@/services/server/startup-stopped';
 
 const initialState: PipelineState = {
     applyPending: false,
-    lastApplyConfig: null,
+    applyRequestId: null,
+    closeRequestId: null,
     temporalStatus: null,
     temporalLoading: false,
     temporalError: null,
@@ -82,43 +83,56 @@ export const realtimeSlice = createSlice({
             // ========== Apply Pipeline (POST /realtime/apply) ==========
             .addCase(applyRealtimePipeline.pending, (state, action) => {
                 state.applyPending = true;
-                state.lastApplyConfig = action.meta.arg;
+                state.applyRequestId = action.meta.requestId;
+                state.closeRequestId = null;
                 state.isLoading = true;
                 state.error = null;
             })
             .addCase(applyRealtimePipeline.fulfilled, (state, action) => {
+                if (state.applyRequestId !== action.meta.requestId) return;
+                state.applyRequestId = null;
                 state.applyPending = false;
                 state.cameraGroupId = action.payload.camera_group_id;
                 state.pipelineId = action.payload.pipeline_id;
                 state.pipelineConfig = acceptedRealtimeSettings(action.payload.resolved_config, action.meta.arg);
                 state.isConnected = true;
                 state.isLoading = false;
+                state.error = null;
             })
             .addCase(applyRealtimePipeline.rejected, (state, action) => {
+                if (state.applyRequestId !== action.meta.requestId) return;
+                state.applyRequestId = null;
                 state.applyPending = false;
                 state.isLoading = false;
                 state.error = isStartupStopped(action.error) ? null : action.error.message || 'Failed to apply pipeline';
             })
 
             // ========== Close Pipeline (DELETE /realtime/all/close) ==========
-            .addCase(closePipeline.pending, (state) => {
+            .addCase(closePipeline.pending, (state, action) => {
+                state.closeRequestId = action.meta.requestId;
+                state.applyRequestId = null;
+                state.applyPending = false;
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(closePipeline.fulfilled, (state) => {
+            .addCase(closePipeline.fulfilled, (state, action) => {
+                if (state.closeRequestId !== action.meta.requestId) return;
+                state.closeRequestId = null;
                 state.cameraGroupId = null;
                 state.pipelineId = null;
                 state.isConnected = false;
                 state.isLoading = false;
             })
             .addCase(closePipeline.rejected, (state, action) => {
+                if (state.closeRequestId !== action.meta.requestId) return;
+                state.closeRequestId = null;
                 state.isLoading = false;
                 state.error = action.error.message || 'Failed to close pipeline';
             })
 
             // ========== Server state snapshot (authoritative) ==========
-            // Reconcile observed pipeline state from the pushed snapshot. The
-            // `!isLoading` guard avoids clobbering an in-flight apply/close.
+            // Current server observations supersede the client's previous picture,
+            // including while an HTTP command is outstanding.
             .addCase(serverStateReceived, (state, action) => {
                 const pipelines = action.payload.state.realtime_pipelines ?? [];
                 const alive = pipelines.find(p => p.alive);
@@ -126,7 +140,8 @@ export const realtimeSlice = createSlice({
                     state.isConnected = true;
                     state.pipelineId = alive.id;
                     state.cameraGroupId = alive.camera_group_id;
-                } else if (!state.isLoading) {
+                    state.error = null;
+                } else {
                     state.isConnected = false;
                     state.pipelineId = null;
                     state.cameraGroupId = null;
@@ -135,6 +150,13 @@ export const realtimeSlice = createSlice({
 
             // On websocket disconnect, reset so nothing goes stale.
             .addCase(serverDisconnected, (state) => {
+                state.applyRequestId = null;
+                state.closeRequestId = null;
+                state.applyPending = false;
+                state.isLoading = false;
+                state.temporalLoading = false;
+                state.error = null;
+                state.temporalError = null;
                 state.temporalStatus = null;
                 state.isConnected = false;
                 state.pipelineId = null;

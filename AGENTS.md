@@ -38,6 +38,16 @@ Preserve unrelated work and follow the workspace Git authorization and repositor
 
 ## Self-describing transport is an intentional invariant
 
+**Stable controls and recovery are part of this invariant.** Before modifying UI
+actions, startup, errors, or reconnect behavior, read “Client recovery and stable
+controls” in `current-work-plans/03-transport/message-protocol.md`.
+The server sends messages and the client reconciles to their current observations.
+Never turn historical client errors into button labels, disabled actions, saved
+retry commands, or gates on subsequent requests. “Real-time processing” keeps its
+label through failure and reconnect. Server restart must recover through fresh
+messages without a page refresh. Test the actual control after failure, new
+settings, restart, and late completion of an obsolete request.
+
 Every message must remain independently interpretable. Repeated metadata and its
 bandwidth cost are accepted to prevent server/client state mismatch. Preserve this
 strategy and the existing mechanisms that handle repetition efficiently; do not

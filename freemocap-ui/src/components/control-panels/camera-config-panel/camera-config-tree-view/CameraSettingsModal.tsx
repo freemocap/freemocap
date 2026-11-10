@@ -33,6 +33,8 @@ const EXPOSURE_MAX = -5;
 export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera, initialPos, onClose}) => {
     const dispatch = useAppDispatch();
     const allCameras = useAppSelector(selectCameras);
+    const connected = useAppSelector(state => state.connection.cameraGroups.some(
+        group => group.alive && camera.id in group.configs));
     const otherCamerasCount = allCameras.length - 1;
     const [pos, setPos] = useState(initialPos);
     useDraggableTooltips();
@@ -170,6 +172,7 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                         className="button sm br-1 flex-1"
                         style={{background: 'var(--color-text-primary)', color: 'var(--color-bg-primary)'}}
                         onClick={() => dispatch(camerasConnectOrUpdate())}
+                        disabled={!connected}
                         title="Update camera settings"
                     >
                         <p className="text md" style={{color: 'var(--color-bg-primary)'}}>Update Settings</p>

@@ -29,22 +29,25 @@ test('Skeleton Setup selects the hybrid through the real realtime store', async 
         else await page.addScriptTag({content: file.text, type: 'module'});
     }
     await expect(page.getByText('Skeleton Setup', {exact: true})).toBeVisible();
-    await page.getByRole('button', {name: 'RTMW + MediaPipe hands', exact: true}).click();
+    const detector = page.getByRole('combobox', {name: 'Skeleton detector', exact: true});
+    await detector.selectOption('rtmw_mediapipe_hands');
     await expect.poll(() => page.evaluate(() =>
         (window as any).readPipelineConfig().camera_node_config.detector_type))
         .toBe('rtmw_mediapipe_hands');
     await expect(page.getByText('Execution provider', {exact: true})).toBeVisible();
     await expect(page.getByText('Detection confidence', {exact: true})).toBeVisible();
-    await expect(page.getByText('Model size', {exact: true})).toHaveCount(0);
+    await expect(page.getByText('Pose model size', {exact: true})).toHaveCount(0);
+    // Rows carry no prose: the provider note is in the row's info, pinned open by its button.
+    await page.getByRole('button', {name: 'Execution provider', exact: true}).click();
     await expect(page.getByText('The execution provider applies to RTMW', {exact: false})).toBeVisible();
 
-    await page.getByRole('button', {name: 'MediaPipe', exact: true}).click();
-    await expect(page.getByText('Model size', {exact: true})).toBeVisible();
+    await detector.selectOption('mediapipe');
+    await expect(page.getByText('Pose model size', {exact: true})).toBeVisible();
     await expect(page.getByText('Execution provider', {exact: true})).toHaveCount(0);
-    await page.getByRole('button', {name: 'Heavy', exact: true}).click();
+    await page.getByRole('combobox', {name: 'Pose model size', exact: true}).selectOption('heavy');
     await expect.poll(() => page.evaluate(() =>
         (window as any).readPipelineConfig().camera_node_config.mediapipe_model_complexity)).toBe('heavy');
-    await page.getByRole('button', {name: 'RTMW', exact: true}).click();
+    await detector.selectOption('rtmpose');
     await expect.poll(() => page.evaluate(() =>
         (window as any).readPipelineConfig().camera_node_config.detector_type)).toBe('rtmpose');
     await expect(page.getByText('Detection confidence', {exact: true})).toHaveCount(0);

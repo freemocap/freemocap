@@ -1,9 +1,10 @@
 import {rmSync} from 'node:fs'
 import path from 'node:path'
-import {defineConfig} from 'vite'
+import {defineConfig, searchForWorkspaceRoot} from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
+import {clientAliases, clientRoot} from './tools/local-client.mjs'
 
 // https://vitejs.dev/config/
 export default defineConfig(({command}) => {
@@ -15,9 +16,10 @@ export default defineConfig(({command}) => {
 
     return {
         resolve: {
-            alias: {
-                '@': path.join(__dirname, 'src')
-            },
+            alias: [
+                ...(isServe ? clientAliases : []),
+                {find: '@', replacement: path.join(__dirname, 'src')},
+            ],
         },
         plugins: [
             // Exclude worker files from React fast-refresh — the @react-refresh
@@ -71,8 +73,10 @@ export default defineConfig(({command}) => {
             // Apply React JSX transform in workers without fast-refresh (no window).
             plugins: () => [react({ fastRefresh: false })],
         },
-        optimizeDeps: {},
-        server: process.env.VSCODE_DEBUG
+        optimizeDeps: {exclude: ['@freemocap/client']},
+        server: {
+            fs: {allow: [searchForWorkspaceRoot(process.cwd()), clientRoot]},
+            ...(process.env.VSCODE_DEBUG
             ? (() => {
                 const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
                 return {
@@ -84,7 +88,8 @@ export default defineConfig(({command}) => {
                     },
                 }
             })()
-            : { host: '0.0.0.0' },
+            : { host: '0.0.0.0' }),
+        },
         clearScreen: false,
     }
 })

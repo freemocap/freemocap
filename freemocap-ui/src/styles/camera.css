@@ -31,6 +31,13 @@
   overflow: hidden;
 }
 
+/* The streaming camera grid stacks its own tile controls and resize handles
+   (z 10-100). Keep those inside the grid so toolbar menus and dialogs above
+   it are never covered. */
+.streaming-page-camera-feed-inner {
+  isolation: isolate;
+}
+
 .camera-grid-empty {
   height: 100%;
   width: 100%;

@@ -50,10 +50,8 @@ def inspect_stream(samples: list, expected_configs: dict, output_directory: Path
             width, height = expected['resolution']['width'], expected['resolution']['height']
             if CameraConfig.model_validate(expected).rotation.value in (0, 2):
                 width, height = height, width
-            # Python's production transport caps live previews at half resolution.
-            # Rust currently sends full resolution; record this difference explicitly.
-            if capture_backend == 'python':
-                width, height = width // 2, height // 2
+            # Both camera backends send live previews at half resolution (no display size requested).
+            width, height = width // 2, height // 2
             if image.image_pixels.shape != (height, width, 3):
                 raise ValueError(f'Unexpected image shape for {image.camera_id}: {image.image_pixels.shape}')
             if image.camera_id not in camera_results:

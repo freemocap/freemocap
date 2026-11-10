@@ -10,6 +10,10 @@ import {selectLoadedCalibration} from '@/store/slices/calibration';
 
 export type LayoutDirection = "vertical" | "horizontal";
 
+// The 3D viewport may be dragged over the camera grid only down to this share;
+// hide it with the 3D view setting to give the cameras the whole area.
+const CAMERA_GRID_MIN_PCT = 40;
+
 export interface CameraSettings {
   columns: number | null;
   show3dView: boolean;
@@ -53,7 +57,7 @@ export const StreamingViewPage = () => {
               key={`main-panels-${resetKey}-${settings.layoutDirection}`}
               direction={settings.layoutDirection}
             >
-              <Panel defaultSize={60} minSize={20}>
+              <Panel defaultSize={60} minSize={CAMERA_GRID_MIN_PCT}>
                 <div className="streaming-page-camera-feed-container br-2 h-full overflow-y">
                   <ErrorBoundary>
                     <CameraViewsGrid

@@ -3,7 +3,7 @@ import {recordingProcessingUrl} from '@/services/recording/posthoc-processing';
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState} from "@/store";
 import {selectCalibrationRecordingPath} from "./calibration-slice";
-import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
+import {getDetailedErrorMessage, describeError} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/services";
 import {LoadedCalibrationSchema} from "./calibration-types";
 import type {LoadedCalibration} from "./calibration-slice";
@@ -33,7 +33,7 @@ export const loadRecordingCalibrationDefault = createAsyncThunk<
         } catch (error) {
             if (!isCurrent()) throw Object.assign(new Error('Recording selection changed'), {name: 'AbortError'});
             if (error instanceof Error && error.name === 'AbortError') throw error;
-            return rejectWithValue(error instanceof Error ? error.message : String(error));
+            return rejectWithValue(describeError(error));
         }
     },
     {condition: (directory, {getState}) => getState().calibration.defaultRecordingPath !== directory},
@@ -111,7 +111,7 @@ export const restoreCalibrationSelection = createAsyncThunk<
             if (path === null) return await readMostRecentCalibration();
             return await readCalibration(path);
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : String(error));
+            return rejectWithValue(describeError(error));
         }
     },
 );
@@ -124,7 +124,7 @@ export const loadMostRecentCalibration = createAsyncThunk<
         try {
             return await readMostRecentCalibration();
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : String(error));
+            return rejectWithValue(describeError(error));
         }
     },
 );
@@ -138,7 +138,7 @@ export const loadRealtimeCalibrationDefault = createAsyncThunk<
         try {
             return await readMostRecentCalibration();
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : String(error));
+            return rejectWithValue(describeError(error));
         }
     },
 );

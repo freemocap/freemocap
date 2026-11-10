@@ -36,3 +36,19 @@
     gap: 4px;
     margin-bottom: 6px;
 }
+
+/* A yes/no setting reads as one row: its name, then its checkbox. */
+.streaming-output-settings > .streaming-output-toggle {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 30px;
+}
+
+.streaming-output-toggle > input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--color-info-strong);
+}

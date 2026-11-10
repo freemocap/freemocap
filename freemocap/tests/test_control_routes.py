@@ -97,7 +97,7 @@ def test_capture_stop_returns_recording_and_task(control, kind):
 def test_shutdown_requires_post(control, monkeypatch):
     client, _, _, app = control
     close = AsyncMock()
-    monkeypatch.setattr(shutdown_module, 'close_native_camera_groups', close)
+    monkeypatch.setattr(shutdown_module, 'close_camera_groups', close)
     assert client.get('/shutdown').status_code == 405
     assert app.state.global_kill_flag.value is False
     close.assert_not_awaited()

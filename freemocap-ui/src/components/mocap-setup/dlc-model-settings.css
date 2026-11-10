@@ -1,8 +1,4 @@
-.tracker-dialog-overlay { position: fixed; inset: 0; z-index: 1500; background: var(--color-surface-overlay, #000a); }
-.mocap-settings-modal.tracker-settings-modal { position: fixed; display: flex; flex-direction: column; width: min(1200px, calc(100vw - 48px)); height: min(900px, calc(100dvh - 48px)); top: 50%; left: 50%; transform: translate(-50%, -50%); }
-.tracker-settings-modal .segmented-control-container { flex-wrap: wrap; }
-.tracker-settings-modal .modal-window-body { padding: 24px; }
-.tracker-settings-modal .mocap-settings-footer { padding: 12px 24px; align-items: flex-end; }
+/* The window itself is styled by tracker-settings-dialog.css. */
 .dlc-settings-form { width: 100%; max-width: 1100px; margin: 0 auto; color: var(--color-text-primary, #eee); }
 .dlc-section { display: flex; flex-direction: column; gap: 14px; padding: 24px 0; border-bottom: 1px solid var(--color-border-hairline, #444); }
 .dlc-section h2 { font-size: 20px; font-weight: 600; }
@@ -25,4 +21,4 @@
 .dlc-section > summary, .dlc-model-summary > summary { cursor: pointer; }
 .dlc-action { align-self: flex-start; padding: 10px 16px; border: 1px solid #8a8a8a; border-radius: 6px; background: #353535; color: #fff; cursor: pointer; }
 .dlc-action:disabled { opacity: .5; cursor: not-allowed; }
-@media (max-width: 640px) { .tracker-settings-modal .modal-window-body { padding: 12px; } .dlc-section { padding: 16px 0; } }
+@media (max-width: 640px) { .dlc-section { padding: 16px 0; } }

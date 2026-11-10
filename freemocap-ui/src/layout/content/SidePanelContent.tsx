@@ -6,6 +6,7 @@ import {useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {ImperativePanelGroupHandle, Panel, PanelGroup, PanelResizeHandle} from 'react-resizable-panels';
 import IconButton from '@/components/ui-components/IconButton';
+import {planSidebarSections} from '@/layout/content/sidebar-section-layout';
 
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
 import {RecordingPathPanel} from "@/components/control-panels/recording-info-panel/RecordingPathPanel";
@@ -49,90 +50,81 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
 };
 
 // Sections that are meant to grow and scroll internally (their content is
-// open-ended). They get a small fixed floor; every other section's floor is
-// measured from its own content so it can never be squashed (see useContentMinSizes).
+// open-ended). They keep a guaranteed floor and absorb all spare height; every
+// other section prefers its measured content height (see sidebar-section-layout.ts).
 const GROWABLE_SECTIONS = new Set<SectionId>(['cameras', 'recordings']);
 
-// Pixel height of each resize divider (must match `.resizable-component` in components.css).
-const HANDLE_PX = 10;
-// Floor for growable sections — they scroll internally, so they may shrink freely.
-const GROWABLE_MIN_PCT = 8;
-// A single content section may not demand more than this share as its minimum,
-// so one tall section can never lock out everything else.
-const CONTENT_MIN_CAP_PCT = 70;
+// react-resizable-panels clips panels so content can never resize them. The other
+// sections opt back into visible overflow so their dropdowns can escape the section
+// (7f55868e); `minHeight: 0` stops flexbox from then sizing the panel by its content,
+// which is what let expanded sections squeeze the camera list to nothing.
+const NON_GROWABLE_PANEL_STYLE: React.CSSProperties = {overflow: 'visible', minHeight: 0};
+// A section scrolls only while its panel is shorter than its content.
+const SCROLLING_SECTION_STYLE: React.CSSProperties = {overflowY: 'auto', overflowX: 'hidden'};
 
-// Build a panel layout (percentages that sum to 100) in which every non-growable
-// section sits at its floor — its measured content height as a percentage
-// (`minById[id]`), or GROWABLE_MIN_PCT before measurement — and the growable
-// section(s) absorb ALL remaining space. This is the "cameras maximized, nothing
-// crushed below its content" layout, used both as the first-paint default and as
-// the layout we imperatively re-assert once content has been measured.
-const computeLayout = (
-    sections: readonly SectionId[],
-    minById: Partial<Record<SectionId, number>>,
-): number[] => {
-    const growableCount = sections.filter(id => GROWABLE_SECTIONS.has(id)).length;
+type HeightById = Partial<Record<SectionId, number>>;
 
-    if (growableCount === 0) {
-        const each = 100 / sections.length;
-        return sections.map(() => each);
-    }
+interface SectionMeasurements {
+    /** Height shared by the section panels (px), excluding dividers; 0 until measured. */
+    availablePx: number;
+    /** Natural in-flow content height of each non-growable section (px). */
+    contentPx: HeightById;
+}
 
-    const nonGrowableFloor = (id: SectionId): number => minById[id] ?? GROWABLE_MIN_PCT;
-    const nonGrowableTotal = sections
-        .filter(id => !GROWABLE_SECTIONS.has(id))
-        .reduce((sum, id) => sum + nonGrowableFloor(id), 0);
-    const growableEach = (100 - nonGrowableTotal) / growableCount;
-
-    return sections.map(id =>
-        GROWABLE_SECTIONS.has(id) ? growableEach : nonGrowableFloor(id),
-    );
-};
+const sameHeights = (a: HeightById, b: HeightById, ids: readonly SectionId[]) =>
+    ids.every(id => Math.abs((a[id] ?? -1) - (b[id] ?? -1)) < 0.5);
 
 /**
- * Measures each non-growable section's natural content height and expresses it as
- * a percentage of the panel group, fed back to react-resizable-panels as that
- * panel's `minSize`. This makes the minimum size of a section track its content,
- * so a section can never be dragged smaller than what it contains (which would
- * otherwise clip its content and bleed it onto the neighbouring section).
+ * Measures the height the section panels share and each non-growable section's
+ * natural content height (`offsetHeight`, so open absolutely positioned dropdowns do
+ * not count). Also reports which sections must scroll because their panel is shorter
+ * than their content.
  */
-function useContentMinSizes(sections: readonly SectionId[]) {
+function useSectionMeasurements(sections: readonly SectionId[]) {
     const groupElRef = useRef<HTMLDivElement | null>(null);
     const contentEls = useRef<Map<SectionId, HTMLElement>>(new Map());
+    const boxEls = useRef<Map<SectionId, HTMLElement>>(new Map());
     const observerRef = useRef<ResizeObserver | null>(null);
-    const refCbCache = useRef<Map<SectionId, (el: HTMLElement | null) => void>>(new Map());
-    const [minPctById, setMinPctById] = useState<Partial<Record<SectionId, number>>>({});
+    const refCbCache = useRef<Map<string, (el: HTMLElement | null) => void>>(new Map());
+    const [measurements, setMeasurements] = useState<SectionMeasurements>({availablePx: 0, contentPx: {}});
+    const [overflowing, setOverflowing] = useState<ReadonlySet<SectionId>>(() => new Set());
 
     const recompute = useCallback(() => {
         const groupEl = groupElRef.current;
         if (!groupEl) return;
-        const available = Math.max(1, groupEl.clientHeight - (sections.length - 1) * HANDLE_PX);
-        const next: Partial<Record<SectionId, number>> = {};
+        let availablePx = 0;
+        groupEl.querySelectorAll<HTMLElement>(':scope > [data-panel-group] > [data-panel]')
+            .forEach(panel => { availablePx += panel.getBoundingClientRect().height; });
+        // The sidebar measures 0 while collapsed to its toolbar: keep the last layout.
+        if (availablePx <= 0) return;
+        const contentPx: HeightById = {};
+        const nextOverflowing = new Set<SectionId>();
         for (const id of sections) {
-            if (GROWABLE_SECTIONS.has(id)) {
-                next[id] = GROWABLE_MIN_PCT;
-                continue;
-            }
-            const el = contentEls.current.get(id);
-            const contentPx = el ? el.scrollHeight : 0;
-            next[id] = Math.min(CONTENT_MIN_CAP_PCT, Math.max(3, (contentPx / available) * 100));
+            const content = contentEls.current.get(id);
+            if (!content) continue;
+            contentPx[id] = content.offsetHeight;
+            const box = boxEls.current.get(id);
+            if (box && content.offsetHeight > box.clientHeight + 1) nextOverflowing.add(id);
         }
-        setMinPctById((prev) => {
-            const unchanged = sections.every(
-                (id) => Math.abs((prev[id] ?? -1) - (next[id] ?? -1)) < 0.5,
-            );
-            return unchanged ? prev : next;
-        });
+        setMeasurements(prev =>
+            Math.abs(prev.availablePx - availablePx) < 0.5 && sameHeights(prev.contentPx, contentPx, sections)
+                ? prev
+                : {availablePx, contentPx});
+        setOverflowing(prev =>
+            prev.size === nextOverflowing.size && [...nextOverflowing].every(id => prev.has(id))
+                ? prev
+                : nextOverflowing);
     }, [sections]);
 
-    // Single observer watching the group and every measured content element.
+    // Single observer watching the group, every section box and every content element.
     // useLayoutEffect runs after refs are attached but before paint, so the first
-    // frame already has correct minimums (no squash flash).
+    // frame already has the measured layout (no squash flash).
     useLayoutEffect(() => {
         const observer = new ResizeObserver(() => recompute());
         observerRef.current = observer;
         if (groupElRef.current) observer.observe(groupElRef.current);
         contentEls.current.forEach((el) => observer.observe(el));
+        boxEls.current.forEach((el) => observer.observe(el));
         recompute();
         return () => {
             observer.disconnect();
@@ -145,25 +137,27 @@ function useContentMinSizes(sections: readonly SectionId[]) {
         if (el) observerRef.current?.observe(el);
     }, []);
 
-    const registerContent = useCallback((id: SectionId) => {
-        let cb = refCbCache.current.get(id);
+    const register = useCallback((kind: 'box' | 'content', id: SectionId) => {
+        const key = `${kind}:${id}`;
+        let cb = refCbCache.current.get(key);
         if (!cb) {
+            const els = kind === 'box' ? boxEls : contentEls;
             cb = (el: HTMLElement | null) => {
-                const prev = contentEls.current.get(id);
+                const prev = els.current.get(id);
                 if (prev) observerRef.current?.unobserve(prev);
                 if (el) {
-                    contentEls.current.set(id, el);
+                    els.current.set(id, el);
                     observerRef.current?.observe(el);
                 } else {
-                    contentEls.current.delete(id);
+                    els.current.delete(id);
                 }
             };
-            refCbCache.current.set(id, cb);
+            refCbCache.current.set(key, cb);
         }
         return cb;
     }, []);
 
-    return {setGroupEl, registerContent, minPctById};
+    return {setGroupEl, register, measurements, overflowing};
 }
 
 interface SidePanelContentProps {
@@ -201,8 +195,16 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
         [isStreaming, isPlayback, isActiveRecording],
     );
 
-    const defaultSizes = useMemo(() => computeLayout(visibleSections, {}), [visibleSections]);
-    const { setGroupEl, registerContent, minPctById } = useContentMinSizes(visibleSections);
+    const { setGroupEl, register, measurements, overflowing } = useSectionMeasurements(visibleSections);
+    // Cameras (or the recording browser) keep a guaranteed floor and get all spare
+    // height; other sections get their content height when it fits and scroll when
+    // it does not, so expanding a section can never hide the camera list.
+    const plan = useMemo(() => planSidebarSections({
+        sections: visibleSections,
+        growable: GROWABLE_SECTIONS,
+        contentPx: measurements.contentPx,
+        availablePx: measurements.availablePx,
+    }), [visibleSections, measurements]);
 
     const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const userResizedRef = useRef(false);
@@ -214,21 +216,19 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
         userResizedRef.current = false;
     }, [layoutKey]);
 
-    // Keep cameras maximized (every other section at its measured content floor)
-    // until the user drags a divider. This must be imperative: the panel library
-    // applies defaultSize once at mount, then re-clamps the *current* layout when
-    // the measured minSizes arrive on a later render, permanently stealing that
-    // space back from cameras. Re-asserting on every floor change (rather than
-    // once) also survives the startup window resize (launch → maximize), which
-    // would otherwise leave cameras stuck at the small-window proportions.
+    // Keep the planned layout (cameras maximized above their floor) until the user
+    // drags a divider. This must be imperative: the panel library applies defaultSize
+    // once at mount. Re-asserting on every measurement change also survives the
+    // startup window resize (launch → maximize). After a manual drag the user's sizes
+    // stay; the minimum sizes still protect the camera floor and sections scroll.
     useLayoutEffect(() => {
-        if (userResizedRef.current) return;
-        const allFloorsMeasured = visibleSections.every(
-            id => GROWABLE_SECTIONS.has(id) || minPctById[id] != null,
+        if (userResizedRef.current || measurements.availablePx <= 0) return;
+        const allMeasured = visibleSections.every(
+            id => GROWABLE_SECTIONS.has(id) || measurements.contentPx[id] != null,
         );
-        if (!allFloorsMeasured) return;
-        panelGroupRef.current?.setLayout(computeLayout(visibleSections, minPctById));
-    }, [visibleSections, minPctById]);
+        if (!allMeasured) return;
+        panelGroupRef.current?.setLayout(plan.sizes);
+    }, [visibleSections, measurements, plan]);
 
     const { t } = useTranslation();
 
@@ -272,8 +272,8 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                 </div>
 
                 {/* Sidebar Sections — vertically resizable (react-resizable-panels).
-                    Each section's minimum size is measured from its content so it can
-                    never be squashed below what it contains. */}
+                    The camera list keeps a guaranteed floor; other sections are sized
+                    to their content when it fits and scroll internally when it does not. */}
                 <div ref={setGroupEl} className="flex-1 min-h-0">
                     <PanelGroup
                         ref={panelGroupRef}
@@ -284,7 +284,6 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                         {visibleSections.map((id, index) => {
                             const Component = SECTION_COMPONENTS[id];
                             const growable = GROWABLE_SECTIONS.has(id);
-                            const minSize = minPctById[id] ?? (growable ? GROWABLE_MIN_PCT : 4);
                             return (
                                 <React.Fragment key={id}>
                                     {index > 0 && index < visibleSections.length - 1 && (
@@ -307,17 +306,21 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                     <Panel
                                         id={id}
                                         order={index}
-                                        defaultSize={Math.max(defaultSizes[index], minSize)}
-                                        minSize={minSize}
-                                        style={{ overflow: growable ? 'hidden' : 'unset' }}
+                                        defaultSize={plan.sizes[index]}
+                                        minSize={plan.minSizes[index]}
+                                        style={growable ? undefined : NON_GROWABLE_PANEL_STYLE}
                                     >
                                         {growable ? (
                                             <div className="h-full min-h-0 flex flex-col overflow-hidden">
                                                 <Component />
                                             </div>
                                         ) : (
-                                            <div className="mocap-inner-section h-full min-h-0 bg-middark br-2">
-                                                <div ref={registerContent(id)} className="flex flex-col ">
+                                            <div
+                                                ref={register('box', id)}
+                                                className="mocap-inner-section h-full min-h-0 bg-middark br-2"
+                                                style={overflowing.has(id) ? SCROLLING_SECTION_STYLE : undefined}
+                                            >
+                                                <div ref={register('content', id)} className="flex flex-col ">
                                                     <Component />
                                                 </div>
                                             </div>

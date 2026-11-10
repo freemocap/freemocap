@@ -1,7 +1,7 @@
 import {useTemporalFiltering} from '@/hooks/useTemporalFiltering';
 import {StreamingOutputsControl} from '@/components/control-panels/streaming-outputs/StreamingOutputsControl';
 import {RealtimeProcessingButton} from '@/components/control-panels/realtime-panel/RealtimeProcessingButton';
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { useTranslation } from "react-i18next";
 import type {
@@ -16,7 +16,7 @@ import { Row } from "@/components/ui-components/Row";
 import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
 
 import RTPMediaPipeDetectorSettings from "@/components/pipeline-progress/realtime/realtimepipeline-mediapipedetector-settings";
-import RTPthreeDReconstructionSettings from "@/components/pipeline-progress/realtime/realtimepipeline-3dreconstruction-settings";
+import RTPthreeDReconstructionSettings, {REALTIME_3D_SETTINGS_TITLE} from "@/components/pipeline-progress/realtime/realtimepipeline-3dreconstruction-settings";
 
 interface SettingsOverlayProps {
   settings: CameraSettings;
@@ -47,6 +47,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
     trackingSettings: false,
     filterSettings: false,
   });
+  const filterSettingsAnchor = useRef<HTMLDivElement>(null);
 
   const toggleActive = (key: keyof ActiveState) => {
     setActive((prev) => ({
@@ -140,6 +141,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               onClick={handleSkeletonToggle}
               tooltip
               tooltipText="2D Tracking"
+              ariaLabel="2D Tracking"
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${skeletonEnabled ? "active" : ""}`}
@@ -150,16 +152,19 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               onClick={handleCharucoToggle}
               tooltip
               tooltipText="Charuco Board"
+              ariaLabel="Charuco Board"
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${charucoEnabled ? "active" : ""}`}
             />
 
             <div className="modal-container pos-rel">
+              {/* A menu button keeps focus after opening, and its hint follows focus:
+                  hide the hint while the menu is open so it cannot cover the menu. */}
               <IconButton
                 icon={active.trackingSettings ? "skeleton-active-icon" : "skeleton-icon"}
                 onClick={() => toggleActive("trackingSettings")}
-                tooltip
+                tooltip={!active.trackingSettings}
                 tooltipText="Skeleton Setup"
                 ariaLabel="Skeleton Setup"
                 tooltipPosition="pos-bottom"
@@ -182,6 +187,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               onClick={handleTriangulateToggle}
               tooltip
               tooltipText="3D Tracking"
+              ariaLabel="3D Tracking"
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${triangulateEnabled ? "active" : ""}`}
@@ -191,26 +197,28 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               icon={filterEnabled ? "skeletonfilter-active-icon" : "skeletonfilter-icon"}
               onClick={handleFilterToggle}
               tooltip
-              tooltipText={temporal.error ?? "Toggle spatial smoothing; open settings for gap recovery and other filters"}
+              tooltipText={temporal.error ?? "Spatial smoothing"}
+              ariaLabel="Spatial smoothing"
               tooltipPosition="pos-bottom"
               disabled={temporal.loading || !temporal.config}
               className={`icon-size-25 ${filterEnabled ? "active" : ""}`}
             />
 
-            <div className="modal-container pos-rel">
+            <div ref={filterSettingsAnchor} className="modal-container pos-rel">
               <IconButton
-                icon={active.filterSettings ? "settings-icon" : "settings-icon"}
+                icon="settings-icon"
                 onClick={() => toggleActive("filterSettings")}
-                tooltip
-                tooltipText="Filter Settings"
+                tooltip={!active.filterSettings}
+                tooltipText={REALTIME_3D_SETTINGS_TITLE}
+                ariaLabel={REALTIME_3D_SETTINGS_TITLE}
                 tooltipPosition="pos-bottom"
                 disabled={false}
                 className={`is-menu icon-size-25 ${active.filterSettings ? "active" : ""}`}
               />
-              {/* RTP 3D Reconstructions Settings Modal */}
               <RTPthreeDReconstructionSettings
                 open={active.filterSettings}
-                onClose={() => toggleActive("filterSettings")}
+                anchorRef={filterSettingsAnchor}
+                onClose={() => setActive(previous => ({...previous, filterSettings: false}))}
               />
             </div>
           </div>
@@ -230,7 +238,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="icon-size-32 br-2"
             onClick={() => setIsOpen(!isOpen)}
             title={isOpen ? t("closeSettings") : t("gridSettings")}
-            tooltip
+            tooltip={!isOpen}
             tooltipText="Grid Settings"
             tooltipPosition="pos-bottom-right"
           />

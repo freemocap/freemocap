@@ -27,6 +27,7 @@ interface InputWithUnitProps {
     step?: number;
     disabled?: boolean;
     ariaLabel?: string;
+    empty?: boolean;
 }
 
 const InputWithUnit: React.FC<InputWithUnitProps> = ({
@@ -38,8 +39,15 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
     step = 1,
     disabled = false,
     ariaLabel,
+    empty = false,
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
+
+    /*
+     * The text that stands for the external value. An empty field has no
+     * value to show, so its text is blank and the placeholder shows instead.
+     */
+    const valueText = empty ? "" : String(value);
 
     /*
      * Keep the user's current text separate from the numeric Redux value.
@@ -47,7 +55,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
      * This allows temporary editing states such as:
      * "", "0", "0.", and "0.01"
      */
-    const [inputText, setInputText] = useState(String(value));
+    const [inputText, setInputText] = useState(valueText);
     const [isEditing, setIsEditing] = useState(false);
 
     /*
@@ -56,9 +64,9 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
      */
     useEffect(() => {
         if (!isEditing) {
-            setInputText(String(value));
+            setInputText(valueText);
         }
-    }, [value, isEditing]);
+    }, [valueText, isEditing]);
 
     const commitValue = () => {
         const trimmedInput = inputText.trim();
@@ -72,7 +80,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
             trimmedInput === "" ||
             !Number.isFinite(parsedValue)
         ) {
-            setInputText(String(value));
+            setInputText(valueText);
             setIsEditing(false);
             return;
         }
@@ -110,7 +118,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
         }
 
         if (event.key === "Escape") {
-            setInputText(String(value));
+            setInputText(valueText);
             setIsEditing(false);
             inputRef.current?.blur();
         }
@@ -122,6 +130,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
                 ref={inputRef}
                 type="number"
                 aria-label={ariaLabel}
+                placeholder={empty ? "—" : undefined}
                 value={inputText}
                 min={min}
                 max={max}
@@ -155,6 +164,12 @@ interface ValueSelectorProps {
     disabled?: boolean;
     /** Names the number field; the steppers become "Decrease …" and "Increase …". */
     ariaLabel?: string;
+    /**
+     * There is no value to show yet: the field is blank with a "—" placeholder
+     * and the steppers are off. Typing still sets a value; add `disabled` to
+     * lock the field as well.
+     */
+    empty?: boolean;
 }
 
 const ValueSelector: React.FC<ValueSelectorProps> = ({
@@ -166,8 +181,11 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
     onChange,
     disabled = false,
     ariaLabel,
+    empty = false,
 }) => {
     const currentValue = value ?? min;
+    /* An empty field has no value to step from. */
+    const steppersDisabled = disabled || empty;
 
     return (
         <div
@@ -190,11 +208,11 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
                         );
                     }
                 }}
-                disabled={disabled || currentValue <= min}
+                disabled={steppersDisabled || currentValue <= min}
                 ariaLabel={ariaLabel && `Decrease ${ariaLabel}`}
                 className={
                     `icon-size-25 ${
-                        disabled || currentValue <= min
+                        steppersDisabled || currentValue <= min
                             ? "deactivated"
                             : ""
                     }`
@@ -211,6 +229,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
                 step={step}
                 disabled={disabled}
                 ariaLabel={ariaLabel}
+                empty={empty}
             />
 
             <IconButton
@@ -227,11 +246,11 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
                         );
                     }
                 }}
-                disabled={disabled || currentValue >= max}
+                disabled={steppersDisabled || currentValue >= max}
                 ariaLabel={ariaLabel && `Increase ${ariaLabel}`}
                 className={
                     `icon-size-25 ${
-                        disabled || currentValue >= max
+                        steppersDisabled || currentValue >= max
                             ? "deactivated"
                             : ""
                     }`

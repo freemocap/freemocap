@@ -151,6 +151,13 @@
   background: var(--color-success);
 }
 
+/* Partly on: a bar instead of the square */
+.checkbox input[type="checkbox"]:indeterminate::before {
+  width: 8px;
+  height: 2px;
+  transform: translate(-50%, -50%) scale(1);
+}
+
 /* =========================================
    FOCUS
    ========================================= */

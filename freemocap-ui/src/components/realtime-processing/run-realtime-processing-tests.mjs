@@ -12,6 +12,7 @@ const TESTS = [
     'src/components/processing-graph/stage-layout.test.ts',
     'src/components/mocap-setup/processing-outline.test.tsx',
     'src/components/mocap-setup/detector-setting-rows.test.tsx',
+    'src/components/realtime-processing/realtime-switches.test.ts',
 ];
 const OUTPUT = '../.test-artifacts/realtime-processing-tests';
 

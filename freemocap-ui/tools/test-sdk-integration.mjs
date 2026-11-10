@@ -4,7 +4,7 @@ import {spawnSync} from 'node:child_process';
 const output='../.test-artifacts/sdk-integration';
 mkdirSync(output,{recursive:true});
 const specialized=new Set(['camera-server-settings.test.ts','camera-control-requests.test.ts','operation-progress.test.tsx',
- 'Checkbox.test.tsx','ValueSelector.test.tsx','stage-layout.test.ts','processing-outline.test.tsx']);
+ 'Checkbox.test.tsx','ValueSelector.test.tsx','stage-layout.test.ts','processing-outline.test.tsx','detector-setting-rows.test.tsx']);
 function tests(directory){return readdirSync(directory,{withFileTypes:true}).flatMap(entry=>
  entry.isDirectory()?tests(`${directory}/${entry.name}`):/\.test\.tsx?$/.test(entry.name)&&!specialized.has(entry.name)?[`${directory}/${entry.name}`]:[]);}
 const inputs=tests('src');

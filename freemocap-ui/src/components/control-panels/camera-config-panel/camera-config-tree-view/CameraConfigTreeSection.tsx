@@ -25,6 +25,7 @@ export const CameraConfigTreeSection: React.FC<CameraConfigTreeSectionProps> = (
     return (
         <CameraConfigPanel
             config={camera.desiredConfig}
+            supportedModes={camera.deviceInfo.supportedModes ?? []}
             onConfigChange={handleConfigChange}
             isExpanded={true}
         />

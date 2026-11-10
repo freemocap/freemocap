@@ -1,9 +1,17 @@
 import React, {useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {CameraConfig, CaptureMode} from '@/store/slices/cameras/cameras-types';
+import {framerateOptionsFor} from '@/store/slices/cameras/capture-modes';
 
-interface CameraConfigFramerateProps {
+interface FramerateControlProps {
     framerate: number | null;
     onChange: (value: number | null) => void;
+}
+
+interface CameraConfigFramerateProps extends FramerateControlProps {
+    resolution: CameraConfig['resolution'];
+    // Modes the camera reported at detection. Without them the control offers Auto or a typed rate.
+    supportedModes: CaptureMode[];
 }
 
 const FRAMERATE_CONSTRAINTS = {
@@ -12,7 +20,7 @@ const FRAMERATE_CONSTRAINTS = {
     default: 30
 };
 
-export const CameraConfigFramerate: React.FC<CameraConfigFramerateProps> = ({
+const AutoManualFramerateControl: React.FC<FramerateControlProps> = ({
     framerate = FRAMERATE_CONSTRAINTS.default,
     onChange
 }) => {
@@ -127,3 +135,44 @@ export const CameraConfigFramerate: React.FC<CameraConfigFramerateProps> = ({
         </div>
     );
 };
+
+const ReportedFramerateSelect: React.FC<CameraConfigFramerateProps> = ({
+    framerate,
+    resolution,
+    supportedModes,
+    onChange
+}) => {
+    const {t} = useTranslation();
+    const offered = framerateOptionsFor(supportedModes, resolution);
+    const current = framerate ?? -1;
+
+    return (
+        <div>
+            <p className="text sm text-gray mb-1">{t("framerate")}</p>
+            <div className="input-with-string" title={t("setTargetFps")}>
+                <select
+                    className="input-field text md"
+                    value={String(current)}
+                    onChange={(event) => onChange(Number(event.target.value))}
+                    aria-label={t("framerate")}
+                >
+                    {offered.map(rate => (
+                        <option key={rate} value={String(rate)}>{`${rate} ${t("fps")}`}</option>
+                    ))}
+                    {/* Show the camera default, or a rate this resolution does not offer, without offering it. */}
+                    {!offered.includes(current) && (
+                        <option value={String(current)} disabled>
+                            {framerate === null ? t("auto") : `${framerate} ${t("fps")} (${t("notReportedByCamera")})`}
+                        </option>
+                    )}
+                </select>
+            </div>
+        </div>
+    );
+};
+
+// Cameras that report their modes offer the rates of the chosen resolution; others keep Auto or a typed rate.
+export const CameraConfigFramerate: React.FC<CameraConfigFramerateProps> = ({resolution, supportedModes, ...control}) =>
+    supportedModes.length > 0
+        ? <ReportedFramerateSelect resolution={resolution} supportedModes={supportedModes} {...control}/>
+        : <AutoManualFramerateControl {...control}/>;

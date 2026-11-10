@@ -63,6 +63,14 @@ export const CameraConfigSchema = z.object({
 export type CameraConfig = z.infer<typeof CameraConfigSchema>;
 
 // ==================== Camera State ====================
+// One MJPEG capture resolution and every frame rate the camera reports for it,
+// as listed by SkellyCam camera detection (largest resolution first).
+export interface CaptureMode {
+    width: number;
+    height: number;
+    framerates: number[];
+}
+
 export interface Camera {
     id: string;                    // Primary key (same as camera_id in config) - must be unique
     index: number;                 // Device index, e.g. the port number used in cv2.VideoCapture() - must be unique
@@ -79,6 +87,7 @@ export interface Camera {
         virtual?: boolean;
         vendorId?: string;
         productId?: string;
+        supportedModes?: CaptureMode[];  // Empty or absent when detection reported no modes
     };
 
     // Performance metrics (optional, updated from websocket)
@@ -114,6 +123,7 @@ export interface DetectCamerasResponse {
         name: string;
         vendor_id?: string;
         product_id?: string;
+        supported_modes?: CaptureMode[];
     }>;
 }
 
@@ -127,6 +137,11 @@ export interface ConnectCamerasResponse {
 }
 
 // ==================== Helper Functions ====================
+// Request an explicit rate. A camera's own default (framerate -1) can be its
+// maximum: 200 fps for some global-shutter USB cameras, which reserves enough
+// USB bandwidth that several such cameras cannot stream on one controller.
+export const DEFAULT_CAMERA_FRAMERATE = 30;
+
 export function createDefaultCameraConfig(
     id: string,
     index: number,
@@ -138,7 +153,7 @@ export function createDefaultCameraConfig(
         camera_name: name,
         use_this_camera: true,
         resolution: { width: 1280, height: 720 },
-        framerate: -1,
+        framerate: DEFAULT_CAMERA_FRAMERATE,
         color_channels: 3,
         pixel_format: 'RGB',
         rotation: -1,

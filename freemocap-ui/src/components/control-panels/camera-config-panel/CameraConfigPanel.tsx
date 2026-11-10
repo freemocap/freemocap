@@ -2,19 +2,23 @@ import React from "react";
 import {CameraConfigResolution} from "./CameraConfigResolution";
 import {CameraConfigExposure} from "./CameraConfigExposure";
 import {CameraConfigRotation} from "./CameraConfigRotation";
-import {CameraConfig, ExposureMode, RotationValue} from "@/store/slices/cameras/cameras-types";
+import {CameraConfigFramerate} from "./CameraConfigFramerate";
+import {CameraConfig, CaptureMode, ExposureMode, RotationValue} from "@/store/slices/cameras/cameras-types";
+import {withResolution} from "@/store/slices/cameras/capture-modes";
 import {useAppDispatch, useAppSelector} from "@/store";
 import {configCopiedToAll, selectCameras} from "@/store/slices/cameras";
 import IconButton from "@/components/ui-components/IconButton";
 
 interface CameraConfigPanelProps {
     config: CameraConfig;
+    supportedModes: CaptureMode[];
     onConfigChange: (newConfig: CameraConfig) => void;
     isExpanded: boolean;
 }
 
 export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
     config,
+    supportedModes,
     onConfigChange,
     isExpanded,
 }) => {
@@ -36,12 +40,18 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
         dispatch(configCopiedToAll(config.camera_id));
     };
 
+    // A frame rate the new resolution does not offer changes with it.
     const handleResolutionChange = (width: number, height: number): void => {
-        handleChange("resolution", { width, height });
+        onConfigChange({...config, ...withResolution(config, supportedModes, width, height)});
     };
 
     const handleRotationChange = (value: RotationValue): void => {
         handleChange("rotation", value);
+    };
+
+    // The control represents the camera's automatic rate as null; configs use -1.
+    const handleFramerateChange = (value: number | null): void => {
+        handleChange("framerate", value ?? -1);
     };
 
     const handleExposureModeChange = (mode: ExposureMode): void => {
@@ -66,6 +76,7 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
             <div className="flex flex-row items-center gap-2 flex-wrap">
                 <CameraConfigResolution
                     resolution={config.resolution}
+                    supportedModes={supportedModes}
                     onChange={handleResolutionChange}
                 />
 
@@ -88,6 +99,17 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
                     style={{
                         border: '1px solid var(--color-border-secondary)',
                     }}
+                />
+            </div>
+
+            <div className="pt-1" style={{borderTop: '1px solid var(--color-border-secondary)'}}>
+                {/* Remount when the config changes elsewhere (e.g. copy to all) so the field shows it. */}
+                <CameraConfigFramerate
+                    key={`framerate-${config.framerate}`}
+                    framerate={config.framerate > 0 ? config.framerate : null}
+                    resolution={config.resolution}
+                    supportedModes={supportedModes}
+                    onChange={handleFramerateChange}
                 />
             </div>
 

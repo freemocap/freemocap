@@ -26,6 +26,7 @@ interface InputWithUnitProps {
     max?: number;
     step?: number;
     disabled?: boolean;
+    ariaLabel?: string;
 }
 
 const InputWithUnit: React.FC<InputWithUnitProps> = ({
@@ -36,6 +37,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
     max = 999,
     step = 1,
     disabled = false,
+    ariaLabel,
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -119,6 +121,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
             <input
                 ref={inputRef}
                 type="number"
+                aria-label={ariaLabel}
                 value={inputText}
                 min={min}
                 max={max}
@@ -150,6 +153,8 @@ interface ValueSelectorProps {
     step?: number;
     onChange?: (value: number) => void;
     disabled?: boolean;
+    /** Names the number field; the steppers become "Decrease …" and "Increase …". */
+    ariaLabel?: string;
 }
 
 const ValueSelector: React.FC<ValueSelectorProps> = ({
@@ -160,6 +165,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
     step = 1,
     onChange,
     disabled = false,
+    ariaLabel,
 }) => {
     const currentValue = value ?? min;
 
@@ -185,6 +191,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
                     }
                 }}
                 disabled={disabled || currentValue <= min}
+                ariaLabel={ariaLabel && `Decrease ${ariaLabel}`}
                 className={
                     `icon-size-25 ${
                         disabled || currentValue <= min
@@ -203,6 +210,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
                 max={max}
                 step={step}
                 disabled={disabled}
+                ariaLabel={ariaLabel}
             />
 
             <IconButton
@@ -220,6 +228,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
                     }
                 }}
                 disabled={disabled || currentValue >= max}
+                ariaLabel={ariaLabel && `Increase ${ariaLabel}`}
                 className={
                     `icon-size-25 ${
                         disabled || currentValue >= max

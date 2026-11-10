@@ -13,6 +13,10 @@
   --vp-mono: var(--font-mono);
   container-type: size;
   container-name: viewport;
+  /* Keep the panels' z-indices inside the viewport. container-type does not
+     create a stacking context, so without this the Viewport panel (z 120)
+     painted over the toolbar menus and the welcome dialog. */
+  isolation: isolate;
 }
 
 /* ---------- shared panel surface ---------- */

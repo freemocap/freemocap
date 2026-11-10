@@ -56,6 +56,8 @@ test('streaming toolbar opens a centered tracker dialog and restores the actual 
     await expect(overlay).toHaveCount(0);
     await trigger.click();
     await expect(dialog).toBeVisible();
+    await expect(dialog).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(dialog).toHaveCSS('border-top-style', 'solid');
     let box=(await dialog.boundingBox())!;
     expect(box.width).toBe(1200);
     expect(box.x+box.width/2).toBeCloseTo(960);

@@ -7,7 +7,7 @@ uses. It depends only on `cbor2` and `numpy`: no FreeMoCap, SkellyCam, OpenCV or
 web framework.
 
 ```sh
-uv add "freemocap-stream @ git+https://github.com/freemocap/freemocap@sfn26-ultraskelly#subdirectory=packages/freemocap-stream"
+uv add "freemocap-stream @ git+https://github.com/freemocap/freemocap@sfn26#subdirectory=packages/freemocap-stream"
 ```
 
 ## What travels

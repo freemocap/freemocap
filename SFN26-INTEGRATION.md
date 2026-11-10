@@ -1,5 +1,30 @@
 # SFN26 integration — November 4, 2026
 
+## November 10 consolidation
+
+The `realtime-processing-controls` and `sfn26-ultraskelly` histories are merged
+into `sfn26`. The controls worktree stopped before wiring its replacement UI;
+the streaming toolbar now exposes **Processing settings**, opening the shared
+processing outline and stage components for tracking, triangulation, filtering,
+skeleton reconstruction and streaming outputs. The old icon groups are removed.
+The start/stop control retains its **Real-time processing** label.
+
+The window uses the existing realtime store, server observations and command
+interfaces. It does not use the preserved unfinished `realtime-switches` helpers
+to lock controls or remember output wishes. Do not activate those rules without
+reconciling them with the owner’s stable-control policy in `AGENTS.md` and
+`current-work-plans/03-transport/message-protocol.md`. The older plan’s animated
+quick menu and realtime graph view are not implemented by this consolidation.
+
+Verified: TypeScript and Vite build; five browser regressions including the
+actual toolbar/window and recovery after failure/reconnect; SDK integration
+tests; 135 standalone client tests; 47 Python stream tests; 54 camera adapter
+tests; three synthetic/reference-video Rust adapter replays; 53 native Rust
+tests (five ignored); 18 Tracker provider/import tests; bibliography checks.
+Native Rust tests build current source, but do not replace an extension already
+loaded by a running application. Reference replays do not certify physical
+exposure synchronization or calibrated 3D accuracy.
+
 The combined implementation joins UI harness a0c46a96, UI integration af266ac4,
 SFN26 board detection 1fec74ce, and machine benchmarks d66b2659. Merge commits
 dde00dff and 329ef092 preserve the source histories.

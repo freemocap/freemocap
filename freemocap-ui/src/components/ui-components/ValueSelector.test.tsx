@@ -13,7 +13,7 @@ const STEPPERS = ['Decrease Minimum cutoff', 'Increase Minimum cutoff'];
 
 test('an empty field shows no value', () => {
     const empty = renderToStaticMarkup(<ValueSelector value={3} min={0} max={10} empty ariaLabel="Minimum cutoff"/>);
-    assert.ok(inputTag(empty).includes('placeholder="â€”"'), empty);
+    assert.ok(inputTag(empty).includes('placeholder="—"'), empty);
     assert.ok(inputTag(empty).includes('value=""'), empty);
     for (const name of STEPPERS) assert.ok(stepperTag(empty, name).includes('disabled=""'), `${name}: ${empty}`);
 

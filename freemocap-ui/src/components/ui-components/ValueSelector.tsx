@@ -139,7 +139,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
                 ref={inputRef}
                 type="number"
                 aria-label={ariaLabel}
-                placeholder={empty ? "â€”" : undefined}
+                placeholder={empty ? "—" : undefined}
                 value={inputText}
                 min={min}
                 max={max}
@@ -171,10 +171,10 @@ interface ValueSelectorProps {
     step?: number;
     onChange?: (value: number) => void;
     disabled?: boolean;
-    /** Names the number field; the steppers become "Decrease â€¦" and "Increase â€¦". */
+    /** Names the number field; the steppers become "Decrease …" and "Increase …". */
     ariaLabel?: string;
     /**
-     * There is no value to show yet: the field is blank with a "â€”" placeholder
+     * There is no value to show yet: the field is blank with a "—" placeholder
      * and the steppers are off. Typing still sets a value; add `disabled` to
      * lock the field as well.
      */

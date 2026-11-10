@@ -17,9 +17,9 @@ export const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelCompl
 export const DETECTOR_INFO = {
     title: "Skeleton detector",
     text: <>
-        <p><strong>RTMW</strong> â€” body, hand and face keypoints from the wholebody model, following YOLOX person detection.</p>
-        <p><strong>MediaPipe</strong> â€” separate pose, cropped hand and face detectors.</p>
-        <p><strong>RTMW + MediaPipe hands</strong> â€” RTMW body and face with separately cropped MediaPipe hands. The confidence settings below apply to those hands.</p>
+        <p><strong>RTMW</strong> — body, hand and face keypoints from the wholebody model, following YOLOX person detection.</p>
+        <p><strong>MediaPipe</strong> — separate pose, cropped hand and face detectors.</p>
+        <p><strong>RTMW + MediaPipe hands</strong> — RTMW body and face with separately cropped MediaPipe hands. The confidence settings below apply to those hands.</p>
         <p><em>The detector decides which parameters below apply.</em></p>
     </>,
 };
@@ -41,7 +41,7 @@ export const COMPLEXITY_INFO = {
     title: "Pose model size",
     text: <>
         <p><strong>Heavy</strong> is the most accurate and the slowest; <strong>Lite</strong> is the fastest on CPU; <strong>Full</strong> sits between them.</p>
-        <p><em>All three return the same keypoints â€” only the estimation quality and runtime change.</em></p>
+        <p><em>All three return the same keypoints — only the estimation quality and runtime change.</em></p>
     </>,
 };
 

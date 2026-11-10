@@ -107,7 +107,7 @@ function Node<Id extends string>({node, section, box, focused, explaining, locke
 function Header<Id extends string>({node, section, focused, explaining, onFocus}: {
     node: GraphNode; section: ProcessingSection<Id>; focused: boolean; explaining: boolean; onFocus: (focus: GraphFocus<Id> | null) => void;
 }) {
-    const explain = useExplainTarget('stage', section.number ? `${section.number} Â· ${section.title}` : section.title,
+    const explain = useExplainTarget('stage', section.number ? `${section.number} · ${section.title}` : section.title,
         section.explain ?? STAGE_TEXT[node.id], 'left');
     const kind = section.kind ?? (node.id === 'recording' ? 'source' : node.id === 'blender' || node.id === 'exports' ? 'sink' : 'stage');
     return <div ref={explain} className={`pg-node-head ${kind}`} style={{height: ROWS.head}}>
@@ -305,7 +305,7 @@ export default function ProcessingGraphView<Id extends string>({graph, sections,
             <Explain entries={entryGetters.current.get(focus.id)?.() ?? []} nodeElement={nodeElements.current.get(focus.id)!}
                 canvasElement={canvasRef.current} size={size} onClose={() => onFocus(null)}/>}
         <div className="pg-zoom" role="toolbar" aria-label="Zoom">
-            <button type="button" aria-label="Zoom out" onClick={() => zoomAbout(cam.z / 1.2, size.w / 2, size.h / 2)}>âˆ’</button>
+            <button type="button" aria-label="Zoom out" onClick={() => zoomAbout(cam.z / 1.2, size.w / 2, size.h / 2)}>−</button>
             <span>{Math.round(cam.z * 100)}%</span>
             <button type="button" aria-label="Zoom in" onClick={() => zoomAbout(cam.z * 1.2, size.w / 2, size.h / 2)}>+</button>
             <button type="button" onClick={() => {onFocus(null); setCamera(null);}}>Fit all</button>

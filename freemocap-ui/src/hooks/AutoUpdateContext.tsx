@@ -68,15 +68,15 @@ export const AutoUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // throw new Error('Simulated update check failure');
 
             // TEMP TEST MOCK:
-            const result = {
+            // const result = {
 
-                available: false,
-                version: '100.0.0-test',
-                currentVersion: '2.0.0-alpha.25',
-            };
+            //     available: false,
+            //     version: '100.0.0-test',
+            //     currentVersion: '2.0.0-alpha.25',
+            // };
 
             // REAL VERSION:
-            // const result = await api.app.checkForUpdate.mutate();
+            const result = await api.app.checkForUpdate.mutate();
 
             if (result.available) {
                 showAvailableUpdate(result.version, respectDismissal);

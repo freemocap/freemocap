@@ -20,6 +20,7 @@ function buildPosthocConfig(state: RootState) {
         detectorType: config.detectorType,
         rtmPoseModelName: config.rtmPoseModelName,
         rtmPoseConfidenceThreshold: config.rtmPoseConfidenceThreshold,
+        executionProvider: config.executionProvider,
         mediapipeModelComplexity: config.mediapipeModelComplexity,
         mediapipeDetectionConfidence: config.mediapipeDetectionConfidence,
         mediapipePresenceConfidence: config.mediapipePresenceConfidence,

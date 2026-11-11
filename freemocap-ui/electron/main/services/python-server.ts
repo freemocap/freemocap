@@ -63,6 +63,7 @@ export class PythonServer {
 
             pythonProcess.on('exit', (code) => {
                 console.log(`Python server exited (code: ${code})`);
+                LifecycleLogger.logPythonOutput('stdout', `=== Process exited with code ${code} ===`);
                 this.currentExecutablePath = null;
             });
 
@@ -76,6 +77,8 @@ export class PythonServer {
             }
 
             LifecycleLogger.logPythonProcess(pythonProcess);
+            pythonProcess.stdout?.on('data', (chunk) => LifecycleLogger.logPythonOutput('stdout', chunk));
+            pythonProcess.stderr?.on('data', (chunk) => LifecycleLogger.logPythonOutput('stderr', chunk));
             console.log(`✔ Python server started successfully (PID: ${pythonProcess.pid})`);
 
             const port = await this.waitForPort(pythonProcess);
@@ -133,7 +136,8 @@ export class PythonServer {
             proc.on('exit', (code) => {
                 clearTimeout(timeout);
                 reject(new Error(
-                    `Python server exited with code ${code} before reporting a port`
+                    `Python server exited with code ${code} before reporting a port. ` +
+                    `See log for details: ${LifecycleLogger.getPythonServerLogPath()}`
                 ));
             });
         });

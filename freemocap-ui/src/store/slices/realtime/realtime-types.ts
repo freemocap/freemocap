@@ -1,4 +1,4 @@
-import {DetectorType, MediapipeModelComplexity, RTMPoseModelName} from "@/store/slices/mocap";
+import {DetectorType, ExecutionProviderName, MediapipeModelComplexity, RTMPoseModelName} from "@/store/slices/mocap";
 
 export interface CharucoBoardConfigForPipeline {
     squares_x: number;
@@ -21,6 +21,12 @@ export interface CameraNodeConfig {
     mediapipe_num_faces?: number;
 }
 
+export interface RealtimeSkeletonInferenceNodeConfig {
+    max_batch_size?: number;
+    /** null = auto-select the best available provider. */
+    execution_provider?: ExecutionProviderName | null;
+}
+
 export interface RealtimeAggregatorNodeConfig {
     calibration_toml_path: string | null;
     triangulation_enabled: boolean;
@@ -32,6 +38,7 @@ export interface RealtimeAggregatorNodeConfig {
 
 export interface RealtimePipelineConfig {
     camera_node_config: CameraNodeConfig;
+    skeleton_inference_node_config: RealtimeSkeletonInferenceNodeConfig;
     aggregator_config: RealtimeAggregatorNodeConfig;
 }
 
@@ -48,6 +55,9 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         mediapipe_tracking_confidence: 0.5,
         mediapipe_num_hands: 2,
         mediapipe_num_faces: 1,
+    },
+    skeleton_inference_node_config: {
+        execution_provider: null,
     },
     aggregator_config: {
         calibration_toml_path: null,

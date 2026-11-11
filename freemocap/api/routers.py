@@ -7,6 +7,7 @@ from freemocap.api.http.blender.blender_router import blender_router
 from freemocap.api.http.calibration.calibration_router import calibration_router
 from freemocap.api.http.ffmpeg.ffmpeg_router import ffmpeg_router
 from freemocap.api.http.mocap.mocap_router import mocap_router
+from freemocap.api.http.onnx.onnx_router import onnx_router
 from freemocap.api.http.posthoc.posthoc_router import posthoc_router
 from freemocap.api.http.realtime.realtime_router import realtime_router
 from freemocap.api.http.telemetry.telemetry_router import telemetry_router
@@ -24,6 +25,7 @@ FREEMOCAP_ROUTERS = [realtime_router,
                      posthoc_router,
                      blender_router,
                      ffmpeg_router,
+                     onnx_router,
                      playback_router,
                      telemetry_router
                      ]

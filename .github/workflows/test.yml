@@ -59,11 +59,11 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --python ${{ matrix.python-version }} --no-cache
 
       - name: Run tests (excluding e2e/slow)
-        run: uv run pytest freemocap/tests/ -v --tb=short --timeout=120 --timeout-method=thread -m "not e2e and not slow"
-
+        run: uv run --python ${{ matrix.python-version }} pytest freemocap/tests/ -v --tb=short --timeout=120 --timeout-method=thread -m "not e2e and not slow"
+        
   frontend-typecheck:
     name: Frontend Typecheck
     runs-on: ubuntu-latest

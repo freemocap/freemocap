@@ -16,8 +16,11 @@ import time
 tik = time.perf_counter()
 from skellylogs import configure_logging, LogLevels
 
+from freemocap.system.default_paths import get_log_file_path
+
+
 LOG_LEVEL = LogLevels.TRACE
-configure_logging(LOG_LEVEL)
+configure_logging(level=LOG_LEVEL, log_file_path=get_log_file_path())
 
 # Dump a Python traceback on native crashes (segfault / Windows access violation, e.g. 0xC0000005)
 # instead of dying silently. Spawned workers re-import this package, so they inherit this too.

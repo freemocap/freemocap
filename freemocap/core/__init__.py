@@ -3,4 +3,3 @@
 from skellylogs import configure_logging, LogLevels
 
 LOG_LEVEL = LogLevels.TRACE
-configure_logging(LOG_LEVEL)

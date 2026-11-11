@@ -73,7 +73,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
-    const logStoreRef = useRef<LogStore>(new LogStore());
+    const [logStore] = useState(() => new LogStore());
+    const logStoreRef = useRef(logStore);
 
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);

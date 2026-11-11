@@ -171,6 +171,7 @@ upx.exe
 /CLAUDE.md
 .aider*
 freemocap-ui/freemocap_server
+freemocap-ui/tsconfig.node.tsbuildinfo
 /.codex/*
 # Local experiment reports retained when switching from development branches.
 /experiments/executable_graph_lab/evidence/

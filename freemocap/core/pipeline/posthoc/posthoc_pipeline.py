@@ -19,6 +19,7 @@ from multiprocessing.sharedctypes import Synchronized
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.core import TrackerConfig
+from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 
 from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -86,6 +87,7 @@ class PosthocPipeline(PipelineABC):
         worker_registry: WorkerRegistry,
         global_kill_flag: Synchronized,
         save_annotated_video: bool = True,
+        execution_provider: ExecutionProviderName | None = None,
     ) -> "PosthocPipeline":
         """
         Create a posthoc pipeline.
@@ -100,6 +102,8 @@ class PosthocPipeline(PipelineABC):
             save_annotated_video: Write annotated video output during detection.
                 If an annotated video already exists, new annotations are layered
                 on top of the existing one.
+            execution_provider: ONNX Runtime execution provider for RTMPose
+                (None = auto-select best available).
         """
         recording_path = Path(recording_info.full_recording_path)
 
@@ -124,6 +128,7 @@ class PosthocPipeline(PipelineABC):
                 camera_id=camera_id,
                 video_path=video_helper.video_path,
                 detector_config=detector_config,
+                execution_provider=execution_provider,
                 worker_registry=worker_registry,
                 ipc=ipc,
                 pubsub=pubsub,

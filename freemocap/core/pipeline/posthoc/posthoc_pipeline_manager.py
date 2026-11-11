@@ -148,6 +148,7 @@ class PosthocPipelineManager(PipelineManagerABC):
         pipeline = PosthocPipeline.create(
             recording_info=recording_info,
             detector_config=mocap_config.tracker_config,
+            execution_provider=mocap_config.execution_provider,
             aggregation_task_fn=mocap_task_fn,
             pipeline_type=PosthocPipelineType.MOCAP,
             worker_registry=self.worker_registry,

@@ -31,3 +31,35 @@ assert.equal(reindexed.cameras[0].actualConfig.camera_index, 5);
 assert.equal(reindexed.cameras[0].desiredConfig.camera_index, 5);
 assert.equal(reindexed.cameras[0].desiredConfig.exposure, -6);
 console.log('Camera server-settings reconciliation passed');
+
+async function checkAutoApply() {
+    const empty = serverStateReceived({server_pid: 1, state: {camera_groups: {}, realtime_pipelines: []}});
+    const edit = cameraDesiredConfigUpdated({cameraId: 'camera-A', config: {exposure: -8}});
+    const settle = () => new Promise(resolve => setTimeout(resolve, 450));
+    const originalFetch = globalThis.fetch;
+    const requests: string[] = [];
+    globalThis.fetch = async input => {
+        requests.push(String(input));
+        return new Response(JSON.stringify({group_id: 'group', camera_configs: {}}));
+    };
+    try {
+        store.dispatch(snapshot);
+        store.dispatch(empty);
+        store.dispatch(edit);
+        await settle();
+        assert.equal(store.getState().cameras.cameras[0].desiredConfig.exposure, -8);
+        assert.equal(requests.length, 0, 'Disconnected edits must stay local');
+        store.dispatch(snapshot);
+        store.dispatch(edit);
+        store.dispatch(empty);
+        await settle();
+        assert.equal(requests.length, 0, 'Closing the group must cancel a pending update');
+        store.dispatch(snapshot);
+        store.dispatch(edit);
+        await settle();
+        assert.equal(requests.length, 1, 'An edit to a live group still auto-applies');
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+}
+void checkAutoApply().catch(error => {console.error(error); process.exitCode = 1;});

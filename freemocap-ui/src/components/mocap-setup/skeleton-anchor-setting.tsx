@@ -16,11 +16,13 @@ const INFO = {
         The selected segment must be visible.</p>,
 };
 
-export default function SkeletonAnchorSetting({value, onChange}: {
+export default function SkeletonAnchorSetting({value, onChange, inactive}: {
     value: string;
     onChange: (value: string) => void;
+    /** The stage that uses the anchor is switched off: the row stays on screen, dimmed. */
+    inactive?: boolean;
 }) {
-    return <SettingRow label="Skeleton anchor" info={INFO}
+    return <SettingRow label="Skeleton anchor" info={INFO} inactive={inactive}
         control={<SettingSelectInput label="Skeleton anchor" value={value}
             options={OPTIONS} onChange={onChange}/>}/>;
 }

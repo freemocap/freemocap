@@ -1,6 +1,5 @@
-import {useTemporalFiltering} from '@/hooks/useTemporalFiltering';
-import {StreamingOutputsControl} from '@/components/control-panels/streaming-outputs/StreamingOutputsControl';
 import {RealtimeProcessingButton} from '@/components/control-panels/realtime-panel/RealtimeProcessingButton';
+import RealtimeProcessingSettings from '@/components/realtime-processing/RealtimeProcessingSettings';
 import React, { useState } from "react";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { useTranslation } from "react-i18next";
@@ -15,19 +14,12 @@ import SegmentedControl from "@/components/ui-components/SegmentedControl";
 import { Row } from "@/components/ui-components/Row";
 import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
 
-import RTPMediaPipeDetectorSettings from "@/components/pipeline-progress/realtime/realtimepipeline-mediapipedetector-settings";
-import RTPthreeDReconstructionSettings from "@/components/pipeline-progress/realtime/realtimepipeline-3dreconstruction-settings";
 
 interface SettingsOverlayProps {
   settings: CameraSettings;
   onSettingsChange: (partial: Partial<CameraSettings>) => void;
   onResetLayout: () => void;
 }
-
-type ActiveState = {
-  trackingSettings: boolean;
-  filterSettings: boolean;
-};
 
 export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   settings,
@@ -38,62 +30,17 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const { t } = useTranslation();
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [processingSettingsOpen, setProcessingSettingsOpen] = useState(false);
   const [isAuto, setIsAuto] = useState<boolean>(settings.columns === null);
   const [manualColumns, setManualColumns] = useState<number>(
     settings.columns ?? 2,
   );
 
-  const [active, setActive] = useState<ActiveState>({
-    trackingSettings: false,
-    filterSettings: false,
-  });
-
-  const toggleActive = (key: keyof ActiveState) => {
-    setActive((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
   const {
-    pipelineConfig,
-    cameraNodeConfig,
-    aggregatorConfig,
-    applyOrUpdatePipelineConfig,
     isConnected,
     isLoading: isPipelineLoading,
     toggleConnection,
   } = useRealtimePipelineSync();
-
-  const charucoEnabled = cameraNodeConfig.charuco_tracking_enabled;
-  const skeletonEnabled = cameraNodeConfig.skeleton_tracking_enabled;
-  const triangulateEnabled = aggregatorConfig.triangulation_enabled;
-  const temporal = useTemporalFiltering();
-  const filterEnabled = temporal.config?.spatial_smoothing.enabled ?? false;
-
-  const handleCharucoToggle = () =>
-    applyOrUpdatePipelineConfig({
-      ...pipelineConfig,
-      camera_node_config: { ...cameraNodeConfig, charuco_tracking_enabled: !charucoEnabled },
-    });
-
-  const handleSkeletonToggle = () =>
-    applyOrUpdatePipelineConfig({
-      ...pipelineConfig,
-      camera_node_config: { ...cameraNodeConfig, skeleton_tracking_enabled: !skeletonEnabled },
-    });
-
-  const handleTriangulateToggle = () =>
-    applyOrUpdatePipelineConfig({
-      ...pipelineConfig,
-      aggregator_config: { ...aggregatorConfig, triangulation_enabled: !triangulateEnabled },
-    });
-
-  const handleFilterToggle = () => {
-    if (temporal.config) void temporal.apply({...temporal.config, spatial_smoothing: {
-      ...temporal.config.spatial_smoothing, enabled: !filterEnabled,
-    }}).catch(() => { /* Filter settings display the API error. */ });
-  };
 
   const handleLiveStreamClick = () => {
     toggleConnection();
@@ -132,94 +79,14 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       <div data-onboarding="realtime:pipeline" className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
         <div className="live-action-buttons-container flex flex-row gap-4">
 
-          {/* GROUP 1 */}
-          <div className="p-1 br-2 bg-gray live-action-buttons-group-1 flex flex-row items-center gap-1">
-
-            <IconButton
-              icon={skeletonEnabled ? "twodtracking-active-icon" : "twodtracking-icon"}
-              onClick={handleSkeletonToggle}
-              tooltip
-              tooltipText="2D Tracking"
-              tooltipPosition="pos-bottom"
-              disabled={false}
-              className={`icon-size-25 ${skeletonEnabled ? "active" : ""}`}
-            />
-
-            <IconButton
-              icon={charucoEnabled ? "charuco-active-icon" : "charuco-icon"}
-              onClick={handleCharucoToggle}
-              tooltip
-              tooltipText="Charuco Board"
-              tooltipPosition="pos-bottom"
-              disabled={false}
-              className={`icon-size-25 ${charucoEnabled ? "active" : ""}`}
-            />
-
-            <div className="modal-container pos-rel">
-              <IconButton
-                icon={active.trackingSettings ? "skeleton-active-icon" : "skeleton-icon"}
-                onClick={() => toggleActive("trackingSettings")}
-                tooltip
-                tooltipText="Skeleton Setup"
-                ariaLabel="Skeleton Setup"
-                tooltipPosition="pos-bottom"
-                disabled={false}
-                className={`is-menu icon-size-25 ${active.trackingSettings ? "active" : ""}`}
-              />
-              {/* RTP MediaPipe Settings Modal */}
-              <RTPMediaPipeDetectorSettings
-                open={active.trackingSettings}
-                onClose={() => setActive(previous => ({...previous, trackingSettings: false}))}
-              />
-            </div>
-          </div>
-
-          {/* GROUP 2 */}
-          <div className="p-1 br-2 bg-gray live-action-buttons-group-2 flex flex-row items-center gap-1">
-
-            <IconButton
-              icon={triangulateEnabled ? "threedtracking-active-icon" : "threedtracking-icon"}
-              onClick={handleTriangulateToggle}
-              tooltip
-              tooltipText="3D Tracking"
-              tooltipPosition="pos-bottom"
-              disabled={false}
-              className={`icon-size-25 ${triangulateEnabled ? "active" : ""}`}
-            />
-
-            <IconButton
-              icon={filterEnabled ? "skeletonfilter-active-icon" : "skeletonfilter-icon"}
-              onClick={handleFilterToggle}
-              tooltip
-              tooltipText={temporal.error ?? "Toggle spatial smoothing; open settings for gap recovery and other filters"}
-              tooltipPosition="pos-bottom"
-              disabled={temporal.loading || !temporal.config}
-              className={`icon-size-25 ${filterEnabled ? "active" : ""}`}
-            />
-
-            <div className="modal-container pos-rel">
-              <IconButton
-                icon={active.filterSettings ? "settings-icon" : "settings-icon"}
-                onClick={() => toggleActive("filterSettings")}
-                tooltip
-                tooltipText="Filter Settings"
-                tooltipPosition="pos-bottom"
-                disabled={false}
-                className={`is-menu icon-size-25 ${active.filterSettings ? "active" : ""}`}
-              />
-              {/* RTP 3D Reconstructions Settings Modal */}
-              <RTPthreeDReconstructionSettings
-                open={active.filterSettings}
-                onClose={() => toggleActive("filterSettings")}
-              />
-            </div>
-          </div>
-
           {/* GROUP 3 */}
           <div className="p-1 live-action-buttons-group-3 flex flex-row items-center gap-3">
 
             <RealtimeProcessingButton connected={isConnected} loading={isPipelineLoading} onToggle={handleLiveStreamClick}/>
-            <StreamingOutputsControl/>
+            <button type="button" className="button sm secondary br-1" onClick={() => setProcessingSettingsOpen(true)}>
+              Processing settings
+            </button>
+            {processingSettingsOpen && <RealtimeProcessingSettings onClose={() => setProcessingSettingsOpen(false)}/>}
           </div>
 
         </div>
@@ -230,7 +97,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="icon-size-32 br-2"
             onClick={() => setIsOpen(!isOpen)}
             title={isOpen ? t("closeSettings") : t("gridSettings")}
-            tooltip
+            tooltip={!isOpen}
             tooltipText="Grid Settings"
             tooltipPosition="pos-bottom-right"
           />

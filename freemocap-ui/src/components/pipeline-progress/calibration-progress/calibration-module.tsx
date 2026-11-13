@@ -26,6 +26,7 @@ import {
   selectLoadedCalibration,
 } from "@/store/slices/calibration";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
+import { selectPipelineError } from "@/store/slices/realtime";
 import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import "@/styles/calibration.css";
 
@@ -85,12 +86,28 @@ const CalibrationModule = ({
   const location = useLocation();
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
   useCalibrationTomlLoader(appMode === 'streaming' && appModeOverride === undefined);
+  const showsReferenceFrame = appMode === 'streaming' && presentation === 'panel' && appModeOverride === undefined;
   const referenceFrameControls = <>
     <CalibrationAlignmentSettings disabled={isLoading || isRecording}/>
-    {appMode === 'streaming' && presentation === 'panel' && appModeOverride === undefined
+    {showsReferenceFrame
         ? <CalibrationReferenceFrame calibrationPath={loadedCalibration?.path ?? null}/>
         : null}
   </>;
+
+  // In the sidebar these advanced controls start collapsed so they cannot crowd the
+  // camera list. Realtime pipeline errors are only shown inside them, so open on error,
+  // including when a branch change below remounts the disclosure.
+  const pipelineError = useAppSelector(selectPipelineError);
+  const advancedDisclosureRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (pipelineError && advancedDisclosureRef.current) advancedDisclosureRef.current.open = true;
+  }, [pipelineError, isRecording, isCalibratedProp, loadedCalibration]);
+  const advancedCalibrationControls = (
+    <details ref={advancedDisclosureRef} className="settings-disclosure">
+      <summary>{showsReferenceFrame ? "Alignment and reference frame" : "Alignment"}</summary>
+      {referenceFrameControls}
+    </details>
+  );
   const panelTitle = appModeOverride === undefined ? 'Capture volume' : 'Calibration';
 
   // Cycling calibration messages during recording
@@ -484,7 +501,7 @@ const CalibrationModule = ({
           />
         </div>
         {calibrationDropdown}
-        {referenceFrameControls}
+        {advancedCalibrationControls}
       </div>
       </>
     );
@@ -545,8 +562,8 @@ const CalibrationModule = ({
         */}
         {calibrationDropdown}
       </div>
-      
-      {referenceFrameControls}
+
+      {advancedCalibrationControls}
     </div>
     </>
   );

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>@freemocap/client browser bundle check</title>
+<style>body{font:14px system-ui;margin:2rem}[data-status=pass]{color:#14833b}[data-status=fail]{color:#c62828}</style>
+</head>
+<body>
+<h1>@freemocap/client browser bundle check</h1>
+<p>Serve the package directory (<code>node tools/serve-static.mjs</code>), then open this page.
+It imports the built bundle with no bundler and exercises what Node cannot: native JPEG decoding.</p>
+<pre id="result" data-status="running">Running…</pre>
+<script type="module">
+import {TransportService, decodeMessage, readImagePayload, decodeImageBitmaps, decodeImagePixels} from '/dist/browser/freemocap-client.js';
+
+const bytes = base64 => Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+// cbor-x encodings of {kind:'app_state', version:0, timestamp:0, sequence:0, server_pid:17, state:{camera_groups:{}, realtime_pipelines:[]}}
+// and {kind:'robot_state', version:0, timestamp:1.5, sequence:3, servos:{pan:90, tilt:12.5}}.
+const appState = bytes('uQAGZGtpbmRpYXBwX3N0YXRlZ3ZlcnNpb24AaXRpbWVzdGFtcABoc2VxdWVuY2UAanNlcnZlcl9waWQRZXN0YXRluQACbWNhbWVyYV9ncm91cHO5AABycmVhbHRpbWVfcGlwZWxpbmVzgA==');
+const robotState = bytes('uQAFZGtpbmRrcm9ib3Rfc3RhdGVndmVyc2lvbgBpdGltZXN0YW1w+z/4AAAAAAAAaHNlcXVlbmNlA2ZzZXJ2b3O5AAJjcGFuGFpkdGlsdPtAKQAAAAAAAA==');
+
+const checks = {};
+const check = (name, condition, detail) => { checks[name] = condition ? 'pass' : `FAIL ${JSON.stringify(detail)}`; };
+const result = document.getElementById('result');
+try {
+  check('decodes a FreeMoCap message', decodeMessage(appState).server_pid === 17);
+
+  // An application kind travelling through a TransportService, over a stand-in socket.
+  let socket;
+  const stream = new TransportService({url: 'ws://robot.invalid/ws', kinds: {robot_state: {parse: message => message}},
+    socketFactory: url => (socket = {url, readyState: 0, send() {}, close() { this.readyState = 3; }})});
+  const states = [];
+  stream.subscribeToKind('robot_state', state => states.push(state));
+  stream.connect(); socket.readyState = 1; socket.onopen?.({});
+  socket.onmessage({data: robotState.buffer.slice(robotState.byteOffset, robotState.byteOffset + robotState.byteLength)});
+  stream.disconnect();
+  check('delivers an application kind', states.length === 1 && states[0].servos.pan === 90, states);
+
+  const fixture = await (await fetch('/tests/fixtures/image-payload.json')).json();
+  const payload = readImagePayload(bytes(fixture.payload_base64));
+  const pixels = await decodeImagePixels(payload);
+  const centre = image => { const rgba = new Uint8ClampedArray(image.pixelBuffer); const at = 4 * (image.width * (image.height >> 1) + (image.width >> 1)); return [...rgba.slice(at, at + 3)]; };
+  const near = (rgb, expected) => rgb.every((value, index) => Math.abs(value - expected[index]) < 40);
+  // SkellyCam encodes BGR: oak was (0, 0, 255) = red, zed-left (255, 0, 0) = blue.
+  check('decodes JPEGs to RGBA', near(centre(pixels[0]), [255, 0, 0]) && near(centre(pixels[1]), [0, 0, 255]), pixels.map(centre));
+  const bitmaps = await decodeImageBitmaps(payload);
+  check('decodes JPEGs to bitmaps', bitmaps.map(image => `${image.cameraId}:${image.bitmap.width}x${image.bitmap.height}`).join() === 'oak:16x8,zed-left:8x8',
+    bitmaps.map(image => [image.bitmap.width, image.bitmap.height]));
+  bitmaps.forEach(image => image.bitmap.close());
+} catch (error) {
+  checks.error = String(error?.stack ?? error);
+}
+result.dataset.status = Object.values(checks).every(value => value === 'pass') ? 'pass' : 'fail';
+result.textContent = JSON.stringify(checks, null, 1);
+</script>
+</body>
+</html>

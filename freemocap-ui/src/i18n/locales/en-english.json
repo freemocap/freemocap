@@ -57,6 +57,7 @@
   "auto": "Auto",
   "manual": "Manual",
   "custom": "Custom",
+  "notReportedByCamera": "not reported by camera",
   "current": "Current",
   "recommend": "Recommend",
   "recommendExposureAll": "Auto-recommend exposure for all cameras",

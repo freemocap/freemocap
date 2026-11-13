@@ -24,7 +24,6 @@ export const applyRealtimePipeline = createAsyncThunk<
         // resolves null independently; load it here to keep the displayed file
         // and board definition in agreement before submitting the live config.
         if (!isDlc && !selectLoadedCalibration(getState())) {
-            if (getState().calibration.error) throw new Error(getState().calibration.error!);
             const selection = await dispatch(loadRealtimeCalibrationDefault());
             if (loadRealtimeCalibrationDefault.rejected.match(selection) && !selectLoadedCalibration(getState())) {
                 throw new Error(selection.payload ?? selection.error.message ?? 'Could not load the most recent calibration.');

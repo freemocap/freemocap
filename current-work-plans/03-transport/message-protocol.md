@@ -16,6 +16,30 @@ native byte strings carry the JPEG payload and the packed Float32 arrays directl
 typed-array tag ambiguity). With four cameras of JPEG per frame the non-image payload is ~5%, so the
 metadata channel is optimized for robustness and clarity, not bytes.
 
+## Client recovery and stable controls
+
+Owner requirement, 2026-11-10. Self-description protects a complex client and
+server from diverging after either process fails or restarts. Every new message
+must be usable on its own. Current server observations replace the client's old
+operational picture. Historical errors remain diagnostics and must never gate
+commands or require a page refresh to recover.
+
+The processing control always says “Real-time processing”. Its active indication
+reflects current observed processing. A failed request does not create a “Retry”
+mode, disable the control, or cause the next click to replay old settings.
+The next command uses the user's current settings. In-flight request tracking
+supports cancellation and ignores obsolete responses after disconnect or server
+replacement. It must not override a newer server snapshot.
+
+Regression coverage must exercise the rendered control and dispatched requests
+through failure, edited settings, a new attempt, independent server restart,
+reconnect, and late completion from the old connection. A passing serializer or
+camera replay alone does not establish client recovery.
+
+Implementation entry points are `RealtimeProcessingButton.tsx`,
+`useRealtimePipelineSync.ts`, `useRealtimeStartup.ts`, `realtime-slice.ts`, and
+`ServerContextProvider.tsx` under `freemocap-ui/src/`.
+
 ## The model
 
 The stream is a sequence of **messages**. Each message declares a **kind** (which handler consumes it) and

@@ -1,10 +1,15 @@
 import React, {useEffect, useState} from "react";
-import {CameraConfig} from "@/store/slices/cameras/cameras-types";
+import {CameraConfig, CaptureMode} from "@/store/slices/cameras/cameras-types";
 import {useTranslation} from 'react-i18next';
 
-interface CameraConfigResolutionProps {
+interface ResolutionControlProps {
     resolution: CameraConfig['resolution'];
     onChange: (width: number, height: number) => void;
+}
+
+interface CameraConfigResolutionProps extends ResolutionControlProps {
+    // Modes the camera reported at detection. Without them the control offers presets and custom entry.
+    supportedModes: CaptureMode[];
 }
 
 const PRESET_RESOLUTIONS = [
@@ -19,7 +24,7 @@ const RESOLUTION_CONSTRAINTS = {
     default: { width: 1280, height: 720 }
 };
 
-export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
+const PresetResolutionControl: React.FC<ResolutionControlProps> = ({
     resolution,
     onChange
 }) => {
@@ -188,3 +193,49 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
         </div>
     );
 };
+
+const resolutionValue = ({width, height}: CameraConfig['resolution']): string => `${width}x${height}`;
+
+const ReportedResolutionSelect: React.FC<CameraConfigResolutionProps> = ({
+    resolution,
+    supportedModes,
+    onChange
+}) => {
+    const {t} = useTranslation();
+    const current = resolutionValue(resolution);
+    const isReported = supportedModes.some(mode => resolutionValue(mode) === current);
+
+    const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
+        const [width, height] = event.target.value.split('x').map(Number);
+        onChange(width, height);
+    };
+
+    return (
+        <div className="input-with-string">
+            <select
+                className="input-field text md"
+                value={current}
+                onChange={handleSelectChange}
+                aria-label={t("resolution")}
+            >
+                {supportedModes.map(mode => (
+                    <option key={resolutionValue(mode)} value={resolutionValue(mode)}>
+                        {`${mode.width} x ${mode.height}`}
+                    </option>
+                ))}
+                {/* Show a setting the camera does not report (saved or copied) without offering it. */}
+                {!isReported && (
+                    <option value={current} disabled>
+                        {`${resolution.width} x ${resolution.height} (${t("notReportedByCamera")})`}
+                    </option>
+                )}
+            </select>
+        </div>
+    );
+};
+
+// Cameras that report their modes offer exactly those; others keep the presets and custom entry.
+export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({supportedModes, ...control}) =>
+    supportedModes.length > 0
+        ? <ReportedResolutionSelect supportedModes={supportedModes} {...control}/>
+        : <PresetResolutionControl {...control}/>;

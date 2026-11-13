@@ -6,6 +6,7 @@ export {operationDefinitions} from './generated/operations.js';
 export * from './transport/message-contract.js';
 export * from './transport/frame-types.js';
 export * from './transport/frame-resolution.js';
+export * from './transport/channel-views.js';
 export * from './transport/cbor-codec.js';
 export * from './transport/TransportService.js';
 export * from './transport/application-kinds.js';

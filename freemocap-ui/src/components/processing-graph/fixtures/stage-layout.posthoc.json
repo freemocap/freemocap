@@ -1,0 +1,378 @@
+{
+  "unmeasured": {
+    "boxes": [
+      [
+        "recording",
+        {
+          "x": 40,
+          "y": 66,
+          "w": 360,
+          "h": 108
+        }
+      ],
+      [
+        "observations",
+        {
+          "x": 464,
+          "y": 40,
+          "w": 360,
+          "h": 134
+        }
+      ],
+      [
+        "triangulation",
+        {
+          "x": 888,
+          "y": 40,
+          "w": 360,
+          "h": 134
+        }
+      ],
+      [
+        "filtering",
+        {
+          "x": 1312,
+          "y": 40,
+          "w": 360,
+          "h": 108
+        }
+      ],
+      [
+        "scale_fit",
+        {
+          "x": 40,
+          "y": 328,
+          "w": 360,
+          "h": 108
+        }
+      ],
+      [
+        "reconstruction",
+        {
+          "x": 464,
+          "y": 250,
+          "w": 360,
+          "h": 160
+        }
+      ],
+      [
+        "blender",
+        {
+          "x": 888,
+          "y": 250,
+          "w": 360,
+          "h": 134
+        }
+      ],
+      [
+        "exports",
+        {
+          "x": 1312,
+          "y": 250,
+          "w": 360,
+          "h": 108
+        }
+      ]
+    ],
+    "wires": [
+      {
+        "id": "recording.videos>observations",
+        "d": "M400,155 C436,155 428,155 464,155"
+      },
+      {
+        "id": "recording.calibration>triangulation",
+        "d": "M400,129 C440,129 420,16 470,16 L828,16 C868,16 854,129 888,129"
+      },
+      {
+        "id": "observations.keypoints2d>triangulation",
+        "d": "M824,103 C860,103 852,155 888,155"
+      },
+      {
+        "id": "triangulation.raw3d>filtering",
+        "d": "M1248,103 C1284,103 1276,129 1312,129"
+      },
+      {
+        "id": "filtering.filtered3d>scale_fit",
+        "d": "M1672,103 C1712,103 1702,212 1662,212 L30,212 C0,212 -6,417 40,417"
+      },
+      {
+        "id": "filtering.filtered3d>reconstruction",
+        "d": "M1672,103 C1712,103 1702,212 1662,212 L454,212 C424,212 418,365 464,365"
+      },
+      {
+        "id": "scale_fit.dimensions>reconstruction",
+        "d": "M400,391 C436,391 428,391 464,391"
+      },
+      {
+        "id": "reconstruction.segments>blender",
+        "d": "M824,313 C860,313 852,339 888,339"
+      },
+      {
+        "id": "reconstruction.landmarks>blender",
+        "d": "M824,339 C860,339 852,365 888,365"
+      },
+      {
+        "id": "reconstruction.landmarks>exports",
+        "d": "M824,339 C860,339 848,410 894,410 L1242,410 C1288,410 1276,339 1312,339"
+      }
+    ],
+    "width": 1712,
+    "height": 476
+  },
+  "measured": {
+    "boxes": [
+      [
+        "recording",
+        {
+          "x": 40,
+          "y": 66,
+          "w": 360,
+          "h": 120
+        }
+      ],
+      [
+        "observations",
+        {
+          "x": 464,
+          "y": 40,
+          "w": 360,
+          "h": 410
+        }
+      ],
+      [
+        "triangulation",
+        {
+          "x": 888,
+          "y": 40,
+          "w": 360,
+          "h": 300
+        }
+      ],
+      [
+        "filtering",
+        {
+          "x": 1312,
+          "y": 40,
+          "w": 360,
+          "h": 260
+        }
+      ],
+      [
+        "scale_fit",
+        {
+          "x": 40,
+          "y": 604,
+          "w": 360,
+          "h": 150
+        }
+      ],
+      [
+        "reconstruction",
+        {
+          "x": 464,
+          "y": 526,
+          "w": 360,
+          "h": 180
+        }
+      ],
+      [
+        "blender",
+        {
+          "x": 888,
+          "y": 526,
+          "w": 360,
+          "h": 220
+        }
+      ],
+      [
+        "exports",
+        {
+          "x": 1312,
+          "y": 526,
+          "w": 360,
+          "h": 200
+        }
+      ]
+    ],
+    "wires": [
+      {
+        "id": "recording.videos>observations",
+        "d": "M400,155 C436,155 428,155 464,155"
+      },
+      {
+        "id": "recording.calibration>triangulation",
+        "d": "M400,129 C440,129 420,16 470,16 L828,16 C868,16 854,129 888,129"
+      },
+      {
+        "id": "observations.keypoints2d>triangulation",
+        "d": "M824,103 C860,103 852,155 888,155"
+      },
+      {
+        "id": "triangulation.raw3d>filtering",
+        "d": "M1248,103 C1284,103 1276,129 1312,129"
+      },
+      {
+        "id": "filtering.filtered3d>scale_fit",
+        "d": "M1672,103 C1712,103 1702,488 1662,488 L30,488 C0,488 -6,693 40,693"
+      },
+      {
+        "id": "filtering.filtered3d>reconstruction",
+        "d": "M1672,103 C1712,103 1702,488 1662,488 L454,488 C424,488 418,641 464,641"
+      },
+      {
+        "id": "scale_fit.dimensions>reconstruction",
+        "d": "M400,667 C436,667 428,667 464,667"
+      },
+      {
+        "id": "reconstruction.segments>blender",
+        "d": "M824,589 C860,589 852,615 888,615"
+      },
+      {
+        "id": "reconstruction.landmarks>blender",
+        "d": "M824,615 C860,615 852,641 888,641"
+      },
+      {
+        "id": "reconstruction.landmarks>exports",
+        "d": "M824,615 C860,615 848,772 894,772 L1242,772 C1288,772 1276,615 1312,615"
+      }
+    ],
+    "width": 1712,
+    "height": 812
+  },
+  "everyExport": {
+    "boxes": [
+      [
+        "recording",
+        {
+          "x": 40,
+          "y": 66,
+          "w": 360,
+          "h": 120
+        }
+      ],
+      [
+        "observations",
+        {
+          "x": 464,
+          "y": 40,
+          "w": 360,
+          "h": 410
+        }
+      ],
+      [
+        "triangulation",
+        {
+          "x": 888,
+          "y": 40,
+          "w": 360,
+          "h": 300
+        }
+      ],
+      [
+        "filtering",
+        {
+          "x": 1312,
+          "y": 40,
+          "w": 360,
+          "h": 260
+        }
+      ],
+      [
+        "scale_fit",
+        {
+          "x": 40,
+          "y": 604,
+          "w": 360,
+          "h": 150
+        }
+      ],
+      [
+        "reconstruction",
+        {
+          "x": 464,
+          "y": 526,
+          "w": 360,
+          "h": 180
+        }
+      ],
+      [
+        "blender",
+        {
+          "x": 888,
+          "y": 526,
+          "w": 360,
+          "h": 220
+        }
+      ],
+      [
+        "exports",
+        {
+          "x": 1312,
+          "y": 526,
+          "w": 360,
+          "h": 200
+        }
+      ]
+    ],
+    "wires": [
+      {
+        "id": "recording.videos>observations",
+        "d": "M400,155 C436,155 428,155 464,155"
+      },
+      {
+        "id": "recording.calibration>triangulation",
+        "d": "M400,129 C440,129 420,16 470,16 L828,16 C868,16 854,129 888,129"
+      },
+      {
+        "id": "observations.keypoints2d>triangulation",
+        "d": "M824,103 C860,103 852,155 888,155"
+      },
+      {
+        "id": "triangulation.raw3d>filtering",
+        "d": "M1248,103 C1284,103 1276,129 1312,129"
+      },
+      {
+        "id": "filtering.filtered3d>scale_fit",
+        "d": "M1672,103 C1712,103 1702,488 1662,488 L30,488 C0,488 -6,693 40,693"
+      },
+      {
+        "id": "filtering.filtered3d>reconstruction",
+        "d": "M1672,103 C1712,103 1702,488 1662,488 L454,488 C424,488 418,641 464,641"
+      },
+      {
+        "id": "scale_fit.dimensions>reconstruction",
+        "d": "M400,667 C436,667 428,667 464,667"
+      },
+      {
+        "id": "reconstruction.segments>blender",
+        "d": "M824,589 C860,589 852,615 888,615"
+      },
+      {
+        "id": "reconstruction.landmarks>blender",
+        "d": "M824,615 C860,615 852,641 888,641"
+      },
+      {
+        "id": "observations.keypoints2d>exports",
+        "d": "M824,103 C1068,103 1068,615 1312,615"
+      },
+      {
+        "id": "triangulation.raw3d>exports",
+        "d": "M1248,103 C1284,103 1276,641 1312,641"
+      },
+      {
+        "id": "filtering.filtered3d>exports",
+        "d": "M1672,103 C1712,103 1702,488 1662,488 L1302,488 C1272,488 1266,667 1312,667"
+      },
+      {
+        "id": "reconstruction.segments>exports",
+        "d": "M824,589 C854,589 844,506 884,506 L1242,506 C1288,506 1276,693 1312,693"
+      },
+      {
+        "id": "reconstruction.landmarks>exports",
+        "d": "M824,615 C860,615 848,772 894,772 L1242,772 C1288,772 1276,719 1312,719"
+      }
+    ],
+    "width": 1712,
+    "height": 812
+  }
+}

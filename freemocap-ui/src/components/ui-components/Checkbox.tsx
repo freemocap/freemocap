@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect, useRef} from "react";
 
 interface CheckboxProps {
   label: string;
@@ -7,6 +7,10 @@ interface CheckboxProps {
   inputClassName?: string;
   className?: string;
   disabled?: boolean;
+  /** Names a box that has no visible label, for assistive technology. */
+  ariaLabel?: string;
+  /** Some, not all, of what the box switches is on: drawn as a bar, announced as mixed. */
+  indeterminate?: boolean;
 }
 
 const Checkbox: React.FC<CheckboxProps> = ({
@@ -16,7 +20,29 @@ const Checkbox: React.FC<CheckboxProps> = ({
   inputClassName = "",
   className = "",
   disabled = false,
+  ariaLabel,
+  indeterminate = false,
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  /*
+   * "Partly on" is a DOM property with no HTML attribute, and the browser
+   * clears it whenever the box is clicked, so it is set after every render.
+   */
+  useEffect(() => {
+    if (inputRef.current) inputRef.current.indeterminate = indeterminate;
+  });
+
+  /*
+   * A click that the caller ignores causes no render, so the flag is also put
+   * back here. It goes back before the caller's handler runs, so that a render
+   * the handler causes has the last word.
+   */
+  const handleChange = onChange && ((event: React.ChangeEvent<HTMLInputElement>) => {
+    event.target.indeterminate = indeterminate;
+    onChange(event);
+  });
+
   return (
     <label
       className={`
@@ -31,9 +57,12 @@ const Checkbox: React.FC<CheckboxProps> = ({
       `}
     >
       <input
+        ref={inputRef}
         type="checkbox"
+        aria-label={ariaLabel}
+        aria-checked={indeterminate ? "mixed" : undefined}
         checked={checked}
-        onChange={onChange}
+        onChange={handleChange}
         disabled={disabled}
         className={`
           button

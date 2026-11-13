@@ -50,18 +50,21 @@ test('streaming toolbar opens a centered tracker dialog and restores the actual 
     for(const output of bundle.outputFiles.filter(output=>!output.path.endsWith('.css'))){
         await page.addScriptTag({content:output.text,type:'module'});
     }
-    const trigger=page.getByRole('button',{name:'Skeleton Setup',exact:true});
-    const dialog=page.getByRole('dialog',{name:'Skeleton Setup',exact:true});
+    const trigger=page.getByRole('button',{name:'Processing settings',exact:true});
+    const dialog=page.getByRole('dialog',{name:'Real-time processing settings',exact:true});
     const overlay=page.locator('.tracker-dialog-overlay');
     await expect(overlay).toHaveCount(0);
     await trigger.click();
     await expect(dialog).toBeVisible();
+    // The window paints its own surface: it was transparent once the classes it borrowed were removed.
+    await expect(dialog).not.toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+    await expect(dialog).toHaveCSS('border-top-style','solid');
     let box=(await dialog.boundingBox())!;
     expect(box.width).toBe(1200);
     expect(box.x+box.width/2).toBeCloseTo(960);
     expect(box.y+box.height/2).toBeCloseTo(540);
-    await expect(dialog.getByRole('button',{name:'Close Skeleton Setup',exact:true})).toBeVisible();
-    await dialog.getByRole('button',{name:'DLC',exact:true}).click();
+    await expect(dialog.getByRole('button',{name:'Close Real-time processing settings',exact:true})).toBeVisible();
+    await dialog.getByRole('combobox',{name:'Skeleton detector',exact:true}).selectOption('dlc');
     await page.screenshot({path:info.outputPath('tracker-host-centered.png'),fullPage:true});
     await dialog.getByRole('button',{name:'Maximize',exact:true}).click();
     await expect(dialog).toHaveCSS('width','1904px');
@@ -79,9 +82,9 @@ test('streaming toolbar opens a centered tracker dialog and restores the actual 
     expect((await dialog.boundingBox())!.width).toBeLessThan(1200);
     await page.setViewportSize({width:860,height:720});
     await expect.poll(async()=>{box=(await dialog.boundingBox())!;return box.x+box.width<=852&&box.y+box.height<=712;}).toBe(true);
-    await expect(dialog.getByRole('button',{name:'Close Skeleton Setup',exact:true})).toBeInViewport();
+    await expect(dialog.getByRole('button',{name:'Close Real-time processing settings',exact:true})).toBeInViewport();
     await page.screenshot({path:info.outputPath('tracker-host-compact.png'),fullPage:true});
-    await dialog.getByRole('button',{name:'Close Skeleton Setup',exact:true}).click();
+    await dialog.getByRole('button',{name:'Close Real-time processing settings',exact:true}).click();
     await expect(overlay).toHaveCount(0);
     await expect(trigger).toBeFocused();
     await page.getByRole('button',{name:'Camera view clicks: 0',exact:true}).click();
@@ -98,4 +101,27 @@ test('streaming toolbar opens a centered tracker dialog and restores the actual 
     await expect(page.getByRole('button',{name:'Camera view clicks: 2',exact:true})).toBeVisible();
     expect(requests.filter(url=>url.includes('/freemocap/')||url.includes('/ws'))).toEqual([]);
     await page.screenshot({path:info.outputPath('tracker-host-closed.png'),fullPage:true});
+    // The integrated worktree must expose its grouped settings in the actual streaming toolbar.
+    const processingTrigger = page.getByRole('button', {name: 'Processing settings', exact: true});
+    await processingTrigger.click();
+    const processing = page.getByRole('dialog', {name: 'Real-time processing settings', exact: true});
+    await expect(processing).toBeVisible();
+    await expect(processing.getByRole('combobox', {name: 'Skeleton detector', exact: true})).toBeVisible();
+    const person = processing.getByRole('switch', {name: 'Track person', exact: true});
+    await expect(person).toHaveAttribute('aria-checked', 'true');
+    await person.click();
+    await expect(person).toHaveAttribute('aria-checked', 'false');
+    await processing.getByRole('button', {name: 'Triangulation', exact: true}).click();
+    const triangulation = processing.getByRole('switch', {name: 'Triangulation', exact: true}).first();
+    await expect(triangulation).toBeEnabled();
+    await processing.getByRole('button', {name: 'Skeleton reconstruction', exact: true}).click();
+    await expect(processing.getByRole('switch', {name: 'Fit skeleton', exact: true}).first()).toBeEnabled();
+    await page.screenshot({path:info.outputPath('realtime-processing-settings.png'),fullPage:true});
+    await page.keyboard.press('Escape');
+    await expect(processing).toHaveCount(0);
+    await expect(processingTrigger).toBeFocused();
+    await processingTrigger.click();
+    await expect(processing.getByRole('switch', {name: 'Track person', exact: true})).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByRole('button', {name: 'Real-time processing', exact: true})).toBeEnabled();
+    expect(requests.filter(url=>url.includes('/freemocap/')||url.includes('/ws'))).toEqual([]);
 });

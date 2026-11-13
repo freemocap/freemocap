@@ -2,7 +2,7 @@
  * Shared utilities for async thunks that call the backend HTTP API.
  */
 
-function describeError(details: unknown): string {
+export function describeError(details: unknown): string {
     if (typeof details === 'string') return details;
     if (Array.isArray(details)) return details.map(describeError).filter(Boolean).join('\n');
     if (details !== null && typeof details === 'object') {

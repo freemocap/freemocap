@@ -13,6 +13,8 @@ import {
     ROTATION_OPTIONS,
     RotationValue,
 } from '@/store/slices/cameras/cameras-types';
+import {withResolution} from '@/store/slices/cameras/capture-modes';
+import {captureModeChoices, framerateLabel, resolutionLabel} from './capture-mode-choices';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import IconButton from '@/components/ui-components/IconButton';
 import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
@@ -25,25 +27,14 @@ interface CameraSettingsModalProps {
     onClose: () => void;
 }
 
-const PRESET_RESOLUTIONS = [
-    {width: 640, height: 480, label: '640 × 480'},
-    {width: 1280, height: 720, label: '1280 × 720'},
-    {width: 1920, height: 1080, label: '1920 × 1080'},
-];
-
 const EXPOSURE_MIN = -13;
 const EXPOSURE_MAX = -5;
-
-const resolutionLabel = (config: CameraConfig): string => {
-    const preset = PRESET_RESOLUTIONS.find(
-        p => p.width === config.resolution.width && p.height === config.resolution.height,
-    );
-    return preset?.label ?? `${config.resolution.width} × ${config.resolution.height}`;
-};
 
 export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera, initialPos, onClose}) => {
     const dispatch = useAppDispatch();
     const allCameras = useAppSelector(selectCameras);
+    const connected = useAppSelector(state => state.connection.cameraGroups.some(
+        group => group.alive && camera.id in group.configs));
     const otherCamerasCount = allCameras.length - 1;
     const [pos, setPos] = useState(initialPos);
     useDraggableTooltips();
@@ -71,6 +62,8 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
 
     const config = camera.desiredConfig;
     const isManual = config.exposure_mode === 'MANUAL';
+    const supportedModes = camera.deviceInfo.supportedModes ?? [];
+    const choices = captureModeChoices(config, supportedModes);
 
     return ReactDOM.createPortal(
         <div
@@ -113,17 +106,33 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                     />
                 </Row>
 
-                {/* Resolution */}
+                {/* Resolution: the camera's reported modes, or presets when it reports none */}
                 <Row label="Resolution">
                     <NameDropdownSelector
-                        options={PRESET_RESOLUTIONS.map(p => p.label)}
-                        initialValue={resolutionLabel(config)}
+                        options={choices.resolutions.map(choice => choice.label)}
+                        initialValue={resolutionLabel(config.resolution)}
                         onChange={label => {
-                            const preset = PRESET_RESOLUTIONS.find(p => p.label === label);
-                            if (preset) handleConfigChange({resolution: {width: preset.width, height: preset.height}});
+                            const choice = choices.resolutions.find(option => option.label === label);
+                            if (choice) handleConfigChange(withResolution(config, supportedModes, choice.width, choice.height));
                         }}
                     />
                 </Row>
+
+                {/* Frame rate: the rates the camera reports at the chosen resolution */}
+                {choices.framerates && (
+                    <Row label="Frame rate">
+                        <NameDropdownSelector
+                            // Remount to show a rate replaced by a resolution change or a copy.
+                            key={`framerate-${config.framerate}`}
+                            options={choices.framerates.map(choice => choice.label)}
+                            initialValue={framerateLabel(config.framerate)}
+                            onChange={label => {
+                                const choice = choices.framerates?.find(option => option.label === label);
+                                if (choice) handleConfigChange({framerate: choice.framerate});
+                            }}
+                        />
+                    </Row>
+                )}
 
                 {/* Exposure mode */}
                 <Row label="Exposure">
@@ -163,6 +172,7 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                         className="button sm br-1 flex-1"
                         style={{background: 'var(--color-text-primary)', color: 'var(--color-bg-primary)'}}
                         onClick={() => dispatch(camerasConnectOrUpdate())}
+                        disabled={!connected}
                         title="Update camera settings"
                     >
                         <p className="text md" style={{color: 'var(--color-bg-primary)'}}>Update Settings</p>

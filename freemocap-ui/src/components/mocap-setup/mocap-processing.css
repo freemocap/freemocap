@@ -287,6 +287,35 @@
   accent-color: var(--color-info-strong);
 }
 
+/* What a section switches one by one (a tracker, a filter), under the section's row. */
+.mp-outline-item {
+  padding-left: 30px;
+}
+
+/* Key setting rows under an outline row, where the outline shows controls. */
+.mp-outline-controls.settings-layout {
+  gap: 0;
+  padding: 0 0 6px 30px;
+}
+
+.mp-outline-item + .mp-outline-controls.settings-layout {
+  padding-left: 52px;
+}
+
+/* The style guide's checkbox as a section's own switch: its box alone, without the padding and the label it
+   carries as a standalone control. */
+.mp-outline-row .checkbox.mp-checkbox,
+.mp-section-header .checkbox.mp-checkbox,
+.pg-node-head .checkbox.mp-checkbox {
+  flex: none;
+  gap: 0;
+  padding: 0;
+}
+
+.checkbox.mp-checkbox > p:empty {
+  display: none;
+}
+
 /* ---------- main area ---------- */
 .mp-main {
   position: relative;

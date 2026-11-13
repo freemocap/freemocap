@@ -13,6 +13,13 @@ npm install
 npm run dev        # Vite dev server + Electron
 ```
 
+`npm install` also installs and builds the local `@freemocap/client` package.
+`npm run dev` rebuilds it at startup, then Vite serves its TypeScript sources
+directly. Client source edits participate in Vite's normal HMR and reload behavior,
+including its HTTP, images, and recording exports; no separate build watcher is
+needed. Production builds use the compiled package and rebuild it first.
+Run `npm run test:client-hmr` to check source resolution and live updates.
+
 The UI expects the FreeMoCap Python server running on `localhost:53117` (default). Start the server first:
 
 ```bash

@@ -16,6 +16,7 @@ import { getTimestampString } from "@/store/slices/recording/getTimestampString"
 import { StartStopRecordingButton } from "./recording-subcomponents/StartStopRecordingButton";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal";
+import "@/components/common/settings-layout/settings-layout.css";
 
 export const RecordingControlPanel: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -143,50 +144,56 @@ export const RecordingControlPanel: React.FC = () => {
             onClick={handleRecordButtonClick}
           />
         </div>
-        {/* Delay toggle */}
-        <DelayRecordingStartControl
-          useDelay={useDelayStart}
-          delaySeconds={delaySeconds}
-          onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
-          onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
-        />
-        {/* Auto-process */}
-        <div className="flex flex-start flex-col items-center gap-1">
-          <ToggleComponent
-            text="Auto Process Mocap"
-            isToggled={autoProcess}
-            onToggle={(v) => dispatch(autoProcessToggled(v))}
-            disabled={recordingInfo.isRecording}
-          />
-        </div>
-        {autoProcess && (
-          <div
-            className={
-              "streaming-mode mocap-settings-button " +
-              (!recordingInfo.isRecording ? "" : "disabled ") +
-              "button sm flex-wrap flex pos-rel p-1 br-1 flex-row items-center justify-content-space-between"
-            }
-            onClick={handleToggleSettings}
-          >
-            <div className=" flex flex-row items-start items-center gap-1">
-              <span className="icon subcat-icon icon-size-20" />
-              <p className="text-gray text-nowrap text md text-align-left">
-                Mocap Settings
-              </p>
+        {/* Secondary options start collapsed; Start Recording stays visible. */}
+        <details className="settings-disclosure">
+          <summary>Recording options</summary>
+          <div className="flex flex-col gap-1">
+            {/* Delay toggle */}
+            <DelayRecordingStartControl
+              useDelay={useDelayStart}
+              delaySeconds={delaySeconds}
+              onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
+              onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
+            />
+            {/* Auto-process */}
+            <div className="flex flex-start flex-col items-center gap-1">
+              <ToggleComponent
+                text="Auto Process Mocap"
+                isToggled={autoProcess}
+                onToggle={(v) => dispatch(autoProcessToggled(v))}
+                disabled={recordingInfo.isRecording}
+              />
             </div>
-            <div className="group-2 flex flex-row pos-rel items-center gap-1">
-              <div className="group-2.2 pos-rel flex flex-col items-center">
-                <span className="icon settings-icon icon-size-20" />
+            {autoProcess && (
+              <div
+                className={
+                  "streaming-mode mocap-settings-button " +
+                  (!recordingInfo.isRecording ? "" : "disabled ") +
+                  "button sm flex-wrap flex pos-rel p-1 br-1 flex-row items-center justify-content-space-between"
+                }
+                onClick={handleToggleSettings}
+              >
+                <div className=" flex flex-row items-start items-center gap-1">
+                  <span className="icon subcat-icon icon-size-20" />
+                  <p className="text-gray text-nowrap text md text-align-left">
+                    Mocap Settings
+                  </p>
+                </div>
+                <div className="group-2 flex flex-row pos-rel items-center gap-1">
+                  <div className="group-2.2 pos-rel flex flex-col items-center">
+                    <span className="icon settings-icon icon-size-20" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        <MicrophoneSelector
-          selectedMicIndex={micDeviceIndex}
-          onMicSelected={(idx) => dispatch(micDeviceIndexChanged(idx))}
-          disabled={recordingInfo.isRecording}
-        />
+            <MicrophoneSelector
+              selectedMicIndex={micDeviceIndex}
+              onMicSelected={(idx) => dispatch(micDeviceIndexChanged(idx))}
+              disabled={recordingInfo.isRecording}
+            />
+          </div>
+        </details>
       </div>
 
       {/* Mocap Setup Modal */}

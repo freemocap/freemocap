@@ -26,8 +26,23 @@ const FORMAT_SHORT_NAMES: Record<ExportFormat, string> = {wide_csv: 'Wide CSV', 
 
 export type SectionId = 'recording' | ResumeStage | 'blender' | 'exports';
 
-export interface ProcessingSection {
-    id: SectionId;
+/** One thing a section switches on its own, such as a tracker: a row under the section's row in the outline. */
+export interface ProcessingSectionItem {
+    id: string;
+    title: string;
+    toggle: ReactNode;
+    /** Short state at the end of the item's row. */
+    state?: ReactNode;
+    /** The item's key setting rows, shown under its row where the outline shows controls. */
+    quick?: ReactNode;
+}
+
+/**
+ * A section of a processing window. The Mocap processing window's sections leave the optional fields out, and the
+ * outline, the list and the graph then draw the posthoc stage switches and outcomes.
+ */
+export interface ProcessingSection<Id extends string = SectionId> {
+    id: Id;
     /** The processing stage number shown beside the title, for stages. */
     number: number | null;
     title: string;
@@ -37,6 +52,20 @@ export interface ProcessingSection {
     summary: ReactNode;
     /** The section's settings; null when the stage has none. */
     content: ReactNode | null;
+    /** The section's own switch, in place of the posthoc stage switch. */
+    toggle?: ReactNode;
+    /** What the section's graph node is, in place of the kind its posthoc id tells. */
+    kind?: 'source' | 'stage' | 'sink';
+    /** The graph's explanation of the section, in place of the posthoc stage text. */
+    explain?: string;
+    /** Whether the outline lists the section in its trailing group; left out, Blender and the exports are. */
+    after?: boolean;
+    /** Short state at the end of the section's outline row, in place of the posthoc outcome. */
+    state?: ReactNode;
+    /** The section's key setting rows, shown under its row where the outline shows controls. */
+    quick?: ReactNode;
+    /** Things the section switches one by one, each a row under the section's row in the outline. */
+    items?: ProcessingSectionItem[];
 }
 
 

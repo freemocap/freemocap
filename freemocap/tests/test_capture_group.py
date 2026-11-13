@@ -1,102 +1,54 @@
-from types import SimpleNamespace
+"""CaptureGroup is one view of either camera backend's group: SkellyCam's shared memory, errors and previews.
 
-import numpy as np
+Both backends fill SkellyCam shared memory at SkellyCam frame numbers, so the pipeline reads the group's own memory
+and never copies, renumbers or releases it.
+"""
+from types import SimpleNamespace
+from unittest.mock import Mock
+
 import pytest
 
 from skellycam.core.camera.config.camera_config import CameraConfig
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.camera_group.rust_camera_group import RustCameraGroup
-from skellycam.core.types.frame_dtype_factories import create_frame_dtype
+from skellycam.core.ipc.shared_memory.camera_group_shared_memory import CameraGroupSharedMemory
 from freemocap.core.pipeline.realtime.capture_group import CaptureGroup
 
 
-class NativeSnapshots(RustCameraGroup):
-    def __init__(self, rotated=False):
-        config = CameraConfig(camera_id="0001", camera_index=0,
-                              resolution={"width": 8, "height": 6})
-        super().__init__("native", {"0001": config}, SimpleNamespace(list_groups=lambda: ["native"]))
-        image_config = config.model_copy(update={"resolution": type(config.resolution)(width=6, height=8)}) if rotated else config
-        self.frame = np.zeros(1, dtype=create_frame_dtype(image_config)).view(np.recarray)
-        self.frame.frame_metadata.camera_info = config.to_frame_camera_info()
-        self.frame.frame_metadata.frame_number = 17
-        self.frame.frame_metadata.timestamps.pre_frame_grab_ns = 123456
-        self.frame.image[:] = 61
-
-    def get_latest_frames(self, if_newer_than=None, frame_buffers=None):
-        if if_newer_than is not None and int(self.frame.frame_metadata.frame_number[0]) <= if_newer_than:
-            return None
-        return {"0001": self.frame}
+def opencv_group():
+    group = CameraGroup.__new__(CameraGroup)
+    group.shm = Mock()
+    group.transport_error = None
+    group.get_frontend_payload_by_frame_number = Mock(return_value=(memoryview(b"preview"), 1.0))
+    return group
 
 
-@pytest.mark.parametrize("rotated", [False, True])
-def test_native_transport_preserves_pixels_and_timestamps_with_contiguous_indices(rotated):
-    source = NativeSnapshots(rotated)
-    capture = CaptureGroup(source, SimpleNamespace(value=False))
-    capture._stop.set()
-    capture._thread.join(timeout=2)
+def rust_group():
+    config = CameraConfig(camera_id="0001", camera_index=0)
+    group = RustCameraGroup("g", {"0001": config}, SimpleNamespace(list_groups=lambda: ["g"]))
+    group._shm = Mock(spec=CameraGroupSharedMemory)  # as the pixel builder leaves it once trackers read frames
+    group.get_frontend_payload_by_frame_number = Mock(return_value=(memoryview(b"preview"), 1.0))
+    return group
+
+
+@pytest.mark.parametrize("make_group", [opencv_group, rust_group], ids=["opencv", "rust"])
+def test_pipeline_reads_the_groups_own_shared_memory_and_never_releases_it(make_group):
+    group = make_group()
+    capture = CaptureGroup(group, SimpleNamespace(value=False))
+    assert capture.shm is group.shm
     assert capture.error is None
-    try:
-        first = capture.shm.get_latest_multiframe()["0001"]
-        assert int(first.frame_metadata.frame_number[0]) == 0
-        assert int(source.frame.frame_metadata.frame_number[0]) == 17
-        assert int(first.frame_metadata.timestamps.pre_frame_grab_ns[0]) == 123456
-        np.testing.assert_array_equal(first.image, source.frame.image)
-        source.frame.frame_metadata.frame_number = 24
-        transport_buffer = capture._transport_frames['0001']
-        capture._publish(source.get_latest_frames())
-        assert capture._transport_frames['0001'] is transport_buffer
-        capture._publish(source.get_latest_frames())
-        assert capture.shm.latest_multiframe_number == 1
-        assert int(capture.shm.get_latest_multiframe()["0001"].frame_metadata.frame_number[0]) == 1
-        # Owned snapshots remain unchanged after later publications.
-        assert int(first.frame_metadata.frame_number[0]) == 0
-    finally:
-        capture.close_transport()
-        capture.close_transport()
-    assert not source._closed
-
-
-def test_python_transport_is_reused_and_never_unlinked_by_pipeline_cleanup():
-    source = CameraGroup.__new__(CameraGroup)
-    source.shm = SimpleNamespace()
-    capture = CaptureGroup(source, SimpleNamespace(value=False))
-    assert capture.shm is source.shm
+    assert capture.get_frontend_payload_by_frame_number(7, {"0001": {"width": 10, "height": 10}})[1] == 1.0
+    group.get_frontend_payload_by_frame_number.assert_called_once_with(7, {"0001": {"width": 10, "height": 10}})
     capture.close_transport()
+    capture.close_transport()
+    assert capture.get_frontend_payload_by_frame_number(8) is None
+    group.shm.unlink_and_close.assert_not_called()
+    group.shm.unlink.assert_not_called()
 
 
-def test_native_transport_preserves_updated_frame_rotation():
-    source = NativeSnapshots()
-    capture = CaptureGroup(source, SimpleNamespace(value=False))
-    capture._stop.set()
-    capture._thread.join(timeout=2)
-    try:
-        source.frame.frame_metadata.camera_info.rotation = 1
-        source.frame.frame_metadata.frame_number = 18
-        capture._publish(source.get_latest_frames())
-        received = capture.shm.get_latest_multiframe()['0001']
-        assert int(received.frame_metadata.camera_info.rotation[0]) == 1
-        np.testing.assert_array_equal(received.frame_metadata.camera_info, source.frame.frame_metadata.camera_info)
-    finally:
-        capture.close_transport()
-
-
-def test_geometry_change_is_rejected_before_advancing_transport():
-    source = NativeSnapshots()
-    capture = CaptureGroup(source, SimpleNamespace(value=False))
-    capture._stop.set()
-    capture._thread.join(timeout=2)
-    try:
-        changed = NativeSnapshots(rotated=True)
-        changed.frame.frame_metadata.frame_number = 25
-        with pytest.raises(RuntimeError, match="dimensions changed"):
-            capture._publish(changed.get_latest_frames())
-        assert capture.shm.latest_multiframe_number == 0
-    finally:
-        capture.close_transport()
-def test_backend_selection_survives_app_state_encoding():
-    import cbor2
-    from freemocap.core.streaming.message_model import AppStateMessage, encode_message
-    message = AppStateMessage.from_state_dict(server_pid=1, state={
-        "camera_groups": {"group": {"backend": "rust", "alive": True}},
-    })
-    assert cbor2.loads(encode_message(message))["state"]["camera_groups"]["group"]["backend"] == "rust"
+@pytest.mark.parametrize("make_group", [opencv_group, rust_group], ids=["opencv", "rust"])
+def test_a_group_that_stops_delivering_frames_reports_why(make_group):
+    group = make_group()
+    capture = CaptureGroup(group, SimpleNamespace(value=False))
+    group.transport_error = "RuntimeError: camera 0001: JPEG decode failed"
+    assert capture.error == "RuntimeError: camera 0001: JPEG decode failed"

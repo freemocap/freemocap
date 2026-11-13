@@ -13,6 +13,11 @@ import { RecordingCompleteDialog } from "@/components/control-panels/recording-i
 import { OperationErrorBanner } from "@/components/common/OperationErrorBanner";
 import { MainNavTabs } from "@/components/ui-components/MainNavTabs";
 
+// The camera views are the primary content: the sidebar and the console may grow
+// to at most these shares of the window, so they can never squeeze the views away.
+const SIDEBAR_MAX_PCT = 40;
+const CONSOLE_MAX_PCT = 50;
+
 export const BasePanelLayout = ({
   children,
   onOpenWelcome,
@@ -60,7 +65,7 @@ export const BasePanelLayout = ({
     >
       <PanelGroup className="app-container flex-1" direction="vertical">
         {/* Top section (horizontal panels) */}
-        <Panel className="app-container-inner" defaultSize={87} minSize={20}>
+        <Panel className="app-container-inner" defaultSize={87} minSize={100 - CONSOLE_MAX_PCT}>
           <PanelGroup
             className="pos-rel app-container-sub pr-1 pl-1 pt-1 pb-0"
             direction="horizontal"
@@ -72,6 +77,7 @@ export const BasePanelLayout = ({
               collapsible
               defaultSize={24}
               minSize={10}
+              maxSize={SIDEBAR_MAX_PCT}
               collapsedSize={3}
               onCollapse={handlePanelCollapse}
               onExpand={handlePanelExpand}
@@ -90,7 +96,7 @@ export const BasePanelLayout = ({
                 backgroundColor: "var(--color-surface-active)",
               }}
             />
-            <Panel className="right-side-panel" defaultSize={76} minSize={10}>
+            <Panel className="right-side-panel" defaultSize={76} minSize={100 - SIDEBAR_MAX_PCT}>
               <div className="flex flex-col h-full pos-rel bg-darkgray br-2">
                 <MainNavTabs />
                 <div className="flex-1 min-h-0 mt-45 flex flex-col">
@@ -118,6 +124,7 @@ export const BasePanelLayout = ({
           collapsible
           defaultSize={13}
           minSize={10}
+          maxSize={CONSOLE_MAX_PCT}
           collapsedSize={4}
           onCollapse={handleBottomPanelCollapse}
           onExpand={handleBottomPanelExpand}

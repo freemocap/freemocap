@@ -4,6 +4,7 @@ import ModalWindowControls from '@/components/ui-components/ModalWindowControls'
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import '@/styles/mocap-settings.css';
 import './dlc-model-settings.css';
+import './tracker-settings-dialog.css';
 
 export default function TrackerSettingsDialog({title, onClose, children}: {title: string; onClose: () => void; children: ReactNode}) {
     const dialog = useRef<HTMLDivElement>(null);
@@ -30,10 +31,10 @@ export default function TrackerSettingsDialog({title, onClose, children}: {title
                 else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first.focus();}
             }
         }}>
-        <div ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="mocap-settings-modal tracker-settings-modal">
+        <div ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="tracker-settings-modal">
             <ModalWindowControls title={title} onClose={onClose}/>
-            <div className="modal-window-body mocap-settings-content settings-layout">{children}</div>
-            <footer className="mocap-settings-footer"><ButtonSm text="Done" className="primary accent" textColor="text-white" onClick={onClose}/></footer>
+            <div className="modal-window-body tracker-settings-body settings-layout">{children}</div>
+            <footer className="tracker-settings-footer"><ButtonSm text="Done" className="primary accent" textColor="text-white" onClick={onClose}/></footer>
         </div>
     </div>, document.body);
 }

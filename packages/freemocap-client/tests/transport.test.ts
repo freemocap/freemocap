@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {encode} from 'cbor-x';
 import {MessageDecoder, decodeMessage} from '../dist/index.js';
-import {FrameResolver} from '../dist/index.js';
+import {FrameResolver, resolveChannelViews} from '../dist/index.js';
 import type {FrameMessage} from '../dist/index.js';
 
 // Contract trace: shared/server-contract/README.md. Hand-authored IEEE754 bytes:
@@ -18,6 +18,42 @@ function frame(): object {
 function decoded(decoder:MessageDecoder, raw:object):FrameMessage {
  const value=decoder.decode(encode(raw));assert.ok(value?.kind==='frame');return value;
 }
+
+test('generic views retain custom channels, owner identity and unnamed rows without inventing semantics',()=>{
+ const raw=frame() as any;
+ raw.trackers=[{tracker_id:'robot-a',detector_type:'robot',model_id:null,channels:[
+  {kind:'robot.temperature',columns:['celsius','quality','extra'],names:['motor'],data:coordinates(),sample_status:new Uint8Array([1]),status_labels:['missing','measured']},
+ ]}];
+ raw.instances[0].channels.push({kind:'robot.custom',columns:['value'],data:coordinates()});
+ const value=decoded(new MessageDecoder(),raw);const result=resolveChannelViews(value);
+ assert.equal(result.timestamp,12.5);assert.equal(result.frameNumber,9);
+ assert.deepEqual(result.channels[0].owner,{scope:'tracker',trackerId:'robot-a',modelId:null});
+ assert.deepEqual([...result.channels[0].data],[1,2,3]);
+ assert.equal(result.channels[0].descriptor,value.trackers[0].channels[0]);
+ assert.equal(result.channels[0].data.buffer,value.trackers[0].channels[0].data.buffer);
+ assert.deepEqual(result.channels[2].owner,{scope:'instance',instanceId:7,modelId:'tool'});
+ assert.equal(result.channels[2].descriptor.names,undefined);assert.equal(result.channels[2].rowCount,3);
+ const later=decoded(new MessageDecoder(),{...raw,trackers:[]});resolveChannelViews(later);
+ assert.deepEqual([...result.channels[0].data],[1,2,3]);
+});
+
+test('generic views reject inconsistent row descriptions rather than silently reshaping data',()=>{
+ for(const extra of [{columns:['v','v','v']},{columns:['a','b']},{names:['a','b']},{sample_status:new Uint8Array(2)}]){
+  const raw=frame() as any;raw.instances[0].channels=[{kind:'robot.custom',columns:['x','y','z'],data:coordinates(),...extra}];
+  assert.throws(()=>resolveChannelViews(decoded(new MessageDecoder(),raw)));
+ }
+});
+
+test('overlays preserve detector and reconstructed instance identities',()=>{
+ const raw=frame() as any;
+ raw.trackers=['first','second'].map(tracker_id=>({tracker_id,detector_type:'pose',model_id:null,channels:[
+  {kind:'OVERLAY_2D',camera_id:'camera',names:['point'],columns:['x','y','visibility'],data:coordinates()},
+ ]}));
+ raw.instances[0].channels=[{kind:'OVERLAY_REPROJECTIONS',camera_id:'camera',columns:['x','y','visibility'],data:new Uint8Array(0)}];
+ const result=new FrameResolver().resolve(decoded(new MessageDecoder(),raw));
+ assert.deepEqual(result.overlays.map(o=>o.trackerId),['first','second',undefined]);
+ assert.equal(result.overlays[2].instanceId,7);assert.equal(result.overlays[2].modelId,'tool');
+});
 test('one complete frame resolves without previous messages or a human-specific model',()=>{
  const value=decoded(new MessageDecoder(),frame()); const resolved=new FrameResolver().resolve(value);
  assert.equal(value.timestamp,12.5);assert.equal(value.instances[0].fitted_scale_mm,null);

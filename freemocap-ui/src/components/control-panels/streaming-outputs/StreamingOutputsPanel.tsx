@@ -163,8 +163,8 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
         const value = (drafts[protocol] ?? initialDraft(schema)).config[name];
         const update = (next: unknown) => updateDraft(protocol, schema, previous => ({...previous, config: {...previous.config, [name]: next}}));
         const fieldLabel = label(name);
-        if (field.type === 'boolean') return <label className="text sm flex flex-col gap-1" key={name}><input className="input-field text sm br-1" aria-label={fieldLabel} type="checkbox"
-            checked={value === true} onChange={event => update(event.target.checked)}/>{fieldLabel}</label>;
+        if (field.type === 'boolean') return <label className="streaming-output-toggle text sm" key={name}><span>{fieldLabel}</span>
+            <input aria-label={fieldLabel} type="checkbox" checked={value === true} onChange={event => update(event.target.checked)}/></label>;
         if (field.const !== undefined) return <p key={name}>{fieldLabel}: {String(field.const).replaceAll('_', ' ')}</p>;
         if (field.enum) return <label className="text sm flex flex-col gap-1" key={name}>{fieldLabel}<select className="input-field text sm br-1" aria-label={fieldLabel}
             value={String(value ?? field.default ?? '')} onChange={event => update(event.target.value)}>
@@ -201,8 +201,8 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
                 onClick={() => refresh(value => value + 1)}/>
             <span className="text sm text-gray">{observedAt ? `Status checked ${observedAt}` : 'Status not checked'}</span>
         </div>
-        {error && <p className="text sm text-red" role="alert">{error}</p>}
-        {commandError && <p className="text sm text-red" role="alert">{commandError}</p>}
+        {error && <p className="text sm text-error" role="alert">{error}</p>}
+        {commandError && <p className="text sm text-error" role="alert">{commandError}</p>}
         {['vmc', 'lsl'].map(protocol => {
             const title = protocol.toUpperCase();
             const capability = capabilities.find(item => item.protocol === protocol);
@@ -222,14 +222,14 @@ export function StreamingOutputsPanel({onClose}: {onClose?: () => void} = {}) {
                     {protocol === 'lsl' && <p className="text sm text-gray">In LabRecorder: Update, select the FreeMoCap streams, then Start. Refresh status here to check connections. Connected does not confirm recording to disk. Frames before a receiver connects are not buffered.</p>}
                     {states.map(output => <div key={output.id} aria-label={`Output ${output.id}`} className="flex flex-row items-center justify-between gap-1">
                         <span className="text sm"><span data-testid="output-state">{outputStatusLabel(output)}</span>
-                            {output.error && <span role="alert" className="text-red"> · {output.error}</span>}</span>
+                            {output.error && <span role="alert" className="text-error"> · {output.error}</span>}</span>
                         <button type="button" className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left secondary"
                             disabled={busy || !observedOrigin} onClick={() => void mutate(protocol, output)}>
                             <p className="text-white text-nowrap text bg text-align-left">Stop {title}</p>
                         </button>
                     </div>)}
                     {active && <span className="text sm text-gray">Stop before applying new settings.</span>}
-                    <details className="text sm"><summary className="text sm text-gray">{title} settings</summary>
+                    <details className="settings-disclosure text sm"><summary className="text sm text-gray">{title} settings</summary>
                         <div className="streaming-output-settings flex flex-col gap-1">
                             <label className="text sm">Source pipeline ID<input className="input-field text sm br-1" aria-label={`${title} source pipeline ID`} value={draft.pipeline}
                                 placeholder="Automatic" onChange={event => updateDraft(protocol, schema, previous => ({...previous, pipeline: event.target.value}))}/></label>

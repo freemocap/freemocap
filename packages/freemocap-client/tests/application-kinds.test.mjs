@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {encode} from 'cbor-x';
 import {z} from 'zod';
-import {TransportService} from '../dist/index.js';
+import {TransportService, ownByteStrings} from '@freemocap/client/stream';
 
 class Socket {
  readyState=0;binaryType='';sent=[];onopen=null;onclose=null;onerror=null;onmessage=null;
@@ -18,12 +18,49 @@ const RobotState = z.object({kind:z.literal('robot_state'),version:z.literal(0),
  servos:z.record(z.string(),z.number()),snapshot:z.instanceof(Uint8Array).optional()});
 const envelope = {version:0,timestamp:1.5,sequence:3};
 
+test('registrations preserve parser/version and reserved kinds after caller mutation',()=>{
+ const definition={version:0,parse:message=>message};
+ const kinds={robot_state:definition};const {stream,socket,errors}=robotStream(kinds);
+ const values=[];const states=[];
+ stream.subscribeToKind('robot_state',value=>values.push(value));
+ stream.subscribeToAppState(value=>states.push(value));
+ definition.version=4;definition.parse=()=>{throw Error('replacement');};
+ kinds.app_state=definition;delete kinds.robot_state;
+ socket.packet({kind:'robot_state',...envelope,servos:{}});
+ socket.packet({kind:'app_state',...envelope,server_pid:17,state:{camera_groups:{},realtime_pipelines:[]}});
+ assert.equal(values.length,1);assert.equal(states.length,1);assert.deepEqual(errors,[]);
+ stream.disconnect();
+});
+
+test('invalid registration names, parsers and versions fail before connecting',()=>{
+ for(const kinds of [{'':RobotState},{x:{}},{x:{parse:x=>x,version:-1}},{x:{parse:x=>x,version:0.5}}]){
+  assert.throws(()=>new TransportService({url:'ws://robot.invalid',kinds}));
+ }
+});
+
+test('public byte ownership survives mutation and transfer of ArrayBuffer inputs',()=>{
+ const source=new Uint8Array([1,2,3]);const owned=ownByteStrings({nested:[source.buffer]});
+ source.fill(9);structuredClone(source.buffer,{transfer:[source.buffer]});
+ assert.deepEqual([...owned.nested[0]],[1,2,3]);
+});
+
 function robotStream(kinds={robot_state:RobotState}){
  let socket;const stream=new TransportService({url:'ws://robot.invalid/ws',socketFactory:url=>(socket=new Socket(url)),kinds});
  const errors=[];stream.subscribeToProtocolErrors(error=>errors.push(error));
  stream.connect();socket.open();
  return {stream,socket,errors};
 }
+
+test('generic channel subscription delivers one self-contained frame and clears on disconnect',()=>{
+ const {stream,socket,errors}=robotStream();const received=[];
+ stream.subscribeToChannels(frame=>received.push(frame));
+ socket.packet({kind:'frame',...envelope,frame_number:3,model_sequence:0,
+  convention:{units:'mm',handedness:'right',up_axis:'+z',forward_axis:'+y',rotation_frame:'local',rotation_form:'quaternion'},
+  cameras:[],models:[],instances:[],trackers:[{tracker_id:'robot',detector_type:'test',model_id:null,
+   channels:[{kind:'robot.signal',columns:['value'],names:['motor'],data:new Uint8Array([0,0,128,63])}]}]});
+ assert.equal(received[0].channels[0].data[0],1);assert.equal(received[0].timestamp,1.5);
+ assert.deepEqual(errors,[]);stream.disconnect();assert.equal(received.at(-1),null);
+});
 
 test('an application kind is validated and delivered to its own subscribers, not to FreeMoCap ones',()=>{
  const {stream,socket,errors}=robotStream();

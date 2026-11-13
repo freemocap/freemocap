@@ -25,7 +25,7 @@ test('malformed stream packets reach the visible error banner without disconnect
     const store = configureStore({reducer: {
         connection: connectionSlice.reducer,
         recording: () => ({error: null}), calibration: () => ({error: null}),
-        mocap: () => ({error: null}), realtime: () => ({error: null}),
+        mocap: () => ({error: null}), realtime: () => ({error: null}), cameras: () => ({error: null}),
     }});
     let reported = 0;
     const unsubscribe = subscribeToStreamErrors(transport, message => {
@@ -53,6 +53,19 @@ test('malformed stream packets reach the visible error banner without disconnect
         unsubscribe();
         transport.disconnect();
     }
+});
+
+test('a failed camera start shows its explanation in the banner, line by line', () => {
+    const explanation = 'Could not start 5 camera(s) with these settings.\nWhy: the USB controller reset.\nWhat to try: lower the frame rate or resolution.';
+    const store = configureStore({reducer: {
+        connection: connectionSlice.reducer,
+        recording: () => ({error: null}), calibration: () => ({error: null}),
+        mocap: () => ({error: null}), realtime: () => ({error: null}), cameras: () => ({error: explanation}),
+    }});
+    const html = renderToStaticMarkup(<Provider store={store}><OperationErrorBanner/></Provider>);
+    assert.match(html, /Cameras:/);
+    assert.match(html, /pre-wrap/);
+    assert.ok(html.includes('Why: the USB controller reset.\nWhat to try: lower the frame rate or resolution.'));
 });
 
 test('a different protocol failure can be reported after a previous one', () => {

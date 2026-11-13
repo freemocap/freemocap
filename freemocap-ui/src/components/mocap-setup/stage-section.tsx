@@ -2,13 +2,15 @@ import {type ReactNode, useId, useState} from 'react';
 import {BlenderToggle, ExportsToggle, StageToggle} from './processing-run-controls';
 import type {ProcessingSection} from './processing-sections';
 
-/** One section of the list view: its switch, number, title and state chips, then its settings. */
-export default function StageSection({section, playback, children}: {section: ProcessingSection; playback: boolean; children: ReactNode}) {
+/** One section of the list view: its switch (its own when it brings one), number, title and state chips, then its settings. */
+export default function StageSection<Id extends string>({section, playback, children}: {
+    section: ProcessingSection<Id>; playback: boolean; children: ReactNode;
+}) {
     const [expanded, setExpanded] = useState(true);
     const bodyId = useId();
     return <section className="settings-section mp-section" aria-label={section.title}>
         <div className="settings-section-header mp-section-header">
-            {playback && section.stage && <StageToggle stage={section.stage} title={section.title}/>}
+            {section.toggle !== undefined ? section.toggle : playback && section.stage && <StageToggle stage={section.stage} title={section.title}/>}
             <button type="button" className="mp-section-title" aria-expanded={expanded} aria-controls={bodyId}
                 disabled={section.content === null} onClick={() => setExpanded(!expanded)}>
                 {section.content !== null && <span className="settings-section-chevron"/>}

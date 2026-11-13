@@ -72,7 +72,7 @@ test('DLC setup is readable, loads models, reports errors and saves optional geo
         if(file.path.endsWith('.css')) await page.addStyleTag({content:file.text});
         else await page.addScriptTag({content:file.text,type:'module'});
     }
-    await page.getByRole('button',{name:'DLC',exact:true}).click();
+    await page.getByRole('combobox',{name:'Skeleton detector',exact:true}).selectOption('dlc');
     const dialog=page.getByRole('dialog',{name:'Skeleton Setup',exact:true});
     expect((await dialog.boundingBox())!.width).toBe(1200);
     expect((await dialog.boundingBox())!.x).toBeCloseTo(120);

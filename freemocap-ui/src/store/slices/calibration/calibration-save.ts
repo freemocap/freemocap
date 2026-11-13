@@ -2,7 +2,7 @@ import {serverClient} from '@/services/server/sdk';
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import type {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/constants/server-urls';
-import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
+import {getDetailedErrorMessage, describeError} from '@/store/slices/thunk-helpers';
 import {
     CalibrationTransformTypeSchema,
     CalibrationUpdateRequestSchema,
@@ -65,7 +65,7 @@ export const saveCalibrationTransform = createAsyncThunk<
             if (!response.ok) throw new Error(await getDetailedErrorMessage(response));
             return LoadedCalibrationSchema.parse(await response.json());
         } catch (error) {
-            return rejectWithValue(error instanceof Error ? error.message : String(error));
+            return rejectWithValue(describeError(error));
         }
     },
     {

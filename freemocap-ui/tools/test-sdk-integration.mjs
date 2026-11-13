@@ -3,7 +3,9 @@ import {readdirSync,mkdirSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 const output='../.test-artifacts/sdk-integration';
 mkdirSync(output,{recursive:true});
-const specialized=new Set(['camera-server-settings.test.ts','camera-control-requests.test.ts','operation-progress.test.tsx']);
+const specialized=new Set(['camera-server-settings.test.ts','camera-control-requests.test.ts','operation-progress.test.tsx',
+ 'Checkbox.test.tsx','ValueSelector.test.tsx','stage-layout.test.ts','processing-outline.test.tsx','detector-setting-rows.test.tsx',
+ 'realtime-switches.test.ts']);
 function tests(directory){return readdirSync(directory,{withFileTypes:true}).flatMap(entry=>
  entry.isDirectory()?tests(`${directory}/${entry.name}`):/\.test\.tsx?$/.test(entry.name)&&!specialized.has(entry.name)?[`${directory}/${entry.name}`]:[]);}
 const inputs=tests('src');
@@ -13,5 +15,6 @@ await Promise.all(inputs.map((file,index)=>build({entryPoints:[file],outfile:out
 const commands=[['--test',...outputs],
  ['tools/test-camera-settings.mjs',`${output}/camera-server-settings.test.cjs`],
  ['tools/test-camera-settings.mjs',`${output}/camera-control-requests.test.cjs`,'src/store/slices/cameras/camera-control-requests.test.ts'],
- ['src/components/pipeline-progress/run-operation-progress-tests.mjs']];
+ ['src/components/pipeline-progress/run-operation-progress-tests.mjs'],
+ ['src/components/realtime-processing/run-realtime-processing-tests.mjs']];
 for(const command of commands){const result=spawnSync(process.execPath,command,{stdio:'inherit'});if(result.status!==0)process.exit(result.status??1);}

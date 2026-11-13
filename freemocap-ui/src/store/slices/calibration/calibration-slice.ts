@@ -3,6 +3,7 @@ import {createSelector, createSlice, isAnyOf, PayloadAction} from '@reduxjs/tool
 import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
 import {saveCalibrationTransform} from './calibration-save';
+import {serverDisconnected} from '@/store/slices/connection/connection-slice';
 import {
     calibrateRecording,
     loadCalibrationForRecording,
@@ -127,6 +128,11 @@ export const calibrationSlice = createSlice({
         resetCalibrationState: () => initialState,
     },
     extraReducers: (builder) => {
+        builder.addCase(serverDisconnected, (state) => {
+            state.loadRequestId = null;
+            state.isSaving = false;
+            state.error = null;
+        });
         builder
             .addCase(saveCalibrationTransform.pending, (state) => {
                 state.isSaving = true;

@@ -23,3 +23,18 @@ function checkApplicationKinds(client:ReturnType<typeof createClient>){
  client.stream.subscribeToKind('robot_state',()=>{});
 }
 void checkApplicationKinds;
+
+function checkGenericChannels(stream:TransportService){
+ stream.subscribeToChannels(frame=>{
+  if(!frame)return;
+  for(const channel of frame.channels){
+   const values:Float32Array=channel.data;void values;
+   if(channel.owner.scope==='tracker'){
+    const id:string=channel.owner.trackerId;void id;
+    // @ts-expect-error tracker channels do not invent reconstructed instance identities
+    channel.owner.instanceId;
+   }
+  }
+ });
+}
+void checkGenericChannels;

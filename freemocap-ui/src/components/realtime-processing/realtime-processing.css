@@ -1,0 +1,10 @@
+.realtime-processing-layout {
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+.realtime-processing-detail { min-width: 0; }
+@media (max-width: 700px) {
+    .realtime-processing-layout { grid-template-columns: minmax(0, 1fr); }
+}

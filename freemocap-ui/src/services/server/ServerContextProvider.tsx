@@ -164,6 +164,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             framerateStoreRef.current.updateBackend(message.backend_framerate);
         }));
         subs.push(transport.subscribeToAppState((message) => {
+            const previousPid = store.getState().connection.serverPid;
+            if (previousPid !== null && previousPid !== message.server_pid) {
+                store.dispatch(serverDisconnected());
+                store.dispatch(wsConnectionChanged(true));
+            }
             store.dispatch(serverStateReceived(message));
         }));
         subs.push(transport.subscribeToProgress((message) => handleProgress(message)));

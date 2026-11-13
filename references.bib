@@ -744,6 +744,16 @@
   note = {Sections 4.1, 4.2 and 5.4 read in the plain-text edition. IETF Request for Comments 9562, Standards Track, May 2024; obsoletes RFC 4122.}
 }
 
+@misc{dlcIterativeRefinement,
+  author = {{DeepLabCut developers}},
+  title = {{DeepLabCut} User Guide: Training and Iterative Refinement},
+  url = {https://deeplabcut.github.io/DeepLabCut/docs/standardDeepLabCut_UserGuide},
+  urldate = {2026-11-03},
+  review = {excerpt},
+  claim = {Iterative refinement extracts poorly tracked frames, corrects labels, merges examples and retrains; outlier detection and diversity selection can automate candidate extraction. PyTorch guidance recommends training until loss plateaus, often around 100 to 250 epochs, with a 200-epoch example.},
+  note = {Reviewed training, network-refinement and outlier-extraction excerpts. Epochs are full dataset passes, distinct from older TensorFlow iteration counts. The documented correction stage uses human review; replacing it with calibrated automatic geometry checks is a local experimental adaptation, not a documented guarantee.}
+}
+
 @misc{ortCoreMLProvider,
   title = {{ONNX Runtime} {CoreML} Execution Provider},
   author = {{ONNX Runtime contributors}},

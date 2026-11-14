@@ -85,7 +85,7 @@ class LiveGeometryMatcher:
             cameras=cameras, pixels=pixels, initial_assignment=initial, config=config,
         )
         self._attempt = self._lifecycle.begin()
-        logger.info("Camera matching sample: sources=%s cameras=%s initial_assignment=%s points=%s frames=%s", tuple(self._camera_indices), tuple(camera.id for camera in cameras), initial, self._window.layout.point_names, pixels.shape[1])
+        logger.info("Camera matching sample: sources=%s cameras=%s initial_assignment=%s point_count=%s frames=%s", tuple(self._camera_indices), tuple(camera.id for camera in cameras), initial, len(self._window.layout.point_names), pixels.shape[1])
         self._future = self._executor.submit(match_camera_geometry, request=request)
         self._window.clear()
         return changed

@@ -104,7 +104,7 @@ def test_provider_switch_reuses_capture_and_releases_sessions(replay_reference, 
         timeout_frames = set()
         for record in caplog.records:
             if record.name == 'freemocap.core.pipeline.realtime.realtime_aggregator_node':
-                match = re.search(r'gave up waiting on skeleton result for frame (\d+) after 2\.0s', record.getMessage())
+                match = re.search(r'Skeleton inference worker missed the 2\.0s deadline for frame (\d+)', record.getMessage())
                 if match:
                     timeout_frames.add(int(match.group(1)))
         assert missing_frames <= timeout_frames, 'Missing tracking must have an explicit bounded-wait fallback'

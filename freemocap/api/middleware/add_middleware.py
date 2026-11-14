@@ -15,7 +15,9 @@ def add_middleware(app: FastAPI) -> None:
     async def log_requests(request: Request, call_next) -> Response:
         start_time = time.perf_counter()
 
-        body_bytes = await request.body()
+        # The realtime route logs its detector and cameras; its body can contain hundreds of keypoint names.
+        summarize_realtime = request.url.path.rstrip("/") == "/freemocap/realtime/apply"
+        body_bytes = b"" if summarize_realtime else await request.body()
         if body_bytes:
             try:
                 parsed = json.loads(body_bytes)
@@ -27,6 +29,8 @@ def add_middleware(app: FastAPI) -> None:
                 except UnicodeDecodeError:
                     body_str = f"<binary data, {len(body_bytes)} bytes>"
             received_log = f"Received request: {request.method} {request.url}. Body:\n{body_str}"
+        elif summarize_realtime:
+            received_log = f"Received request: {request.method} {request.url}"
         else:
             received_log = f"Received request: {request.method} {request.url}. No body."
 

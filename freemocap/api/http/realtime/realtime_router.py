@@ -148,7 +148,10 @@ async def pipeline_apply_endpoint(
         ],
     ),
 ) -> RealtimePipelineCreateResponse:
-    logger.api(f"Received `realtime/apply` POST request - \n {request.model_dump_json(indent=2)}")
+    camera_settings = request.realtime_config.camera_node_config
+    logger.api("Applying realtime pipeline: detector=%s skeleton=%s charuco=%s cameras=%s",
+               camera_settings.detector_type, camera_settings.skeleton_tracking_enabled,
+               camera_settings.charuco_tracking_enabled, request.realtime_camera_ids)
     try:
         app = get_freemocap_app()
         if request.camera_configs is None:
@@ -168,7 +171,7 @@ async def pipeline_apply_endpoint(
                                                                                 camera_configs=camera_configs,
                                                                                 realtime_camera_ids=request.realtime_camera_ids,)
         response = RealtimePipelineCreateResponse.from_pipeline(pipeline=pipeline)
-        logger.api(f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
+        logger.api("Applied realtime pipeline %s to camera group %s", response.pipeline_id, response.camera_group_id)
         return response
     except RealtimeStartupConfigurationError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error

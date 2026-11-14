@@ -715,9 +715,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                             # (which would also freeze the frontend camera feed,
                             # since it's served from this node's output).
                             logger.warning(
-                                f"RealtimeAggregationNode [{camera_group_id}] gave up waiting "
-                                f"on skeleton result for frame {expected_frame} after "
-                                f"{_SKELETON_RESULT_WAIT_TIMEOUT_SECONDS}s — proceeding without it"
+                                f"Skeleton inference worker missed the {_SKELETON_RESULT_WAIT_TIMEOUT_SECONDS}s "
+                                f"deadline for frame {expected_frame} in group {camera_group_id}; "
+                                "publishing this frame without skeleton data"
                             )
                             skeleton_wait_started_at = None
                         else:

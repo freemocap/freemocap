@@ -1983,7 +1983,7 @@ export interface components {
              * @default rtmpose
              * @enum {string}
              */
-            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
+            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "mediapipe_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
             /** Dlc Geometry Path */
@@ -2021,6 +2021,12 @@ export interface components {
              * @default 0.5
              */
             mediapipe_tracking_confidence?: number;
+            /**
+             * Hand Count
+             * @default two
+             * @enum {string}
+             */
+            hand_count?: "one" | "two" | "unknown";
             /**
              * Mediapipe Num Hands
              * @default 2
@@ -2060,7 +2066,7 @@ export interface components {
              * @default rtmpose
              * @enum {string}
              */
-            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "dlc";
+            detector_type?: "rtmpose" | "mediapipe" | "rtmw_mediapipe_hands" | "rtmw_onnx_hands" | "mediapipe_hands" | "dlc";
             /** Dlc Model Path */
             dlc_model_path?: string | null;
             /** Dlc Geometry Path */
@@ -2098,6 +2104,12 @@ export interface components {
              * @default 0.5
              */
             mediapipe_tracking_confidence?: number;
+            /**
+             * Hand Count
+             * @default two
+             * @enum {string}
+             */
+            hand_count?: "one" | "two" | "unknown";
             /**
              * Mediapipe Num Hands
              * @default 2

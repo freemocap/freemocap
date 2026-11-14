@@ -54,3 +54,19 @@ test('live viewer accepts mapped observations without a solved pose and replaces
         workerDataStore.dispatch('livePresentation', false);
     }
 });
+
+test('two right hands have distinct inspectable wrists in the merged 3D viewport', () => {
+    const data = new Uint8Array(new Float32Array([10, 20, 30]).buffer);
+    const frame = FrameMessageSchema.parse({kind: 'frame', version: 1, timestamp: 1, sequence: 1,
+        frame_number: 1, model_sequence: 0,
+        convention: {units: 'mm', handedness: 'right', up_axis: '+Z', forward_axis: '+Y', rotation_frame: 'world', rotation_form: 'quaternion_wxyz'},
+        cameras: [], models: [], instances: [], trackers: ['hand-1', 'hand-2'].map(tracker_id => ({
+            tracker_id, detector_type: 'mediapipe_hands', model_id: null, handedness: 'right',
+            channels: [{kind: 'KEYPOINTS_3D', names: ['wrist'], columns: ['x', 'y', 'z'], data},
+                {kind: 'OVERLAY_2D', camera_id: 'camera', names: ['wrist'], columns: ['x', 'y', 'visibility'], data}],
+        }))});
+    const result = resolveFrameChannels(frame);
+    assert.deepEqual(result.keypoints?.names, ['hand-1.wrist', 'hand-2.wrist']);
+    assert.deepEqual(result.overlays.map(layer => [layer.trackerId, layer.handedness]),
+        [['hand-1', 'right'], ['hand-2', 'right']]);
+});

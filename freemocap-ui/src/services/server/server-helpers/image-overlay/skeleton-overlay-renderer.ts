@@ -217,6 +217,10 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
             if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
             finiteCount++;
             const style = prepared.styles[row];
+            if (values.handedness && values.trackerId && values.names[row] === 'wrist') {
+                this.drawText(`${values.trackerId} · ${values.handedness}`, x + 5, y - 5, 12,
+                    '#FFFFFF', this.TEXT_STROKE, 2);
+            }
             this.ctx.beginPath(); this.ctx.arc(x, y, style.pointRadius, 0, Math.PI * 2);
             if (landmarks) {this.ctx.strokeStyle = style.pointColor; this.ctx.lineWidth = 2; this.ctx.stroke();}
             else {this.ctx.fillStyle = style.pointColor; this.ctx.fill();}

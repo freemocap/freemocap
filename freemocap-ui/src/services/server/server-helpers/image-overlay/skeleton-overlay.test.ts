@@ -68,6 +68,13 @@ test('camera renderer reads declared columns, reuses prepared indices, and prese
         assert.notEqual(renderer['preparedLayers'][0], detectionLayout, 'layer kind is part of the prepared layout identity');
         assert.deepEqual(calls.find(call => call.name === 'strokeRect')!.args, [10, 20, 20, 20]);
 
+        const hands = observation();
+        appendOverlay(hands, {cameraId: 'camera', frameNumber: 10, layer: OverlayLayer.DETECTIONS,
+            trackerId: 'hand-3', handedness: 'right', names: ['wrist'], columns: ['x', 'y', 'visibility'],
+            data: Float32Array.from([10, 15, 1])});
+        renderer['drawSkeletonOverlay'](hands);
+        assert.ok(calls.some(call => call.name === 'fillText' && call.args[0] === 'hand-3 · right'));
+
         const arbitrary = observation();
         appendOverlay(arbitrary, {cameraId: 'camera', frameNumber: 10, layer: OverlayLayer.DETECTIONS,
             names: ['rear_corner', 'front_corner'], columns: ['x', 'y', 'visibility'],

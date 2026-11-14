@@ -210,6 +210,7 @@ def tracker_config_for_settings(settings, *, video_fps: float = 30.0) -> Tracker
         except (SidecarError, OSError) as error:
             raise ValueError(f"Invalid DLC model selection: {error}") from error
     return human_tracker_config(
+        hand_count=getattr(settings, "hand_count", "two"),
         preset=settings.detector_type, model_name=settings.rtmpose_model_name,
         confidence_threshold=settings.rtmpose_confidence_threshold, video_fps=video_fps,
         model_complexity=settings.mediapipe_model_complexity,

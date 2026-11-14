@@ -1,3 +1,4 @@
+import {HandCountInput} from '@/components/mocap-setup/hand-count-input';
 import {DlcModelSettings} from '@/components/mocap-setup/dlc-model-settings';
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import {TemporalFilterControls} from './TemporalFilterControls';
@@ -124,7 +125,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     const handleSetDetectorType = useCallback((type: RealtimeDetectorType) => {
         if (context === "realtime") {
             handleCameraNodeConfigUpdate({ detector_type: type });
-        } else if (type !== 'rtmw_onnx_hands') {
+        } else if (type !== 'rtmw_onnx_hands' && type !== 'mediapipe_hands') {
             setPosThocDetectorType(type);
         }
     }, [context, handleCameraNodeConfigUpdate, setPosThocDetectorType]);
@@ -265,11 +266,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                             </div>
                         )}
 
+                        {activeDetectorType === 'mediapipe_hands' && <label>Hand count
+                            <HandCountInput value={cameraNodeConfig.hand_count}
+                                onChange={hand_count => handleCameraNodeConfigUpdate({hand_count})}/>
+                        </label>}
                         {/* MediaPipe settings */}
-                        {(activeDetectorType === "mediapipe" || activeDetectorType === "rtmw_mediapipe_hands") && (
+                        {(activeDetectorType === "mediapipe_hands" || activeDetectorType === "mediapipe" || activeDetectorType === "rtmw_mediapipe_hands") && (
                             <>
                                 <p className="text-sm text-gray">
-                                    {activeDetectorType === "mediapipe" ? "MediaPipe body, hands and face." : "RTMW body and face with MediaPipe hands; these confidence settings apply to the hands."}
+                                    {activeDetectorType === "mediapipe_hands" ? "MediaPipe hands only." : activeDetectorType === "mediapipe" ? "MediaPipe body, hands and face." : "RTMW body and face with MediaPipe hands; these confidence settings apply to the hands."}
                                 </p>
                                 {activeDetectorType === "mediapipe" && <div className="flex flex-row gap-1 items-center justify-content-space-between">
                                     <span className="text-sm">Model size</span>

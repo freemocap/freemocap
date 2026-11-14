@@ -1,11 +1,12 @@
 // The skeleton detector's setting rows, shared by the posthoc Mocap processing window and the realtime processing
 // controls. Everything arrives through props: the caller owns the store, the server's provider list and the DLC dialog.
+import {HAND_COUNT_INFO, HandCountInput} from '@/components/mocap-setup/hand-count-input';
 import type {ReactNode} from 'react';
 import SettingRow from '@/components/common/settings-layout/setting-row';
 import SettingSelectInput from '@/components/common/settings-layout/setting-select-input';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import {type MediapipeModelComplexity, RTMPOSE_MODELS, type RTMPoseModelName} from '@/store/slices/mocap';
-import type {RealtimeDetectorType} from '@/store/slices/realtime/realtime-types';
+import type {HandCount, RealtimeDetectorType} from '@/store/slices/realtime/realtime-types';
 import type {ExecutionProviderName} from '@/types/execution-provider';
 
 export const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
@@ -106,6 +107,7 @@ interface Info {title: string; text: ReactNode}
  * the execution provider. The posthoc explanations stay as they are.
  */
 const REALTIME_DETECTOR_NOTES = {
+    mediapipe_hands: 'Tracks up to two hands with MediaPipe on CPU, with 21 keypoints per hand.',
     rtmpose: '133 keypoints (body, hands, face) via YOLOX + RTMW. Uses GPU batched inference when available.',
     mediapipe: 'Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.',
     rtmw_mediapipe_hands: 'RTMW body and face with cropped MediaPipe hands. The execution provider applies to RTMW; MediaPipe hands run on CPU.',
@@ -132,6 +134,7 @@ const REALTIME_HANDS_INFO = {
 
 export interface DetectorSettingsValue {
     detector: RealtimeDetectorType; model: RTMPoseModelName; provider: ExecutionProviderName | null; confidence: number;
+    handCount?: HandCount;
     poseModelSize: MediapipeModelComplexity; detectionConfidence: number; presenceConfidence: number; trackingConfidence: number;
 }
 
@@ -156,7 +159,7 @@ export function DetectorSettingRows({value, onChange, detectors, providerOptions
     const all = rows === 'all';
     const rtmw = detector === 'rtmpose' || detector === 'rtmw_mediapipe_hands' || detector === 'rtmw_onnx_hands';
     // MediaPipe's confidences; the two hybrid presets take them for their hand detectors.
-    const mediapipe = detector === 'mediapipe' || detector === 'rtmw_mediapipe_hands' || detector === 'rtmw_onnx_hands';
+    const mediapipe = detector === 'mediapipe_hands' || detector === 'mediapipe' || detector === 'rtmw_mediapipe_hands' || detector === 'rtmw_onnx_hands';
     // The ONNX hand models run on CUDA or CPU only, so selecting their preset also selects CUDA.
     const providers = detector === 'rtmw_onnx_hands'
         ? providerOptions.filter(option => option.value === 'cuda' || option.value === 'cpu') : providerOptions;
@@ -191,6 +194,8 @@ export function DetectorSettingRows({value, onChange, detectors, providerOptions
             control={<ValueSelector ariaLabel="Confidence threshold" value={value.confidence} min={0} max={1}
                 step={realtime ? 0.0005 : 0.001} unit="" onChange={confidence => onChange({confidence})}/>}/>}
 
+        {detector === 'mediapipe_hands' && <SettingRow label="Hand count" inactive={inactive} info={HAND_COUNT_INFO}
+            control={<HandCountInput value={value.handCount} onChange={handCount => onChange({handCount})}/>}/>}
         {all && mediapipe && <>
             <SettingRow inactive={inactive} label="Detection confidence"
                 info={handsNote ? REALTIME_HANDS_INFO.detection : DETECTION_CONFIDENCE_INFO}

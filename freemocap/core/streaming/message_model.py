@@ -537,9 +537,12 @@ class TrackerObservation:
     channels: tuple[ChannelBlock, ...]
     connection_groups: tuple[ModelConnectionGroup, ...] = ()
 
+    handedness: str | None = None
+
     def to_cbor_message(self) -> dict[str, Any]:
         return dict(tracker_id=self.tracker_id, detector_type=self.detector_type,
                     model_id=self.model_id, channels=self.channels,
+                    **({"handedness": self.handedness} if self.handedness else {}),
                     **({'connection_groups': self.connection_groups} if self.connection_groups else {}))
 
 

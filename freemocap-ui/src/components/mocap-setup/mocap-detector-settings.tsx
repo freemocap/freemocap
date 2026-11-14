@@ -46,7 +46,7 @@ export default function MocapDetectorSettings() {
     /** Each field the rows report goes to its own setting in the store. */
     const applyChange = (change: Partial<DetectorSettingsValue>) => {
         // Posthoc offers DETECTOR_OPTIONS only, so the realtime-only ONNX hands preset never arrives here.
-        if (change.detector === 'rtmw_onnx_hands') return;
+        if (change.detector === 'rtmw_onnx_hands' || change.detector === 'mediapipe_hands') return;
         if (change.detector !== undefined) setDetectorType(change.detector);
         if (change.provider !== undefined) setExecutionProvider(change.provider);
         if (change.model !== undefined) setRtmPoseModelName(change.model);

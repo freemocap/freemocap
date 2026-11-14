@@ -13,6 +13,8 @@ observations (routed to trackers); everything else is model reconstruction
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from functools import lru_cache
+from skellytracker.core.io.tracker_profiles import hand_connections
 import numpy as np
 from freemocap.core.diagnostics.pipeline_diagnostics import frame_diagnostics
 
@@ -40,6 +42,11 @@ _TRACKER_KINDS = frozenset(
     (ChannelKind.KEYPOINTS_3D, ChannelKind.OVERLAY_2D, ChannelKind.BOXES_2D)
 )
 _OVERLAY_PRODUCER = OverlayProducer()
+
+
+@lru_cache(maxsize=1)
+def _hand_connections():
+    return (ModelConnectionGroup(name="hand", pairs=hand_connections(), color="#00AA00"),)
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +110,22 @@ class MessageComposition:
                     )
                 )
         aggregation = frame_ctx.aggregator_output
+        if self.context.pipeline_live and aggregation is not None:
+            for hand in aggregation.hand_observations:
+                channels = []
+                for camera_id, view in hand.views.items():
+                    points = view.keypoints
+                    values = np.column_stack((points.xy, points.visibility)).astype("<f4")
+                    channels.append(ChannelBlock(kind=ChannelKind.OVERLAY_2D, names=points.names,
+                        columns=("x", "y", "visibility"), data=values.tobytes(), camera_id=camera_id,
+                        image_size=self.context.live_image_sizes.get(camera_id)))
+                if hand.xyz is not None:
+                    channels.append(ChannelBlock(kind=ChannelKind.KEYPOINTS_3D,
+                        names=next(iter(hand.views.values())).keypoints.names, columns=("x", "y", "z"),
+                        data=hand.xyz.astype("<f4").tobytes()))
+                trackers.append(TrackerObservation(tracker_id=f"hand-{hand.track_id}", detector_type="mediapipe_hands",
+                    model_id=None, channels=tuple(channels), handedness=hand.handedness,
+                    connection_groups=_hand_connections()))
         if self.context.pipeline_live:
             for metadata, connections in zip(
                 self.context.independent_trackers, self.independent_connections, strict=True,

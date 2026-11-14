@@ -27,6 +27,7 @@ export default function RealtimeProcessingSettings({onClose}: {onClose: () => vo
     const value: DetectorSettingsValue = {
         detector: camera.detector_type ?? 'rtmpose', model: camera.rtmpose_model_name ?? 'rtmw-x-l_256x192',
         provider, confidence: camera.rtmpose_confidence_threshold ?? 0.0025,
+        handCount: camera.hand_count,
         poseModelSize: camera.mediapipe_model_complexity ?? 'lite',
         detectionConfidence: camera.mediapipe_detection_confidence ?? 0.5,
         presenceConfidence: camera.mediapipe_presence_confidence ?? 0.5,
@@ -35,6 +36,7 @@ export default function RealtimeProcessingSettings({onClose}: {onClose: () => vo
     const changeDetector = (change: Partial<DetectorSettingsValue>) => applyOrUpdatePipelineConfig({
         ...pipelineConfig,
         camera_node_config: {...camera,
+            hand_count: change.handCount ?? camera.hand_count,
             detector_type: change.detector ?? camera.detector_type,
             rtmpose_model_name: change.model ?? camera.rtmpose_model_name,
             rtmpose_confidence_threshold: change.confidence ?? camera.rtmpose_confidence_threshold,

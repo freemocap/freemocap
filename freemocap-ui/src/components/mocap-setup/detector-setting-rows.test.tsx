@@ -5,6 +5,7 @@ import {Children, isValidElement, type ReactElement, type ReactNode} from 'react
 import {renderToStaticMarkup} from 'react-dom/server';
 // The store import follows the application entry order: the detector rows take their model list from the mocap slice.
 import '@/store';
+import {HAND_COUNT_INFO} from './hand-count-input';
 import type {TriangulationConfig} from '@/store/slices/mocap';
 import type {RealtimeDetectorType} from '@/store/slices/realtime/realtime-types';
 import {EXECUTION_PROVIDERS} from '@/types/execution-provider';
@@ -21,7 +22,7 @@ type Handler = (value: string | number | boolean) => void;
 interface Info {title: string; text: ReactNode}
 interface RowProps {label?: ReactNode; info?: Info; control?: ReactElement<{onChange?: Handler; onToggle?: Handler}>; children?: ReactNode}
 
-const DETECTORS: RealtimeDetectorType[] = ['rtmpose', 'mediapipe', 'rtmw_mediapipe_hands', 'dlc', 'rtmw_onnx_hands'];
+const DETECTORS: RealtimeDetectorType[] = ['rtmpose', 'mediapipe', 'rtmw_mediapipe_hands', 'dlc', 'mediapipe_hands', 'rtmw_onnx_hands'];
 /** The realtime pipeline's detector defaults. */
 const VALUE: DetectorSettingsValue = {
     detector: 'rtmpose', model: 'rtmw-x-l_256x192', provider: null, confidence: 0.0025,
@@ -85,12 +86,13 @@ const textOf = (info: Info): string => renderToStaticMarkup(<>{info.text}</>);
 
 /** The posthoc explanation of each detector row. */
 const POSTHOC_INFO: Record<string, Info> = {
-    'Skeleton detector': DETECTOR_INFO, 'Execution provider': EXECUTION_PROVIDER_INFO, 'Model': MODEL_INFO, 'Pose model size': COMPLEXITY_INFO,
+    'Hand count': HAND_COUNT_INFO, 'Skeleton detector': DETECTOR_INFO, 'Execution provider': EXECUTION_PROVIDER_INFO, 'Model': MODEL_INFO, 'Pose model size': COMPLEXITY_INFO,
     'Confidence threshold': CONFIDENCE_INFO, 'Detection confidence': DETECTION_CONFIDENCE_INFO, 'Presence confidence': PRESENCE_CONFIDENCE_INFO,
     'Tracking confidence': TRACKING_CONFIDENCE_INFO,
 };
 /** What today's realtime Skeleton Setup dialog says about the selected detector, word for word. */
 const DETECTOR_NOTES: Partial<Record<RealtimeDetectorType, string>> = {
+    mediapipe_hands: 'Tracks up to two hands with MediaPipe on CPU, with 21 keypoints per hand.',
     rtmpose: '133 keypoints (body, hands, face) via YOLOX + RTMW. Uses GPU batched inference when available.',
     mediapipe: 'Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.',
     rtmw_mediapipe_hands: 'RTMW body and face with cropped MediaPipe hands. The execution provider applies to RTMW; MediaPipe hands run on CPU.',
@@ -101,7 +103,7 @@ const HANDS_NOTE = 'The confidence settings below apply to the hands.';
 
 test('key rows are two rows for every detector', () => {
     const modelRow: Record<RealtimeDetectorType, string> = {
-        rtmpose: 'Model', mediapipe: 'Pose model size', rtmw_mediapipe_hands: 'Model', dlc: 'DLC model', rtmw_onnx_hands: 'Model',
+        mediapipe_hands: 'Hand count', rtmpose: 'Model', mediapipe: 'Pose model size', rtmw_mediapipe_hands: 'Model', dlc: 'DLC model', rtmw_onnx_hands: 'Model',
     };
     for (const detector of DETECTORS) {
         const html = detectorRows(detector, 'key');
@@ -117,6 +119,7 @@ test('all rows follow the detector', () => {
     const mediapipeConfidences = ['Detection confidence', 'Presence confidence', 'Tracking confidence'];
     const expected: Record<RealtimeDetectorType, string[]> = {
         rtmpose: ['Skeleton detector', 'Execution provider', 'Model', 'Confidence threshold'],
+        mediapipe_hands: ['Skeleton detector', 'Hand count', ...mediapipeConfidences],
         mediapipe: ['Skeleton detector', 'Pose model size', ...mediapipeConfidences],
         rtmw_mediapipe_hands: ['Skeleton detector', 'Execution provider', 'Model', 'Confidence threshold', ...mediapipeConfidences],
         dlc: ['Skeleton detector', 'DLC model'],
@@ -136,9 +139,11 @@ test('onnx hands offers only CUDA and CPU', () => {
     // Selecting the detector moves the provider onto CUDA, which it offers.
     const changes: Partial<DetectorSettingsValue>[] = [];
     const select = handlerOf(DetectorSettingRows(detectorProps('rtmpose', 'key', {onChange: change => changes.push(change)})), 'Skeleton detector');
+    select('mediapipe_hands');
+    handlerOf(DetectorSettingRows(detectorProps('mediapipe_hands', 'all', {onChange: change => changes.push(change)})), 'Hand count')('unknown');
     select('rtmw_mediapipe_hands');
     select('rtmw_onnx_hands');
-    assert.deepEqual(changes, [{detector: 'rtmw_mediapipe_hands'}, {detector: 'rtmw_onnx_hands', provider: 'cuda'}]);
+    assert.deepEqual(changes, [{detector: 'mediapipe_hands'}, {handCount: 'unknown'}, {detector: 'rtmw_mediapipe_hands'}, {detector: 'rtmw_onnx_hands', provider: 'cuda'}]);
 });
 
 test('the DLC row holds the given control', () => {

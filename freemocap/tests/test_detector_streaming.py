@@ -18,7 +18,7 @@ from skellytracker.core.data_primitives.observation import Observation, StageObs
 
 
 HUMAN_DETECTORS = tuple(value for value in get_args(CameraNodeConfig.model_fields['detector_type'].annotation)
-                        if value != 'dlc')  # Generic DLC has no anatomical bundle; test_dlc_streaming covers it.
+                        if value not in ('dlc', 'mediapipe_hands'))  # Generic DLC has no anatomical bundle; test_dlc_streaming covers it.
 
 
 @pytest.mark.parametrize('detector_type', HUMAN_DETECTORS)
@@ -65,7 +65,7 @@ def test_every_selectable_detector_serializes_points_and_person_boxes(detector_t
     assert [channel['camera_id'] for channel in boxes] == list(cameras)
     expected_names = ['body'] if detector_type == 'rtmpose' else ['body/right_hand', 'body/left_hand']
     expected_boxes = [[10, 20, 300, 400, 0.9, 1]] if detector_type == 'rtmpose' else [[30, 40, 80, 90, 1, 1], [np.nan] * 6]
-    if detector_type == 'rtmw_mediapipe_hands':
+    if detector_type in ('rtmw_mediapipe_hands', 'rtmw_onnx_hands'):
         expected_names.insert(0, 'body')
         expected_boxes.insert(0, [10, 20, 300, 400, 0.9, 1])
     for channel in boxes:

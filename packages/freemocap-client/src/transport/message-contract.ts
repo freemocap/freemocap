@@ -203,6 +203,7 @@ export type ModelInstance = z.infer<typeof ModelInstanceSchema>;
 
 export const TrackerObservationSchema = z.object({
   tracker_id: z.string(),
+  handedness: z.enum(["left", "right"]).optional(),
   detector_type: z.string(),
   model_id: z.string().nullable(),
   connection_groups: z.array(ModelConnectionGroupSchema).optional(),

@@ -1,3 +1,4 @@
+import {HAND_COUNT_INFO, HandCountInput} from '@/components/mocap-setup/hand-count-input';
 import {DlcModelSettings} from '@/components/mocap-setup/dlc-model-settings';
 import React, {useCallback} from 'react';
 import TrackerSettingsDialog from '@/components/mocap-setup/tracker-settings-dialog';
@@ -31,6 +32,7 @@ const DETECTOR_INFO = {
         <p><strong>RTMW</strong> — 133 keypoints (body, hands, face) via YOLOX + RTMW. Uses GPU batched inference when available.</p>
         <p><strong>MediaPipe</strong> — body, hands and face. CPU only; runs per camera without GPU batching.</p>
         <p><strong>RTMW + MediaPipe hands</strong> — RTMW body and face with cropped MediaPipe hands.</p>
+        <p><strong>Hands only (MediaPipe)</strong> — tracks up to two hands on CPU.</p>
         <p><strong>DLC</strong> — a DeepLabCut model, prepared and selected below.</p>
         <p><strong>RTMW + ONNX hands (experimental)</strong> — RTMW body and face with ONNX palm and hand models.
             Compare hand quality with the MediaPipe hands option.</p>
@@ -53,7 +55,7 @@ const providerInfo = (detector: RealtimeDetectorType) => ({
 });
 
 const RTMW_DETECTORS: readonly RealtimeDetectorType[] = ['rtmpose', 'rtmw_mediapipe_hands', 'rtmw_onnx_hands'];
-const MEDIAPIPE_DETECTORS: readonly RealtimeDetectorType[] = ['mediapipe', 'rtmw_mediapipe_hands', 'rtmw_onnx_hands'];
+const MEDIAPIPE_DETECTORS: readonly RealtimeDetectorType[] = ['mediapipe_hands', 'mediapipe', 'rtmw_mediapipe_hands', 'rtmw_onnx_hands'];
 
 const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) => {
     const { pipelineConfig, cameraNodeConfig, applyOrUpdatePipelineConfig } = useRealtimePipelineSync();
@@ -115,6 +117,9 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                             onChange={(v) => handleCameraNodeUpdate({ rtmpose_confidence_threshold: v })}/>}/>
                 </>}
 
+                {detectorType === 'mediapipe_hands' && <SettingRow label="Hand count" info={HAND_COUNT_INFO}
+                    control={<HandCountInput value={cameraNodeConfig.hand_count}
+                        onChange={hand_count => handleCameraNodeUpdate({hand_count})}/>}/>}
                 {MEDIAPIPE_DETECTORS.includes(detectorType) && <>
                     {detectorType === 'mediapipe' && <SettingRow label="Pose model size" info={COMPLEXITY_INFO}
                         control={<SettingSelectInput label="Pose model size" value={cameraNodeConfig.mediapipe_model_complexity ?? "lite"}

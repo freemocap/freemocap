@@ -4849,16 +4849,17 @@
             "default": true
           },
           "detector_type": {
-            "type": "string",
+            "default": "rtmpose",
             "enum": [
               "rtmpose",
               "mediapipe",
               "rtmw_mediapipe_hands",
               "rtmw_onnx_hands",
+              "mediapipe_hands",
               "dlc"
             ],
             "title": "Detector Type",
-            "default": "rtmpose"
+            "type": "string"
           },
           "dlc_model_path": {
             "anyOf": [
@@ -4922,6 +4923,16 @@
             "type": "number",
             "title": "Mediapipe Tracking Confidence",
             "default": 0.5
+          },
+          "hand_count": {
+            "default": "two",
+            "enum": [
+              "one",
+              "two",
+              "unknown"
+            ],
+            "title": "Hand Count",
+            "type": "string"
           },
           "mediapipe_num_hands": {
             "type": "integer",
@@ -4984,16 +4995,17 @@
             "default": true
           },
           "detector_type": {
-            "type": "string",
+            "default": "rtmpose",
             "enum": [
               "rtmpose",
               "mediapipe",
               "rtmw_mediapipe_hands",
               "rtmw_onnx_hands",
+              "mediapipe_hands",
               "dlc"
             ],
             "title": "Detector Type",
-            "default": "rtmpose"
+            "type": "string"
           },
           "dlc_model_path": {
             "anyOf": [
@@ -5057,6 +5069,16 @@
             "type": "number",
             "title": "Mediapipe Tracking Confidence",
             "default": 0.5
+          },
+          "hand_count": {
+            "default": "two",
+            "enum": [
+              "one",
+              "two",
+              "unknown"
+            ],
+            "title": "Hand Count",
+            "type": "string"
           },
           "mediapipe_num_hands": {
             "type": "integer",

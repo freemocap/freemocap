@@ -47,6 +47,7 @@ from skellycam.core.types.type_overloads import (
     TopicSubscriptionQueue,
 )
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
+from freemocap.core.pipeline.realtime.hand_observations import HandAssociation
 from freemocap.core.skeletons.reconstruct_skeleton import reconstruct_skeleton
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from skellyforge.core.skeleton.pose.model_scale_fitting import (
@@ -401,6 +402,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         filter_config = aggregator_config.realtime_filter_config
         geometry_matcher = LiveGeometryMatcher(calibration=calibration, camera_indices=live_camera_indices)
 
+        hand_association = HandAssociation()
         temporal_pipeline = TemporalPipeline(filter_config)
 
         detector_type = pipeline_config.camera_node_config.detector_type
@@ -497,6 +499,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                             calibration=saved,
                         ))
                         continue
+                    old_camera = pipeline_config.camera_node_config
+                    new_camera = msg.pipeline_config.camera_node_config
+                    if (old_camera.skeleton_settings != new_camera.skeleton_settings
+                            or old_camera.skeleton_tracking_enabled != new_camera.skeleton_tracking_enabled):
+                        hand_association.history.clear()
                     pipeline_config = msg.pipeline_config
                     aggregator_config = pipeline_config.aggregator_config
                     previous_filter_config = filter_config
@@ -856,7 +863,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         if isinstance(output, CameraNodeOutputMessage)
                         and output.skeleton_observation is not None
                     }
-                    if skeleton_observations_by_camera:
+                    if skeleton_observations_by_camera and detector_type != "mediapipe_hands":
                         t0 = time.perf_counter() if timer is not None else 0.0
                         _merge_angulation(
                             angulation=calibration.try_angulate(
@@ -958,6 +965,14 @@ class RealtimeAggregatorNode(AggregatorNode):
                             already_logged=skeleton_observability_logged,
                         )
 
+                hand_observations = ()
+                if detector_type == "mediapipe_hands":
+                    hands_by_camera = {cam: output.skeleton_observation for cam, output in frame_n_outputs.items()
+                                       if isinstance(output, CameraNodeOutputMessage) and output.skeleton_observation is not None}
+                    hand_observations = hand_association.update(hands_by_camera, calibration,
+                        aggregator_config.triangulation_config, filter_config.max_reprojection_error_px,
+                        aggregator_config.triangulation_enabled)
+
                 # Convert to Point3d once at the end for the output message
                 if timer is not None:
                     timer.record(
@@ -983,6 +998,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         frame_number=last_received_frame,
                         capture_timestamp_s=frame_time,
                         keypoint_status=keypoint_status,
+                        hand_observations=hand_observations,
                         raw_keypoints_arrays=raw_keypoints,
                         pipeline_id=ipc.pipeline_id,
                         pipeline_config=pipeline_config,

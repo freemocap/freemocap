@@ -21,6 +21,7 @@ from skellycam.core.types.type_overloads import (
 )
 from skellytracker.core.data_primitives.observation import Observation
 
+from freemocap.core.pipeline.realtime.hand_observations import HandObservation
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_update import CalibrationUpdateRequest
@@ -152,6 +153,7 @@ class LiveCameraCalibrationBinding:
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = 0
     keypoint_status: ChannelValues | None = None
+    hand_observations: tuple[HandObservation, ...] = ()
     raw_keypoints_arrays: ChannelValues | None = None
     capture_timestamp_s: float | None = None
     pipeline_id: PipelineIdString = ""

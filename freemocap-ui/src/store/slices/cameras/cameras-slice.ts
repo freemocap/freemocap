@@ -17,7 +17,7 @@ import {
     PersistedCameraSettingsMap,
     savePersistedCameraSettings,
 } from './camera-settings-storage';
-import {loadFromStorage} from '../../persistence';
+import {loadFromStorage, saveToStorage} from '../../persistence';
 
 // Persist all current camera desired configs + selection to localStorage
 function persistAllCameraSettings(state: CamerasState): void {
@@ -29,7 +29,7 @@ function persistAllCameraSettings(state: CamerasState): void {
 }
 
 const initialState: CamerasState = {
-    backend: 'python',
+    backend: loadFromStorage<unknown>('cameras.backend', null) === 'rust' ? 'rust' : 'python',
     cameras: [],
     isPaused: false,
     isLoading: false,
@@ -48,6 +48,7 @@ export const cameraSlice = createSlice({
         cameraBackendSelected: (state, action: PayloadAction<CameraBackend>) => {
             if (!state.isLoading && !state.cameras.some(camera => camera.connectionStatus === 'connected')) {
                 state.backend = action.payload;
+                saveToStorage('cameras.backend', action.payload);
             }
         },
         // ========== Selection ==========

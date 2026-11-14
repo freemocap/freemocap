@@ -63,25 +63,30 @@ class MessageComposition:
 
     def compose_frame_message(self, frame_ctx: FrameContext) -> FrameMessage:
         fill_ctx = replace(frame_ctx, stream_context=self.context)
-        reconstructions = (
-            frame_ctx.aggregator_output.reconstructions
-            if frame_ctx.aggregator_output is not None
-            else {}
-        )
         instances: list[ModelInstance] = []
         trackers: list[TrackerObservation] = []
         # One instance and one tracker observation PER SKELETON. A session tracking a
         # person and a charuco board emits two of each; the producers were called with
         # each skeleton in turn, so no block can land under the wrong model.
-        for instance_id, skeleton in enumerate(self.context.skeletons):
+        aggregation = frame_ctx.aggregator_output
+        subjects = []
+        for index, skeleton in enumerate(self.context.skeletons):
+            if skeleton.detector_type == "mediapipe_hands":
+                for hand in aggregation.hand_observations if aggregation is not None else ():
+                    if hand.model_id == skeleton.model_id:
+                        subjects.append((hand.track_id, skeleton, replace(fill_ctx, hand=hand)))
+            else:
+                subjects.append((index, skeleton, fill_ctx))
+        for instance_id, skeleton, subject_ctx in subjects:
+            hand = subject_ctx.hand
             blocks = tuple(
                 block
                 for producer in self.producers
-                for block in producer.fill(fill_ctx, skeleton)
+                for block in producer.fill(subject_ctx, skeleton)
             )
             instance_blocks = tuple(b for b in blocks if b.kind not in _TRACKER_KINDS)
             tracker_blocks = tuple(b for b in blocks if b.kind in _TRACKER_KINDS)
-            reconstruction = reconstructions.get(skeleton.model_id)
+            reconstruction = subject_ctx.reconstruction_for(skeleton)
             if reconstruction is not None and reconstruction.generated_support:
                 from freemocap.core.streaming.channel_helpers import TEMPORAL_STATUS_LABELS
                 # Derived channels must not lose their dependence on generated poses.
@@ -89,7 +94,7 @@ class MessageComposition:
                     sample_status=(np.isfinite(np.frombuffer(block.data, dtype='<f4').reshape(-1, len(block.columns))).any(axis=-1).astype(np.uint8) * 2).tobytes(),
                     status_labels=TEMPORAL_STATUS_LABELS) if block.sample_status is None else block
                     for block in instance_blocks)
-            if instance_blocks:
+            if instance_blocks and (hand is None or reconstruction is not None):
                 instances.append(
                     ModelInstance(
                         instance_id=instance_id,
@@ -103,29 +108,14 @@ class MessageComposition:
             if tracker_blocks:
                 trackers.append(
                     TrackerObservation(
-                        tracker_id=skeleton.detector_type,
+                        tracker_id=skeleton.detector_type if hand is None else hand.tracker_id,
+                        handedness=hand.handedness if hand else None,
+                        connection_groups=_hand_connections() if hand else (),
                         detector_type=skeleton.detector_type,
                         model_id=skeleton.model_id,
                         channels=tracker_blocks,
                     )
                 )
-        aggregation = frame_ctx.aggregator_output
-        if self.context.pipeline_live and aggregation is not None:
-            for hand in aggregation.hand_observations:
-                channels = []
-                for camera_id, view in hand.views.items():
-                    points = view.keypoints
-                    values = np.column_stack((points.xy, points.visibility)).astype("<f4")
-                    channels.append(ChannelBlock(kind=ChannelKind.OVERLAY_2D, names=points.names,
-                        columns=("x", "y", "visibility"), data=values.tobytes(), camera_id=camera_id,
-                        image_size=self.context.live_image_sizes.get(camera_id)))
-                if hand.xyz is not None:
-                    channels.append(ChannelBlock(kind=ChannelKind.KEYPOINTS_3D,
-                        names=next(iter(hand.views.values())).keypoints.names, columns=("x", "y", "z"),
-                        data=hand.xyz.astype("<f4").tobytes()))
-                trackers.append(TrackerObservation(tracker_id=f"hand-{hand.track_id}", detector_type="mediapipe_hands",
-                    model_id=None, channels=tuple(channels), handedness=hand.handedness,
-                    connection_groups=_hand_connections()))
         if self.context.pipeline_live:
             for metadata, connections in zip(
                 self.context.independent_trackers, self.independent_connections, strict=True,

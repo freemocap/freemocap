@@ -50,26 +50,27 @@ class OverlayProducer(ChannelProducer):
         stream_ctx = frame_ctx.stream_context
         if message is None or stream_ctx is None:
             return []
-        reconstruction = message.reconstructions.get(skeleton.model_id)
+        reconstruction = frame_ctx.reconstruction_for(skeleton)
         kp_names = tuple(skeleton.tracker_keypoint_names)
         segment_names = tuple(skeleton.skeleton.segments)
         blocks: list[ChannelBlock] = []
         for camera_id in stream_ctx.camera_ids:
             # Each skeleton overlays ITS detector's detections, so a charuco board's
             # corners and a pose detector's joints land in separate blocks.
-            detections = camera_2d_detections(
-                message, camera_id, detector_type=skeleton.detector_type, stage_path=skeleton.tracker_stage_path
-            )
-            blocks.append(
-                ChannelBlock(
-                    kind=ChannelKind.OVERLAY_2D,
-                    names=kp_names,
-                    columns=("x", "y", "visibility"),
-                    data=assemble_channel_bytes(names=kp_names, positions=detections, columns=("x", "y", "visibility")),
-                    camera_id=camera_id,
-                    image_size=stream_ctx.live_image_sizes.get(camera_id),
-                )
-            )
+            if frame_ctx.hand is None:
+                detections = camera_2d_detections(
+                    message, camera_id, detector_type=skeleton.detector_type, stage_path=skeleton.tracker_stage_path)
+                data = assemble_channel_bytes(names=kp_names, positions=detections, columns=("x", "y", "visibility"))
+            else:
+                view = frame_ctx.hand.views.get(camera_id)
+                if view is None:
+                    continue
+                points = view.keypoints
+                kp_names = points.names
+                data = np.column_stack((points.xy, points.visibility)).astype("<f4").tobytes()
+            blocks.append(ChannelBlock(
+                kind=ChannelKind.OVERLAY_2D, names=kp_names, columns=("x", "y", "visibility"),
+                data=data, camera_id=camera_id, image_size=stream_ctx.live_image_sizes.get(camera_id)))
             reprojections = reconstruction.reprojected_segment_origins.get(camera_id, {}) if reconstruction else {}
             blocks.append(
                 ChannelBlock(

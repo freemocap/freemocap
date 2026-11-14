@@ -4,6 +4,7 @@ The aggregator owns this pipeline, so both inference paths use identical stages.
 Metadata dictionaries identify streams, never point values.
 """
 from copy import copy
+from dataclasses import replace
 import numpy as np
 from skellyforge.core.data_tensors.channel_values import ChannelValues
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter, FilteredKeypoints
@@ -60,14 +61,33 @@ class TemporalPipeline:
             image_filter.d_cutoff = config.image_smoothing.d_cutoff
 
     def image_observation(self, *, camera_id: str, observation, timestamp_s: float, confidence_threshold: float):
-        body = observation.stages.get('body') if observation is not None else None
+        stages = observation.stages if observation is not None else {}
+        hands = stages.get("hands")
+        body = stages.get("body")
+        if hands is not None:
+            result = copy(observation)
+            result.stages = stages.copy()
+            result.stages["hands"] = copy(hands)
+            active = {(camera_id, hand.track_id) for hand in hands.hands}
+            for key in tuple(self.image_filters):
+                if isinstance(key, tuple) and key[0] == camera_id and key not in active:
+                    del self.image_filters[key]
+            result.stages["hands"].hands = tuple(replace(hand, keypoints=self._image_keypoints(
+                (camera_id, hand.track_id), hand.keypoints, timestamp_s, confidence_threshold)) for hand in hands.hands)
+            return result
         if body is None or body.keypoints is None:
             image_filter = self.image_filters.get(camera_id)
             if image_filter is not None:
                 image_filter.filter(t=timestamp_s,
                     raw_keypoints=ChannelValues.empty(component_names=image_filter.component_names))
             return observation
-        original = body.keypoints
+        result = copy(observation)
+        result.stages = stages.copy()
+        result.stages["body"] = copy(body)
+        result.stages["body"].keypoints = self._image_keypoints(camera_id, body.keypoints, timestamp_s, confidence_threshold)
+        return result
+
+    def _image_keypoints(self, stream, original, timestamp_s, confidence_threshold):
         # Copy only the numerical channel we change; preserve raw detector results.
         keypoints = copy(original)
         keypoints.xyz = original.xyz.copy()
@@ -75,19 +95,15 @@ class TemporalPipeline:
         keypoints.xy[~present] = np.nan
         settings = self.config.image_smoothing
         if settings.enabled:
-            image_filter = self.image_filters.get(camera_id)
+            image_filter = self.image_filters.get(stream)
             if image_filter is None:
                 image_filter = RealtimeKeypointFilter(dims=original.xy.shape[-1], min_cutoff=settings.min_cutoff,
                     beta=settings.beta, d_cutoff=settings.d_cutoff, gap_duration_s=0.0)
-                self.image_filters[camera_id] = image_filter
+                self.image_filters[stream] = image_filter
             positions = image_filter.filter(t=timestamp_s,
                 raw_keypoints=ChannelValues(original.names, original.xy, present, component_names=('x', 'y'))).positions
             np.copyto(keypoints.xy, positions.aligned(original.names))
-        result = copy(observation)
-        result.stages = observation.stages.copy()
-        result.stages['body'] = copy(body)
-        result.stages['body'].keypoints = keypoints
-        return result
+        return keypoints
 
     def process(self, *, timestamp_s: float, points: ChannelValues, metric_space: bool = True) -> FilteredKeypoints:
         if self._metric_space is not None and self._metric_space != metric_space:

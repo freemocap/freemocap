@@ -26,7 +26,7 @@ class SegmentProducer(ChannelProducer):
         message = frame_ctx.aggregator_output
         if message is None:
             return []
-        reconstruction = message.reconstructions.get(skeleton.model_id)
+        reconstruction = frame_ctx.reconstruction_for(skeleton)
         segment_names = tuple(skeleton.skeleton.segments)
         origin_positions = reconstruction.segment_origins if reconstruction else {}
         lengths = reconstruction.segment_lengths if reconstruction else {}

@@ -45,3 +45,8 @@ class FrameContext:
     aggregator_output: Any | None = None  # duck-typed: the concrete type pulls skellytracker/mediapipe
     image_payload: bytes | bytearray | memoryview | None = None
     stream_context: StreamContext | None = None
+    hand: Any | None = None
+
+    def reconstruction_for(self, skeleton: TrackedSkeletonBundle):
+        key = skeleton.model_id if self.hand is None else self.hand.tracker_id
+        return self.aggregator_output.reconstructions.get(key) if self.aggregator_output is not None else None

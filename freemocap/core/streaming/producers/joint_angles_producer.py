@@ -29,7 +29,7 @@ class JointAnglesProducer(ChannelProducer):
         message = frame_ctx.aggregator_output
         if message is None:
             return []
-        reconstruction = message.reconstructions.get(skeleton.model_id)
+        reconstruction = frame_ctx.reconstruction_for(skeleton)
         # A skeleton with no joints — a rigid marked object — has no angles, and that is
         # an absent channel rather than a channel of NaNs.
         if reconstruction is None or not reconstruction.joint_angles:

@@ -22,6 +22,14 @@ class HandObservation:
     views: dict[str, TrackedHand]
     xyz: np.ndarray | None
 
+    @property
+    def tracker_id(self) -> str:
+        return f"hand-{self.track_id}"
+
+    @property
+    def model_id(self) -> str:
+        return f"{self.handedness}_hand"
+
 
 class HandAssociation:
     def __init__(self):
@@ -52,7 +60,7 @@ class HandAssociation:
         scores[usable] = np.nanmedian(errors, axis=(0, 2))
         return scores.reshape(len(left), len(right))
 
-    def update(self, observations, calibration, config, max_error_px, triangulate):
+    def update(self, observations, calibration, config, max_error_px, triangulate, *, single_camera=False):
         self.frame += 1
         binding = calibration.binding if calibration.is_applicable() else None
         if binding is not self.binding:
@@ -99,7 +107,7 @@ class HandAssociation:
             selected = {cam: hands[(cam, local)] for cam, local in sorted(group)}
             side = Counter(h.handedness for h in selected.values()).most_common(1)[0][0]
             xyz = None
-            if triangulate and len(group) >= config.minimum_cameras_for_triangulation:
+            if triangulate and (single_camera or len(group) >= config.minimum_cameras_for_triangulation):
                 aligned = {cam: Observation(observations[cam].frame_number, observations[cam].image_size,
                            {"hand": StageObservation("hand", keypoints=h.keypoints)}) for cam, h in selected.items()}
                 result = calibration.try_angulate(frame_number=next(iter(aligned.values())).frame_number,

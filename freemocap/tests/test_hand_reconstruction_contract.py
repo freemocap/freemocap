@@ -113,3 +113,41 @@ def test_missing_palm_preserves_observed_fingers_and_reentry_restores_palm(track
             # segments independently of the missing palm and MCP evidence.
             assert 'left_index_middle_phalanx' in result.segment_origins
             assert 'left_index_distal_phalanx' in result.segment_origins
+
+
+def test_two_right_hand_instances_share_definition_and_reconstruct_at_distinct_wrists():
+    from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
+    from freemocap.core.pipeline.realtime.hand_observations import HandObservation
+    from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
+    from freemocap.core.streaming.message_composer import compose_messages
+    from freemocap.core.streaming.producers.producer_contexts import StreamContext
+    from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
+    from skellytracker.core.data_primitives.keypoints import Keypoints
+    from skellytracker.core.data_primitives.tracked_hand import TrackedHand
+
+    config = CameraNodeConfig(detector_type="mediapipe_hands", charuco_tracking_enabled=False)
+    bundles = build_tracked_skeletons(camera_node_config=config)
+    assert {b.model_id for b in bundles} == {"left_hand", "right_hand"}
+    right = next(bundle for bundle in bundles if bundle.model_id == "right_hand")
+    points = tracked_hands(right)
+    observations = []
+    reconstructions = {}
+    for track_id in (7, 11):
+        offset = np.array([100. * track_id, 0., 0.])
+        xyz = np.stack([points[name] + offset for name in right.tracker_keypoint_names])
+        names = tuple(name.removeprefix("right_hand_") for name in right.tracker_keypoint_names)
+        hand = TrackedHand(track_id, "right", Keypoints(names, xyz, np.ones(21)))
+        fit = reconstruct_skeleton(bundle=right, state=state_for(right),
+            filtered_keypoints=dict(zip(right.tracker_keypoint_names, xyz)), compute_center_of_mass=True)
+        assert_hand_geometry(right, fit, "right")
+        assert np.isfinite(fit.center_of_mass).all()
+        observation = HandObservation(track_id, "right", {"cam": hand}, xyz)
+        reconstructions[observation.tracker_id] = fit
+        observations.append(observation)
+    frame = compose_messages(StreamContext(skeletons=bundles, camera_ids=("cam",), pipeline_live=True)).compose_frame_message(
+        FrameContext(frame_number=0, timestamp=0., aggregator_output=AggregationNodeOutputMessage(hand_observations=tuple(observations), reconstructions=reconstructions)))
+    assert [(i.model_id, i.instance_id) for i in frame.instances] == [("right_hand", 7), ("right_hand", 11)]
+    assert [t.tracker_id for t in frame.trackers] == ["hand-7", "hand-11"]
+    origins = [next(b for b in i.channels if b.kind == ChannelKind.SEGMENT_ORIGINS) for i in frame.instances]
+    xyz = [np.frombuffer(b.data, dtype="<f4").reshape(20, 3) for b in origins]
+    assert_allclose(xyz[1] - xyz[0], np.tile([400., 0., 0.], (20, 1)), atol=1e-4)

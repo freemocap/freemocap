@@ -164,7 +164,8 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     # name spaces do not collide (a pose detector emits `left_knee`, a charuco detector
     # emits `CharucoCorner-0`), and each skeleton's mapping takes only what it recognizes.
     keypoints_arrays: Mapping[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
-    # One reconstruction per tracked skeleton, keyed by `model_id`. A session tracking a
+    # Singleton models use their model ID. Independent hands use their track ID
+    # so two instances of the same sided model can coexist. A session tracking a
     # person and a charuco board publishes two; nothing downstream may assume one. Empty
     # for a frame where nothing hydrated at all.
     reconstructions: dict[str, SkeletonReconstruction] = field(default_factory=dict)

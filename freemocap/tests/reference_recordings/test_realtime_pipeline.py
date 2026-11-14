@@ -218,7 +218,29 @@ def test_realtime_replay_preserves_frames_and_reconstructs(replay_reference, hum
         assert all(camera.frame_number == output.frame_number for output in driven.outputs
                    for camera in output.camera_node_outputs.values())
         expected_models = [CHARUCO_BOARD_MODEL_ID]
-        if human_enabled:
+        if human_enabled and preset == "mediapipe_hands":
+            from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
+            from freemocap.core.streaming.message_composer import compose_messages
+            from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
+            compositor = compose_messages(StreamContext(
+                skeletons=build_tracked_skeletons(camera_node_config=config.camera_node_config),
+                camera_ids=tuple(group.camera_ids), pipeline_live=True))
+            solved = set()
+            for output in driven.outputs:
+                frame = compositor.compose_frame_message(FrameContext(frame_number=output.frame_number,
+                    timestamp=output.capture_timestamp_s, aggregator_output=output))
+                for hand in output.hand_observations:
+                    fit = output.reconstructions.get(hand.tracker_id)
+                    if fit is None or not fit.segment_origins:
+                        continue
+                    instance = next(i for i in frame.instances
+                                    if i.model_id == hand.model_id and i.instance_id == hand.track_id)
+                    blocks = {block.kind: block for block in instance.channels}
+                    for kind in ("SEGMENT_ORIGINS", "ROTATIONS_WORLD", "LANDMARKS_3D"):
+                        assert np.isfinite(np.frombuffer(blocks[kind].data, dtype="<f4")).any()
+                    solved.add(instance.model_id)
+            assert solved == {"left_hand", "right_hand"}
+        elif human_enabled:
             expected_models.append(STANDARD_HUMAN_MODEL_ID)
         else:
             assert all(STANDARD_HUMAN_MODEL_ID not in output.reconstructions for output in driven.outputs)
@@ -264,3 +286,10 @@ def test_combined_tracker_realtime_replay(replay_reference, centralized, monkeyp
     """Exercise the complete combined tracker recording on both live implementations."""
     test_realtime_replay_preserves_frames_and_reconstructs(
         replay_reference, True, False, centralized, monkeypatch, preset="rtmw_mediapipe_hands")
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@pytest.mark.parametrize("centralized", [True, False], ids=["centralized", "per-camera"])
+def test_hands_only_realtime_reconstruction(replay_reference, centralized, monkeypatch):
+    test_realtime_replay_preserves_frames_and_reconstructs(
+        replay_reference, True, False, centralized, monkeypatch, preset="mediapipe_hands")

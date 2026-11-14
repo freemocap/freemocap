@@ -29,7 +29,7 @@ class DerivedProducer(ChannelProducer):
         message = frame_ctx.aggregator_output
         if message is None:
             return []
-        reconstruction = message.reconstructions.get(skeleton.model_id)
+        reconstruction = frame_ctx.reconstruction_for(skeleton)
         if reconstruction is None:
             return []
         com_row = np.full(3, np.nan, dtype=np.float32)

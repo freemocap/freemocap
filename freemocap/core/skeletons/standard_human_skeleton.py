@@ -65,3 +65,26 @@ def build_standard_human_bundle(*, detector_type: str, anchor_segment_name: str 
         scale_reference_name=BODY_HEIGHT_SCALE_REFERENCE,
         anchor_segment_name=anchor_segment_name,
     )
+
+
+def build_hand_bundles() -> tuple[TrackedSkeletonBundle, ...]:
+    from skellyforge.definitions.human_skeleton.hand import human_hand_model, hand_center_of_mass
+    from skellytracker.core.io.tracker_profiles import mediapipe_hand_names, hand_connections
+
+    human = SkeletonDefinition.from_default_yaml()
+    rest = RestPose.from_default_yaml(skeleton=human)
+    profile = tracker_profile("mediapipe_hands")
+    com = CenterOfMassDefinitions.from_default_yaml()
+    mass = AnthropometricParameters.from_default_yaml().get(name="hand").mass_fraction * ASSUMED_BODY_MASS_KG
+    bundles = []
+    for side in ("left", "right"):
+        skeleton, hand_rest = human_hand_model(human=human, rest=rest, side=side)
+        bundles.append(TrackedSkeletonBundle(
+            model_id=skeleton.name, detector_type="mediapipe_hands",
+            tracker_keypoint_names=mediapipe_hand_names(side), tracker_connections=hand_connections(),
+            skeleton=skeleton, rest_pose=hand_rest, landmark_mapping=profile.hand_mapping(side),
+            center_of_mass_definitions=hand_center_of_mass(side=side, definitions=com),
+            segment_masses={skeleton.name: mass}, scale_reference_name=BODY_HEIGHT_SCALE_REFERENCE,
+            anchor_segment_name=hand_rest.root_segment_name, tracker_stage_path=("hands",),
+        ))
+    return tuple(bundles)

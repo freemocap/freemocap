@@ -26,16 +26,23 @@ class KeypointsProducer(ChannelProducer):
         # ride its tracker observation and a pose detector's joints ride the human's.
         tracker_names = tuple(skeleton.tracker_keypoint_names)
         landmark_names = tuple(skeleton.skeleton.landmarks)
-        reconstruction = message.reconstructions.get(skeleton.model_id)
-        return [
-            ChannelBlock(
+        reconstruction = frame_ctx.reconstruction_for(skeleton)
+        if frame_ctx.hand is not None:
+            hand = frame_ctx.hand
+            tracker_blocks = [] if hand.xyz is None else [ChannelBlock(
+                kind=ChannelKind.KEYPOINTS_3D, names=next(iter(hand.views.values())).keypoints.names,
+                columns=("x", "y", "z"), data=hand.xyz.astype("<f4").tobytes())]
+        else:
+            tracker_blocks = [ChannelBlock(
                 kind=ChannelKind.KEYPOINTS_3D,
                 sample_status=temporal_status_bytes(names=tracker_names, status=message.keypoint_status),
                 status_labels=TEMPORAL_STATUS_LABELS if message.keypoint_status is not None else None,
                 names=tracker_names,
                 columns=("x", "y", "z", "reprojection_error"),
                 data=assemble_channel_bytes(names=tracker_names, positions=message.keypoints_arrays or {}, columns=("x", "y", "z", "reprojection_error"), unavailable_components=("reprojection_error",)),
-            ),
+            )]
+        return [
+            *tracker_blocks,
             ChannelBlock(
                 kind=ChannelKind.MAPPED_KEYPOINTS_3D,
                 columns=("x", "y", "z", "reprojection_error"),

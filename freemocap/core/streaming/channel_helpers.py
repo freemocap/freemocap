@@ -54,6 +54,7 @@ def assemble_channel_bytes(*, names: tuple[str, ...], positions: Mapping,
 _OBSERVATION_BY_DETECTOR: dict[str, tuple[str, tuple[str, ...]]] = {
     "rtmpose": ("skeleton_observation", ("body",)),
     "mediapipe": ("skeleton_observation", ("body",)),
+    "mediapipe_hands": ("skeleton_observation", ("hands",)),
     "rtmw_mediapipe_hands": ("skeleton_observation", ("body",)),
     "rtmw_onnx_hands": ("skeleton_observation", ("body",)),
     "charuco": ("charuco_observation", ("charuco",)),
